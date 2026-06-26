@@ -1906,7 +1906,7 @@ This section covers the settings that are most relevant to how your organisation
 
 ![user-manual-diagrams/system-settings.png](user-manual-diagrams/system-settings.png)
 
-Note that the section does **not cover installation specific settings**, please refer to the installation manual for configuration settings such as the secret key, Flask url and port, session storage, SSO integration or proxy configuration.
+Note that the section does **not cover installation specific settings**, please refer to the installation manual for configuration settings such as the secret key, Application host and port, session storage, SSO integration or proxy configuration.
 
 ## Privilege cases and restrict view for non-admin users
 

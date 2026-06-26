@@ -113,4 +113,4 @@ elif args.test_data:
 
 else:
     # get_modules_list()
-    app.run(host=app.config.get("FLASK_URL"), port=app.config.get("FLASK_PORT"))
+    app.run(host=app.config.get("APP_HOST"), port=app.config.get("APP_PORT"))

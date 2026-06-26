@@ -987,7 +987,7 @@ The main differences between environments:
 | TESTING | False | True (disables CSRF checks) | False |
 | Database | SQLite (`flowintel.sqlite`) | SQLite (`flowintel-test.sqlite`) | PostgreSQL (server) |
 | SECRET_KEY | Can use default | Can use default | Must be unique and strong |
-| FLASK_URL | Can use 0.0.0.0 | Can use 0.0.0.0 | Should be 127.0.0.1 (behind NGINX) |
+| APP_HOST | Can use 0.0.0.0 | Can use 0.0.0.0 | Should be 127.0.0.1 (behind NGINX) |
 | Error display | Full stack traces shown | Full stack traces shown | Generic error pages |
 | BEHIND_PROXY | Direct access to Flask | Direct access to Flask | Access via NGINX |
 | Sample cases | Imported | Not imported | Not imported |
@@ -1688,7 +1688,7 @@ The `ExecStart` directive uses Gunicorn with 4 worker processes. Each worker han
 ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 9 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
 ```
 
-Avoid setting the worker count too high on systems with limited memory, as each worker runs a separate copy of the application. The bind address (`127.0.0.1:7006`) should match the `FLASK_URL` and `FLASK_PORT` values in `conf/config.py`.
+Avoid setting the worker count too high on systems with limited memory, as each worker runs a separate copy of the application. The bind address (`127.0.0.1:7006`) should match the `APP_HOST` and `APP_PORT` values in `conf/config.py`.
 
 If you need to adjust resource limits (for example capping memory usage), you can add directives such as `MemoryMax=512M` or `CPUQuota=200%` in the `[Service]` section.
 
@@ -2090,8 +2090,8 @@ sudo logrotate --debug /etc/logrotate.d/flowintel
    
    You should see Python listening. If not, check your `conf/config.py`:
    ```python
-   FLASK_URL = "127.0.0.1"
-   FLASK_PORT = 7006
+   APP_HOST = "127.0.0.1"
+   APP_PORT = 7006
    ```
 
 3. **NGINX upstream configuration mismatch**
