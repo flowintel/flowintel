@@ -1,10 +1,8 @@
-# simplesaml_core.py
 import base64
 import datetime
 import logging
 import uuid
 import zlib
-from enum import Enum
 from urllib.parse import urlencode
 
 from lxml import etree
@@ -23,24 +21,63 @@ _NS = {
     'samlp': 'urn:oasis:names:tc:SAML:2.0:protocol',
 }
 
-# ---------------------------------------------------------------------------
-# Organisation IdP OID map
-# ---------------------------------------------------------------------------
-class OID(Enum):
-    EMAIL = "mail"
-    GROUPS = ""
-    NAME = "cn"
-    USERNAME = ""
-
 
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
 def _sp_entity_id():
-    return current_app.config.get('SIMPLESAML_SP_ENTITY_ID', '')
+    return current_app.config.get('SIMPLESAML_SP_ENTITY_ID')
 
 def _idp_sso_url():
-    return current_app.config.get('SIMPLESAML_IDP_SSO_URL', '')
+    return current_app.config.get('SIMPLESAML_IDP_SSO_URL')
+
+def _attr_email():
+    return current_app.config.get('SIMPLESAML_ATTR_EMAIL')
+
+def _attr_name():
+    return current_app.config.get('SIMPLESAML_ATTR_NAME')
+
+def _attr_username():
+    return current_app.config.get('SIMPLESAML_ATTR_USERNAME')
+
+def _attr_groups():
+    return current_app.config.get('SIMPLESAML_ATTR_GROUPS')
+
+def _group_admin():
+    # Editor by default, Admin will be notified thanks to True argument, then Admin can promote new Admin
+    return (current_app.config.get("SIMPLESAML_GROUP_ADMIN"), "Editor", True)
+
+def _group_editor():
+    return (current_app.config.get("SIMPLESAML_GROUP_EDITOR"), "Editor", False)
+
+def _group_case_admin():
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_CASE_ADMIN"),
+        current_app.config.get("SIMPLESAML_ROLE_CASE_ADMIN"),
+        False
+    )
+
+def _group_queue_admin():
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_QUEUE_ADMIN"),
+        current_app.config.get("SIMPLESAML_ROLE_QUEUE_ADMIN"),
+        False
+    )
+
+def _group_queuer():
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_QUEUER"),
+        current_app.config.get("SIMPLESAML_ROLE_QUEUER"),
+        False
+    )
+
+def _group_readonly():
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_READONLY"),
+        "Read Only", 
+        False
+    )
+
 
 # ---------------------------------------------------------------------------
 # Auth URL — HTTP-Redirect binding (deflated SAMLRequest)
@@ -51,7 +88,7 @@ def get_auth_url(acs_url: str, relay_state: str = '') -> str:
         f'<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
         f'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" '
         f'ID="_{uuid.uuid4().hex}" Version="2.0" '
-        f'IssueInstant="{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}" '
+        f'IssueInstant="{datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}" '
         f'AssertionConsumerServiceURL="{acs_url}" '
         f'ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">'
         f'<saml:Issuer>{_sp_entity_id()}</saml:Issuer>'
@@ -104,17 +141,9 @@ def _parse_saml_response(saml_response_b64: str) -> dict | None:
     return {'name_id': name_id, 'attributes': attributes}
 
 
-def _get_identity(attributes: dict) -> dict[str, list]:
-    """
-    Normalize raw XML attributes into a keyed identity dict,
-    mirroring what get_identity() returns in the Django/pysaml2 stack.
-    """
-    return attributes  # already {oid_or_name: [values]}
-
-
-def _first(identity: dict, oid: OID, default: str = '') -> str:
-    """Return the first value for a given OID enum from the identity dict."""
-    vals = identity.get(oid.value, [])
+def _first(attributes: dict, key: str, default: str = '') -> str:
+    """Return the first value for a given attribute key."""
+    vals = attributes.get(key, [])
     return vals[0] if vals else default
 
 
@@ -130,25 +159,24 @@ def get_or_create_sso_user(saml_response_b64: str):
     if not parsed:
         return None, "Could not decode the SAML response."
 
-    identity = _get_identity(parsed['attributes'])
+    attrs = parsed['attributes']
 
-    # --- Email: use OID.EMAIL ('mail') with no fallback (NAME_ID is transient so it changes every time) ---
-    email = _first(identity, OID.EMAIL).lower().strip()
+    email = _first(attrs, _attr_email()).lower().strip()
     if not email:
-        return None, "No email address (mail attribute) found in the SAML assertion."
+        return None, "No email address found in the SAML assertion."
 
-    # --- Groups: Organisation-specific OID ---
-    groups = identity.get(OID.GROUPS.value, [])
+    groups    = attrs.get(_attr_groups(), [])
+    full_name = _first(attrs, _attr_name())
+    username  = _first(attrs, _attr_username(), default=email.split('@')[0])
 
     # --- Group → Role priority list (configurable via Flask config) ---
-    cfg = current_app.config
     priority_list = [
-        (cfg.get("SIMPLESAML_GROUP_ADMIN",      "FlowintelAdmin"),      "Editor",                                           True),
-        (cfg.get("SIMPLESAML_GROUP_EDITOR",      "FlowintelEditor"),     "Editor",                                           False),
-        (cfg.get("SIMPLESAML_GROUP_CASE_ADMIN",  "FlowintelCaseAdmin"),  cfg.get("SIMPLESAML_ROLE_CASE_ADMIN",  "CaseAdmin"),  False),
-        (cfg.get("SIMPLESAML_GROUP_QUEUE_ADMIN", "FlowintelQueueAdmin"), cfg.get("SIMPLESAML_ROLE_QUEUE_ADMIN", "QueueAdmin"), False),
-        (cfg.get("SIMPLESAML_GROUP_QUEUER",      "FlowintelQueuer"),     cfg.get("SIMPLESAML_ROLE_QUEUER",      "Queuer"),     False),
-        (cfg.get("SIMPLESAML_GROUP_READONLY",    "FlowintelReadOnly"),   "Read Only",                                        False),
+        _group_admin(),
+        _group_editor(),
+        _group_case_admin(),
+        _group_queue_admin(),
+        _group_queuer(),
+        _group_readonly(),
     ]
 
     configured_groups = [e[0] for e in priority_list]
@@ -194,7 +222,6 @@ def get_or_create_sso_user(saml_response_b64: str):
         return user, None
 
     # --- Name: single 'cn' field split on first space, same as your Django backend ---
-    full_name = _first(identity, OID.NAME).strip()
     if full_name:
         parts = full_name.split(' ', maxsplit=1)
         first_name = parts[0]
@@ -205,7 +232,6 @@ def get_or_create_sso_user(saml_response_b64: str):
         last_name  = ''
 
     # Username from Organisation SimpleSaml OID (for nickname, login is always email in Flowintel)
-    username = _first(identity, OID.USERNAME, default=email.split('@')[0])
     nick = f"{username} - via SimpleSAML"
 
     user = User(
