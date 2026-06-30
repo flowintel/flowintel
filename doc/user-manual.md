@@ -1773,6 +1773,8 @@ Users who sign in through Keycloak cannot use the local password reset feature o
 
 Keycloak and local authentication can coexist. Users without a Keycloak account can still sign in with their email and password. Keycloak configuration, including the realm, client ID, client secret, redirect URL and group mappings, is managed in the server configuration file (`conf/config.py`) and the environment file. Refer to the [installation manual](installation-manual.md) for detailed setup instructions.
 
+### SimpleSAML single sign-on (optional)
+TODO
 
 ## Roles
 

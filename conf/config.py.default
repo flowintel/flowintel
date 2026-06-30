@@ -206,6 +206,40 @@ class Config:
     KEYCLOAK_REDIRECT_URL = os.getenv('KEYCLOAK_REDIRECT_URL', 'http://localhost:7006/account/keycloak/callback')
 
     # =============================================================================
+    # SIMPLESAML PHP
+    # =============================================================================
+    SIMPLESAML_ENABLED        = os.getenv('SIMPLESAML_ENABLED', 'false').lower() == 'true'
+    SIMPLESAML_SP_ENTITY_ID   = os.getenv('SIMPLESAML_SP_ENTITY_ID', 'https://flowintel.example.com/saml/metadata')
+    SIMPLESAML_IDP_ENTITY_ID  = os.getenv('SIMPLESAML_IDP_ENTITY_ID', 'https://idp.example.com/simplesaml/saml2/idp/metadata.php')
+    SIMPLESAML_IDP_SSO_URL    = os.getenv('SIMPLESAML_IDP_SSO_URL', 'https://idp.example.com/simplesaml/saml2/idp/SSOService.php')
+    SIMPLESAML_IDP_SLO_URL    = os.getenv('SIMPLESAML_IDP_SLO_URL', 'https://idp.example.com/simplesaml/saml2/idp/SingleLogoutService.php')
+    # Might be identical
+    SIMPLESAML_ACS_URL        = os.getenv('SIMPLESAML_ACS_URL', 'https://flowintel.example.com/account/simplesaml/callback')     # "https://flowintel.example.lu/account/simplesaml/callback"
+    SIMPLESAML_REDIRECT_URL  = os.getenv('SIMPLESAML_REDIRECT_URL', 'https://flowintel.example.com/account/simplesaml/callback') # "https://flowintel.example.lu/account/simplesaml/callback"
+    #
+
+    # Attribute mapping — SimpleSAMLphp OID URN defaults, override if your IdP uses friendly names
+    SIMPLESAML_ATTR_EMAIL      = os.getenv('SIMPLESAML_ATTR_EMAIL', 'mail')                              # 'urn:oid:0.9.2342.19200300.100.1.3'
+    SIMPLESAML_ATTR_FIRST_NAME = os.getenv('SIMPLESAML_ATTR_FIRST_NAME', 'urn:oid:2.5.4.42')             # 'givenName'
+    SIMPLESAML_ATTR_LAST_NAME  = os.getenv('SIMPLESAML_ATTR_LAST_NAME', 'urn:oid:2.5.4.4')               # 'sn'
+    SIMPLESAML_ATTR_GROUPS     = os.getenv('SIMPLESAML_ATTR_GROUPS', 'memberOf')                         # or your custom attr
+
+    # Group → Role mapping (same pattern as Keycloak)
+    SIMPLESAML_GROUP_ADMIN      = os.getenv('SIMPLESAML_GROUP_ADMIN', 'FlowintelAdmin')
+    SIMPLESAML_GROUP_EDITOR     = os.getenv('SIMPLESAML_GROUP_EDITOR', 'FlowintelEditor')
+    SIMPLESAML_GROUP_READONLY   = os.getenv('SIMPLESAML_GROUP_READONLY', 'FlowintelReadOnly')
+    SIMPLESAML_GROUP_CASE_ADMIN = os.getenv('SIMPLESAML_GROUP_CASE_ADMIN', 'FlowintelCaseAdmin')
+    SIMPLESAML_ROLE_CASE_ADMIN   = os.getenv('SIMPLESAML_ROLE_CASE_ADMIN',   'CaseAdmin')
+    SIMPLESAML_GROUP_QUEUE_ADMIN = os.getenv('SIMPLESAML_GROUP_QUEUE_ADMIN', 'FlowintelQueueAdmin')
+    SIMPLESAML_ROLE_QUEUE_ADMIN  = os.getenv('SIMPLESAML_ROLE_QUEUE_ADMIN',  'QueueAdmin')
+    SIMPLESAML_GROUP_QUEUER      = os.getenv('SIMPLESAML_GROUP_QUEUER',      'FlowintelQueuer')
+    SIMPLESAML_ROLE_QUEUER       = os.getenv('SIMPLESAML_ROLE_QUEUER',       'Queuer')
+
+    SIMPLESAML_GROUP_ALIASES    = {
+        "tech": "FlowintelEditor",   # lowercase — must match exactly what IdP sends
+    }
+
+    # =============================================================================
     # MISP INTEGRATION
     # =============================================================================
     # MISP connector: attach case & task files to the MISP event

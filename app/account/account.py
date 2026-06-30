@@ -12,6 +12,7 @@ from flask_login import (
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
 from . import keycloak_core as KeycloakModel
+from . import simplesaml_core as SimpleSamlModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
@@ -399,6 +400,63 @@ def keycloak_callback():
     login_user(user)
     flowintel_log("audit", 200, "Keycloak login successful", Email=user.email)
     flash('Logged in via Keycloak.', 'success')
+    next_url = request.args.get('next') or '/'
+    if urlparse(next_url).netloc or urlparse(next_url).scheme:
+        next_url = '/'
+    return redirect(next_url)
+
+
+@account_blueprint.route('/simplesaml/login')
+def simplesaml_login():
+    """Redirect user to SimpleSAMLphp IdP for authentication."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+
+    # RelayState carries a signed token so we can validate the callback origin
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    relay_state = s.dumps('simplesaml-login')
+
+    redirect_uri = (
+        current_app.config.get('SIMPLESAML_ACS_URL')
+        or url_for('account.simplesaml_callback', _external=True)
+    )
+    auth_url = SimpleSamlModel.get_auth_url(redirect_uri, relay_state=relay_state)
+    return redirect(auth_url)
+
+
+@account_blueprint.route('/simplesaml/callback', methods=['GET', 'POST'])
+def simplesaml_callback():
+    """Handle the SAML2 POST assertion from SimpleSAMLphp."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+
+    # Validate RelayState (sent back by IdP as-is)
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    relay_state = request.form.get('RelayState') or request.args.get('RelayState', '')
+    try:
+        s.loads(relay_state, max_age=600)
+    except BadData:
+        flash('Authentication failed: invalid or expired state.', 'error')
+        flowintel_log("audit", 403, "SimpleSAML login failed - RelayState mismatch", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    # The SAML assertion is in the POST body
+    saml_response = request.form.get('SAMLResponse')
+    if not saml_response:
+        flash('Authentication failed: no SAML response received.', 'error')
+        flowintel_log("audit", 400, "SimpleSAML missing SAMLResponse", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    user, error = SimpleSamlModel.get_or_create_sso_user(saml_response)
+
+    if not user:
+        flash(f'Access denied: {error}', 'error')
+        flowintel_log("audit", 403, "SimpleSAML login denied", Reason=error, IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    login_user(user)
+    flowintel_log("audit", 200, "SimpleSAML login successful", Email=user.email)
+    flash('Logged in via SimpleSAML.', 'success')
     next_url = request.args.get('next') or '/'
     if urlparse(next_url).netloc or urlparse(next_url).scheme:
         next_url = '/'

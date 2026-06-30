@@ -66,3 +66,7 @@ tests/testdata/.community-api-keys.json
 
 # Redis dump files
 dump.rdb
+
+test_*
+saml2.xml
+Makefile
