@@ -867,6 +867,7 @@ The table below covers all settings from `template.env` (`.env`):
 | `KEYCLOAK_ROLE_QUEUE_ADMIN` | Flowintel role name for QueueAdmin mapping | `QueueAdmin` |
 | `KEYCLOAK_GROUP_QUEUER` | Keycloak group mapped to Queuer | `FlowintelQueuer` |
 | `KEYCLOAK_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
+TODO ADD SIMPLE SAML
 | `WEBHOOK_URL` | Outbound webhook URL for new-case events | `https://example.com/webhook` |
 | `WEBHOOK_ENABLED` | Enable outbound new-case webhook | `false` |
 | `WEBHOOK_SECRET` | HMAC secret for webhook signing | Secret string |

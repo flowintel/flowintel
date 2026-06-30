@@ -108,7 +108,7 @@ def edit_user(uid):
     from_notif_sso    = request.args.get('from_notif_for_entra_id', 'false') == 'true'
     # Auto-detect: if this is a generic notification link but the user is SSO-managed,
     # treat it as an SSO promotion notification, not a password-reset notification.
-    if from_notification and user_modif.auth_provider in ('entra', 'keycloak'):
+    if from_notification and user_modif.auth_provider in ('entra', 'keycloak', 'simplesaml'):
         from_notif_sso    = True
         from_notification = False
     
