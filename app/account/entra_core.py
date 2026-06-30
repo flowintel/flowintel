@@ -6,8 +6,8 @@ import msal
 import requests
 from flask import current_app
 
-from .. import db
-from ..db_class.db import Role, User
+from app.extensions import db
+from app.db_class.db import Role, User
 from ..notification import notification_core as NotifModel
 from ..utils.utils import generate_api_key
 

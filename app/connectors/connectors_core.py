@@ -1,9 +1,11 @@
 import datetime
 import os
-from .. import db
-from ..db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 import uuid
+
 from werkzeug.utils import secure_filename
+
+from app.extensions import db
+from app.db_class.db import Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Task_Connector_Instance, User_Connector_Instance, Connector_Sync_Log
 
 ICON_FOLDER = os.path.join(os.getcwd(), "app", "static", "icons")
 

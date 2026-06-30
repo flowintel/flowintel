@@ -2,6 +2,7 @@
 Logging utility for Flowintel
 """
 import logging
+
 from flask import request, current_app, has_request_context
 
 

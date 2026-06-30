@@ -10,11 +10,15 @@ import secrets
 import string
 import jsonschema
 import requests
-from ..db_class.db import Tags, User
 from functools import lru_cache
-from flask import current_app
-from conf.config import Config
+
 from pymisp.tools import update_objects
+
+from flask import current_app
+
+from app.db_class.db import Tags, User
+
+from conf.config import Config
 
 MIN_PASSWORD_LENGTH = 8
 MAX_PASSWORD_LENGTH = 64

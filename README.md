@@ -117,6 +117,45 @@ Just keep in mind that for taxonomies a `MANIFEST.json` is required and for gala
 
 See: [misp-galaxy](https://github.com/MISP/misp-galaxy), [misp-taxonomies](https://github.com/MISP/misp-taxonomies)
 
+## Makefile helper
+A Makefile helper is provided with this repo, it should work on Linux and modern MacOS.
+For the later, prefer ```gmake```, from Homebrew for example, for maximal compatibility although the modern BSD ```make``` versions shipped with modern MacOS seem compatible with the current Makefile wprkflows.
+
+The Makefile is self documented, type ```make help``` for further information.
+
+In a few line, it provide helper targerts to facilitate various Development workflows and keeping Development environments and installation harmonized.
+Examples of usage:
+1. Start the application fully containerised with a MariaDB backend and an empty databse: ```make nuke_volume;make runfull_maria```
+2. Build the latest local image: ```make build_latest_local```
+3. Run the datastack local Development infrastructure with Postgres: ```make dev_localinfra_postgres_run```
+4. ***Still experimental*** Run the application in it own Python local Virtual Environment alongside the datastack local Development infrastructure with MariaDB: ```make run_maria```
+5. Initial the repository installing locally the Python Virtual Environment and deriving default config: ```make first_install```
+
+## Dockerised deployment
+The deployment can be conducted using Docker in Development, Testing and Production environment. Different flavors of the
+software architecture can be spawned with different Docker Composition files that can be found in ```docker``` folder.
+
+It should be remarked that currently the Docker images includes the Git submodules (MISP taxonomy, galaxy, objects) for legacy reason.
+In the future, these folders may be directly mounted at runtime to provide more update flexibity.
+
+A distinction is to be made in between:
+1. ```docker-compose.yml``` file that use the online Docker Image alongside dockerised Valkey and Postgres instances,
+2. ```docker-compose-local-*.yml``` files that presuppose that the user built locally a Docker image of the Application.
+
+For the later case, there are 8 variations of them:
+1. composition files making the assumption of a Postgres backend:
+- ```docker-compose-local-flowintel-full-postgres.yml```: latest local image, full stack with all services (database, Valkey, Flowintel), defaults to Postgres (most likely situation for local development with a fully containerised local infrastructure),
+- ```docker-compose-local-flowintel-infra-postgres.yml```: latest local image, datastack infrastructure only (database, Valkey), defaults to Postgres (most likely situation for local development with Flowintel deployment on a development machine with a local Python Virtual Environment and relying on datastack containerised local infrastructure,
+- ```docker-compose-local-flowintel-nodb-postgres.yml```: latest local image, Flowintel and Valkey but ***no*** databse service, defaults to Postgres (most likely situation in Production),
+- ```docker-compose-local-flowintel-single-postgres.yml```: latest local image, single Flowintel service, defaults to Postgres.
+2. composition files making the assumption of a MariaDB backend:
+- ```docker-compose-local-flowintel-full-maria.yml```: latest local image, full stack with all services (database, Valkey, Flowintel), defaults to MariaDB (most likely situation for local development with a fully containerised local infrastructure),
+- ```docker-compose-local-flowintel-infra-maria.yml```: latest local image, datastack infrastructure only (database, Valkey), defaults to MariaDB (most likely situation for local development with Flowintel deployment on a development machine with a local Python Virtual Environment and relying on datastack containerised local infrastructure),
+- ```docker-compose-local-flowintel-nodb-maria.yml```: latest local image, Flowintel and Valkey but ***no*** databse service, defaults to MariaDB (most likely situation in Production),
+- ```docker-compose-local-flowintel-single-maria.yml```: latest local image, single Flowintel service, defaults to MariaDB.
+
+Note: These files are predefined and more easily used in combination with the ```Makefile``` helper.
+
 ## Roadmap
 
 Overview of features currently under development.

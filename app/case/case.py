@@ -7,12 +7,10 @@ from flask_login import login_required, current_user
 import requests
 import conf.config_module as ConfigModule
 
-from .form import CaseForm, CaseEditForm, RecurringForm
-from .CaseCore import CaseModel, FILE_FOLDER
-from . import common_core as CommonModel
-from .TaskCore import TaskModel
+from app.extensions import db
+from app.db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event
+
 from ..connectors import connectors_core as ConnectorsModel
-from ..db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event, db
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_object_templates
 from ..utils.formHelper import prepare_tags
@@ -21,6 +19,12 @@ from ..utils.file_converter import convert_file_to_note_content
 from ..utils.gpg import sign_text
 from ..utils.note_variables import resolve_variables, get_syntax_reference
 from ..connectors import connectors_core as ConnectorModel
+
+
+from .form import CaseForm, CaseEditForm, RecurringForm
+from .CaseCore import CaseModel, FILE_FOLDER
+from . import common_core as CommonModel
+from .TaskCore import TaskModel
 
 case_blueprint = Blueprint(
     'case',

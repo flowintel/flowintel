@@ -1,5 +1,5 @@
-from .. import db
-from ..db_class.db import User, Role, Org
+from app.extensions import db
+from app.db_class.db import User, Role, Org
 from ..utils.utils import generate_api_key
 
 def get_all_roles():

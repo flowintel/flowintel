@@ -1,8 +1,10 @@
 import json
-from .. import db
-from ..db_class.db import Configurable_Fields, Misp_Module, Misp_Module_Config, Misp_Module_Result, User
-from ..utils.utils import query_get_module
 from sqlalchemy import desc
+
+from app.extensions import db
+from app.db_class.db import Configurable_Fields, Misp_Module, Misp_Module_Config, Misp_Module_Result, User
+
+from ..utils.utils import query_get_module
 from ..case.CaseCore import CaseModel
 from ..case.TaskCore import TaskModel
 from ..case import validation_api as CaseModelApi

@@ -1,8 +1,10 @@
 from flask_restx import Namespace, Resource
 from flask import request
+
 from ..decorators import api_required
-from . import calendar_core as CalendarModel
 from ..utils import utils
+
+from . import calendar_core as CalendarModel
 
 calendar_api = Namespace('calendar', description='Calendar operations')
 

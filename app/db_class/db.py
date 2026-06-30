@@ -1,9 +1,13 @@
 import datetime
 import json
 import uuid
-from .. import db, login_manager
+
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
+
+from sqlalchemy.dialects.mysql import LONGTEXT
+
+from app.extensions import db, login_manager
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
@@ -18,7 +22,7 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(64), index=True)
     nickname = db.Column(db.String(64), index=True)
     email = db.Column(db.String(64), unique=True, index=True)
-    matrix_id = db.Column(db.String, unique=True, index=True)
+    matrix_id = db.Column(db.String(64), unique=True, index=True)
     role_id = db.Column(db.Integer, index=True)
     password_hash = db.Column(db.String(165))
     api_key = db.Column(db.String(60), index=True)
@@ -150,8 +154,8 @@ class AnonymousUser(AnonymousUserMixin):
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String)
-    description = db.Column(db.String)
+    title = db.Column(db.String(255))
+    description = db.Column(db.Text)
     creation_date = db.Column(db.DateTime, index=True)
     deadline = db.Column(db.DateTime, index=True)
     last_modif = db.Column(db.DateTime, index=True)
@@ -165,15 +169,15 @@ class Case(db.Model):
     recurring_date = db.Column(db.DateTime, index=True)
     recurring_type = db.Column(db.String(30), index=True)
     nb_tasks = db.Column(db.Integer, index=True)
-    notes = db.Column(db.String, nullable=True)
-    hedgedoc_url = db.Column(db.String, nullable=True)
-    time_required = db.Column(db.String)
+    notes = db.Column(db.Text, nullable=True)
+    hedgedoc_url = db.Column(db.String(255), nullable=True)
+    time_required = db.Column(db.String(64))
     is_private = db.Column(db.Boolean, default=False, index=True)
     privileged_case = db.Column(db.Boolean, default=False, index=True)
-    ticket_id = db.Column(db.String)
+    ticket_id = db.Column(db.String(36))
     is_updated_from_misp = db.Column(db.Boolean, default=False)
-    computer_assistate_report = db.Column(db.String)
-    computer_assistate_model = db.Column(db.String, nullable=True)
+    computer_assistate_report = db.Column(db.Text)
+    computer_assistate_model = db.Column(db.String(36), nullable=True)
     computer_assistate_prompt = db.Column(db.Text, nullable=True)
 
     def to_json(self):
@@ -268,8 +272,8 @@ class Case(db.Model):
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String)
-    description = db.Column(db.String, nullable=True)
+    title = db.Column(db.String(255))
+    description = db.Column(db.Text, nullable=True)
     urls_tools = db.relationship('Task_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     external_references = db.relationship('Task_External_Reference', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
@@ -286,7 +290,7 @@ class Task(db.Model):
     files = db.relationship('File', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN, foreign_keys='File.task_id')
     nb_notes = db.Column(db.Integer, index=True)
     subtasks = db.relationship('Subtask', backref='Task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
-    time_required = db.Column(db.String)
+    time_required = db.Column(db.String(64))
 
     def to_json(self):
         json_dict = {
@@ -362,7 +366,7 @@ class Subtask(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
-    description = db.Column(db.String, nullable=True)
+    description = db.Column(db.Text, nullable=True)
     task_order_id = db.Column(db.Integer, index=True)
 
     def to_json(self):
@@ -386,7 +390,7 @@ class Subtask(db.Model):
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    note = db.Column(db.String, nullable=True)
+    note = db.Column(db.Text, nullable=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
     task_order_id = db.Column(db.Integer, index=True)
 
@@ -412,7 +416,7 @@ class Note(db.Model):
 class Task_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
-    name = db.Column(db.String, index=True)
+    name = db.Column(db.String(64), index=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
@@ -439,12 +443,12 @@ class Rulezet_Rule(db.Model):
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     case_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
-    remote_id = db.Column(db.String, index=True)
-    title = db.Column(db.String, nullable=True)
-    description = db.Column(db.String, nullable=True)
-    format = db.Column(db.String, nullable=True)
+    remote_id = db.Column(db.String(36), index=True)
+    title = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    format = db.Column(db.String(128), nullable=True)
     content = db.Column(db.Text, nullable=True)
-    version = db.Column(db.String, nullable=True)
+    version = db.Column(db.String(64), nullable=True)
     date_added = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
@@ -465,7 +469,7 @@ class Rulezet_Rule(db.Model):
 class Task_External_Reference(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
-    url = db.Column(db.String, index=True)
+    url = db.Column(db.String(255), index=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
@@ -489,7 +493,7 @@ class Task_External_Reference(db.Model):
 class Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
-    description = db.Column(db.String, nullable=True)
+    description = db.Column(db.Text, nullable=True)
     uuid = db.Column(db.String(36), index=True)
     users = db.relationship('User', backref='Org', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     default_org = db.Column(db.Boolean, default=True)
@@ -517,7 +521,7 @@ class Org(db.Model):
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
-    description = db.Column(db.String, nullable=True)
+    description = db.Column(db.Text, nullable=True)
     admin = db.Column(db.Boolean, default=False)
     read_only = db.Column(db.Boolean, default=False)
     org_admin = db.Column(db.Boolean, default=False)
@@ -602,7 +606,7 @@ class Case_Org(db.Model):
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    message = db.Column(db.String, index=True)
+    message = db.Column(db.Text, index=True)
     is_read = db.Column(db.Boolean, default=False)
     user_id = db.Column(db.Integer, index=True)
     case_id = db.Column(db.Integer, index=True)
@@ -637,11 +641,11 @@ class Notification(db.Model):
 class Alert(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
-    message = db.Column(db.String, index=True)
+    message = db.Column(db.Text, index=True)
     status = db.Column(db.String(30), default="pending")
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
-    webhook_url = db.Column(db.String, nullable=True)
+    webhook_url = db.Column(db.String(255), nullable=True)
     webhook_status = db.Column(db.Integer, nullable=True)
 
     def to_json(self):
@@ -676,11 +680,11 @@ class Recurring_Notification(db.Model):
 class Case_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String, index=True)
-    description = db.Column(db.String, nullable=True)
+    title = db.Column(db.String(255), index=True)
+    description = db.Column(db.Text, nullable=True)
     last_modif = db.Column(db.DateTime, index=True)
-    time_required = db.Column(db.String)
-    notes = db.Column(db.String, nullable=True)
+    time_required = db.Column(db.String(64))
+    notes = db.Column(db.Text, nullable=True)
     version = db.Column(db.Integer, default=1)
 
     def to_json(self):
@@ -726,14 +730,14 @@ class Case_Template(db.Model):
 class Task_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    title = db.Column(db.String, index=True)
-    description = db.Column(db.String, nullable=True)
+    title = db.Column(db.String(255), index=True)
+    description = db.Column(db.Text, nullable=True)
     urls_tools = db.relationship('Task_Template_Url_Tool', backref='task', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     notes = db.relationship('Note_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     nb_notes = db.Column(db.Integer, index=True)
     last_modif = db.Column(db.DateTime, index=True)
     subtasks = db.relationship('Subtask_Template', backref='task_template', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
-    time_required = db.Column(db.String)
+    time_required = db.Column(db.String(64))
     version = db.Column(db.Integer, default=1)
 
     def to_json(self):
@@ -782,7 +786,7 @@ class Subtask_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     template_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     completed = db.Column(db.Boolean, default=False)
-    description = db.Column(db.String, nullable=True)
+    description = db.Column(db.Text, nullable=True)
 
     def to_json(self):
         json_dict = {
@@ -802,7 +806,7 @@ class Subtask_Template(db.Model):
 class Note_Template(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    note = db.Column(db.String, nullable=True)
+    note = db.Column(db.Text, nullable=True)
     template_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
     template_order_id = db.Column(db.Integer, index=True)
 
@@ -827,7 +831,7 @@ class Note_Template(db.Model):
 class Task_Template_Url_Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_TEMPLATE_ID, ondelete="CASCADE"))
-    name = db.Column(db.String, index=True)
+    name = db.Column(db.String(64), index=True)
 
     def to_json(self):
         json_dict = {
@@ -896,8 +900,8 @@ class Case_Task_Template(db.Model):
 class Taxonomy(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    name = db.Column(db.String)
-    description = db.Column(db.String)
+    name = db.Column(db.String(64))
+    description = db.Column(db.Text)
     exclude = db.Column(db.Boolean, default=False)
     tags = db.relationship('Tags', backref='taxonomy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
     version = db.Column(db.String(15))
@@ -915,10 +919,10 @@ class Taxonomy(db.Model):
 class Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
-    name = db.Column(db.String)
-    color = db.Column(db.String)
+    name = db.Column(db.Text)
+    color = db.Column(db.String(64))
     exclude = db.Column(db.Boolean, default=False)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
 
     def to_json(self):
@@ -958,12 +962,12 @@ class Task_Template_Tags(db.Model):
 
 class Galaxy(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String)
+    name = db.Column(db.String(64))
     uuid = db.Column(db.String(36), index=True)
     version = db.Column(db.Integer, index=True)
-    description = db.Column(db.String)
-    icon = db.Column(db.String)
-    type = db.Column(db.String)
+    description = db.Column(db.Text)
+    icon = db.Column(db.String(64))
+    type = db.Column(db.String(64))
     exclude = db.Column(db.Boolean, default=False)
     clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
 
@@ -982,13 +986,13 @@ class Galaxy(db.Model):
 
 class Cluster(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String)
+    name = db.Column(db.String(255))
     uuid = db.Column(db.String(36), index=True)
     version = db.Column(db.Integer, index=True)
-    description = db.Column(db.String)
-    meta = db.Column(db.String)
+    description = db.Column(db.Text)
+    meta = db.Column(db.Text().with_variant(LONGTEXT(), "mysql", "mariadb"))
     exclude = db.Column(db.Boolean, default=False)
-    tag = db.Column(db.String)
+    tag = db.Column(db.Text)
     galaxy_id = db.Column(db.Integer, db.ForeignKey('galaxy.id', ondelete="CASCADE"))
 
     def to_json(self):
@@ -1052,7 +1056,7 @@ class Task_Template_Galaxy_Tags(db.Model):
 class Connector(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     uuid = db.Column(db.String(36), index=True)
     icon_id = db.Column(db.Integer, index=True)
     instances = db.relationship('Connector_Instance', backref='connector', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
@@ -1071,7 +1075,7 @@ class Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True)
     url = db.Column(db.String(64), index=True)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     uuid = db.Column(db.String(36), index=True)
     type = db.Column(db.String(36), index=True)
     connector_id = db.Column(db.Integer, db.ForeignKey('connector.id', ondelete="CASCADE"))
@@ -1093,7 +1097,7 @@ class Connector_Instance(db.Model):
 class Connector_Icon(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     uuid = db.Column(db.String(36), index=True)
     file_icon_id = db.Column(db.Integer, index=True)
 
@@ -1124,7 +1128,7 @@ class Case_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
+    identifier = db.Column(db.String(64))
     is_updating_case = db.Column(db.Boolean, default=False)
     last_sync = db.Column(db.DateTime, nullable=True)
 
@@ -1160,7 +1164,7 @@ class Case_Template_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_template_id = db.Column(db.Integer, index=True)
     connector_instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
+    identifier = db.Column(db.String(64))
 
     def to_json(self):
         return {
@@ -1175,7 +1179,7 @@ class Task_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, index=True)
     instance_id = db.Column(db.Integer, index=True)
-    identifier = db.Column(db.String)
+    identifier = db.Column(db.String(64))
 
 
 class Task_Misp_Object(db.Model):
@@ -1210,9 +1214,9 @@ class User_Connector_Instance(db.Model):
 
 class Misp_Module(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String, index=True, unique=True)
-    description = db.Column(db.String)
-    input_attr = db.Column(db.String)
+    name = db.Column(db.String(64), index=True, unique=True)
+    description = db.Column(db.Text)
+    input_attr = db.Column(db.Text)
     version = db.Column(db.String(15))
 
     def to_json(self):
@@ -1229,10 +1233,10 @@ class Misp_Module(db.Model):
 class Misp_Module_Result(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, unique=True)
-    modules_list = db.Column(db.String)
-    query_enter = db.Column(db.String)
-    input_query = db.Column(db.String)
-    result=db.Column(db.String)
+    modules_list = db.Column(db.String(255))
+    query_enter = db.Column(db.Text)
+    input_query = db.Column(db.Text)
+    result=db.Column(db.Text)
     nb_errors = db.Column(db.Integer, index=True)
     query_date = db.Column(db.DateTime, index=True)
     user_id = db.Column(db.Integer, index=True)
@@ -1265,23 +1269,23 @@ class Misp_Module_Result(db.Model):
 class Configurable_Fields(db.Model):
     """List of elements configurable for modules (api_key,url,...)"""
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String, index=True, unique=True)
+    name = db.Column(db.String(64), index=True, unique=True)
 
 class Misp_Module_Config(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     module_id = db.Column(db.Integer, index=True)
     config_id = db.Column(db.Integer, index=True)
     user_id = db.Column(db.Integer, index=True)
-    value = db.Column(db.String, index=True)
+    value = db.Column(db.String(36), index=True)
 
 
 
     
 class Custom_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String, index=True, unique=True)
+    name = db.Column(db.String(64), index=True, unique=True)
     color = db.Column(db.String(20), index=True)
-    icon = db.Column(db.String, index=True, nullable=True)
+    icon = db.Column(db.String(255), index=True, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
 
     def to_json(self):
@@ -1332,7 +1336,7 @@ class Case_Misp_Object(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
     template_uuid = db.Column(db.String(36), index=True)
-    name = db.Column(db.String)
+    name = db.Column(db.String(64))
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     attributes = db.relationship('Misp_Attribute', backref='Case_Misp_Object', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
@@ -1359,12 +1363,12 @@ class Case_Misp_Object(db.Model):
 class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
-    value = db.Column(db.String, index=True)
-    type = db.Column(db.String, index=True)
-    object_relation = db.Column(db.String, index=True)
+    value = db.Column(db.String(255), index=True)
+    type = db.Column(db.String(64), index=True)
+    object_relation = db.Column(db.String(64), index=True)
     first_seen = db.Column(db.DateTime, index=True)
     last_seen = db.Column(db.DateTime, index=True)
-    comment = db.Column(db.String, nullable=True)
+    comment = db.Column(db.Text, nullable=True)
     ids_flag = db.Column(db.Boolean)
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
@@ -1455,9 +1459,9 @@ class Note_Template_Model(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     author = db.Column(db.Integer, index=True)
-    title = db.Column(db.String)
-    description = db.Column(db.String)
-    content = db.Column(db.String)
+    title = db.Column(db.String(255))
+    description = db.Column(db.Text)
+    content = db.Column(db.Text)
     params = db.Column(db.JSON)
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     last_modif = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc), onupdate=datetime.datetime.now(tz=datetime.timezone.utc))
@@ -1487,7 +1491,7 @@ class Template_Repository(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, unique=True, default=lambda: str(uuid.uuid4()))
     name = db.Column(db.String(256), index=True, nullable=False)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     url = db.Column(db.String(512), nullable=True)
     local_path = db.Column(db.String(512))
     version = db.Column(db.Integer)
@@ -1515,7 +1519,7 @@ class Template_Repository_Entry(db.Model):
     title = db.Column(db.String(256))
     type = db.Column(db.String(8), index=True)   # 'case' | 'task'
     version = db.Column(db.Integer)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     download_url = db.Column(db.String(512))
     remote_sha = db.Column(db.String(64))
     parent_case_uuid = db.Column(db.String(36), nullable=True, index=True)
@@ -1544,7 +1548,7 @@ class Case_Note_Template_Model(db.Model):
     case_id = db.Column(db.Integer, index=True)
     note_template_id = db.Column(db.Integer, index=True)
     values = db.Column(db.JSON)
-    content = db.Column(db.String)
+    content = db.Column(db.Text)
 
     def to_json(self):
         json_dict = {
@@ -1561,9 +1565,9 @@ class Case_Note_Template_Model(db.Model):
 class Case_Timeline_Event(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
-    date_text = db.Column(db.String, nullable=False)
+    date_text = db.Column(db.String(64), nullable=False)
     date_parsed = db.Column(db.DateTime, nullable=True)
-    description = db.Column(db.String, nullable=False)
+    description = db.Column(db.Text, nullable=False)
     misp_object_id = db.Column(db.Integer, nullable=True)
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
 
@@ -1585,7 +1589,7 @@ class Case_Timeline_Event_Link(db.Model):
     case_id = db.Column(db.Integer, index=True)
     source_event_id = db.Column(db.Integer, db.ForeignKey('case__timeline__event.id', ondelete="CASCADE"))
     target_event_id = db.Column(db.Integer, db.ForeignKey('case__timeline__event.id', ondelete="CASCADE"))
-    label = db.Column(db.String, nullable=True)
+    label = db.Column(db.String(128), nullable=True)
 
     def to_json(self):
         return {

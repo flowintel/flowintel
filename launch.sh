@@ -72,13 +72,13 @@ function killscript {
 
 function taxo_galaxy_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     python3 app.py -utg
 }
 
 function misp_module_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
     sleep 3
     python3 app.py -mm
@@ -87,7 +87,7 @@ function misp_module_update {
 
 function launch {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -106,7 +106,8 @@ function launch {
 }
 
 function test {
-    export FLASKENV="testing"
+    prepare_app_run
+    export FLOWINTEL_APP_ENV="testing"
     export HISTORY_DIR=$history_dir/history_test
     pytest
     rm -r $HISTORY_DIR
@@ -114,7 +115,7 @@ function test {
 
 function production {
     prepare_app_run
-    export FLASKENV="production"
+    export FLOWINTEL_APP_ENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -131,43 +132,58 @@ function production {
 
 function init_db {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
+    echo "Create default test cases. Wait for Done..."
     python3 app.py -td
+    echo "Done"
 
     killscript
 }
 
 function init_db_prod {
     prepare_app_run
-    export FLASKENV="production"
+    export FLOWINTEL_APP_ENV="production"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
     # don't import test data for prod 
+    #echo "Create default test cases"
     #python3 app.py -td
 }
 
 function reload_db {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
 
 function launch_docker {
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -184,16 +200,25 @@ function launch_docker {
 }
 
 function init_db_docker {
+    # Run Python unbuffered so we see progress when the app.py inits
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
-    python3 app.py -i
-    python3 app.py -tg
-    python3 app.py -mm
-    python3 app.py -td
+    echo "Initialise the db if it not exist. Wait for Done..."
+    python3 -u app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
+    python3 -u app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
+    python3 -u app.py -mm
+    echo "Done"
+    # don't import test data for prod 
+    #echo "Create default test cases"
+    #python3 app.py -td
 }
 
 function test_data_community {

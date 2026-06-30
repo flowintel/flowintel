@@ -1,0 +1,47 @@
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:12
+    # TODO
+    # https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/mariadb-server-docker-official-image-environment-variables#using-_file-environment-variables-for-secrets
+    #
+    ports:
+      - "127.0.0.1:${DB_PORT:-3306}:${DB_PORT:-3306}"
+      - "[::1]:${DB_PORT:-3306}:${DB_PORT:-3306}"
+    volumes:
+      - db:/var/lib/mysql
+      - ./init-infra-maria.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
+      - MYSQL_USER=${DB_USER:-flowintel}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
+      - MYSQL_DATABASE=${DB_NAME:-flowintel}
+    networks:
+      - net
+    restart: unless-stopped
+
+  valkey:
+    container_name: valkey
+    image: valkey/valkey
+    # We need to expose to host because Flowintel is not containerised
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+      - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+    #
+    volumes:
+      - valkey-data:/data
+    networks:
+      - net
+
+volumes:
+  db:
+  valkey-data:
+
+networks:
+  net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+        - subnet: fd31:50:0:1::/64

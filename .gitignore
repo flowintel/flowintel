@@ -41,6 +41,7 @@ __pycache__/
 
 # Local development
 .env
+.env.docker
 .env.local
 tmp/
 /logs
@@ -66,3 +67,5 @@ tests/testdata/.community-api-keys.json
 
 # Redis dump files
 dump.rdb
+
+*.backup

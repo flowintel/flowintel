@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import current_user, login_required
 
+from . import audit_logs_core as core
+
 from ..decorators import audit_viewer_required
 from ..utils.logger import flowintel_log
-from . import audit_logs_core as core
 
 
 audit_logs_blueprint = Blueprint(
