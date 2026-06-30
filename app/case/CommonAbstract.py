@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from . import common_core as CommonModel
 from ..custom_tags import custom_tags_core as CustomModel
+
+from . import common_core as CommonModel
 
 
 class CommonAbstract(ABC):

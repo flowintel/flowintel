@@ -11,7 +11,7 @@ fi
 ./launch.sh -ks
 
 # Default environment
-FLASKENV="development"
+FLOWINTEL_APP_ENV="development"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
                 echo "Error: --env requires a value (development|production|docker)"
                 exit 1
             fi
-            FLASKENV="$2"
+            FLOWINTEL_APP_ENV="$2"
             shift 2
             ;;
         *)
@@ -33,12 +33,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate environment
-if [[ "$FLASKENV" != "development" && "$FLASKENV" != "production" && "$FLASKENV" != "docker" ]]; then
-    echo "Error: Invalid environment '$FLASKENV'. Must be development, production, or docker."
+if [[ "$FLOWINTEL_APP_ENV" != "development" && "$FLOWINTEL_APP_ENV" != "production" && "$FLOWINTEL_APP_ENV" != "docker" ]]; then
+    echo "Error: Invalid environment '$FLOWINTEL_APP_ENV'. Must be development, production, or docker."
     exit 1
 fi
 
-export FLASKENV
+export FLOWINTEL_APP_ENV
 
 echo "##########"
 echo "Git pull"
@@ -55,10 +55,11 @@ if [ ! -d "instance/backup" ]; then
     mkdir -p instance/backup
 fi
 
-if [[ "$FLASKENV" == "development" ]]; then
+if [[ "$FLOWINTEL_APP_ENV" == "development" ]]; then
     # SQLite backup
     cp instance/flowintel.sqlite instance/backup/$(date +"%Y_%m_%d").sqlite
 else
+    # TODO MariadDB alternative should be made possible here
     # PostgreSQL backup
     PGDATABASE=${PGDATABASE:-"flowintel"}
     BACKUP_FILE="instance/backup/$(date +"%Y_%m_%d")_pg.sql"
@@ -67,7 +68,8 @@ else
 fi
 
 # Run migration script
-./migrate.sh --env "$FLASKENV" -u
+# We kept the facility of having different alembic branch, however everything points to "head" by now
+./migrate.sh --env "$FLOWINTEL_APP_ENV" -u --migration_branch postgres
 
 echo ""
 echo "##########"

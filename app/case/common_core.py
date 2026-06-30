@@ -6,10 +6,13 @@ from typing import List
 import uuid
 
 from flask import send_file
-from .. import db
-from ..db_class.db import *
-from ..utils.utils import get_modules_list, isUUID, create_specific_dir
+
 from sqlalchemy import desc, func, or_
+
+from app.extensions import db
+from app.db_class.db import *
+
+from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from ..utils import utils
 from ..custom_tags import custom_tags_core as CustomModel
 

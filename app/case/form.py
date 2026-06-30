@@ -12,7 +12,7 @@ from wtforms.fields import (
 )
 from wtforms.validators import InputRequired, Length, Optional
 
-from ..db_class.db import Case, Case_Org
+from app.db_class.db import Case, Case_Org
 
 
 class CaseForm(FlaskForm):

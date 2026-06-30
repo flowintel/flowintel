@@ -1,6 +1,8 @@
 
 # Flowintel installation manual
 
+TODO I am not sure it is worth mentionning all the troubleshooting tips for MariaDB. The presence of some for Postgres should already raise ideas when problems occurs with other Backen. Maybe a small memo line to say we propose only some tips for Postgres for legacy ?
+
 ## Documentation set
 
 This installation manual is part of a broader documentation set that covers installing, configuring, and using Flowintel. The set also includes:
@@ -799,8 +801,8 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=flowintel
 
-# Flask environment
-FLASK_ENV="production"
+# Application environment
+FLOWINTEL_APP_ENV="production"
 ```
 
 ## Key configuration options
@@ -826,7 +828,7 @@ The table below covers all settings from `template.env` (`.env`):
 | `PROXY_X_PROTO` | Trust X-Forwarded-Proto header | `1` |
 | `PROXY_X_HOST` | Trust X-Forwarded-Host header | `1` |
 | `PROXY_X_PREFIX` | Trust X-Forwarded-Prefix header | `0` or `1` |
-| `FLASK_ENV` | Flask runtime environment | `production` |
+| `FLOWINTEL_APP_ENV` | Flowintel runtime environment | `production` |
 | `AUDIT_LOG_PREFIX` | Prefix used for audit log entries | `AUDIT` |
 | `LOG_FILE` | Audit/application log filename | `record.log` |
 | `MAIN_LOGO` | Main application logo path | `/static/image/flowintel.png` |
@@ -1671,7 +1673,7 @@ User=yourusername
 Group=yourusername
 WorkingDirectory=/opt/flowintel/flowintel
 Environment="PATH=/opt/flowintel/flowintel/env/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="FLASKENV=production"
+Environment="FLOWINTEL_APP_ENV=production"
 Environment="HISTORY_DIR=/opt/flowintel/flowintel/history"
 ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 4 "app:create_app()" -b 127.0.0.1:7006 --access-logfile -
 Restart=on-failure
@@ -2356,6 +2358,7 @@ Only the following ports should be open on a standard single-server installation
 Services listening on `127.0.0.1` are not exposed to the network. If you see anything unexpected, stop and disable it.
 
 ## PostgreSQL connection limits
+TODO branch for MariaDB
 
 Restrict the maximum number of database connections so the server does not run out of resources under heavy load. Edit the PostgreSQL configuration (replace `16` with your version):
 
@@ -2421,6 +2424,7 @@ This section covers how to upgrade Flowintel to a newer version. Flowintel uses 
    ```
 
    **PostgreSQL (production)**:
+   TODO branch for MariaDB
 
    ```bash
    mkdir -p instance/backup
@@ -2503,13 +2507,18 @@ If the defaults contain settings that are not present in your configuration, add
 
 Flowintel uses Flask-Migrate (which wraps Alembic) to manage database schema changes. Each release that modifies the database includes one or more migration scripts in the `migrations/versions/` directory. The `flask db upgrade` command (called by both `update.sh` and `migrate.sh -u`) applies these migrations in sequence, bringing your database schema up to date with the application code.
 
-If a migration fails, PostgreSQL leaves the database in its pre-migration state thanks to transactional DDL. SQLite does not support transactional DDL, so a failed migration on a development database may leave the schema in a partially modified state — restore from your backup in that case. Consult the release notes or the issue tracker for guidance.
+At the current moment, in order to fully support MariaDB, we have two branches and two heads of migrations: ```postgres@head``` which embed all the original migration files 
+and ```mariadb@head``` which allows to initialize a first install database for MariaDB deployment, starting as of Flowintel v3.4.0 (TODO stamp the actual version).
+The related migrations files lives in the original folder ```migrations/versions``` and in ```migrations/versions_mariadb```. Both paths must be actively maintained when
+a database model change imply change in a the database schema so that the change is validated to be compatible with both Production backends.
+
+If a migration fails, PostgreSQL leaves the database in its pre-migration state thanks to transactional DDL. SQLite and MariaDB do not support transactional DDL, so a failed migration on a development database may leave the schema in a partially modified state — restore from your backup in that case. Consult the release notes or the issue tracker for guidance.
 
 To check which migration your database is currently on:
 
 ```bash
 source env/bin/activate
-export FLASKENV=production  # or development
+export FLOWINTEL_APP_ENV=production  # or development
 flask db current
 ```
 
@@ -2520,6 +2529,7 @@ flask db history --rev-range current:head
 ```
 
 ### Migration fails with "column already exists"
+TODO Adapt with migration branch
 
 **Symptom**: Running `flask db upgrade` (either directly or through `update.sh`) fails with an error like:
 
@@ -2534,7 +2544,7 @@ column "version" of relation "case__template" already exists
 
 ```bash
 source env/bin/activate
-export FLASKENV=production  # or development
+export FLOWINTEL_APP_ENV=production  # or development
 flask db stamp head
 ```
 
@@ -2584,10 +2594,10 @@ If the upgrade causes problems, you can revert to the previous version. For a fu
    pip install -r requirements.txt
    ```
 
-5. Downgrade the database schema to match the previous version:
+5. Downgrade the database schema to match the previous version (example for Postgres):
 
    ```bash
-   bash migrate.sh --env production -d
+   bash migrate.sh --env production -d --migration_branch postgres
    ```
 
 6. Restore your pre-upgrade configuration files if needed.
@@ -2604,7 +2614,7 @@ This section describes how to completely remove Flowintel and all associated ser
 
 ## Development mode uninstall
 
-A development installation does not create systemd services, NGINX configuration, or a PostgreSQL database. The install script does install system packages (Valkey, pandoc, etc.) via apt, but only Valkey runs as a persistent daemon that needs to be explicitly stopped and removed.
+A development installation does not create systemd services, NGINX configuration, or a database. The install script does install system packages (Valkey, pandoc, etc.) via apt, but only Valkey runs as a persistent daemon that needs to be explicitly stopped and removed.
 
 1. Stop the running application. If you started it with `bash launch.sh -l`, press **Ctrl+C** in the terminal. If it is running in a `screen` session, kill the screens:
 
@@ -2669,6 +2679,7 @@ sudo systemctl disable flowintel flowintel-misp-modules flowintel-notifications
 sudo systemctl stop nginx
 
 # Stop PostgreSQL
+TODO branch for MariaDB ?
 sudo systemctl stop postgresql
 
 # Stop Valkey
@@ -2711,6 +2722,7 @@ sudo rm -rf /var/www/html
 ```
 
 ## Remove PostgreSQL
+TODO branch for MariaDB ?
 
 Remove PostgreSQL and all database data:
 

@@ -5,6 +5,7 @@ To deploy **Flowintel** in production mode using Docker, follow the steps below:
 ---
 
 ### 1. Configure the application
+TODO harmonize with .env
 
 Edit [`conf/config.py`](./conf/config.py) and set `ProductionConfig` as the default configuration:
 
@@ -13,7 +14,7 @@ config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'default': ProductionConfig
+    'default': DevelopmentConfig
 }
 ```
 
@@ -22,6 +23,7 @@ Update the database URI if needed.
 ---
 
 ### 2. Disable database initialization during image build
+TODO Adapt with Docker files production grade, then simply mention to use these production files ?
 
 Edit the [`Dockerfile`](./Dockerfile) and **remove or comment out** the following line:
 
@@ -35,15 +37,18 @@ RUN script -q -c "./launch.sh --init_db" /dev/null
 
 ### 3. Set the environment to production
 
-Run the following command to replace all `FLASKENV="development"` with `FLASKENV="production"` in `launch.sh`:
+Run the following command to replace all `FLOWINTEL_APP_ENV="development"` with `FLOWINTEL_APP_ENV="production"` in `launch.sh`:
 
 ```bash
-sed -i 's/FLASKENV="development"/FLASKENV="production"/g' launch.sh
+sed -i 's/FLOWINTEL_APP_ENV="development"/FLOWINTEL_APP_ENV="production"/g' launch.sh
 ```
 
 ---
 
 ### 4. Add PostgreSQL dependency
+TODO the requirements are supposed to be maintained in the repo, this looks like a tweak that might have been necessary
+in early version ? Seeing it here is a smell of strong coupling of DB backend with code/conf/doc, removing will decouple
+yet more from the DB backend if and only if the code path is sane.
 
 Ensure your database adapter package is included in your `requirements.txt`, for PostgreSQL:
 
@@ -65,53 +70,14 @@ Replace `{tag}` with your desired version tag (e.g. `latest`, `v1.6.1`, etc.).
 
 ---
 
-### 6. Set up `docker-compose.yml`
+### 6. Set up `docker/docker-compose*.yml`
+Adapt the .yml files to your exact use case, especially regarding the environment variables management.
+The different Docker composition files are described in the README.md and can be found under the ```docker/``` folder.
 
-Here is a template `docker-compose.yml` file with PostgreSQL:
-
-```yml
-services:
-  postgresql:
-    container_name: postgres
-    image: postgres:17
-    ports:
-      - '${POSTGRES_PORT}:5432'
-    volumes:
-      - db:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_DB=${POSTGRES_DB}
-    networks:
-      - net
-    restart: unless-stopped
-
-  app:
-    image: flowintel:{tag}
-    container_name: flowintel
-    ports:
-      - '${APP_PORT}:7006'
-    networks:
-      - net
-    depends_on:
-      - postgresql
-    environment:
-      - DB_HOST=postgresql
-      - DB_PORT=${POSTGRES_PORT}
-      - DB_USER=${POSTGRES_USER}
-      - DB_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_NAME=${POSTGRES_DB}
-    restart: unless-stopped
-
-volumes:
-  db:
-
-networks:
-  net:
-    driver: bridge
-```
 ---
 ### 7. Configure environment variables
+TODO Should be made explicit that config (.env, conf.py) are mounted at docker composition level and not embedded into the image.
+
 Copy the environment template and edit it:
 ```bash
 cp template.env .env
@@ -132,6 +98,7 @@ docker compose up -d
 ---
 
 ### 9. Initialize the database
+TODO Transform me into a memo ?
 
 Once the containers are running, initialize the database with:
 

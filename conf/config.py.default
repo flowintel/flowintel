@@ -1,10 +1,107 @@
 import os
 
-class Config:
+from dotenv import load_dotenv
+load_dotenv()
+
+
+ALLOWED_DIALECT_DRIVERS = {
+    "postgresql": {"psycopg2",},
+    "mariadb": {"pymysql",},
+    "mysql": {"pymysql",},
+    "sqlite": {None, "", "pysqlite"},
+}
+
+def env_bool(name, default=False):
+    """
+    Parser to replace the obsoleted distutils strtobool parser:
+    - Interpret "1", "true", "yes", "on", "True", "Yes", "On" as True
+    - Interpret "0", "false", "no", "off", "False", "No", "Off" as False
+    """
+    val = os.getenv(name)
+    if val is None:
+        return default
+    val = val.strip().lower()
+    if val in {"1", "true", "yes", "on"}:
+        return True
+    if val in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"Invalid boolean value for {name}: {val}")
+
+def get_db_config():
+    """
+    Configure these settings using environment variables or a .env file.
+    Example .env file:
+      DB_USER=flowintel
+      DB_PASSWORD=your_secure_password_here
+      DB_HOST=localhost
+      DB_PORT=5432
+      DB_NAME=flowintel
+      DB_DIALECT=postgresql
+    """
+    return {
+        "DIALECT": os.getenv("DB_DIALECT", "").strip().lower(),
+        "DRIVER": os.getenv("DB_DRIVER", "").strip().lower(),
+        "USER": os.getenv("DB_USER", "flowintel"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "your_secure_password_here"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", ""),
+        "NAME": os.getenv("DB_NAME", "flowintel"),
+    }
+
+def validate_db_config(dialect, driver, env_name):
+    if dialect not in ALLOWED_DIALECT_DRIVERS:
+        raise ValueError(f"Unsupported DB_DIALECT: {dialect}")
+
+    if driver not in ALLOWED_DIALECT_DRIVERS[dialect]:
+        raise ValueError(
+            f"Invalid DB_DRIVER '{driver}' for DB_DIALECT '{dialect}' in {env_name}"
+        )
+
+    if env_name in ("testing", "production") and dialect == "sqlite":
+        raise ValueError("SQLite is forbidden in production and testing")
+
+def build_db_uri(DB, env_name):
+    """
+    Build SQLAlchemy connection URI.
+    - PostgreSQL or MariaDB recommended for enforced and testing due to the necessity to harden production config and
+    to test migrations as well as specifics around fields like JSON, VARCHARS, etc.
+    - SQLite is allowed in Development and Testing only
+    """
+    dialect = DB['DIALECT']
+    driver = DB['DRIVER']
+
+    if not dialect:
+        if env_name in ("development", "testing"):
+            return "sqlite:///flowintel.sqlite"
+        raise ValueError("DB_DIALECT must be set explicitely when running outside development and testing")
+
+    validate_db_config(dialect, driver, env_name)
+
+    if dialect == "sqlite":
+        db_path = os.getenv("SQLITE_PATH", "flowintel.sqlite")
+        return f"sqlite:///{db_path}"
+
+    user = DB['USER']
+    password = DB['PASSWORD']
+    host = DB['HOST']
+    port = DB['PORT']
+    name = DB['NAME']
+
+    if not port:
+        if dialect == "postgresql":
+            port = "5432"
+        elif dialect in {"mariadb", "mysql"}:
+            port = "3306"    
+
+    return f"{dialect}+{driver}://{user}:{password}@{host}:{port}/{name}"
+
+class Config():
     """
     Base configuration for Flowintel.
     """
     
+    ENV_NAME = None
+
     # =============================================================================
     # SECRET KEY (REQUIRED)
     # =============================================================================
@@ -27,21 +124,23 @@ class Config:
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
     #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
     # FLASK_PORT: Port number Flask listens on (default 7006)
-    FLASK_URL = '127.0.0.1'
-    FLASK_PORT = 7006
+    FLASK_URL = os.getenv('FLASK_URL', '127.0.0.1')
+    FLASK_PORT = os.getenv('FLASK_PORT', '7006')
 
     # =============================================================================
     # MISP MODULES
     # =============================================================================
     # Address and port where MISP modules are running for analysis and enrichment
-    MISP_MODULE = '127.0.0.1:6666'
+    MISP_MODULE_HOST = os.getenv('MISP_MODULE_HOST', '127.0.0.1')
+    MISP_MODULE_PORT = os.getenv('MISP_MODULE_PORT', '6666')
+    MISP_MODULE = f"{MISP_MODULE_HOST}:{MISP_MODULE_PORT}"
     
     # =============================================================================
     # DATABASE CONFIGURATION
     # =============================================================================
     # Connection pool settings for PostgreSQL
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
-    
+
     # =============================================================================
     # SESSION STORAGE (VALKEY)
     # =============================================================================
@@ -62,7 +161,7 @@ class Config:
     # REVERSE PROXY
     # =============================================================================
     # SECURITY: Only enable if Flask is NOT directly accessible (firewall blocks Flask port)
-    BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'true').lower() == 'true'
+    BEHIND_PROXY = env_bool('BEHIND_PROXY', default=True)
     PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
     PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto
     PROXY_X_HOST = int(os.getenv('PROXY_X_HOST', 1))     # Trust X-Forwarded-Host
@@ -80,15 +179,15 @@ class Config:
     # These users are created on first installation.
     # IMPORTANT: Change the admin password immediately after first login!
     INIT_ADMIN_USER = {
-        "first_name": "admin",
-        "last_name": "admin",
-        "email": "admin@admin.admin",
-        "password": "admin"
+        "first_name": os.getenv('ADMIN_FIRST_NAME', 'admin'),
+        "last_name": os.getenv('ADMIN_LAST_NAME', 'admin'),
+        "email": os.getenv('ADMIN_MAIL', 'admin@admin.admin'),
+        "password": os.getenv('ADMIN_PASSWORD', 'admin'),
     }
     INIT_BOT_USER = {
-        "first_name": "Matrix",
-        "last_name": "Bot",
-        "email": "neo@admin.admin" # Password auto generated
+        "first_name": os.getenv('BOT_FIRST_NAME','Matrix'),
+        "last_name": os.getenv('BOT_LAST_NAME','Bot'),
+        "email": os.getenv('BOT_MAIL', 'neo@admin.admin'),
     }
 
     # =============================================================================
@@ -131,25 +230,25 @@ class Config:
     # When True: Users can only see other users within their own organisation
     # When False: All users can see all other users
     # Administrators always see all users regardless of this setting.
-    LIMIT_USER_VIEW_TO_ORG = False
+    LIMIT_USER_VIEW_TO_ORG = env_bool('LIMIT_USER_VIEW_TO_ORG', default=False)
 
     # =============================================================================
     # GDPR
     # =============================================================================
     # GDPR and privacy notice for case and task forms
-    SHOW_GDPR_NOTICE = os.getenv('SHOW_GDPR_NOTICE', 'true').lower() == 'true'
+    SHOW_GDPR_NOTICE = env_bool('SHOW_GDPR_NOTICE', default=True)
     GDPR_NOTICE = os.getenv('GDPR_NOTICE', 'Please be mindful of GDPR and privacy regulations when adding personal or sensitive information to cases and tasks.')
 
     # =============================================================================
     # PRIVILEGED CASE / FOUR-EYE REVIEW
     # =============================================================================
     # Privileged case enforcement
-    ENFORCE_PRIVILEGED_CASE = os.getenv('ENFORCE_PRIVILEGED_CASE', 'false').lower() == 'true'
+    ENFORCE_PRIVILEGED_CASE = env_bool('ENFORCE_PRIVILEGED_CASE', default=False)
 
     # Auto-assign Admin, Case Admin and Queue Admin to a task when it is
     # set to "Requested" or "Request Review" in a privileged case.
     # This makes the task visible in their assignment list.
-    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = os.getenv('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', 'false').lower() == 'true'
+    PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST = env_bool('PRIVILEGED_CASE_ADD_ADMIN_ON_TASK_REQUEST', default=False)
 
     # =============================================================================
     # CHATBOT
@@ -158,13 +257,13 @@ class Config:
     # When False, the menu item is hidden and the routes return 404.
     # The chatbot also requires a reachable Ollama instance and the OLLAMA_*
     # values in conf/config_module.py before it can answer questions.
-    ENABLE_CHATBOT = os.getenv('ENABLE_CHATBOT', 'false').lower() == 'true'
+    ENABLE_CHATBOT = env_bool('ENABLE_CHATBOT', default=False)
 
     # =============================================================================
     # ENTRA ID
     # =============================================================================
     # Microsoft Entra ID (Azure AD) SSO configuration
-    ENTRA_ID_ENABLED = os.getenv('ENTRA_ID_ENABLED', 'false').lower() == 'true'
+    ENTRA_ID_ENABLED = env_bool('ENTRA_ID_ENABLED', default=False)
     ENTRA_TENANT_ID = os.getenv('ENTRA_TENANT_ID', '')           # Directory (tenant) ID
     ENTRA_CLIENT_ID = os.getenv('ENTRA_CLIENT_ID', '')           # Application (client) ID
     ENTRA_CLIENT_SECRET = os.getenv('ENTRA_CLIENT_SECRET', '')   # Client secret value
@@ -186,7 +285,7 @@ class Config:
     # KEYCLOAK
     # =============================================================================
     # Keycloak SSO configuration
-    KEYCLOAK_ENABLED = os.getenv('KEYCLOAK_ENABLED', 'false').lower() == 'true'
+    KEYCLOAK_ENABLED = env_bool('KEYCLOAK_ENABLED', default=False)
     KEYCLOAK_BASE_URL = os.getenv('KEYCLOAK_BASE_URL', '')       # e.g. https://keycloak.example.com
     KEYCLOAK_REALM = os.getenv('KEYCLOAK_REALM', 'flowintel')
     KEYCLOAK_CLIENT_ID = os.getenv('KEYCLOAK_CLIENT_ID', 'flowintel')
@@ -245,7 +344,7 @@ class Config:
     # MISP INTEGRATION
     # =============================================================================
     # MISP connector: attach case & task files to the MISP event
-    MISP_EXPORT_FILES = os.getenv('MISP_EXPORT_FILES', 'false').lower() == 'true'
+    MISP_EXPORT_FILES = env_bool('MISP_EXPORT_FILES', default=False)
 
     # MISP event defaults
     # Threat level: 1 = High, 2 = Medium, 3 = Low, 4 = Undefined
@@ -283,6 +382,14 @@ class Config:
         "version": 1
     }
 
+    @classmethod
+    def init_app(cls, app):
+        # Database URI is assigned at initialisation to avoid evaluation problems at imports
+        db_cfg = get_db_config()
+        app.config["SQLALCHEMY_DATABASE_URI"] = build_db_uri(
+            DB=db_cfg,
+            env_name=app.config["ENV_NAME"]
+        )
 
 
 # =============================================================================
@@ -291,11 +398,11 @@ class Config:
 # Used for local development and testing.
 class DevelopmentConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel.sqlite"
-    SESSION_TYPE = "redis"
+    ENV_NAME = "development"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN DEBUG MODE. \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
@@ -305,12 +412,12 @@ class DevelopmentConfig(Config):
 # Used for automated testing (pytest).
 class TestingConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = "sqlite:///flowintel-test.sqlite"
     WTF_CSRF_ENABLED = False
-    SESSION_TYPE = "redis"
+    ENV_NAME = "testing"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN TESTING MODE.  \
                 YOU SHOULD NOT SEE THIS IN PRODUCTION.')
 
@@ -318,58 +425,19 @@ class TestingConfig(Config):
 # PRODUCTION CONFIGURATION
 # =============================================================================
 # Used for production deployments.
-# Database: PostgreSQL (recommended for production)
-# 
-# Configure these settings using environment variables or a .env file.
-# 
-# Example .env file:
-#   DB_USER=flowintel
-#   DB_PASSWORD=your_secure_password_here
-#   DB_HOST=localhost
-#   DB_PORT=5432
-#   DB_NAME=flowintel
 class ProductionConfig(Config):
     # environment variables
     SESSION_TYPE = "redis"
-    db_user = os.getenv('DB_USER', 'flowintel')
-    db_password = os.getenv('DB_PASSWORD', 'your_secure_password_here')
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'flowintel')
-
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    ENV_NAME = "production"
 
     @classmethod
     def init_app(cls, app):
+        super().init_app(app)
         print('THIS APP IS IN PRODUCTION MODE.')
-
-# =============================================================================
-# DOCKER CONFIGURATION
-# =============================================================================
-# Used for Docker container deployments.
-# Database: PostgreSQL (required for Docker deployments)
-# All settings are configured via environment variables in docker-compose.yml
-class DockerConfig(Config):
-    DEBUG = True
-    SESSION_TYPE = "redis"
-    db_user = os.getenv('DB_USER', 'default_user')
-    db_password = os.getenv('DB_PASSWORD', 'default_password')
-    db_host = os.getenv('DB_HOST', 'localhost')
-    db_port = os.getenv('DB_PORT', '5432')
-    db_name = os.getenv('DB_NAME', 'default_db')
-
-    # Database URI
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-    @classmethod
-    def init_app(cls, app):
-        print('THIS APP IS IN DOCKER MODE.')
 
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
-    'docker': DockerConfig,
     'default': DevelopmentConfig
 }

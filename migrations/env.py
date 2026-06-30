@@ -1,5 +1,6 @@
 import logging
 from logging.config import fileConfig
+from pathlib import Path
 
 from flask import current_app
 
@@ -14,7 +15,8 @@ config = context.config
 fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
-
+##
+# TODO Now maybe we can import these methods from app.db_utils too ?
 def get_engine():
     try:
         # this works with Flask-SQLAlchemy<3 and Alchemical
@@ -22,7 +24,23 @@ def get_engine():
     except TypeError:
         # this works with Flask-SQLAlchemy>=3
         return current_app.extensions['migrate'].db.engine
+##
 
+def configure_version_locations():
+    dialect = get_engine().dialect.name
+    script = context.script
+    script.__dict__.pop('_version_locations', None)
+
+    base = Path(config.config_file_name).resolve().parent
+    if dialect in ("mysql", "mariadb"):
+        # Kept in case we need to revert to branching
+        # script.version_locations = [str(base / "versions_mariadb")]
+        #
+        script.version_locations = [str(base / "versions")]
+    else:
+        script.version_locations = [str(base / "versions")]
+    
+    logger.info("Using version locations: %s", script.version_locations)
 
 def get_engine_url():
     try:
@@ -63,6 +81,7 @@ def run_migrations_offline():
     script output.
 
     """
+    configure_version_locations()
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url, target_metadata=get_metadata(), literal_binds=True
@@ -90,9 +109,13 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
+    configure_version_locations()
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        dialect_name = connection.dialect.name
+        logger.info("Running migrations for dialect: %s", dialect_name)
+
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),

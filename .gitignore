@@ -41,6 +41,7 @@ __pycache__/
 
 # Local development
 .env
+.env.docker
 .env.local
 tmp/
 /logs
@@ -70,3 +71,4 @@ dump.rdb
 test_*
 saml2.xml
 Makefile
+*.backup

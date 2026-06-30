@@ -3,12 +3,12 @@ from . import admin_core as AdminModel
 from . import admin_core_api as AdminModelApi
 
 from flask_restx import Namespace, Resource, fields
-from ..decorators import api_required, admin_required, admin_or_org_admin_required
-from ..utils.utils import get_user_api, reload_application
-from ..utils.logger import flowintel_log
 from flask import current_app
 from flask_login import current_user
 
+from ..decorators import api_required, admin_required, admin_or_org_admin_required
+from ..utils.utils import get_user_api, reload_application
+from ..utils.logger import flowintel_log
 
 admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
 

@@ -1,6 +1,8 @@
-from .. import db
-from ..db_class.db import Case_Custom_Tags, Case_Template_Custom_Tags, Custom_Tags, Task_Custom_Tags, Task_Template_Custom_Tags
 from sqlalchemy.exc import SQLAlchemyError
+
+from app.extensions import db
+from app.db_class.db import Case_Custom_Tags, Case_Template_Custom_Tags, Custom_Tags, Task_Custom_Tags, Task_Template_Custom_Tags
+
 
 def get_custom_tag(ctid):
     """Return a custom tag by id"""
@@ -90,21 +92,21 @@ def is_custom_tag_in_use(ctid):
 
 def get_cases_using_custom_tag(ctid):
     """Get all cases using a specific custom tag"""
-    from ..db_class.db import Case
+    from app.db_class.db import Case
     cases = Case.query.join(Case_Custom_Tags, Case_Custom_Tags.case_id==Case.id)\
         .filter(Case_Custom_Tags.custom_tag_id==ctid).all()
     return [{"id": case.id, "title": case.title, "description": case.description} for case in cases]
 
 def get_tasks_using_custom_tag(ctid):
     """Get all tasks using a specific custom tag"""
-    from ..db_class.db import Task
+    from app.db_class.db import Task
     tasks = Task.query.join(Task_Custom_Tags, Task_Custom_Tags.task_id==Task.id)\
         .filter(Task_Custom_Tags.custom_tag_id==ctid).all()
     return [{"id": task.id, "title": task.title, "case_id": task.case_id} for task in tasks]
 
 def get_case_templates_using_custom_tag(ctid):
     """Get all case templates using a specific custom tag"""
-    from ..db_class.db import Case_Template
+    from app.db_class.db import Case_Template
     case_templates = Case_Template.query.join(
         Case_Template_Custom_Tags,
         Case_Template_Custom_Tags.case_template_id == Case_Template.id
@@ -113,7 +115,7 @@ def get_case_templates_using_custom_tag(ctid):
 
 def get_task_templates_using_custom_tag(ctid):
     """Get all task templates using a specific custom tag"""
-    from ..db_class.db import Task_Template
+    from app.db_class.db import Task_Template
     task_templates = Task_Template.query.join(
         Task_Template_Custom_Tags,
         Task_Template_Custom_Tags.task_template_id == Task_Template.id

@@ -1,4 +1,5 @@
 import re
+
 from flask_wtf import FlaskForm
 from wtforms import FileField, ValidationError
 from wtforms.fields import (
@@ -10,7 +11,8 @@ from wtforms.fields import (
     BooleanField
 )
 from wtforms.validators import InputRequired, Length, Optional
-from ..db_class.db import Connector, Connector_Icon, Connector_Instance
+
+from app.db_class.db import Connector, Connector_Icon
 
 
 class AddConnectorForm(FlaskForm):

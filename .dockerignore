@@ -1,1 +1,19 @@
-Dockerfile
+Dockerfile**
+Makefile
+
+# Ignore node_modules everywhere
+**/node_modules
+
+# These ones are initialised and cloned inside the container:
+modules/misp-galaxy
+modules/misp-objects
+modules/misp-taxonomies
+
+# Decouple config from code
+conf/**
+.env**
+
+# Keep .git and .gitmodules for submodule support
+# TODO maybe this would be better it is done outside the container and just copied, to avoid to keep a living git repo inside
+!.git
+!.gitmodules

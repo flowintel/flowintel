@@ -1,23 +1,27 @@
 import calendar
+import datetime
 from io import BytesIO
+import json
+import traceback
+import uuid
 
 from pymisp import PyMISP
 from werkzeug.datastructures import FileStorage
-from ..db_class.db import *
-import uuid
-import json
-import datetime
-import traceback
+
+from sqlalchemy import or_
+
+from app.extensions import db
+from app.db_class.db import *
+
 from ..utils import utils, jsonschema_flowintel
+from ..case.common_core import check_user_in_private_cases
 from ..case.TaskCore import TaskModel
 from ..case.CaseCore import CaseModel
+from ..connectors import connectors_core as ConnectorModel
+from ..custom_tags import custom_tags_core as CustomModel
 from ..templating.TemplateCase import TemplateModel
 from ..templating.TaskTemplateCore import TaskModel as TaskTemplateModel
-from sqlalchemy import or_
 from ..utils import misp_object_helper
-from  ..connectors import connectors_core as ConnectorModel
-from ..custom_tags import custom_tags_core as CustomModel
-from ..case.common_core import check_user_in_private_cases
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 

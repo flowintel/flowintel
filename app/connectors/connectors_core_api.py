@@ -1,4 +1,5 @@
-from ..db_class.db import Connector, Connector_Icon, Connector_Instance
+from app.db_class.db import Connector, Connector_Icon, Connector_Instance
+
 from ..utils import utils
 
 def verif_add_connector(data_dict):

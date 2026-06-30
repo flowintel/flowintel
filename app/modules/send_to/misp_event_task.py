@@ -1,7 +1,10 @@
 from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
+
 from flask import current_app
+
 import conf.config_module as Config
+
 
 module_config = {
     "connector": "misp",
