@@ -725,6 +725,30 @@ def system_settings():
         'keycloak_role_queuer': current_app.config.get('KEYCLOAK_ROLE_QUEUER', ''),
         'keycloak_redirect_url': current_app.config.get('KEYCLOAK_REDIRECT_URL', ''),
 
+        # SimpleSAML SSO
+        'simplesaml_enabled': current_app.config.get('SIMPLESAML_ENABLED', False),
+        'simplesaml_sp_entity_id': current_app.config.get('SIMPLESAML_SP_ENTITY_ID', ''),
+        'simplesaml_idp_entity_id': current_app.config.get('SIMPLESAML_IDP_ENTITY_ID', ''),
+        'simplesaml_idp_sso_url': current_app.config.get('SIMPLESAML_IDP_SSO_URL', ''),
+        'simplesaml_idp_slo_url': current_app.config.get('SIMPLESAML_IDP_SLO_URL', ''),
+        # Might be identical:
+        'simplesaml_acs_url': current_app.config.get('SIMPLESAML_ACS_URL', ''),
+        'simplesaml_redirect_url': current_app.config.get('SIMPLESAML_REDIRECT_URL', ''),
+        #
+        'simplesaml_attr_email': current_app.config.get('SIMPLESAML_ATTR_EMAIL', ''),
+        'simplesaml_attr_name': current_app.config.get('SIMPLESAML_ATTR_NAME', ''),
+        'simplesaml_attr_username': current_app.config.get('SIMPLESAML_ATTR_USERNAME', ''),
+        'simplesaml_attr_groups': current_app.config.get('SIMPLESAML_ATTR_GROUPS', ''),
+        'simplesaml_group_admin': current_app.config.get('SIMPLESAML_GROUP_ADMIN', ''),
+        'simplesaml_group_editor': current_app.config.get('SIMPLESAML_GROUP_EDITOR', ''),
+        'simplesaml_group_readonly': current_app.config.get('SIMPLESAML_GROUP_READONLY', ''),
+        'simplesaml_group_case_admin': current_app.config.get('SIMPLESAML_GROUP_CASE_ADMIN', ''),
+        'simplesaml_role_case_admin': current_app.config.get('SIMPLESAML_ROLE_CASE_ADMIN', ''),
+        'simplesaml_group_queue_admin': current_app.config.get('SIMPLESAML_GROUP_QUEUE_ADMIN', ''),
+        'simplesaml_role_queue_admin': current_app.config.get('SIMPLESAML_ROLE_QUEUE_ADMIN', ''),
+        'simplesaml_group_queuer': current_app.config.get('SIMPLESAML_GROUP_QUEUER', ''),
+        'simplesaml_role_queuer': current_app.config.get('SIMPLESAML_ROLE_QUEUER', ''),
+        
         # Database
         'db_type': db_type,
         'db_name': db_name,
