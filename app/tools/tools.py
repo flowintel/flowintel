@@ -732,8 +732,8 @@ def system_settings():
         'simplesaml_redirect_url': current_app.config.get('SIMPLESAML_REDIRECT_URL', ''),
         #
         'simplesaml_attr_email': current_app.config.get('SIMPLESAML_ATTR_EMAIL', ''),
-        'simplesaml_attr_first_name': current_app.config.get('SIMPLESAML_ATTR_FIRST_NAME', ''),
-        'simplesaml_attr_last_name': current_app.config.get('SIMPLESAML_ATTR_LAST_NAME', ''),
+        'simplesaml_attr_name': current_app.config.get('SIMPLESAML_ATTR_NAME', ''),
+        'simplesaml_attr_username': current_app.config.get('SIMPLESAML_ATTR_USERNAME', ''),
         'simplesaml_attr_groups': current_app.config.get('SIMPLESAML_ATTR_GROUPS', ''),
         'simplesaml_group_admin': current_app.config.get('SIMPLESAML_GROUP_ADMIN', ''),
         'simplesaml_group_editor': current_app.config.get('SIMPLESAML_GROUP_EDITOR', ''),

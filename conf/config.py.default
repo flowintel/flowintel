@@ -219,10 +219,12 @@ class Config:
     #
 
     # Attribute mapping — SimpleSAMLphp OID URN defaults, override if your IdP uses friendly names
-    SIMPLESAML_ATTR_EMAIL      = os.getenv('SIMPLESAML_ATTR_EMAIL', 'mail')                              # 'urn:oid:0.9.2342.19200300.100.1.3'
-    SIMPLESAML_ATTR_FIRST_NAME = os.getenv('SIMPLESAML_ATTR_FIRST_NAME', 'urn:oid:2.5.4.42')             # 'givenName'
-    SIMPLESAML_ATTR_LAST_NAME  = os.getenv('SIMPLESAML_ATTR_LAST_NAME', 'urn:oid:2.5.4.4')               # 'sn'
-    SIMPLESAML_ATTR_GROUPS     = os.getenv('SIMPLESAML_ATTR_GROUPS', 'memberOf')                         # or your custom attr
+    SIMPLESAML_ATTR_EMAIL      = os.getenv('SIMPLESAML_ATTR_EMAIL', 'urn:oid:0.9.2342.19200300.100.1.3') # 'mail'
+    SIMPLESAML_ATTR_NAME     = os.getenv('SIMPLESAML_ATTR_NAME', 'cn')
+    # Full display name
+    SIMPLESAML_ATTR_USERNAME = os.getenv('SIMPLESAML_ATTR_USERNAME', 'urn:oid:1.3.6.1.4.1.23735.100.0')
+    #
+    SIMPLESAML_ATTR_GROUPS     = os.getenv('SIMPLESAML_ATTR_GROUPS', 'urn:oid:1.3.6.1.4.1.23735.100.1')  # or custom attr 'memberOf'
 
     # Group → Role mapping (same pattern as Keycloak)
     SIMPLESAML_GROUP_ADMIN      = os.getenv('SIMPLESAML_GROUP_ADMIN', 'FlowintelAdmin')
