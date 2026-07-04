@@ -278,6 +278,7 @@ def request_password_reset():
     
     return render_template('account/request_password_reset.html', form=form)
 
+
 @account_blueprint.route('/entra/login')
 def entra_login():
     """Redirect user to Microsoft Entra ID for authentication."""
@@ -424,6 +425,7 @@ def simplesaml_login():
     return redirect(auth_url)
 
 
+@csrf.exempt # Because the POST is sent by the IDP and cannot include the Flask csrf token by definition
 @account_blueprint.route('/simplesaml/callback', methods=['GET', 'POST'])
 def simplesaml_callback():
     """Handle the SAML2 POST assertion from SimpleSAMLphp."""
@@ -461,6 +463,21 @@ def simplesaml_callback():
     if urlparse(next_url).netloc or urlparse(next_url).scheme:
         next_url = '/'
     return redirect(next_url)
+
+
+@account_blueprint.route('/saml/metadata')
+def simplesaml_metadata():
+    """Expose SP SAML2 metadata for IdP registration."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+    
+    metadata_dir = current_app.config["SIMPLESAML_METADATA_DIR"]
+    metadata_file = current_app.config["SIMPLESAML_METADATA_FILE"]
+    return send_from_directory(
+        metadata_dir,
+        metadata_file,
+        mimetype="application/samlmetadata+xml",
+    )
 
 
 @account_blueprint.route('/logout')
