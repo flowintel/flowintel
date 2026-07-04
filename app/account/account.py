@@ -1,5 +1,8 @@
+# This will be cleaner when using the PR #252 new app.extensions objects creator script
+from app import csrf
 from .. import db
 from ..db_class.db import User, Role, Login_Event
+#
 from .form import LoginForm, EditUserFrom
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
 from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
