@@ -43,12 +43,23 @@ def _attr_username():
 def _attr_groups():
     return current_app.config.get('SIMPLESAML_ATTR_GROUPS')
 
+def _sync_role_on_login():
+    return current_app.config.get('SIMPLESAML_SYNC_ROLE_ON_LOGIN')
+
 def _group_admin():
     # Editor by default, Admin will be notified thanks to True argument, then Admin can promote new Admin
-    return (current_app.config.get("SIMPLESAML_GROUP_ADMIN"), "Editor", True)
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_ADMIN"),
+        "Editor",
+        True
+    )
 
 def _group_editor():
-    return (current_app.config.get("SIMPLESAML_GROUP_EDITOR"), "Editor", False)
+    return (
+        current_app.config.get("SIMPLESAML_GROUP_EDITOR"),
+        "Editor",
+        False
+    )
 
 def _group_case_admin():
     return (
@@ -77,6 +88,12 @@ def _group_readonly():
         "Read Only", 
         False
     )
+
+def _group_aliases():
+    return current_app.config.get("SIMPLESAML_GROUP_ALIASES", {})
+
+def _local_role():
+    return current_app.config.get("SIMPLESAML_ATTR_ROLE", {})
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +172,8 @@ def get_or_create_sso_user(saml_response_b64: str):
     Parse a SAMLResponse from the SimpleSaml IdP and resolve/provision
     a Flowintel User. Returns (user, None) or (None, error_message).
     """
+    # First get the attributes from SAML
+    #
     parsed = _parse_saml_response(saml_response_b64)
     if not parsed:
         return None, "Could not decode the SAML response."
@@ -165,33 +184,40 @@ def get_or_create_sso_user(saml_response_b64: str):
     if not email:
         return None, "No email address found in the SAML assertion."
 
-    groups    = attrs.get(_attr_groups(), [])
+    localrole   = _first(attrs, _local_role(), default="")
+    
+    raw_groups = attrs.get(_attr_groups(), [])
+    aliases = _group_aliases()
+    groups = [aliases.get(group, group) for group in raw_groups]
+
     full_name = _first(attrs, _attr_name())
     username  = _first(attrs, _attr_username(), default=email.split('@')[0])
 
-    # --- Group → Role priority list (configurable via Flask config) ---
+    # Which role stays on top if present in multiple groups mapping different privilege roles
     priority_list = [
         _group_admin(),
-        _group_editor(),
         _group_case_admin(),
         _group_queue_admin(),
+        _group_editor(),
         _group_queuer(),
         _group_readonly(),
     ]
 
     configured_groups = [e[0] for e in priority_list]
     logger.info(
-        "SimpleSAML login for '%s' — groups received: %s | checking: %s",
-        email, groups, configured_groups,
+        "SimpleSAML login for '%s' — raw groups: %s | aliased groups: %s | checking: %s",
+        email, raw_groups, groups, configured_groups,
     )
 
+    # Define the user role based on defined mapping
     matched_group = matched_role_name = None
     notify_admin = False
     for group_name, role_name, should_notify in priority_list:
+        # The idea is to break once the first group is encountered in the list -> highest priority by design
         if group_name in groups:
-            matched_group   = group_name
+            matched_group = group_name
             matched_role_name = role_name
-            notify_admin    = should_notify
+            notify_admin = should_notify
             break
 
     if not matched_group:
@@ -216,12 +242,16 @@ def get_or_create_sso_user(saml_response_b64: str):
 
     if user:
         # Sync role if it drifted (group membership change)
-        if user.auth_provider == "simplesaml" and user.role_id != target_role.id:
+        if (
+            user.auth_provider == "simplesaml" and 
+            user.role_id != target_role.id and
+            _sync_role_on_login()
+            ):
             user.role_id = target_role.id
             db.session.commit()
         return user, None
 
-    # --- Name: single 'cn' field split on first space, same as your Django backend ---
+    # Name: single 'cn' field split on first space
     if full_name:
         parts = full_name.split(' ', maxsplit=1)
         first_name = parts[0]

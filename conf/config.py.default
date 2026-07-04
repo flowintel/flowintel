@@ -213,6 +213,7 @@ class Config:
     SIMPLESAML_IDP_ENTITY_ID  = os.getenv('SIMPLESAML_IDP_ENTITY_ID', 'https://idp.example.com/simplesaml/saml2/idp/metadata.php')
     SIMPLESAML_IDP_SSO_URL    = os.getenv('SIMPLESAML_IDP_SSO_URL', 'https://idp.example.com/simplesaml/saml2/idp/SSOService.php')
     SIMPLESAML_IDP_SLO_URL    = os.getenv('SIMPLESAML_IDP_SLO_URL', 'https://idp.example.com/simplesaml/saml2/idp/SingleLogoutService.php')
+    SIMPLESAML_SYNC_ROLE_ON_LOGIN = os.getenv('SIMPLESAML_SYNC_ROLE_ON_LOGIN', 'true').lower() == 'true'
     # Might be identical
     SIMPLESAML_ACS_URL        = os.getenv('SIMPLESAML_ACS_URL', 'https://flowintel.example.com/account/simplesaml/callback')     # "https://flowintel.example.lu/account/simplesaml/callback"
     SIMPLESAML_REDIRECT_URL  = os.getenv('SIMPLESAML_REDIRECT_URL', 'https://flowintel.example.com/account/simplesaml/callback') # "https://flowintel.example.lu/account/simplesaml/callback"
