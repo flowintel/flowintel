@@ -269,6 +269,8 @@ kiwisolver==1.5.0
     # via matplotlib
 litellm==1.82.6
     # via dspy
+lxml==6.1.1
+    # via -r requirements.in
 maclookup==1.0.3
     # via misp-modules
 mako==1.3.10
