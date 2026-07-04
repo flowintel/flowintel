@@ -32,6 +32,10 @@ services:
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
+      # If Flowintel needs to be reached from exterior (SimpleSaml IdP for example)
+      # And not reverse proxy in Dev
+      # - "0.0.0.0:${APP_PORT:-7006}:${APP_PORT:-7006}"
+      # Hardening suggestion:
       - "127.0.0.1:${APP_PORT:-7006}:${APP_PORT:-7006}"
       - "[::1]:${APP_PORT:-7006}:${APP_PORT:-7006}"
     # Development hack 1:
