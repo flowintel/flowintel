@@ -1,12 +1,9 @@
-import base64
 import datetime
 import logging
-import uuid
-import zlib
-from urllib.parse import urlencode
 
-from lxml import etree
-from flask import current_app
+from flask import current_app, Request
+from onelogin.saml2.auth import OneLogin_Saml2_Auth
+
 
 from .. import db
 from ..db_class.db import Role, User
@@ -15,16 +12,13 @@ from ..utils.utils import generate_api_key
 
 logger = logging.getLogger(__name__)
 
-# SAML2 namespace map
-_NS = {
-    'saml':  'urn:oasis:names:tc:SAML:2.0:assertion',
-    'samlp': 'urn:oasis:names:tc:SAML:2.0:protocol',
-}
-
 
 # ---------------------------------------------------------------------------
 # Config helpers
 # ---------------------------------------------------------------------------
+def _saml_path():
+    return current_app.config.get("SIMPLESAML_PYTHON3_SAML_PATH")
+
 def _sp_entity_id():
     return current_app.config.get('SIMPLESAML_SP_ENTITY_ID')
 
@@ -92,71 +86,44 @@ def _group_readonly():
 def _group_aliases():
     return current_app.config.get("SIMPLESAML_GROUP_ALIASES", {})
 
-def _local_role():
-    return current_app.config.get("SIMPLESAML_ATTR_ROLE", {})
-
 
 # ---------------------------------------------------------------------------
-# Auth URL — HTTP-Redirect binding (deflated SAMLRequest)
+# python3-saml integration — SAMLResponse validation and Auth object setup
+#
+# All signature verification, InResponseTo/AuthnRequestID matching, and
+# assertion parsing is delegated to the python3-saml (OneLogin) toolkit.
+# See _init_saml_auth() and get_or_create_sso_user() below.
 # ---------------------------------------------------------------------------
-def get_auth_url(acs_url: str, relay_state: str = '') -> str:
-    """Build a SAML2 AuthnRequest redirect URL (HTTP-Redirect binding)."""
-    authn_request = (
-        f'<samlp:AuthnRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" '
-        f'xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" '
-        f'ID="_{uuid.uuid4().hex}" Version="2.0" '
-        f'IssueInstant="{datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}" '
-        f'AssertionConsumerServiceURL="{acs_url}" '
-        f'ProtocolBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST">'
-        f'<saml:Issuer>{_sp_entity_id()}</saml:Issuer>'
-        f'</samlp:AuthnRequest>'
-    )
-    deflated = zlib.compress(authn_request.encode('utf-8'))[2:-4]
-    encoded = base64.b64encode(deflated).decode('utf-8')
-    params = {'SAMLRequest': encoded}
-    if relay_state:
-        params['RelayState'] = relay_state
-    return f"{_idp_sso_url()}?{urlencode(params)}"
+def _prepare_flask_request(req: Request) -> dict:
+    return {
+        'https': 'on' if req.scheme == 'https' else 'off',
+        'http_host': req.host,
+        # it comes from the incoming WSGI request environment
+        # reflects the actual request the server received, including the port used on that request
+        # should be provided automatically by flask dev server, wsgi server like Gunicorn or reverse proxy like Nginx
+        # may need to configure Flask/Werkzeug to trust forwarded headers so scheme/host/port reflect the external request correctly.
+        # potential not ideal deployment workaround: omit server_port or force HTTPS-related values when the proxy setup is stable
+        'server_port': req.environ.get('SERVER_PORT'),
+        #
+        'script_name': req.path,
+        'get_data': req.args.copy(),
+        'post_data': req.form.copy(),
+        'query_string': req.query_string.decode('utf-8'),
+    }
 
-
-
-# ---------------------------------------------------------------------------
-# SAMLResponse parser
-# WARNING: no signature verification — use python3-saml in production.
-# ---------------------------------------------------------------------------
-def _parse_saml_response(saml_response_b64: str) -> dict | None:
+def _init_saml_auth(req: Request) -> OneLogin_Saml2_Auth:
     """
-    Decode a base64 SAMLResponse and extract identity attributes.
-    Returns {'name_id': str, 'attributes': dict[str, list[str]]} or None.
+    Initialize a python3-saml Auth object for the current Flask request.
+
+    If SIMPLESAML_PYTHON3_SAML_PATH is configured, python3-saml loads
+    settings.json and advanced_settings.json from that directory automatically,
+    along with any certificate files located there.
     """
-    try:
-        xml_bytes = base64.b64decode(saml_response_b64)
-        root = etree.fromstring(xml_bytes)
-    except Exception as exc:
-        logger.warning("Failed to decode SAMLResponse: %s", exc)
-        return None
-
-    status_code = root.find('.//samlp:StatusCode', _NS)
-    if status_code is not None and 'Success' not in status_code.get('Value', ''):
-        logger.warning("SAML status not Success: %s", status_code.get('Value'))
-        return None
-
-    name_id_el = root.find('.//saml:NameID', _NS)
-    name_id = name_id_el.text.strip() if name_id_el is not None else ''
-
-    attributes: dict[str, list[str]] = {}
-    for attr in root.findall('.//saml:Attribute', _NS):
-        attr_name = attr.get('Name', '')
-        values = [
-            v.text.strip()
-            for v in attr.findall('saml:AttributeValue', _NS)
-            if v.text
-        ]
-        if attr_name:
-            attributes[attr_name] = values
-
-    return {'name_id': name_id, 'attributes': attributes}
-
+    saml_path = _saml_path()
+    prepared = _prepare_flask_request(req)
+    if saml_path:
+        return OneLogin_Saml2_Auth(prepared, custom_base_path=saml_path)
+    return OneLogin_Saml2_Auth(prepared)
 
 def _first(attributes: dict, key: str, default: str = '') -> str:
     """Return the first value for a given attribute key."""
@@ -167,25 +134,18 @@ def _first(attributes: dict, key: str, default: str = '') -> str:
 # ---------------------------------------------------------------------------
 # User provisioning — same group-priority logic as Keycloak core
 # ---------------------------------------------------------------------------
-def get_or_create_sso_user(saml_response_b64: str):
+def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str | None]:
     """
-    Parse a SAMLResponse from the SimpleSaml IdP and resolve/provision
-    a Flowintel User. Returns (user, None) or (None, error_message).
+    Resolve/Provision a Flowintel user from a validated python3-saml auth object.
+    Returns (user, None) or (None, error_message).
     """
     # First get the attributes from SAML
     #
-    parsed = _parse_saml_response(saml_response_b64)
-    if not parsed:
-        return None, "Could not decode the SAML response."
-
-    attrs = parsed['attributes']
-
+    attrs = auth.get_attributes()
     email = _first(attrs, _attr_email()).lower().strip()
     if not email:
         return None, "No email address found in the SAML assertion."
 
-    localrole   = _first(attrs, _local_role(), default="")
-    
     raw_groups = attrs.get(_attr_groups(), [])
     aliases = _group_aliases()
     groups = [aliases.get(group, group) for group in raw_groups]
@@ -287,8 +247,11 @@ def get_or_create_sso_user(saml_response_b64: str):
     msg = (
         f"SimpleSAML user '{email}' (login: {username}) is a member of '{matched_group}' "
         f"and has been provisioned with the '{target_role.name}' role. "
-        + ("Please promote them to Admin if appropriate." if notify_admin
-           else "Please review their organisation assignment.")
+        + (
+            "Please promote them to Admin if appropriate."
+            if notify_admin else
+            "Please review their organisation assignment."
+        )
     )
     NotifModel.create_notification_for_admins(
         message=msg,

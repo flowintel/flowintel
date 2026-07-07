@@ -51,6 +51,11 @@ conf/config.py.backup
 conf/config_modules.py
 conf/config_module.py
 conf/config_module.py.backup
+conf/saml/settings.json
+conf/saml/settings.json.backup
+conf/saml/advanced_settings.json
+conf/saml/advanced_settings.json.backup
+conf/saml/*.xml
 /data
 
 # Ignore temp files

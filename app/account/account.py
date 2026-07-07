@@ -1,17 +1,40 @@
-# This will be cleaner when using the PR #252 new app.extensions objects creator script
-from app import csrf
-from .. import db
-from ..db_class.db import User, Role, Login_Event
-#
-from .form import LoginForm, EditUserFrom
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
-from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
+import datetime
+import logging
+import time
+import secrets
+from urllib.parse import urlparse
+
+from flask import (
+    abort,
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    request,
+    session,
+    url_for,
+    render_template,
+    send_from_directory,
+    )
 from flask_login import (
     current_user,
     login_required,
     login_user,
     logout_user,
 )
+
+from itsdangerous import BadData, URLSafeTimedSerializer
+from wtforms.validators import Email, ValidationError
+
+from app.extensions import db, csrf
+from app.db_class.db import User, Login_Event
+from ..utils.utils import form_to_dict
+from ..utils.logger import flowintel_log
+from ..notification import notification_core as NotifModel
+
+from .form import LoginForm, EditUserFrom
+from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
+
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
 from . import keycloak_core as KeycloakModel
@@ -417,29 +440,44 @@ def simplesaml_login():
         abort(404)
 
     # RelayState carries a signed token so we can validate the callback origin
-    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    relay_state = s.dumps('simplesaml-login')
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
 
-    redirect_uri = (
-        current_app.config.get('SIMPLESAML_ACS_URL')
-        or url_for('account.simplesaml_callback', _external=True)
-    )
-    auth_url = SimpleSamlModel.get_auth_url(redirect_uri, relay_state=relay_state)
+    next_url = request.args.get('next') or '/'
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc or not next_url.startswith('/'):
+        next_url = '/'
+
+    relay_state = serializer.dumps({'next': next_url})
+
+    auth = SimpleSamlModel._init_saml_auth(request)
+    auth_url = auth.login(return_to=relay_state)
+    session['AuthNRequestID'] = auth.get_last_request_id()
+
     return redirect(auth_url)
 
 
-@csrf.exempt # Because the POST is sent by the IDP and cannot include the Flask csrf token by definition
-@account_blueprint.route('/simplesaml/callback', methods=['GET', 'POST'])
+@csrf.exempt # Because the POST is sent by the IDP and cannot include the Flask csrf token in principle
+@account_blueprint.route('/simplesaml/callback', methods=['POST'])
 def simplesaml_callback():
-    """Handle the SAML2 POST assertion from SimpleSAMLphp."""
+    """Handle the SAML2 POST assertion from SimpleSAMLphp using python3-saml."""
     if not current_app.config.get('SIMPLESAML_ENABLED'):
         abort(404)
 
-    # Validate RelayState (sent back by IdP as-is)
-    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    relay_state = request.form.get('RelayState') or request.args.get('RelayState', '')
+    relay_state = request.form.get('RelayState', '')
+
+    if request.method != 'POST':
+        flash('Authentication failed: invalid ACS method.', 'error')
+        flowintel_log("audit", 405, "SimpleSAML ACS invalid method", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    if not relay_state:
+        flash('Authentication failed: missing relay state.', 'error')
+        flowintel_log("audit", 400, "SimpleSAML missing RelayState", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     try:
-        s.loads(relay_state, max_age=600)
+        state_data = serializer.loads(relay_state, max_age=600)
     except BadData:
         flash('Authentication failed: invalid or expired state.', 'error')
         flowintel_log("audit", 403, "SimpleSAML login failed - RelayState mismatch", IP=get_client_ip())
@@ -452,7 +490,42 @@ def simplesaml_callback():
         flowintel_log("audit", 400, "SimpleSAML missing SAMLResponse", IP=get_client_ip())
         return redirect(url_for('account.login'))
 
-    user, error = SimpleSamlModel.get_or_create_sso_user(saml_response)
+    try:
+        auth = SimpleSamlModel._init_saml_auth(request)
+        request_id = session.get('AuthNRequestID')
+        auth.process_response(request_id=request_id)
+        errors = auth.get_errors()
+    except Exception as exc:
+        flash('Authentication failed: invalid SAML response.', 'error')
+        flowintel_log(
+            "audit",
+            400,
+            "SimpleSAML ACS exception",
+            Reason=str(exc),
+            IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+
+    if errors:
+        flash('Authentication failed: SAML response validation failed.', 'error')
+        flowintel_log(
+            "audit",
+            403,
+            "SimpleSAML ACS validation failed",
+            Errors="; ".join(errors),
+            Reason=auth.get_last_error_reason(),
+            IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+
+    if not auth.is_authenticated():
+        flash('Authentication failed: SAML authentication was not accepted.', 'error')
+        flowintel_log("audit", 403, "SimpleSAML not authenticated", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    session.pop('AuthNRequestID', None)
+
+    user, error = SimpleSamlModel.get_or_create_sso_user(auth)
 
     if not user:
         flash(f'Access denied: {error}', 'error')
@@ -461,10 +534,14 @@ def simplesaml_callback():
 
     login_user(user)
     flowintel_log("audit", 200, "SimpleSAML login successful", Email=user.email)
+
     flash('Logged in via SimpleSAML.', 'success')
-    next_url = request.args.get('next') or '/'
-    if urlparse(next_url).netloc or urlparse(next_url).scheme:
+
+    next_url = state_data.get('next', '/')
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc or not next_url.startswith('/'):
         next_url = '/'
+
     return redirect(next_url)
 
 

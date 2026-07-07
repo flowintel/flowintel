@@ -723,6 +723,7 @@ def system_settings():
 
         # SimpleSAML SSO
         'simplesaml_enabled': current_app.config.get('SIMPLESAML_ENABLED', False),
+        'simplesaml_python3_saml_path': current_app.config.get('SIMPLESAML_PYTHON3_SAML_PATH', False),
         'simplesaml_sp_entity_id': current_app.config.get('SIMPLESAML_SP_ENTITY_ID', ''),
         'simplesaml_idp_entity_id': current_app.config.get('SIMPLESAML_IDP_ENTITY_ID', ''),
         'simplesaml_idp_sso_url': current_app.config.get('SIMPLESAML_IDP_SSO_URL', ''),
@@ -730,7 +731,6 @@ def system_settings():
         'simplesaml_sync_role_on_login': current_app.config.get('SIMPLESAML_SYNC_ROLE_ON_LOGIN', ''),
         # Might be identical:
         'simplesaml_acs_url': current_app.config.get('SIMPLESAML_ACS_URL', ''),
-        'simplesaml_redirect_url': current_app.config.get('SIMPLESAML_REDIRECT_URL', ''),
         #
         'simplesaml_attr_email': current_app.config.get('SIMPLESAML_ATTR_EMAIL', ''),
         'simplesaml_attr_name': current_app.config.get('SIMPLESAML_ATTR_NAME', ''),
