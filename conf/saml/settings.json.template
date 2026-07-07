@@ -1,0 +1,32 @@
+{
+  "strict": true,
+  "debug": false,
+
+  "sp": {
+    "entityId": "https://your-app.example.com/saml/metadata",
+    "assertionConsumerService": {
+      "url": "https://your-app.example.com/simplesaml/callback",
+      "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+    },
+    "singleLogoutService": {
+      "url": "https://your-app.example.com/simplesaml/logout",
+      "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+    },
+    "NameIDFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
+    "x509cert": "",
+    "privateKey": ""
+  },
+
+  "idp": {
+    "entityId": "https://idp.example.com/metadata",
+    "singleSignOnService": {
+      "url": "https://idp.example.com/sso",
+      "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+    },
+    "singleLogoutService": {
+      "url": "https://idp.example.com/slo",
+      "binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+    },
+    "x509cert": "PASTE_THE_IDP_X509_CERTIFICATE_HERE_AS_ONE_SINGLE_LINE"
+  }
+}

@@ -602,6 +602,10 @@
                                 </td>
                             </tr>
                             {% if system_info.simplesaml_enabled %}
+                           <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(SIMPLESAML_PYTHON3_SAML_PATH)</small></td>
+                                <td><code>{{ system_info.simplesaml_python3_saml_path }}</code></td>
+                            </tr>
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(SIMPLESAML_SP_ENTITY_ID)</small></td>
                                 <td><code>{{ system_info.simplesaml_sp_entity_id }}</code></td>
@@ -641,14 +645,6 @@
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ATTR_GROUPS)</small></td>
                                 <td><code>{{ system_info.simplesaml_attr_groups }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> ACS URL <small class="fw-normal text-muted">(SIMPLESAML_ACS_URL)</small></td>
-                                <td><code style="font-size: 0.85em;">{{ system_info.simplesaml_acs_url }}</code></td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Redirect URL <small class="fw-normal text-muted">(SIMPLESAML_REDIRECT_URL)</small></td>
-                                <td><code style="font-size: 0.85em;">{{ system_info.simplesaml_redirect_url }}</code></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group admin <small class="fw-normal text-muted">(SIMPLESAML_GROUP_ADMIN)</small></td>
