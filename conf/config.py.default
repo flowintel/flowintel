@@ -57,8 +57,8 @@ def validate_db_config(dialect, driver, env_name):
             f"Invalid DB_DRIVER '{driver}' for DB_DIALECT '{dialect}' in {env_name}"
         )
 
-    if env_name in ("testing", "production") and dialect == "sqlite":
-        raise ValueError("SQLite is forbidden in production and testing")
+    if env_name in ("production") and dialect == "sqlite":
+        raise ValueError("SQLite is forbidden in production")
 
 def build_db_uri(DB, env_name):
     """
