@@ -100,7 +100,7 @@ Flowintel est une plateforme open-source de gestion de cas pour analystes de sé
 
 ### `conf/config.py` (Configuration Principale)
 - **SECRET_KEY** : Chiffrement sessions et protection CSRF
-- **APP_HOST/APP_PORT** : Binding serveur (défaut 127.0.0.1:7006)
+- **FLOWINTEL_APP_HOST/FLOWINTEL_APP_PORT** : Binding serveur (défaut 127.0.0.1:7006)
 - **Database** : Paramètres connexion PostgreSQL
 - **Session** : Configuration Valkey (Redis)
 - **File uploads** : Taille max (défaut 5MB)

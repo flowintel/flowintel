@@ -90,7 +90,7 @@ services:
     image: flowintel:{tag}
     container_name: flowintel
     ports:
-      - '${APP_PORT}:7006'
+      - '${FLOWINTEL_APP_PORT}:7006'
     networks:
       - net
     depends_on:

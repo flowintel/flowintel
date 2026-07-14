@@ -13,7 +13,7 @@ def app():
     app = create_app()
     app.config.update({
         "TESTING": True,
-        "SERVER_NAME": f"{app.config.get('APP_HOST')}:{app.config.get('APP_PORT')}",
+        "SERVER_NAME": f"{app.config.get('FLOWINTEL_APP_HOST')}:{app.config.get('FLOWINTEL_APP_PORT')}",
         "LIMIT_USER_VIEW_TO_ORG": True,
         "ENFORCE_PRIVILEGED_CASE": False
     })

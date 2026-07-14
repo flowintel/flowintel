@@ -2217,7 +2217,7 @@ def case_report_generate(cid):
         user_label = f"{current_user.first_name} {current_user.last_name} ({current_user.email})"
         lines.append(f"- **Report generated on:** {now} by {user_label}")
 
-        url = f"http://{current_app.config.get('APP_HOST', '127.0.0.1')}:{current_app.config.get('APP_PORT', 7006)}"
+        url = f"http://{current_app.config.get('FLOWINTEL_APP_HOST', '127.0.0.1')}:{current_app.config.get('FLOWINTEL_APP_PORT', 7006)}"
         lines.append(f"- **Instance URL:** {url}")
         lines.append(f"- **Instance version:** {_version}")
 

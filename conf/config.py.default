@@ -23,15 +23,15 @@ class Config:
     # =============================================================================
     # FLOWINTEL APP BINDING - Used by both Flask dev server AND Gunicorn appservers
     # =============================================================================
-    # Flask dev server: app.run(host=APP_HOST, port=APP_PORT)
-    # Gunicorn: gunicorn -b $APP_HOST:$APP_PORT (read via Python one-liner)
-    # Other scripts: current_app.config.get('APP_HOST')
-    # APP_HOST: IP address for binding
+    # Flask dev server: app.run(host=FLOWINTEL_APP_HOST, port=FLOWINTEL_APP_PORT)
+    # Gunicorn: gunicorn -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT (read via Python one-liner)
+    # Other scripts: current_app.config.get('FLOWINTEL_APP_HOST')
+    # FLOWINTEL_APP_HOST: IP address for binding
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
     #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
-    # APP_PORT: Port number the appserver listens on (default 7006)
-    APP_HOST = '127.0.0.1'
-    APP_PORT = 7006
+    # FLOWINTEL_APP_PORT: Port number the appserver listens on (default 7006)
+    FLOWINTEL_APP_HOST = '127.0.0.1'
+    FLOWINTEL_APP_PORT = 7006
 
     # =============================================================================
     # MISP MODULES
