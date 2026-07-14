@@ -1774,7 +1774,19 @@ Users who sign in through Keycloak cannot use the local password reset feature o
 Keycloak and local authentication can coexist. Users without a Keycloak account can still sign in with their email and password. Keycloak configuration, including the realm, client ID, client secret, redirect URL and group mappings, is managed in the server configuration file (`conf/config.py`) and the environment file. Refer to the [installation manual](installation-manual.md) for detailed setup instructions.
 
 ### SimpleSAML single sign-on (optional)
-TODO
+If your organisation runs a SimpleSaml identity provider, Flowintel can authenticate users through it in the same way as it does for Entra ID. When the SimpleSaml integration is enabled, a **Sign in with SimpleSaml** button appears on the login page alongside the email and password fields and any other configured SSO buttons.
+
+When a user clicks **Sign in with SimpleSaml**, they are redirected to the configured SimpleSaml SSO login page. After successful authentication, the IDP sends them back to Flowintel. Flowintel reads the user's email, first name, last name and group memberships from the SAML Response and either signs them into an existing account or creates a new one automatically.
+
+SimpleSaml group membership determines the user's role. The administrator maps SimpleSaml groups to Flowintel roles in the server configuration. The mapping follows the same priority order as for Entra ID: Admin, Editor, Case Admin, Queue Admin, Queuer, then Read Only. A user who belongs to several mapped groups receives the highest-priority role. A user who is not a member of any mapped group is denied access.
+
+Accounts created through SimpleSaml are placed in a personal organisation by default and receive the role that matches their SimpleSaml group membership. Administrators are notified whenever a new SSO account is created so they can review the role and move the user to the appropriate shared organisation. Roles are re-evaluated on every SimpleSaml login:
+- if a user's group membership changes in SimpleSaml, their Flowintel role is updated the next time they sign in depending on the value of `SIMPLESAML_SYNC_ROLE_ON_LOGIN`,
+- alternatively, the role "forced" by the Flowintel administrator can be kept.
+
+Users who sign in through SimpleSaml cannot use the local password reset feature or change the email address on their Flowintel account, because authentication is delegated to SimpleSaml. Administrators can still edit other fields on an SSO account through the web interface, for example to change the role or organisation, but cannot set a local password for them.
+
+SimpleSaml and local authentication can coexist. Users without a SimpleSaml account can still sign in with their email and password. SimpleSaml configuration is managed in the server configuration file (`conf/config.py`), the environment file/variables and additional specific settings including security hardening (`conf/saml/settings.json` and `conf/saml/advanced_settings.json`). Metadata XML file is also located in `conf/saml`.
 
 ## Roles
 
