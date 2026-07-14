@@ -496,7 +496,7 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_fullofficial_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
 	echo ""
-	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release: TODO${RESET}"
+	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release (TODO)${RESET}"
 	echo ""
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "test" "/"  "Launch locally the test leveraging the local virtual environment and default SQLite"

@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-# TODO maybe we generalize with Database Dialect instead of a single techno ...
-
 echo "Checking if ${DB_HOST:-postgresql} server is up..."
 
 /home/flowintel/app/bin/wait-for-it.sh "${DB_HOST:-postgresql}":"${DB_PORT:-5432}" --timeout=30 --strict -- echo "${DB_HOST:-postgresql} is up"

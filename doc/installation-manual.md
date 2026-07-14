@@ -1,7 +1,6 @@
 
 # Flowintel installation manual
 
-TODO I am not sure it is worth mentionning all the troubleshooting tips for MariaDB. The presence of some for Postgres should already raise ideas when problems occurs with other Backen. Maybe a small memo line to say we propose only some tips for Postgres for legacy ?
 
 ## Documentation set
 
@@ -2357,7 +2356,6 @@ Only the following ports should be open on a standard single-server installation
 Services listening on `127.0.0.1` are not exposed to the network. If you see anything unexpected, stop and disable it.
 
 ## PostgreSQL connection limits
-TODO branch for MariaDB
 
 Restrict the maximum number of database connections so the server does not run out of resources under heavy load. Edit the PostgreSQL configuration (replace `16` with your version):
 
@@ -2423,8 +2421,7 @@ This section covers how to upgrade Flowintel to a newer version. Flowintel uses 
    ```
 
    **PostgreSQL (production)**:
-   TODO branch for MariaDB
-
+   
    ```bash
    mkdir -p instance/backup
    sudo -u postgres pg_dump -F c -b -v flowintel > instance/backup/$(date +"%Y_%m_%d")_pg.sql
@@ -2506,11 +2503,6 @@ If the defaults contain settings that are not present in your configuration, add
 
 Flowintel uses Flask-Migrate (which wraps Alembic) to manage database schema changes. Each release that modifies the database includes one or more migration scripts in the `migrations/versions/` directory. The `flask db upgrade` command (called by both `update.sh` and `migrate.sh -u`) applies these migrations in sequence, bringing your database schema up to date with the application code.
 
-At the current moment, in order to fully support MariaDB, we have two branches and two heads of migrations: ```postgres@head``` which embed all the original migration files 
-and ```mariadb@head``` which allows to initialize a first install database for MariaDB deployment, starting as of Flowintel v3.4.0 (TODO stamp the actual version).
-The related migrations files lives in the original folder ```migrations/versions``` and in ```migrations/versions_mariadb```. Both paths must be actively maintained when
-a database model change imply change in a the database schema so that the change is validated to be compatible with both Production backends.
-
 If a migration fails, PostgreSQL leaves the database in its pre-migration state thanks to transactional DDL. SQLite and MariaDB do not support transactional DDL, so a failed migration on a development database may leave the schema in a partially modified state — restore from your backup in that case. Consult the release notes or the issue tracker for guidance.
 
 To check which migration your database is currently on:
@@ -2528,7 +2520,6 @@ flask db history --rev-range current:head
 ```
 
 ### Migration fails with "column already exists"
-TODO Adapt with migration branch
 
 **Symptom**: Running `flask db upgrade` (either directly or through `update.sh`) fails with an error like:
 
@@ -2678,7 +2669,6 @@ sudo systemctl disable flowintel flowintel-misp-modules flowintel-notifications
 sudo systemctl stop nginx
 
 # Stop PostgreSQL
-TODO branch for MariaDB ?
 sudo systemctl stop postgresql
 
 # Stop Valkey
@@ -2721,8 +2711,6 @@ sudo rm -rf /var/www/html
 ```
 
 ## Remove PostgreSQL
-TODO branch for MariaDB ?
-
 Remove PostgreSQL and all database data:
 
 ```bash

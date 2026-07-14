@@ -4,7 +4,6 @@
 VENV_DIR="${VENV_DIR:-env}"
 
 if apt -v &> /dev/null ; then
-    # TODO Maybe we want to make the install of valkey optional here with the idea of the Dockerised localdev infra?
     sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey
     # install pandoc from git 
     # pandoc dependencies
@@ -81,7 +80,6 @@ fi
 
 $PYTHON_CMD -m venv "$VENV_DIR"
 . "$VENV_DIR/bin/activate"
-# TODO I would rather take uv as an external system dep -> it would also simplify and avoid above line
 pip install --upgrade uv
 uv pip install -r requirements.txt
 
