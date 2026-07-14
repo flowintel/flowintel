@@ -7,7 +7,7 @@
             <div class="col-auto d-flex align-items-center">
                 <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Alerts</h5>
                 <i class="fa-solid fa-circle-question text-muted ms-2" data-bs-toggle="tooltip" data-bs-placement="right"
-                   title="Every new case created in Flowintel automatically appears here. If a webhook is configured, an HTTP POST is sent to the external URL and the alert status shows the result."></i>
+                   title="Case creation alerts can be enabled or disabled here. If a webhook is configured, an HTTP POST is sent to the external URL and the alert status shows the result."></i>
             </div>
         </div>
     </div>
@@ -18,7 +18,7 @@
     <div class="alert alert-info d-flex align-items-center gap-3 py-2 px-3 mb-3 small" role="alert">
         <i class="fa-solid fa-info-circle fa-lg"></i>
         <div>
-            <strong>How alerts work:</strong> Every time a case is created, it is automatically logged here.
+            <strong>How alerts work:</strong> When case creation alerts are enabled, each new case is logged here.
             If the webhook is enabled, an HTTP POST is also sent to the configured URL.
             The status badge shows the webhook delivery result:
             <span class="badge bg-success">Sent</span> (2xx),
@@ -77,6 +77,10 @@
                 </div>
                 <div class="card-body">
                     <form @submit.prevent="saveWebhook">
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="case-create-alert-enabled" v-model="cfg.CASE_CREATE_ALERT_ENABLED">
+                            <label class="form-check-label" for="case-create-alert-enabled">Create in-app alert when a case is created</label>
+                        </div>
                         <div class="mb-3 form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="webhook-enabled" v-model="cfg.WEBHOOK_ENABLED">
                             <label class="form-check-label" for="webhook-enabled">Enable webhook</label>
@@ -162,6 +166,7 @@
 const initialAlerts = {{ alerts|tojson|safe }};
 const initialLogs = {{ alert_logs|tojson|safe }};
 const initialCfg = {
+    CASE_CREATE_ALERT_ENABLED: {{ 'true' if cfg.CASE_CREATE_ALERT_ENABLED|default(true) else 'false' }},
     WEBHOOK_ENABLED: {{ 'true' if cfg.WEBHOOK_ENABLED else 'false' }},
     WEBHOOK_URL: {{ cfg.WEBHOOK_URL|tojson }},
     WEBHOOK_SECRET: {{ cfg.WEBHOOK_SECRET|tojson }},
@@ -272,6 +277,7 @@ createApp({
 
         function saveWebhook() {
             return saveConfig({
+                CASE_CREATE_ALERT_ENABLED: !!cfg.value.CASE_CREATE_ALERT_ENABLED,
                 WEBHOOK_ENABLED: !!cfg.value.WEBHOOK_ENABLED,
                 WEBHOOK_URL: cfg.value.WEBHOOK_URL,
                 WEBHOOK_SECRET: cfg.value.WEBHOOK_SECRET

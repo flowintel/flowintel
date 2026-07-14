@@ -16,6 +16,7 @@ MATRIX_ROOM_ID = ""
 WEBHOOK_URL = ""
 WEBHOOK_ENABLED = False
 WEBHOOK_SECRET = ""
+CASE_CREATE_ALERT_ENABLED = True
 
 # Email IMAP (for archiving sent notifications)
 IMAP_SERVER = ""

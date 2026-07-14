@@ -187,28 +187,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         except Exception:
             current_app.logger.exception("Webhook delivery failed for case %s", case.id)
 
-        try:
-            from app.db_class.db import Alert
-            if not getattr(ConfigModule, "WEBHOOK_ENABLED", False) or not getattr(ConfigModule, "WEBHOOK_URL", ""):
-                status = "disabled"
-            elif webhook_status is None:
-                status = "error"
-            elif 200 <= webhook_status < 300:
-                status = "sent"
-            else:
-                status = "failed"
-            alert = Alert(
-                case_id=case.id,
-                message=f"New case created: {case.title}",
-                status=status,
-                webhook_url=getattr(ConfigModule, "WEBHOOK_URL", ""),
-                webhook_status=webhook_status,
-            )
-            db.session.add(alert)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Failed to create Alert for case %s", case.id)
+        if getattr(ConfigModule, "CASE_CREATE_ALERT_ENABLED", True):
+            try:
+                from app.db_class.db import Alert
+                if not getattr(ConfigModule, "WEBHOOK_ENABLED", False) or not getattr(ConfigModule, "WEBHOOK_URL", ""):
+                    status = "disabled"
+                elif webhook_status is None:
+                    status = "error"
+                elif 200 <= webhook_status < 300:
+                    status = "sent"
+                else:
+                    status = "failed"
+                alert = Alert(
+                    case_id=case.id,
+                    message=f"New case created: {case.title}",
+                    status=status,
+                    webhook_url=getattr(ConfigModule, "WEBHOOK_URL", ""),
+                    webhook_status=webhook_status,
+                )
+                db.session.add(alert)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Failed to create Alert for case %s", case.id)
 
         return case
 
