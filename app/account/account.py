@@ -1,17 +1,44 @@
-from .. import db
-from ..db_class.db import User, Role, Login_Event
-from .form import LoginForm, EditUserFrom
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
-from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
+import datetime
+import logging
+import time
+import secrets
+from urllib.parse import urlparse
+
+from flask import (
+    abort,
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    request,
+    session,
+    url_for,
+    render_template,
+    send_from_directory,
+    )
 from flask_login import (
     current_user,
     login_required,
     login_user,
     logout_user,
 )
+
+from itsdangerous import BadData, URLSafeTimedSerializer
+from wtforms.validators import Email, ValidationError
+
+from app.extensions import db, csrf
+from app.db_class.db import User, Login_Event
+from ..utils.utils import form_to_dict
+from ..utils.logger import flowintel_log
+from ..notification import notification_core as NotifModel
+
+from .form import LoginForm, EditUserFrom
+from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
+
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
 from . import keycloak_core as KeycloakModel
+from . import simplesaml_core as SimpleSamlModel
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
@@ -277,6 +304,7 @@ def request_password_reset():
     
     return render_template('account/request_password_reset.html', form=form)
 
+
 @account_blueprint.route('/entra/login')
 def entra_login():
     """Redirect user to Microsoft Entra ID for authentication."""
@@ -403,6 +431,151 @@ def keycloak_callback():
     if urlparse(next_url).netloc or urlparse(next_url).scheme:
         next_url = '/'
     return redirect(next_url)
+
+
+@account_blueprint.route('/simplesaml/login')
+def simplesaml_login():
+    """Redirect user to SimpleSAMLphp IdP for authentication."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+
+    # RelayState carries a signed token so we can validate the callback origin
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+
+    next_url = request.args.get('next') or '/'
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc or not next_url.startswith('/'):
+        next_url = '/'
+
+    relay_state = serializer.dumps({'next': next_url})
+
+    try:
+        auth = SimpleSamlModel._init_saml_auth(request)
+    except RuntimeError as exc:
+        flash('SAML is misconfigured. Please contact an administrator.', 'error')
+        flowintel_log(
+            "audit", 500, "SimpleSAML misconfiguration",
+            Reason=str(exc), IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+    
+    auth_url = auth.login(return_to=relay_state)
+    session['AuthNRequestID'] = auth.get_last_request_id()
+
+    return redirect(auth_url)
+
+
+@csrf.exempt # Because the POST is sent by the IDP and cannot include the Flask csrf token in principle
+@account_blueprint.route('/simplesaml/callback', methods=['POST'])
+def simplesaml_callback():
+    """Handle the SAML2 POST assertion from SimpleSAMLphp using python3-saml."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+
+    relay_state = request.form.get('RelayState', '')
+
+    if request.method != 'POST':
+        flash('Authentication failed: invalid ACS method.', 'error')
+        flowintel_log("audit", 405, "SimpleSAML ACS invalid method", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    if not relay_state:
+        flash('Authentication failed: missing relay state.', 'error')
+        flowintel_log("audit", 400, "SimpleSAML missing RelayState", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        state_data = serializer.loads(relay_state, max_age=600)
+    except BadData:
+        flash('Authentication failed: invalid or expired state.', 'error')
+        flowintel_log("audit", 403, "SimpleSAML login failed - RelayState mismatch", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    # The SAML assertion is in the POST body
+    saml_response = request.form.get('SAMLResponse')
+    if not saml_response:
+        flash('Authentication failed: no SAML response received.', 'error')
+        flowintel_log("audit", 400, "SimpleSAML missing SAMLResponse", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    try:
+        auth = SimpleSamlModel._init_saml_auth(request)
+    except RuntimeError as exc:
+        flash('SAML is misconfigured. Please contact an administrator.', 'error')
+        flowintel_log(
+            "audit", 500, "SimpleSAML misconfiguration",
+            Reason=str(exc), IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+    
+    try:
+        request_id = session.get('AuthNRequestID')
+        auth.process_response(request_id=request_id)
+        errors = auth.get_errors()
+    except Exception as exc:
+        flash('Authentication failed: invalid SAML response.', 'error')
+        flowintel_log(
+            "audit",
+            400,
+            "SimpleSAML ACS exception",
+            Reason=str(exc),
+            IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+
+    if errors:
+        flash('Authentication failed: SAML response validation failed.', 'error')
+        flowintel_log(
+            "audit",
+            403,
+            "SimpleSAML ACS validation failed",
+            Errors="; ".join(errors),
+            Reason=auth.get_last_error_reason(),
+            IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+
+    if not auth.is_authenticated():
+        flash('Authentication failed: SAML authentication was not accepted.', 'error')
+        flowintel_log("audit", 403, "SimpleSAML not authenticated", IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    session.pop('AuthNRequestID', None)
+
+    user, error = SimpleSamlModel.get_or_create_sso_user(auth)
+
+    if not user:
+        flash(f'Access denied: {error}', 'error')
+        flowintel_log("audit", 403, "SimpleSAML login denied", Reason=error, IP=get_client_ip())
+        return redirect(url_for('account.login'))
+
+    login_user(user)
+    flowintel_log("audit", 200, "SimpleSAML login successful", Email=user.email)
+
+    flash('Logged in via SimpleSAML.', 'success')
+
+    next_url = state_data.get('next', '/')
+    parsed = urlparse(next_url)
+    if parsed.scheme or parsed.netloc or not next_url.startswith('/'):
+        next_url = '/'
+
+    return redirect(next_url)
+
+
+@account_blueprint.route('/saml/metadata')
+def simplesaml_metadata():
+    """Expose SP SAML2 metadata for IdP registration."""
+    if not current_app.config.get('SIMPLESAML_ENABLED'):
+        abort(404)
+    
+    metadata_dir = current_app.config["SIMPLESAML_PYTHON3_SAML_PATH"]
+    metadata_file = current_app.config["SIMPLESAML_METADATA_FILE"]
+    return send_from_directory(
+        metadata_dir,
+        metadata_file,
+        mimetype="application/samlmetadata+xml",
+    )
 
 
 @account_blueprint.route('/logout')

@@ -550,7 +550,7 @@
                 </div>
             </div>
 
-            <!-- ── Keycloak SSO ── -->
+            <!-- ── Keycloak and SimpleSAML SSO ── -->
             <div class="card mb-4" style="box-shadow: 0.1rem 0.3rem 0.5rem rgba(0, 0, 0, 0.1);">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary"><i class="fa-solid fa-shield-halved me-2"></i>Keycloak SSO</h6>
@@ -618,6 +618,100 @@
                             <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queuer <small class="fw-normal text-muted">(KEYCLOAK_ROLE_QUEUER)</small></td>
                                 <td><code>{{ system_info.keycloak_role_queuer }}</code></td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Enabled <small class="fw-normal text-muted">(SIMPLESAML_ENABLED)</small></td>
+                                <td>
+                                    <span class="badge {% if system_info.simplesaml_enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ system_info.simplesaml_enabled }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% if system_info.simplesaml_enabled %}
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy trust <small class="fw-normal text-muted">(SIMPLESAML_TRUST_PROXY_HEADERS)</small></td>
+                                <td><code>{{ system_info.simplesaml_trust_proxy_headers }}</code></td>
+                            </tr>
+                           <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(SIMPLESAML_PYTHON3_SAML_PATH)</small></td>
+                                <td><code>{{ system_info.simplesaml_python3_saml_path }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(SIMPLESAML_SP_ENTITY_ID)</small></td>
+                                <td><code>{{ system_info.simplesaml_sp_entity_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Realm <small class="fw-normal text-muted">(SIMPLESAML_IDP_ENTITY_ID)</small></td>
+                                <td><code>{{ system_info.simplesaml_idp_entity_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_IDP_SSO_URL)</small></td>
+                                <td><code>{{ system_info.simplesaml_idp_sso_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_IDP_SLO_URL)</small></td>
+                                <td><code>{{ system_info.simplesaml_idp_slo_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_SYNC_ROLE_ON_LOGIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_sync_role_on_login }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ACS_URL)</small></td>
+                                <td><code>{{ system_info.simplesaml_acs_url }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ATTR_EMAIL)</small></td>
+                                <td><code>{{ system_info.simplesaml_attr_email }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ATTR_NAME)</small></td>
+                                <td><code>{{ system_info.simplesaml_attr_name }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ATTR_USERNAME)</small></td>
+                                <td><code>{{ system_info.simplesaml_attr_username }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Client ID <small class="fw-normal text-muted">(SIMPLESAML_ATTR_GROUPS)</small></td>
+                                <td><code>{{ system_info.simplesaml_attr_groups }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group admin <small class="fw-normal text-muted">(SIMPLESAML_GROUP_ADMIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group editor <small class="fw-normal text-muted">(SIMPLESAML_GROUP_EDITOR)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_editor }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group read only <small class="fw-normal text-muted">(SIMPLESAML_GROUP_READONLY)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_readonly }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group case admin <small class="fw-normal text-muted">(SIMPLESAML_GROUP_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role case admin <small class="fw-normal text-muted">(SIMPLESAML_ROLE_CASE_ADMIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_role_case_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queue admin <small class="fw-normal text-muted">(SIMPLESAML_GROUP_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queue admin <small class="fw-normal text-muted">(SIMPLESAML_ROLE_QUEUE_ADMIN)</small></td>
+                                <td><code>{{ system_info.simplesaml_role_queue_admin }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Group queuer <small class="fw-normal text-muted">(SIMPLESAML_GROUP_QUEUER)</small></td>
+                                <td><code>{{ system_info.simplesaml_group_queuer }}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Role queuer <small class="fw-normal text-muted">(SIMPLESAML_ROLE_QUEUER)</small></td>
+                                <td><code>{{ system_info.simplesaml_role_queuer }}</code></td>
                             </tr>
                             {% endif %}
                         </tbody>
