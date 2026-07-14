@@ -210,10 +210,9 @@ class Config:
     # =============================================================================
     SIMPLESAML_ENABLED        = os.getenv('SIMPLESAML_ENABLED', 'false').lower() == 'true'
     # Standard approach for config for python3-saml
-    # Note: in settings for Saml, acs is probably analago to redirect in keycloak
+    # Note: in settings for Saml, acs is probably analag to redirect in keycloak
     SIMPLESAML_PYTHON3_SAML_PATH = os.getenv('SIMPLESAML_PYTHON3_SAML_PATH', '/home/flowintel/app/conf/saml')
     #
-    SIMPLESAML_METADATA_DIR      = os.getenv('SIMPLESAML_METADATA_DIR', '/home/flowintel/app/conf/saml')
     SIMPLESAML_METADATA_FILE     = os.getenv('SIMPLESAML_METADATA_FILE', 'saml2_metadata.xml')
     SIMPLESAML_SYNC_ROLE_ON_LOGIN = os.getenv('SIMPLESAML_SYNC_ROLE_ON_LOGIN', 'true').lower() == 'true'
     

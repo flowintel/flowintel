@@ -551,7 +551,7 @@ def simplesaml_metadata():
     if not current_app.config.get('SIMPLESAML_ENABLED'):
         abort(404)
     
-    metadata_dir = current_app.config["SIMPLESAML_METADATA_DIR"]
+    metadata_dir = current_app.config["SIMPLESAML_PYTHON3_SAML_PATH"]
     metadata_file = current_app.config["SIMPLESAML_METADATA_FILE"]
     return send_from_directory(
         metadata_dir,
