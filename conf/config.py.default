@@ -72,7 +72,7 @@ def build_db_uri(DB, env_name):
 
     if not dialect:
         if env_name in ("development", "testing"):
-            return "sqlite:///flowintel.sqlite"
+            return f"sqlite:///flowintel-{env_name}.sqlite"
         raise ValueError("DB_DIALECT must be set explicitely when running outside development and testing")
 
     validate_db_config(dialect, driver, env_name)
