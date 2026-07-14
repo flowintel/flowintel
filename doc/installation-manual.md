@@ -867,7 +867,24 @@ The table below covers all settings from `template.env` (`.env`):
 | `KEYCLOAK_ROLE_QUEUE_ADMIN` | Flowintel role name for QueueAdmin mapping | `QueueAdmin` |
 | `KEYCLOAK_GROUP_QUEUER` | Keycloak group mapped to Queuer | `FlowintelQueuer` |
 | `KEYCLOAK_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
-TODO ADD SIMPLE SAML
+| `SIMPLESAML_ENABLED` | Enable SimpleSaml SSO | `true` or `false` |
+| `SIMPLESAML_PYTHON3_SAML_PATH` | Path to SimpleSaml specific settings | `conf/saml` |
+| `SIMPLESAML_METADATA_FILE` | Name of the SimpleSaml metadata xml file  | `saml2_metadata.xml` |
+| `SIMPLESAML_SYNC_ROLE_ON_LOGIN` | Policy regarding which source takes precedences for role definition (Flowintel or sync on IDP)  | `true` or `false` |
+| `SIMPLESAML_ATTR_EMAIL` | SAML email attribute mapping | `urn:oid:0.9.2342.19200300` |
+| `SIMPLESAML_ATTR_FIRST_NAME` | SAML First Name attribute mapping | `urn:oid:2.5.4.42` |
+| `SIMPLESAML_ATTR_LAST_NAME` | SAML Last Name attribute mapping | `urn:oid:2.5.4.4` |
+| `SIMPLESAML_ATTR_GROUPS` | SAML IDP Group attribute mapping | `urn:oid:1.3.6.1.4.1.23735.100.1` |
+| `SIMPLESAML_GROUP_ADMIN` | Flowintel System Admin Group name | `FlowintelAdmin` |
+| `SIMPLESAML_GROUP_EDITOR` | Flowintel System Editor Group name | `FlowintelEditor` |
+| `SIMPLESAML_GROUP_READONLY` | Flowintel System Read-Only Group name | `FlowintelReadOnly` |
+| `SIMPLESAML_GROUP_CASE_ADMIN` | Flowintel Custom Case Admin group | `FlowintelCaseAdmin` |
+| `SIMPLESAML_ROLE_CASE_ADMIN` | Flowintel Custom Case Admin Role mapping | `CaseAdmin` |
+| `SIMPLESAML_GROUP_QUEUE_ADMIN` | Flowintel Custom Queue Admin group | `FlowintelQueueAdmin` |
+| `SIMPLESAML_ROLE_QUEUE_ADMIN` | Flowintel Custom Queue Admin Role mapping | `QueueAdmin` |
+| `SIMPLESAML_GROUP_QUEUER` | Flowintel Custom Queuer group | `FlowintelQueuer` |
+| `SIMPLESAML_ROLE_QUEUER` | Flowintel Custom Queuer Role mapping | `Queuer` |
+| `SIMPLESAML_GROUP_ALIASES` | Flowintel Custom Roles / IDP group mapping | dict |
 | `WEBHOOK_URL` | Outbound webhook URL for new-case events | `https://example.com/webhook` |
 | `WEBHOOK_ENABLED` | Enable outbound new-case webhook | `false` |
 | `WEBHOOK_SECRET` | HMAC secret for webhook signing | Secret string |
