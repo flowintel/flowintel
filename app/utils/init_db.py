@@ -529,6 +529,35 @@ def create_user_test():
     user.org_id = org.id
     db.session.commit()
 
+    # OrgAdmin + MispEditor user - can manage org-scoped connector instances
+    orgadmin_misp_editor_role = Role.query.filter_by(name="OrgAdminMispEditor").first()
+    if not orgadmin_misp_editor_role:
+        orgadmin_misp_editor_role = Role(
+            name="OrgAdminMispEditor",
+            description="Organization administrator with MISP editor privileges",
+            admin=False,
+            read_only=False,
+            org_admin=True,
+            misp_editor=True
+        )
+        db.session.add(orgadmin_misp_editor_role)
+        db.session.commit()
+
+    user = User(
+        first_name="orgadminmisp",
+        last_name="orgadminmisp",
+        email="orgadminmisp@orgadminmisp.orgadminmisp",
+        password="orgadminmisp",
+        role_id=orgadmin_misp_editor_role.id,
+        api_key="orgadmin_misp_editor_api_key"
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    org = create_user_org(user)
+    user.org_id = org.id
+    db.session.commit()
+
     # Importer user - Editor with importer privilege
     importer_role = Role.query.filter_by(name="Importer").first()
     if not importer_role:

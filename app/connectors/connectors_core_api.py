@@ -41,6 +41,9 @@ def verif_add_instance(data_dict):
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = ""
 
+    if "sharing_scope" not in data_dict or not data_dict["sharing_scope"]:
+        data_dict["sharing_scope"] = ""
+
     return data_dict
 
 def verif_edit_connector(data_dict, cid):
@@ -81,5 +84,8 @@ def verif_edit_instance(data_dict, iid):
 
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = ""
+
+    if "sharing_scope" not in data_dict or not data_dict["sharing_scope"]:
+        data_dict["sharing_scope"] = ""
 
     return data_dict

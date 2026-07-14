@@ -630,7 +630,7 @@ def get_misp_connector_by_user(user_id):
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if instance.global_api_key:
+                if instance.sharing_scope in {"org", "global"}:
                     loc_instance = instance.to_json()
                     if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
                         loc_instance["is_user_global_api"] = True
@@ -1317,4 +1317,3 @@ def get_recent_logins(limit=20):
             "login_date": ev.login_date.strftime(DATETIME_FORMAT_FULL) if ev.login_date else None,
         } for ev, u in rows],
     }
-

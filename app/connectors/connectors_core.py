@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, User_Connector_Instance, Connector_Sync_Log
+from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, User, User_Connector_Instance, Connector_Sync_Log
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -24,6 +24,66 @@ def get_instances(cid):
 def get_instance(iid):
     """Return an instance of a connector"""
     return Connector_Instance.query.get(iid)
+
+
+def get_instance_sharing_scope(instance):
+    """Return the visibility scope for a connector instance."""
+    if getattr(instance, "sharing_scope", None) in {"personal", "org", "global"}:
+        return instance.sharing_scope
+    if instance.shared_org_id:
+        return "org"
+    if instance.global_api_key:
+        return "global"
+    return "personal"
+
+
+def is_instance_visible_to_user(instance, user):
+    """Return True if a connector instance is visible to the user."""
+    if user.is_admin():
+        return True
+
+    scope = get_instance_sharing_scope(instance)
+    if scope == "global":
+        return True
+    if scope == "org":
+        return instance.shared_org_id == user.org_id
+    return bool(get_user_instance_both(user_id=user.id, instance_id=instance.id))
+
+
+def can_user_manage_instance(instance, user):
+    """Return True if a user can edit/delete the connector instance."""
+    if user.is_admin():
+        return True
+    
+    scope = get_instance_sharing_scope(instance)
+    if scope == "org":
+        return user.is_org_admin() and user.is_misp_editor() and instance.shared_org_id == user.org_id
+    if scope == "global":
+        return user.is_admin()
+    return bool(get_user_instance_both(user_id=user.id, instance_id=instance.id))
+
+
+def normalize_instance_sharing_scope(form_dict, user):
+    """Normalize legacy and current sharing scope inputs."""
+    scope = form_dict.get("sharing_scope")
+    if scope in {"personal", "org", "global"}:
+        return scope
+
+    if form_dict.get("is_global_connector"):
+        if user.is_admin():
+            return "global"
+        if user.is_org_admin():
+            return "org"
+    return "personal"
+
+
+def can_user_use_sharing_scope(user, sharing_scope):
+    """Return True if the user can create or edit an instance with this scope."""
+    if sharing_scope == "global":
+        return user.is_admin()
+    if sharing_scope == "org":
+        return user.is_admin() or (user.is_org_admin() and user.is_misp_editor())
+    return user.is_admin() or user.is_misp_editor()
 
 
 def instance_has_links(instance_id):
@@ -246,6 +306,10 @@ def add_connector_core(form_dict):
     return connector
 
 def add_connector_instance_core(cid, form_dict, user_id):
+    user = User.query.get(user_id)
+    sharing_scope = normalize_instance_sharing_scope(form_dict, user)
+    global_api_key = form_dict["api_key"] if sharing_scope in {"org", "global"} else None
+    shared_org_id = user.org_id if sharing_scope == "org" else None
 
     connector = Connector_Instance(
         name=form_dict["name"],
@@ -253,18 +317,21 @@ def add_connector_instance_core(cid, form_dict, user_id):
         url=form_dict["url"],
         uuid=str(uuid.uuid4()),
         connector_id=cid,
-        global_api_key=form_dict["api_key"] if form_dict["is_global_connector"] else None
+        global_api_key=global_api_key,
+        shared_org_id=shared_org_id,
+        sharing_scope=sharing_scope
     )
     db.session.add(connector)
     db.session.commit()
 
-    user_connector = User_Connector_Instance(
-        user_id=user_id,
-        instance_id=connector.id,
-        api_key=form_dict["api_key"]
-    )
-    db.session.add(user_connector)
-    db.session.commit()
+    if sharing_scope == "personal":
+        user_connector = User_Connector_Instance(
+            user_id=user_id,
+            instance_id=connector.id,
+            api_key=form_dict["api_key"]
+        )
+        db.session.add(user_connector)
+        db.session.commit()
     return connector
 
 
@@ -319,17 +386,37 @@ def edit_connector_core(cid, form_dict):
 def edit_connector_instance_core(iid, form_dict):
     instance_db = get_instance(iid)
     if instance_db:
+        user = User.query.get(form_dict["acting_user_id"])
+        sharing_scope = normalize_instance_sharing_scope(form_dict, user)
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
-        if form_dict["api_key"]:
-            if "is_global_connector" in form_dict and form_dict["is_global_connector"]:
+        instance_db.sharing_scope = sharing_scope
+        if sharing_scope == "global":
+            instance_db.shared_org_id = None
+            if form_dict["api_key"]:
                 instance_db.global_api_key = form_dict["api_key"]
-            else:
-                user_instance = get_user_instance_by_instance(iid)
+        elif sharing_scope == "org":
+            instance_db.shared_org_id = user.org_id
+            if form_dict["api_key"]:
+                instance_db.global_api_key = form_dict["api_key"]
+        else:
+            instance_db.shared_org_id = None
+            instance_db.global_api_key = None
+            user_instance = get_user_instance_by_instance(iid)
+            if not user_instance:
+                user_instance = User_Connector_Instance(
+                    user_id=user.id,
+                    instance_id=iid,
+                    api_key=""
+                )
+            if form_dict["api_key"]:
                 user_instance.api_key = form_dict["api_key"]
-                db.session.add(user_instance)
-                db.session.commit()
+            db.session.add(user_instance)
+            db.session.commit()
+
+        if sharing_scope in {"org", "global"}:
+            User_Connector_Instance.query.filter_by(instance_id=iid).delete()
 
         db.session.add(instance_db)
         db.session.commit()

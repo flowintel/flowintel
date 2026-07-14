@@ -49,8 +49,15 @@
                         <div class="text-danger small">{{form.api_key.errors[0] | safe}}</div>
                     {%endif%}
                 </div>
+                <div class="col-md-6 mb-3">
+                    <label class="col-form-label"><i class="fa-solid fa-users-viewfinder me-1"></i>{{form.sharing_scope.label.text}}:</label>
+                    {{form.sharing_scope(class_="form-select")}}
+                    {% if form.sharing_scope.errors %}
+                        <div class="text-danger small">{{form.sharing_scope.errors[0] | safe}}</div>
+                    {%endif%}
+                </div>
             </div>
-            <div class="mb-3" title="By checking this box this instance will be available for all users. Only admins can edit global instances.">
+            <div class="mb-3 d-none" title="Legacy compatibility field. Sharing is now controlled by the scope selector.">
                 <i class="fa-solid fa-globe me-1"></i>{{form.is_global_connector.label(class_="col-form-label")}}:
                 {{form.is_global_connector(class_="mx-2")}}
                 {% if form.is_global_connector.errors %}

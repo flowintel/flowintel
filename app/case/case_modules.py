@@ -22,7 +22,11 @@ def get_connectors():
     for connector in connectors_list:
         loc = list()
         for instance in connector.instances:
-            if instance.global_api_key or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+            if (
+                instance.sharing_scope == "global"
+                or (instance.sharing_scope == "org" and instance.shared_org_id == current_user.org_id)
+                or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id)
+            ):
                 loc.append(instance.to_json())
         if loc:
             connectors_dict[connector.name] = loc

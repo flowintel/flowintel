@@ -1527,12 +1527,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         _, res = get_modules_list()
         if "connector" in res[module]["config"]:
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
+            current_user = User.query.get(user_id)
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                if (
+                    instance.sharing_scope == "global"
+                    or (instance.sharing_scope == "org" and current_user and instance.shared_org_id == current_user.org_id)
+                    or CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id)
+                ):
                     loc_instance = instance.to_json()
                     identifier = CommonModel.get_case_connector_id(instance.id, case_id)
-                    loc_instance["identifier"] = identifier.identifier
+                    loc_instance["identifier"] = identifier.identifier if identifier else ""
                     instance_list.append(loc_instance)
             return instance_list
         return []
@@ -1544,7 +1549,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def add_connector(self, cid, request_json, current_user) -> bool:
         for connector in request_json["connectors"]:
-            instance = CommonModel.get_instance_by_name(connector["name"])
+            instance = None
+            if "id" in connector:
+                instance = CommonModel.get_instance(connector["id"])
+            if not instance and "name" in connector:
+                instance = CommonModel.get_instance_by_name(connector["name"])
+            if not instance:
+                return False
+            if (
+                instance.sharing_scope == "org"
+                and instance.shared_org_id != current_user.org_id
+            ):
+                return False
+            if (
+                instance.sharing_scope == "personal"
+                and not CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id)
+            ):
+                return False
             if Case_Connector_Instance.query.filter_by(case_id=cid, instance_id=instance.id).first():
                 continue
             if "identifier" in connector: loc_identfier = connector["identifier"]

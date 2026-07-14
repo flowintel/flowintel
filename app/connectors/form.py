@@ -31,6 +31,7 @@ class AddConnectorInstanceForm(FlaskForm):
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
+    sharing_scope = SelectField('Sharing scope', choices=[('personal', 'Personal')], default='personal', validators=[Optional()])
     
     submit = SubmitField('Add')
     
@@ -66,6 +67,7 @@ class EditConnectorInstanceForm(FlaskForm):
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
     api_key = StringField('Api key', validators=[Optional(), Length(0, 100)])
     is_global_connector = BooleanField('Global connector', validators=[Optional()])
+    sharing_scope = SelectField('Sharing scope', choices=[('personal', 'Personal')], default='personal', validators=[Optional()])
     
     submit = SubmitField('Modify')
     

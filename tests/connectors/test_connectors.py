@@ -2,6 +2,8 @@ ADMIN_KEY = "admin_api_key"
 EDITOR_KEY = "editor_api_key"
 READ_KEY = "read_api_key"
 MISP_EDITOR_KEY = "misp_editor_api_key"
+ORGADMIN_KEY = "orgadmin_api_key"
+ORGADMIN_MISP_KEY = "orgadmin_misp_editor_api_key"
 
 
 def create_connector(client, name="Test Connector", description="A test connector"):
@@ -11,18 +13,30 @@ def create_connector(client, name="Test Connector", description="A test connecto
                        json={"name": name, "description": description})
 
 
-def create_instance(client, connector_id, name="Test Instance", api_key=MISP_EDITOR_KEY):
+def create_instance(client, connector_id, name="Test Instance", api_key=MISP_EDITOR_KEY, payload=None):
+    json_payload = {
+        "name": name,
+        "description": "A test instance",
+        "type_select": "send_to",
+        "url": "https://example.com",
+        "api_key": "test-api-key-12345",
+        "is_global_connector": False
+    }
+    if payload:
+        json_payload.update(payload)
     return client.post(f"/api/connectors/{connector_id}/add_instance",
                        content_type="application/json",
                        headers={"X-API-KEY": api_key},
-                       json={
-                           "name": name,
-                           "description": "A test instance",
-                           "type_select": "send_to",
-                           "url": "https://example.com",
-                           "api_key": "test-api-key-12345",
-                           "is_global_connector": False
-                       })
+                       json=json_payload)
+
+
+def create_case(client, api_key=ADMIN_KEY, title="Test Case"):
+    return client.post(
+        "/api/case/create",
+        content_type="application/json",
+        headers={"X-API-KEY": api_key},
+        json={"title": title}
+    )
 
 
 ####################
@@ -130,6 +144,153 @@ def test_create_instance_editor_denied(client):
     assert response.status_code == 403
 
 
+def test_create_instance_orgadmin_denied_without_misp_editor(client):
+    """OrgAdmin alone should not be able to create instances."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(client, cid, name="Should fail", api_key=ORGADMIN_KEY)
+    assert response.status_code == 403
+
+
+def test_create_global_instance_admin(client):
+    """Admin should be able to create a platform-global instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(
+        client,
+        cid,
+        api_key=ADMIN_KEY,
+        payload={"sharing_scope": "global", "is_global_connector": True}
+    )
+    assert response.status_code == 200
+
+    instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": EDITOR_KEY})
+    assert instances.status_code == 200
+    assert instances.json["instances"][0]["sharing_scope"] == "global"
+
+
+def test_create_global_instance_orgadmin_denied(client):
+    """OrgAdmin should not be able to create a platform-global instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "global", "is_global_connector": True}
+    )
+    assert response.status_code == 403
+
+
+def test_create_org_shared_instance_orgadmin(client):
+    """OrgAdmin should be able to create an org-shared instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+    assert response.status_code == 200
+
+    instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": ORGADMIN_MISP_KEY})
+    assert instances.status_code == 200
+    assert instances.json["instances"][0]["sharing_scope"] == "org"
+
+
+def test_create_org_shared_instance_without_api_key_keeps_scope(client):
+    """Org-shared instances should stay org-scoped even without a shared API key."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True, "api_key": ""}
+    )
+    assert response.status_code == 200
+
+    instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": ORGADMIN_MISP_KEY})
+    assert instances.status_code == 200
+    assert instances.json["instances"][0]["sharing_scope"] == "org"
+
+
+def test_create_global_instance_without_api_key_keeps_scope(client):
+    """Global instances should stay global-scoped even without a shared API key."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+
+    response = create_instance(
+        client,
+        cid,
+        api_key=ADMIN_KEY,
+        payload={"sharing_scope": "global", "is_global_connector": True, "api_key": ""}
+    )
+    assert response.status_code == 200
+
+    instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": EDITOR_KEY})
+    assert instances.status_code == 200
+    assert instances.json["instances"][0]["sharing_scope"] == "global"
+
+
+def test_org_shared_instance_hidden_from_other_orgs(client):
+    """Org-shared instances should not be visible outside the owning organisation."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+
+    own_org_instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": ORGADMIN_MISP_KEY})
+    other_org_instances = client.get(f"/api/connectors/{cid}/instances", headers={"X-API-KEY": MISP_EDITOR_KEY})
+
+    assert own_org_instances.status_code == 200
+    assert len(own_org_instances.json["instances"]) == 1
+    assert other_org_instances.status_code == 200
+    assert other_org_instances.json["instances"] == []
+
+
+def test_add_org_shared_instance_to_case(client):
+    """An org-shared connector instance should be attachable to a case in the same org."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    instance_response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+    instance_id = instance_response.json["connector_id"]
+
+    case_response = create_case(client, api_key=ORGADMIN_MISP_KEY, title="Org Scoped Connector Case")
+    case_id = case_response.json["case_id"]
+
+    attach_response = client.post(
+        f"/api/case/{case_id}/add_connectors",
+        content_type="application/json",
+        headers={"X-API-KEY": ORGADMIN_MISP_KEY},
+        json={"connectors": [{"id": instance_id, "name": "Test Instance", "identifier": "org-scope-id"}]}
+    )
+    assert attach_response.status_code == 200
+
+    case_connectors = client.get(
+        f"/api/case/get_case_connectors/{case_id}",
+        headers={"X-API-KEY": ORGADMIN_MISP_KEY}
+    )
+    assert case_connectors.status_code == 200
+    assert len(case_connectors.json["connectors"]) == 1
+    assert case_connectors.json["connectors"][0]["id"] == instance_id
+
+
 def test_create_instance_no_url(client):
     """Creating an instance without a URL should fail"""
     create_response = create_connector(client)
@@ -201,6 +362,40 @@ def test_delete_instance_editor_denied(client):
     assert response.status_code == 403
 
 
+def test_delete_org_shared_instance_orgadmin(client):
+    """OrgAdmin should be able to delete an org-shared instance from their organisation."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    instance_response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+    iid = instance_response.json["connector_id"]
+
+    response = client.get(f"/api/connectors/{cid}/instance/{iid}/delete",
+                          headers={"X-API-KEY": ORGADMIN_MISP_KEY})
+    assert response.status_code == 200
+
+
+def test_delete_org_shared_instance_admin_denied(client):
+    """Admin should not be able to delete an org-scoped instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    instance_response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+    iid = instance_response.json["connector_id"]
+
+    response = client.get(f"/api/connectors/{cid}/instance/{iid}/delete",
+                          headers={"X-API-KEY": ADMIN_KEY})
+    assert response.status_code == 403
+
+
 #####################
 ## Edit instance ##
 #####################
@@ -246,6 +441,44 @@ def test_edit_instance_duplicate_name(client):
                            json={"name": "Test Instance"})
     assert response.status_code == 400
     assert "Name already exist" in response.json["message"]
+
+
+def test_edit_global_instance_orgadmin_denied(client):
+    """OrgAdmin should not be able to take over a platform-global instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    instance_response = create_instance(
+        client,
+        cid,
+        api_key=ADMIN_KEY,
+        payload={"sharing_scope": "global", "is_global_connector": True}
+    )
+    iid = instance_response.json["connector_id"]
+
+    response = client.post(f"/api/connectors/{cid}/edit_instance/{iid}",
+                           content_type="application/json",
+                           headers={"X-API-KEY": ORGADMIN_MISP_KEY},
+                           json={"name": "Hijacked Instance"})
+    assert response.status_code == 403
+
+
+def test_edit_org_shared_instance_admin_denied(client):
+    """Admin should not be able to edit an org-scoped instance."""
+    create_response = create_connector(client)
+    cid = create_response.json["connector_id"]
+    instance_response = create_instance(
+        client,
+        cid,
+        api_key=ORGADMIN_MISP_KEY,
+        payload={"sharing_scope": "org", "is_global_connector": True}
+    )
+    iid = instance_response.json["connector_id"]
+
+    response = client.post(f"/api/connectors/{cid}/edit_instance/{iid}",
+                           content_type="application/json",
+                           headers={"X-API-KEY": ADMIN_KEY},
+                           json={"name": "Admin Edit Attempt"})
+    assert response.status_code == 403
 
 
 def test_edit_instance_invalid_url(client):

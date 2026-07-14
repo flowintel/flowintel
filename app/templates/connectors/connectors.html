@@ -100,9 +100,9 @@
                                 <template v-for="instance in instances_table[connector.id]">
                                     <tr>
                                         <td title="Name of the instance">[[instance.name]]</td>
-                                        <td v-if="instance.global_api_key">
-                                            <small title="This instance is globally set and can be modify only by the creator">
-                                                <span class="badge rounded-pill text-bg-success">Global</span>
+                                        <td v-if="instance.sharing_scope !== 'personal'">
+                                            <small :title="instance.sharing_scope === 'org' ? 'This instance is shared with your organisation' : 'This instance is shared platform-wide and can only be managed by admins'">
+                                                <span class="badge rounded-pill text-bg-success">[[ instance.sharing_scope === 'org' ? 'Org' : 'Global' ]]</span>
                                             </small>
                                         </td>
                                         <td v-else></td>
@@ -114,21 +114,19 @@
                                         <td><i>api key set</i></td>
                                         
                                         <td>
-                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
-                                            <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
+                                            <a v-if="instance.can_manage" class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            {% endif %}
                                             <button v-if="connector.name.toLowerCase() === 'misp'" class="btn btn-info btn-sm" type="button" title="Check connectivity" @click="check_misp_connectivity(connector.id, instance.id)">
                                                 <i class="fa-solid fa-plug"></i>
                                             </button>
                                             <button class="btn btn-outline-secondary btn-sm" type="button" title="Cases using this instance" @click="openCasesModal(connector.id, instance)">
                                                 <i class="fa-solid fa-folder-open"></i>
                                             </button>
-                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
                                             <span
                                                 :title="instance.has_links ? 'Cannot delete instance linked to cases/tasks' : 'Delete the instance'"
                                                 style="display: inline-block;"
+                                                v-if="instance.can_manage"
                                             >
                                                 <button class="btn btn-danger btn-sm" type="button"
                                                     :disabled="instance.has_links"
@@ -136,7 +134,6 @@
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </span>
-                                            {% endif %}
                                         </td>
                                     </tr>
 

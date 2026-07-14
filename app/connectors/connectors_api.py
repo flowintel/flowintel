@@ -36,8 +36,10 @@ class Getinstances(Resource):
         if connector:
             instance_list = list()
             for instance in connector.instances:
-                if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                    instance_list.append(instance.to_json())
+                if ConnectorModel.is_instance_visible_to_user(instance, current_user):
+                    loc_instance = instance.to_json()
+                    loc_instance["can_manage"] = ConnectorModel.can_user_manage_instance(instance, current_user)
+                    instance_list.append(loc_instance)
             return {"instances": instance_list}, 200
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
@@ -81,7 +83,7 @@ class EditConnector(Resource):
 @connectors_ns.route('/<cid>/add_instance', methods=['POST'])
 @connectors_ns.doc(description='Add a new instance of a connector')
 class AddInstance(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [api_required]
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
@@ -90,10 +92,16 @@ class AddInstance(Resource):
     })
     def post(self, cid):
         if ConnectorModel.get_connector(cid):
+            current_user = utils.get_user_from_api(request.headers)
+            if not ConnectorModel.can_user_use_sharing_scope(current_user, "personal"):
+                return {"message": "Permission denied"}, 403
             if request.json:
                 verif_dict = ConnectorModelApi.verif_add_instance(request.json)
                 if not "message" in verif_dict:
-                    instance = ConnectorModel.add_connector_instance_core(cid, verif_dict, utils.get_user_from_api(request.headers).id)
+                    sharing_scope = ConnectorModel.normalize_instance_sharing_scope(verif_dict, current_user)
+                    if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
+                        return {"message": "Permission denied for requested sharing scope"}, 403
+                    instance = ConnectorModel.add_connector_instance_core(cid, verif_dict, current_user.id)
                     if instance:
                         return {"message": "Instance created", "connector_id": instance.id}, 200
                     return {"message": "Error creating instance"}, 400
@@ -104,7 +112,7 @@ class AddInstance(Resource):
 @connectors_ns.route('/<cid>/edit_instance/<iid>', methods=['POST'])
 @connectors_ns.doc(description='Edit an instance of a connector')
 class EditInstance(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [api_required]
     @connectors_ns.doc(params={
         "name": "Required. Name of the connector",
         "description": "Description of the connector",
@@ -114,12 +122,19 @@ class EditInstance(Resource):
     def post(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             current_user = utils.get_user_from_api(request.headers)
-            if not (ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=iid) or current_user.is_admin()):
-                flowintel_log("audit", 403, "API: Edit connector instance denied: not owner", User=current_user.email, ConnectorId=cid, InstanceId=iid)
+            instance = ConnectorModel.get_instance(iid)
+            if not instance:
+                return {"message": "Instance not found"}, 404
+            if not ConnectorModel.can_user_manage_instance(instance, current_user):
+                flowintel_log("audit", 403, "API: Edit connector instance denied", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                 return {"message": "Permission denied"}, 403
             if request.json:
                 verif_dict = ConnectorModelApi.verif_edit_instance(request.json, iid)
                 if not "message" in verif_dict:
+                    sharing_scope = ConnectorModel.normalize_instance_sharing_scope(verif_dict, current_user)
+                    if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
+                        return {"message": "Permission denied for requested sharing scope"}, 403
+                    verif_dict["acting_user_id"] = current_user.id
                     ConnectorModel.edit_connector_instance_core(iid, verif_dict)
                     flowintel_log("audit", 200, "API: Connector instance edited", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message": "Instance edited", "connector_id": int(iid)}, 200
@@ -141,13 +156,14 @@ class DeleteConnector(Resource):
 @connectors_ns.route('/<cid>/instance/<iid>/delete')
 @connectors_ns.doc(description='Delete an instance of connector')
 class DeleteInstanceConnector(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [api_required]
     def get(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             if ConnectorModel.get_instance(iid):
                 current_user = utils.get_user_from_api(request.headers)
-                if not (ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=iid) or current_user.is_admin()):
-                    flowintel_log("audit", 403, "API: Delete connector instance denied: not owner", User=current_user.email, ConnectorId=cid, InstanceId=iid)
+                instance = ConnectorModel.get_instance(iid)
+                if not ConnectorModel.can_user_manage_instance(instance, current_user):
+                    flowintel_log("audit", 403, "API: Delete connector instance denied", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message": "Permission denied"}, 403
                 if ConnectorModel.instance_has_links(iid):
                     return {"message":"Instance is linked to a case or task"}, 400
