@@ -639,6 +639,7 @@ def system_settings():
 
         # Configuration
         'flowintel_app_env': flowintel_app_env,
+        'env_name': current_app.config.get('ENV_NAME', ''),
         'secret_key_set': current_app.config.get('SECRET_KEY', '') not in ('', 'SECRET_KEY_ENV_VAR_NOT_SET'),
         'debug': current_app.config.get('DEBUG', False),
         'session_type': current_app.config.get('SESSION_TYPE'),
