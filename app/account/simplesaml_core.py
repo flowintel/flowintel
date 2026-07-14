@@ -95,15 +95,66 @@ def _group_aliases():
 # See _init_saml_auth() and get_or_create_sso_user() below.
 # ---------------------------------------------------------------------------
 def _prepare_flask_request(req: Request) -> dict:
+    """Build the request dict python3-saml uses to validate SAML messages.
+
+    python3-saml reconstructs a "self URL" (scheme + host + port) from this
+    dict and compares it against the configured ACS URL during strict
+    validation. Behind a reverse proxy (e.g. Nginx terminating TLS on 443
+    and forwarding to the app on an internal port), the raw request seen by
+    Flask reflects the internal connection, not the public-facing one,
+    causing false-positive `invalid_response` errors.
+
+    When SIMPLESAML_TRUST_PROXY_HEADERS is enabled, scheme/host/port are
+    read strictly from the X-Forwarded-* headers instead of the raw
+    request, with no fallback to the raw request values. This is only
+    safe if the reverse proxy unconditionally overwrites (not appends to)
+    these headers for every request it forwards, otherwise a client could
+    spoof them and bypass SAML's origin validation entirely. If any header
+    is missing, this raises immediately rather than silently falling back,
+    since a silent fallback would surface as a confusing SAML validation
+    failure instead of an obvious Nginx misconfiguration.
+
+    Args:
+        req: The current Flask request object (SAML login redirect or
+            ACS callback).
+
+    Returns:
+        dict: Request data in the format expected by
+        `OneLogin_Saml2_Auth`, with keys 'https', 'http_host',
+        'server_port', 'script_name', 'get_data', 'post_data', and
+        'query_string'.
+
+    Raises:
+        RuntimeError: If SIMPLESAML_TRUST_PROXY_HEADERS is enabled but
+            one or more required X-Forwarded-* headers are missing from
+            the incoming request.
+    """
+    trusted_proxy = current_app.config.get('SIMPLESAML_TRUST_PROXY_HEADERS', False)
+
+    if trusted_proxy:
+        scheme = req.headers.get('X-Forwarded-Proto', req.scheme)
+        http_host = req.headers.get('X-Forwarded-Host', req.host)
+        server_port = req.headers.get('X-Forwarded-Port')
+        if not all([scheme, http_host, server_port]):
+            raise RuntimeError(
+                "SIMPLESAML_TRUST_PROXY_HEADERS is enabled but required "
+                "X-Forwarded-* headers are missing — check Nginx config."
+            )
+    else:
+        scheme = req.scheme
+        http_host = req.host
+        server_port = req.environ.get('SERVER_PORT')
+
+
     return {
-        'https': 'on' if req.scheme == 'https' else 'off',
-        'http_host': req.host,
+        'https': 'on' if scheme == 'https' else 'off',
+        'http_host': http_host,
         # it comes from the incoming WSGI request environment
         # reflects the actual request the server received, including the port used on that request
         # should be provided automatically by flask dev server, wsgi server like Gunicorn or reverse proxy like Nginx
         # may need to configure Flask/Werkzeug to trust forwarded headers so scheme/host/port reflect the external request correctly.
         # potential not ideal deployment workaround: omit server_port or force HTTPS-related values when the proxy setup is stable
-        'server_port': req.environ.get('SERVER_PORT'),
+        'server_port': server_port,
         #
         'script_name': req.path,
         'get_data': req.args.copy(),
