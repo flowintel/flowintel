@@ -59,7 +59,7 @@ def job():
                         cp += 1
             db.session.commit()
             print(f"[+] Finished. {cp} new notifications")
-        except Exception:
+        except Exception as e:
             # Roll back uncommitted changes for the current job transaction.
             db.session.rollback()
             print(f"[!] Error while processing recurring notifications: {type(e).__name__}: {e}")
