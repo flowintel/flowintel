@@ -41,8 +41,16 @@ export default {
         // Inline identifier editing
         const identifier_editing = ref(false)
         const identifier_draft = ref('')
+        const connector_info_expanded = ref(false)
+        const can_view_extended_details = computed(() => {
+            const permission = props.cases_info && props.cases_info.permission
+            if (!permission) return false
+            if (permission.admin) return true
+            return !!(permission.case_admin && props.cases_info.present_in_case)
+        })
 
         function start_edit_identifier() {
+            if (!sync_selected_instance.value?.can_interact_connector) return
             identifier_draft.value = sync_selected_instance.value?.identifier || ''
             identifier_editing.value = true
         }
@@ -58,7 +66,7 @@ export default {
 
         async function save_edit_identifier() {
             const inst = sync_selected_instance.value
-            if (!inst) return
+            if (!inst || !inst.can_interact_connector) return
             const url = '/case/' + getCaseId() + '/connectors/' + inst.case_task_instance_id + '/edit_connector'
             const res = await fetch(url, {
                 method: 'POST',
@@ -198,6 +206,10 @@ export default {
         watch(sync_selected_instance, () => {
             identifier_editing.value = false
             identifier_draft.value = ''
+            connector_info_expanded.value = false
+        })
+        watch(search_selected_instance, () => {
+            connector_info_expanded.value = false
         })
         watch([sync_selected_instance, sync_direction], async ([inst, dir]) => {
             if (props.mode !== 'sync' || !inst) return
@@ -220,6 +232,8 @@ export default {
             sync_logs_map,
             identifier_editing,
             identifier_draft,
+            connector_info_expanded,
+            can_view_extended_details,
             set_sync_direction,
             refresh_sync_logs,
             start_edit_identifier,
@@ -247,6 +261,7 @@ export default {
                             @click="sync_instance_idx = i">
                             <img :src="'/static/icons/'+inst.details.icon" style="max-width:20px; flex-shrink:0;">
                             <span class="text-truncate small">[[ inst.details.name ]]</span>
+                            <span v-if="!inst.can_use_connector" class="badge bg-light text-muted border ms-auto">view only</span>
                         </div>
                     </div>
                     <!-- Right: content -->
@@ -265,6 +280,27 @@ export default {
                                             <i class="fa-solid fa-rotate fa-xs me-1"></i>
                                             <span v-if="sync_selected_instance.last_sync">Last sync: [[ sync_selected_instance.last_sync ]]</span>
                                             <span v-else class="fst-italic">Never synced</span>
+                                        </div>
+                                        <div v-if="sync_selected_instance.details.description" class="small text-muted mt-1">
+                                            [[ sync_selected_instance.details.description ]]
+                                        </div>
+                                        <div v-if="can_view_extended_details && sync_selected_instance.admin_details" class="mt-2">
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                    @click="connector_info_expanded = !connector_info_expanded">
+                                                <i :class="connector_info_expanded ? 'fa-solid fa-chevron-down fa-xs me-1' : 'fa-solid fa-chevron-right fa-xs me-1'"></i>
+                                                Connector info
+                                            </button>
+                                            <div v-if="connector_info_expanded" class="small mt-2 text-muted">
+                                                <div><span class="fw-semibold">Connector:</span> [[ sync_selected_instance.admin_details.connector_name || 'Unknown' ]]</div>
+                                                <div><span class="fw-semibold">Case link ID:</span> [[ sync_selected_instance.admin_details.case_connector_id ]]</div>
+                                                <div><span class="fw-semibold">Instance ID:</span> [[ sync_selected_instance.admin_details.instance_id ]]</div>
+                                                <div><span class="fw-semibold">Connector ID:</span> [[ sync_selected_instance.admin_details.connector_id ]]</div>
+                                                <div><span class="fw-semibold">Scope:</span> [[ sync_selected_instance.admin_details.sharing_scope || 'personal' ]]</div>
+                                                <div v-if="sync_selected_instance.admin_details.shared_org_id"><span class="fw-semibold">Shared org ID:</span> [[ sync_selected_instance.admin_details.shared_org_id ]]</div>
+                                                <div v-if="sync_selected_instance.admin_details.owner_user_name"><span class="fw-semibold">Owner user:</span> [[ sync_selected_instance.admin_details.owner_user_name ]]</div>
+                                                <div v-if="sync_selected_instance.admin_details.owner_org_name"><span class="fw-semibold">Owner org:</span> [[ sync_selected_instance.admin_details.owner_org_name ]]<template v-if="sync_selected_instance.admin_details.owner_org_id"> (#[[ sync_selected_instance.admin_details.owner_org_id ]])</template></div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="small mt-1 ms-4 d-flex gap-1">
@@ -289,13 +325,16 @@ export default {
                                                 [[ sync_selected_instance.identifier || 'None' ]]
                                             </span>
                                             <span>
-                                                <button v-if="is_case" class="btn btn-link btn-sm p-0 ms-1" style="color:var(--bs-primary); line-height:1;" @click="start_edit_identifier()" title="Edit identifier">
+                                                <button v-if="is_case && sync_selected_instance.can_interact_connector" class="btn btn-link btn-sm p-0 ms-1" style="color:var(--bs-primary); line-height:1;" @click="start_edit_identifier()" title="Edit identifier">
                                                     <i class="fa-solid fa-pen fa-xs"></i>
                                                 </button>
                                             </span>
                                         </template>
                                     </div>
                                 </div>
+                            </div>
+                            <div v-if="!sync_selected_instance.can_use_connector && sync_direction !== 'logs'" class="alert alert-info py-2 px-3 mb-3">
+                                You can inspect which objects are synced with this connector, but only connectors you can use directly are interactive.
                             </div>
                             <!-- Direction tabs: Send / Receive / Logs -->
                             <ul class="nav nav-tabs mb-3">
@@ -321,6 +360,7 @@ export default {
                                         :ref="el => sync_panel_ref = el"
                                         :case_id="object_id"
                                         :instance="sync_selected_instance"
+                                        :can_use_connector="!!sync_selected_instance.can_use_connector"
                                         :direction="sync_direction"
                                         :modules="modules"
                                         :case_misp_objects_list="case_misp_objects_list"
@@ -410,7 +450,28 @@ export default {
                                 <button class="btn btn-sm btn-outline-secondary flex-shrink-0" @click="sidebar_visible = !sidebar_visible" :title="sidebar_visible ? 'Hide instances' : 'Show instances'">
                                     <i :class="sidebar_visible ? 'fa-solid fa-chevron-left fa-xs' : 'fa-solid fa-chevron-right fa-xs'"></i>
                                 </button>
-                                <a :href="search_selected_instance.details.url" class="text-primary small fw-semibold" target="_blank">[[ search_selected_instance.details.url ]]</a>
+                                <div>
+                                    <a :href="search_selected_instance.details.url" class="text-primary small fw-semibold" target="_blank">[[ search_selected_instance.details.url ]]</a>
+                                    <div v-if="search_selected_instance.details.description" class="small text-muted mt-1">[[ search_selected_instance.details.description ]]</div>
+                                    <div v-if="can_view_extended_details && search_selected_instance.admin_details" class="mt-2">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                @click="connector_info_expanded = !connector_info_expanded">
+                                            <i :class="connector_info_expanded ? 'fa-solid fa-chevron-down fa-xs me-1' : 'fa-solid fa-chevron-right fa-xs me-1'"></i>
+                                            Connector info
+                                        </button>
+                                        <div v-if="connector_info_expanded" class="small mt-2 text-muted">
+                                            <div><span class="fw-semibold">Instance ID:</span> [[ search_selected_instance.admin_details.instance_id ]]</div>
+                                            <div><span class="fw-semibold">Scope:</span> [[ search_selected_instance.admin_details.sharing_scope || 'personal' ]]</div>
+                                            <div v-if="search_selected_instance.admin_details.shared_org_id"><span class="fw-semibold">Shared org ID:</span> [[ search_selected_instance.admin_details.shared_org_id ]]</div>
+                                            <div v-if="search_selected_instance.admin_details.owner_user_name"><span class="fw-semibold">Owner user:</span> [[ search_selected_instance.admin_details.owner_user_name ]]</div>
+                                            <div v-if="search_selected_instance.admin_details.owner_org_name"><span class="fw-semibold">Owner org:</span> [[ search_selected_instance.admin_details.owner_org_name ]]</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="!search_selected_instance.can_use_connector" class="alert alert-info py-2 px-3 mb-3">
+                                This connector is visible on the case for tracking purposes, but search is only available on connectors you can use directly.
                             </div>
                             <div class="alert alert-info border-0 py-2 px-3 mb-2 d-flex align-items-start" style="background-color: #eaf4fb;">
                                 <i class="fa-solid fa-circle-info mt-1 me-2 text-primary"></i>
@@ -423,9 +484,9 @@ export default {
                             <form @submit.prevent="submit_misp_search(search_selected_instance)" class="d-flex align-items-center mb-2">
                                 <input type="text" class="form-control me-2" placeholder="Search attributes in MISP..."
                                     v-model="get_misp_search(search_selected_instance.case_task_instance_id).query"
-                                    :disabled="get_misp_search(search_selected_instance.case_task_instance_id).loading">
+                                    :disabled="get_misp_search(search_selected_instance.case_task_instance_id).loading || !search_selected_instance.can_use_connector">
                                 <button type="submit" class="btn btn-primary"
-                                    :disabled="get_misp_search(search_selected_instance.case_task_instance_id).loading || !get_misp_search(search_selected_instance.case_task_instance_id).query.trim()">
+                                    :disabled="get_misp_search(search_selected_instance.case_task_instance_id).loading || !get_misp_search(search_selected_instance.case_task_instance_id).query.trim() || !search_selected_instance.can_use_connector">
                                     <template v-if="get_misp_search(search_selected_instance.case_task_instance_id).loading">
                                         <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                                         <span role="status">Searching...</span>

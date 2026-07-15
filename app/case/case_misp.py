@@ -4,12 +4,36 @@ from flask_login import login_required, current_user
 from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from ..connectors import connectors_core as ConnectorsModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Misp_Object_Instance_Uuid, Misp_Attribute_Instance_Uuid, Case_Timeline_Event, db, DATETIME_FORMAT_FULL
+from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, db, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
+
+
+def _build_connector_admin_details(case_connector, connect_instance):
+    connector = CommonModel.get_connector(connect_instance.connector_id) if connect_instance else None
+    user_instance = CommonModel.get_user_instance_by_instance(connect_instance.id) if connect_instance else None
+    owner_user = User.query.get(user_instance.user_id) if user_instance else None
+    owner_org_id = connect_instance.shared_org_id if connect_instance and connect_instance.shared_org_id else (owner_user.org_id if owner_user else None)
+    owner_org = CommonModel.get_org(owner_org_id) if owner_org_id else None
+
+    owner_user_name = None
+    if owner_user:
+        owner_user_name = " ".join(part for part in [owner_user.first_name, owner_user.last_name] if part) or owner_user.email
+
+    return {
+        "case_connector_id": case_connector.id,
+        "instance_id": connect_instance.id if connect_instance else None,
+        "connector_id": connect_instance.connector_id if connect_instance else None,
+        "connector_name": connector.name if connector else None,
+        "sharing_scope": connect_instance.sharing_scope if connect_instance else None,
+        "shared_org_id": connect_instance.shared_org_id if connect_instance else None,
+        "description": connect_instance.description if connect_instance else None,
+        "owner_user_name": owner_user_name,
+        "owner_org_name": owner_org.name if owner_org else None,
+        "owner_org_id": owner_org.id if owner_org else None,
+    }
 
 
 ###############
@@ -37,16 +61,6 @@ def get_case_misp_object(cid):
                 loc_attr_list.append(loc_attr)
 
             # Collect synced instance info for badge display
-            synced_instances = []
-            for uuid_row in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=object.id, case_id=int(cid)).all():
-                inst = CommonModel.get_instance(uuid_row.instance_id)
-                synced_instances.append({
-                    "instance_id": uuid_row.instance_id,
-                    "instance_name": inst.name if inst else str(uuid_row.instance_id),
-                    "instance_url": inst.url if inst else None,
-                    "object_uuid": uuid_row.object_instance_uuid
-                })
-
             loc_object.append({
                 "object_name": object.name,
                 "attributes": loc_attr_list,
@@ -54,7 +68,7 @@ def get_case_misp_object(cid):
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime(DATETIME_FORMAT_FULL),
                 "object_last_modif": object.last_modif.strftime(DATETIME_FORMAT_FULL),
-                "synced_instances": synced_instances,
+                "synced_instances": CaseModel.serialize_object_synced_instances(cid, object.id, current_user),
                 # Mark whether this object already has a timeline event
                 "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
                 ,
@@ -269,13 +283,7 @@ def get_case_misp_attributes(cid):
         loc = attr.to_json()
         loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
         loc["is_imported"] = True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=-int(attr.id)).first() else False
-        loc["synced_instances"] = []
-        synced = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
-        for s in synced:
-            loc["synced_instances"].append({
-                "instance_id": s.instance_id,
-                "uuid": s.attribute_instance_uuid
-            })
+        loc["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
         loc["tasks"] = [
             {"id": t.task_id, "title": (Task.query.get(t.task_id).title if Task.query.get(t.task_id) else None)}
             for t in Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()
@@ -550,17 +558,27 @@ def get_case_connectors(cid):
         misp_connector = CommonModel.get_connector_by_name("MISP")
         for case_connector in CommonModel.get_case_connectors(cid, current_user):
             is_misp_connector = False
+            connect_instance = CommonModel.get_instance(case_connector.instance_id)
+            connector = None
+            can_use_connector = False
+            can_interact_connector = False
             if misp_connector:
-                connect_instance = CommonModel.get_instance(case_connector.instance_id)
                 if connect_instance and connect_instance.connector_id == misp_connector.id:
                     is_misp_connector = True
+            if connect_instance:
+                connector = CommonModel.get_connector(connect_instance.connector_id)
+                can_interact_connector = CommonModel.can_interact_with_case_connector(connect_instance, current_user)
+                can_use_connector = bool(CommonModel.get_case_connector_api_key(connect_instance, current_user, cid))
             instance_list.append({
                 "case_task_instance_id": case_connector.id,
                 "details": CommonModel.get_instance_with_icon(case_connector.instance_id),
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
                 "is_misp_connector": is_misp_connector,
-                "last_sync": case_connector.last_sync.strftime(DATETIME_FORMAT_FULL) if case_connector.last_sync else None
+                "can_interact_connector": can_interact_connector,
+                "can_use_connector": can_use_connector,
+                "last_sync": case_connector.last_sync.strftime(DATETIME_FORMAT_FULL) if case_connector.last_sync else None,
+                "admin_details": _build_connector_admin_details(case_connector, connect_instance)
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -605,6 +623,10 @@ def edit_connector(cid, ciid):
     """Edit Connector"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            case_instance = CommonModel.get_case_connectors_by_id(ciid)
+            loc_instance = CommonModel.get_instance(case_instance.instance_id) if case_instance else None
+            if not case_instance or int(case_instance.case_id) != int(cid) or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
+                return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             if "identifier" in request.json:
                 if CaseModel.edit_connector(ciid, request.json):
                     flowintel_log("audit", 200, "Connector edited", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
@@ -636,9 +658,10 @@ def misp_objects_preview(cid, ciid):
     loc_instance = CommonModel.get_instance(case_instance.instance_id)
     if not loc_instance:
         return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+    if not CommonModel.can_use_case_connector(loc_instance, current_user, cid):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
-    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
-    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    api_key = CommonModel.get_case_connector_api_key(loc_instance, current_user, cid)
     if not api_key:
         return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
 
@@ -688,9 +711,10 @@ def import_event_report(cid, ciid):
     loc_instance = CommonModel.get_instance(case_instance.instance_id)
     if not loc_instance:
         return {"message": "Connector instance not found", "toast_class": "danger-subtle"}, 404
+    if not CommonModel.can_use_case_connector(loc_instance, current_user, cid):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
-    user_instance = CommonModel.get_user_instance_both(current_user.id, loc_instance.id)
-    api_key = loc_instance.global_api_key or (user_instance.api_key if user_instance else None)
+    api_key = CommonModel.get_case_connector_api_key(loc_instance, current_user, cid)
     if not api_key:
         return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
 
@@ -727,6 +751,9 @@ def link_remote_misp_object(cid, oid):
     loc_object = CaseModel.get_misp_object(oid)
     if not loc_object or loc_object.case_id != int(cid):
         return {"message": "Object not found", "toast_class": "danger-subtle"}, 404
+    loc_instance = CommonModel.get_instance(instance_id)
+    if not CommonModel.can_use_case_connector(loc_instance, current_user, cid):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
     # Enforce one link per object — remove all existing links before creating the new one
     Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=int(cid)).delete()
@@ -753,6 +780,10 @@ def unlink_remote_misp_object(cid, oid, instance_id):
     if not check_user_private_case(case):
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    loc_instance = CommonModel.get_instance(instance_id)
+    if not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
     link = Misp_Object_Instance_Uuid.query.filter_by(
@@ -786,12 +817,18 @@ def search_in_misp_case(cid, ciid):
     misp_connector = CommonModel.get_connector_by_name("MISP")
     if not instance or not misp_connector or instance.connector_id != misp_connector.id:
         return {"message": "Connector is not a MISP connector", "toast_class": "warning-subtle"}, 400
+    if not CommonModel.can_use_case_connector(instance, current_user, int(cid)):
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
 
     query = ((request.json or {}).get("query") or "").strip()
     if not query:
         return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
 
-    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
+    api_key = CommonModel.get_case_connector_api_key(instance, current_user, int(cid))
+    if not api_key:
+        return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
+
+    res = ConnectorModel.search_misp_attributes(instance, current_user, query, api_key=api_key)
     if not res.get("success"):
         flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
         return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400

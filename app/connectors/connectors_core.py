@@ -608,17 +608,18 @@ def check_misp_connectivity(instance, current_user=None):
         }
 
 
-def search_misp_attributes(instance, current_user, query):
+def search_misp_attributes(instance, current_user, query, api_key=None):
     """Search attributes in a MISP instance and return rows ready for UI rendering."""
-    if current_user:
-        user_api_key = User_Connector_Instance.query.filter_by(
-            user_id=current_user.id, instance_id=instance.id
-        ).first()
-    else:
-        user_api_key = get_user_instance_by_instance(instance.id)
-    if not instance.global_api_key and (not user_api_key or not user_api_key.api_key):
-        return {"success": False, "message": "API key is not configured for this instance"}
-    api_key = instance.global_api_key or user_api_key.api_key
+    if not api_key:
+        if current_user:
+            user_api_key = User_Connector_Instance.query.filter_by(
+                user_id=current_user.id, instance_id=instance.id
+            ).first()
+        else:
+            user_api_key = get_user_instance_by_instance(instance.id)
+        if not instance.global_api_key and (not user_api_key or not user_api_key.api_key):
+            return {"success": False, "message": "API key is not configured for this instance"}
+        api_key = instance.global_api_key or user_api_key.api_key
 
     try:
         from pymisp import PyMISP

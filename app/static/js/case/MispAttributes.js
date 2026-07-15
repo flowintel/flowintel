@@ -1,5 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
-const { ref, computed, onMounted, watch, nextTick } = Vue
+const { ref, computed, onMounted, watch, nextTick, reactive } = Vue
 
 const MISP_ATTRIBUTE_TYPES = ref([])
 
@@ -40,6 +40,8 @@ export default {
         const active_tab_type = ref('')
         const assigning_attr_id = ref(null)
         const assign_task_state = ref({})
+        const expanded_sync_lists = reactive({})
+        const MAX_SYNC_BADGES = 2
 
         const can_edit = computed(() => {
             if (!props.cases_info) return false
@@ -107,6 +109,26 @@ export default {
         function tab_count_for(type) {
             const group = grouped_attrs.value.find(g => g.type === type)
             return group ? group.attrs.length : 0
+        }
+
+        function syncListKey(prefix, id) {
+            return `${prefix}-${id}`
+        }
+
+        function visibleSyncInstances(instances, key) {
+            if (!instances || instances.length <= MAX_SYNC_BADGES || expanded_sync_lists[key]) {
+                return instances || []
+            }
+            return instances.slice(0, MAX_SYNC_BADGES)
+        }
+
+        function hiddenSyncCount(instances, key) {
+            if (!instances || expanded_sync_lists[key]) return 0
+            return Math.max(0, instances.length - MAX_SYNC_BADGES)
+        }
+
+        function toggleSyncList(key) {
+            expanded_sync_lists[key] = !expanded_sync_lists[key]
         }
 
         watch(tab_types, () => {
@@ -374,7 +396,11 @@ export default {
             save_assign_tasks,
             toggle_compact_view,
             toggle_tab_view,
-            tab_count_for
+            tab_count_for,
+            syncListKey,
+            visibleSyncInstances,
+            hiddenSyncCount,
+            toggleSyncList
         }
     },
 
@@ -543,9 +569,11 @@ export default {
                                         <span v-else>-</span>
                                     </td>
                                     <td v-show="!compact_view" class="small">
-                                        <span v-for="s in sa.synced_instances" :key="s.instance_id" class="badge bg-info text-dark me-1" :title="'UUID: ' + s.uuid">
-                                            <i class="fa-solid fa-link me-1 fa-sm"></i>#[[ s.instance_id ]]
+                                        <span v-for="s in visibleSyncInstances(sa.synced_instances, syncListKey('table', sa.id))" :key="s.instance_id" class="badge bg-info text-dark me-1" :title="'Synced with ' + (s.instance_name || ('#' + s.instance_id)) + ' — UUID: ' + s.uuid">
+                                            <i class="fa-solid fa-link me-1 fa-sm"></i>[[ s.instance_name || ('#' + s.instance_id) ]]
                                         </span>
+                                        <button v-if="hiddenSyncCount(sa.synced_instances, syncListKey('table', sa.id))" type="button" class="btn btn-link btn-sm p-0 align-baseline" @click="toggleSyncList(syncListKey('table', sa.id))">+[[ hiddenSyncCount(sa.synced_instances, syncListKey('table', sa.id)) ]] more</button>
+                                        <button v-else-if="sa.synced_instances && sa.synced_instances.length > 2" type="button" class="btn btn-link btn-sm p-0 align-baseline" @click="toggleSyncList(syncListKey('table', sa.id))">show less</button>
                                         <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
                                     </td>
                                     <td class="small">
@@ -712,9 +740,11 @@ export default {
                                                 <span v-else class="text-muted">-</span>
                                             </td>
                                             <td v-show="!compact_view" class="small">
-                                                <span v-for="s in sa.synced_instances" :key="'tab-sync-'+s.instance_id" class="badge bg-info text-dark me-1" :title="'UUID: ' + s.uuid">
-                                                    <i class="fa-solid fa-link me-1 fa-sm"></i>#[[ s.instance_id ]]
+                                                <span v-for="s in visibleSyncInstances(sa.synced_instances, syncListKey('tab', sa.id))" :key="'tab-sync-'+s.instance_id" class="badge bg-info text-dark me-1" :title="'Synced with ' + (s.instance_name || ('#' + s.instance_id)) + ' — UUID: ' + s.uuid">
+                                                    <i class="fa-solid fa-link me-1 fa-sm"></i>[[ s.instance_name || ('#' + s.instance_id) ]]
                                                 </span>
+                                                <button v-if="hiddenSyncCount(sa.synced_instances, syncListKey('tab', sa.id))" type="button" class="btn btn-link btn-sm p-0 align-baseline" @click="toggleSyncList(syncListKey('tab', sa.id))">+[[ hiddenSyncCount(sa.synced_instances, syncListKey('tab', sa.id)) ]] more</button>
+                                                <button v-else-if="sa.synced_instances && sa.synced_instances.length > 2" type="button" class="btn btn-link btn-sm p-0 align-baseline" @click="toggleSyncList(syncListKey('tab', sa.id))">show less</button>
                                                 <span v-if="!sa.synced_instances || !sa.synced_instances.length" class="text-muted">-</span>
                                             </td>
                                             <td class="small">

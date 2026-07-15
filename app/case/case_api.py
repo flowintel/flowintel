@@ -1,6 +1,6 @@
 from flask import request
 
-from app.db_class.db import Case, User, File, Misp_Attribute_Instance_Uuid, DATETIME_FORMAT_FULL
+from app.db_class.db import Case, User, File, DATETIME_FORMAT_FULL
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
@@ -1042,7 +1042,8 @@ class ModifNoteCase(Resource):
                         "object_id": obj.id,
                         "object_uuid": obj.template_uuid,
                         "object_creation_date": obj.creation_date.strftime(DATETIME_FORMAT_FULL) if obj.creation_date else None,
-                        "object_last_modif": obj.last_modif.strftime(DATETIME_FORMAT_FULL) if obj.last_modif else None
+                        "object_last_modif": obj.last_modif.strftime(DATETIME_FORMAT_FULL) if obj.last_modif else None,
+                        "synced_instances": CaseModel.serialize_object_synced_instances(cid, obj.id, current_user)
                     })
 
                 return {"misp-object": loc_object}, 200
@@ -1189,14 +1190,7 @@ class ModifNoteCase(Resource):
             for attr in attrs:
                 loc_attr = attr.to_json()
                 loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
-                loc_attr["synced_instances"] = []
-
-                synced = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
-                for sync in synced:
-                    loc_attr["synced_instances"].append({
-                        "instance_id": sync.instance_id,
-                        "uuid": sync.attribute_instance_uuid
-                    })
+                loc_attr["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
                 result.append(loc_attr)
 
             return {"attributes": result}, 200

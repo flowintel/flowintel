@@ -387,6 +387,9 @@ def get_instance_by_name(name):
 
 def get_case_connectors(cid, current_user: User):
     """Return a list of all connectors present in a case"""
+    if current_user.is_admin() or (current_user.is_case_admin() and get_present_in_case(cid, current_user)):
+        return Case_Connector_Instance.query.filter_by(case_id=cid).all()
+
     return (
         Case_Connector_Instance.query
         .join(Connector_Instance, Connector_Instance.id == Case_Connector_Instance.instance_id)
@@ -406,6 +409,44 @@ def get_case_connectors(cid, current_user: User):
             Case_Connector_Instance.case_id == cid
         )
         .all()
+    )
+
+
+def can_access_all_case_connectors(case_id: int, current_user: User) -> bool:
+    return current_user.is_admin() or (current_user.is_case_admin() and get_present_in_case(case_id, current_user))
+
+
+def can_interact_with_case_connector(instance, current_user: User) -> bool:
+    if not instance:
+        return False
+    from ..connectors import connectors_core as ConnectorModel
+    return ConnectorModel.is_instance_visible_to_user(instance, current_user)
+
+
+def get_case_connector_api_key(instance, current_user: User, case_id: int):
+    if not instance:
+        return None
+    from ..connectors import connectors_core as ConnectorModel
+
+    if instance.global_api_key:
+        scope = ConnectorModel.get_instance_sharing_scope(instance)
+        if current_user.is_admin():
+            return instance.global_api_key
+        if scope == "global":
+            return instance.global_api_key
+        if scope == "org" and instance.shared_org_id == current_user.org_id:
+            return instance.global_api_key
+
+    user_instance = get_user_instance_both(current_user.id, instance.id)
+    if user_instance and user_instance.api_key:
+        return user_instance.api_key
+
+    return None
+
+
+def can_use_case_connector(instance, current_user: User, case_id: int) -> bool:
+    return can_interact_with_case_connector(instance, current_user) and bool(
+        get_case_connector_api_key(instance, current_user, case_id)
     )
 
 def get_case_connectors_by_id(case_instance_id):

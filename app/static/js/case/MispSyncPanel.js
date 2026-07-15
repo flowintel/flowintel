@@ -12,6 +12,7 @@ export default {
         modules: Object,
         case_misp_objects_list: { type: Array, default: null },
         cases_info: { type: Object, default: null },
+        can_use_connector: { type: Boolean, default: true },
     },
     emits: ['sync_done', 'close'],
     setup(props, { emit }) {
@@ -40,6 +41,8 @@ export default {
 
         // Panels: 'objects' | 'case_tasks'
         const active_panel = ref('objects')
+        const expanded_sync_lists = reactive({})
+        const MAX_SYNC_BADGES = 2
 
         // Case & Task selection state
         const case_fields = reactive({ title: true, description: false, notes: true, tags: false, clusters: false, files: false })
@@ -108,6 +111,26 @@ export default {
             ).length
         })
 
+        function syncListKey(prefix, id) {
+            return `${prefix}-${id}`
+        }
+
+        function visibleSyncInstances(instances, key) {
+            if (!instances || instances.length <= MAX_SYNC_BADGES || expanded_sync_lists[key]) {
+                return instances || []
+            }
+            return instances.slice(0, MAX_SYNC_BADGES)
+        }
+
+        function hiddenSyncCount(instances, key) {
+            if (!instances || expanded_sync_lists[key]) return 0
+            return Math.max(0, instances.length - MAX_SYNC_BADGES)
+        }
+
+        function toggleSyncList(key) {
+            expanded_sync_lists[key] = !expanded_sync_lists[key]
+        }
+
         async function load_local_objects() {
             if (props.case_misp_objects_list !== null) {
                 local_objects.value = props.case_misp_objects_list
@@ -151,7 +174,7 @@ export default {
         }
 
         async function load_remote_objects() {
-            if (!props.instance) return
+            if (!props.instance || !props.can_use_connector) return
             is_loading_remote.value = true
             remote_objects.value = []
             remote_standalone_attrs.value = []
@@ -227,6 +250,7 @@ export default {
             remote_objects.value = []
             remote_standalone_attrs.value = []
             show_unsynced_only.value = false
+            Object.keys(expanded_sync_lists).forEach(key => { delete expanded_sync_lists[key] })
             // default module depending on panel
             module_name.value = active_panel.value === 'objects' ? 'misp_object_event' : ''
             // initialize selected_tasks_map from provided case tasks
@@ -238,6 +262,10 @@ export default {
         }
 
         async function submit() {
+            if (!props.can_use_connector) {
+                create_message("This connector is view only for you in this case", "warning-subtle")
+                return
+            }
             if (!module_name.value) {
                 create_message("Select a module first", "warning-subtle")
                 return
@@ -277,6 +305,10 @@ export default {
         }
 
         async function submit_case_tasks() {
+            if (!props.can_use_connector) {
+                create_message("This connector is view only for you in this case", "warning-subtle")
+                return
+            }
             is_submitting.value = true
             const url = '/case/' + props.case_id + '/call_module_case'
             const body = {
@@ -311,6 +343,10 @@ export default {
         }
 
         async function import_event_report() {
+            if (!props.can_use_connector) {
+                create_message("This connector is view only for you in this case", "warning-subtle")
+                return
+            }
             is_importing_report.value = true
             const res = await fetch('/case/' + props.case_id + '/connectors/' + props.instance.case_task_instance_id + '/import_event_report', {
                 method: 'POST',
@@ -338,7 +374,8 @@ export default {
             load_remote_objects, toggle_local_all, toggle_local_sa_all, toggle_remote_all, toggle_remote_sa_all,
             submit, import_event_report, on_show, on_module_change, is_synced_locally,
             // new panel state
-            active_panel, case_fields, selected_tasks_map, tasks, selected_report_count
+            active_panel, case_fields, selected_tasks_map, tasks, selected_report_count,
+            syncListKey, visibleSyncInstances, hiddenSyncCount, toggleSyncList
         }
     },
     template: `
@@ -402,6 +439,9 @@ export default {
                             </div>
                         </div>
                         <div class="card-body p-2">
+                            <div v-if="!can_use_connector" class="alert alert-info py-2 px-3 mb-2">
+                                This connector is visible here for sync tracking, but only your own usable connectors can send or receive data.
+                            </div>
                             <div class="d-flex gap-1 mb-2">
                                 <input v-model="local_search" class="form-control form-control-sm" placeholder="Search by name or value…" type="text">
                                 <select v-model="local_type_filter" class="form-select form-select-sm" style="max-width:130px;">
@@ -425,12 +465,24 @@ export default {
                                             <span class="fw-semibold">[[ obj.object_name ]]</span>
                                             <span class="text-muted ms-1" style="font-size:0.8em;">([[ obj.attributes.length ]] attrs)</span>
                                             <template v-if="obj.synced_instances && obj.synced_instances.length">
-                                                <span v-for="si in obj.synced_instances" :key="si.instance_id"
+                                                <span v-for="si in visibleSyncInstances(obj.synced_instances, syncListKey('local-object', obj.object_id))" :key="si.instance_id"
                                                       class="badge bg-info text-dark ms-1"
                                                       style="font-size:0.65em;"
                                                       :title="'Synced with '+si.instance_name+' — UUID: '+si.object_uuid">
                                                     <i class="fa-solid fa-cloud me-1"></i>[[ si.instance_name ]]
                                                 </span>
+                                                <button v-if="hiddenSyncCount(obj.synced_instances, syncListKey('local-object', obj.object_id))"
+                                                        type="button"
+                                                        class="btn btn-link btn-sm py-0 px-1 align-baseline"
+                                                        @click.prevent="toggleSyncList(syncListKey('local-object', obj.object_id))">
+                                                    +[[ hiddenSyncCount(obj.synced_instances, syncListKey('local-object', obj.object_id)) ]] more
+                                                </button>
+                                                <button v-else-if="obj.synced_instances.length > 2"
+                                                        type="button"
+                                                        class="btn btn-link btn-sm py-0 px-1 align-baseline"
+                                                        @click.prevent="toggleSyncList(syncListKey('local-object', obj.object_id))">
+                                                    show less
+                                                </button>
                                             </template>
                                         </label>
                                     </div>
@@ -458,7 +510,26 @@ export default {
                                         <label class="form-check-label" :for="'lsa-'+instance.case_task_instance_id+'-'+sa.id" style="font-size:0.8em;">
                                             <span class="badge bg-secondary me-1">[[ sa.type ]]</span>
                                             <span>[[ sa.value.length > 50 ? sa.value.substring(0,50)+'…' : sa.value ]]</span>
-                                            <span v-if="sa.synced_instances && sa.synced_instances.length" class="badge bg-success ms-1" style="font-size:0.65em;">synced</span>
+                                            <template v-if="sa.synced_instances && sa.synced_instances.length">
+                                                <span v-for="s in visibleSyncInstances(sa.synced_instances, syncListKey('local-attr', sa.id))" :key="'lsa-sync-'+sa.id+'-'+s.instance_id"
+                                                      class="badge bg-info text-dark ms-1"
+                                                      style="font-size:0.65em;"
+                                                      :title="'Synced with ' + (s.instance_name || ('#' + s.instance_id)) + ' — UUID: ' + s.uuid">
+                                                    <i class="fa-solid fa-cloud me-1"></i>[[ s.instance_name || ('#' + s.instance_id) ]]
+                                                </span>
+                                                <button v-if="hiddenSyncCount(sa.synced_instances, syncListKey('local-attr', sa.id))"
+                                                        type="button"
+                                                        class="btn btn-link btn-sm py-0 px-1 align-baseline"
+                                                        @click.prevent="toggleSyncList(syncListKey('local-attr', sa.id))">
+                                                    +[[ hiddenSyncCount(sa.synced_instances, syncListKey('local-attr', sa.id)) ]] more
+                                                </button>
+                                                <button v-else-if="sa.synced_instances.length > 2"
+                                                        type="button"
+                                                        class="btn btn-link btn-sm py-0 px-1 align-baseline"
+                                                        @click.prevent="toggleSyncList(syncListKey('local-attr', sa.id))">
+                                                    show less
+                                                </button>
+                                            </template>
                                         </label>
                                     </div>
                                 </div>
@@ -484,7 +555,7 @@ export default {
                                 <button v-if="direction === 'receive' && remote_objects.length" type="button" class="btn btn-link btn-sm py-0" @click="toggle_remote_all()">
                                     [[ selected_remote_uuids.length === filtered_remote.length && filtered_remote.length > 0 ? 'Deselect all' : 'Select all' ]]
                                 </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="load_remote_objects()" :disabled="is_loading_remote">
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0" @click="load_remote_objects()" :disabled="is_loading_remote || !can_use_connector">
                                     <span v-if="is_loading_remote" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                                     <i v-else class="fa-solid fa-rotate me-1"></i>
                                     [[ remote_objects.length ? 'Reload' : 'Load from MISP' ]]
@@ -558,7 +629,7 @@ export default {
                     <hr class="my-3">
                     <div class="d-flex align-items-center gap-3 flex-wrap">
                         <span class="fw-semibold"><i class="fa-solid fa-file-lines me-1"></i>Event report</span>
-                        <button type="button" class="btn btn-sm btn-outline-info" :disabled="is_importing_report" @click="import_event_report()">
+                        <button type="button" class="btn btn-sm btn-outline-info" :disabled="is_importing_report || !can_use_connector" @click="import_event_report()">
                             <span v-if="is_importing_report" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                             <i v-else class="fa-solid fa-file-import me-1"></i>
                             Import event report as case note
@@ -576,7 +647,7 @@ export default {
                         </template>
                     </div>
                     <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-                    <button type="button" class="btn btn-primary" :disabled="is_submitting" @click="submit()">
+                    <button type="button" class="btn btn-primary" :disabled="is_submitting || !can_use_connector" @click="submit()">
                         <span v-if="is_submitting" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                         [[ direction === 'send' ? 'Send to MISP' : 'Receive from MISP' ]]
                     </button>
@@ -645,7 +716,7 @@ export default {
             <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-2 border-top">
                 <div class="text-muted small me-auto">Prepare a selective export of case and tasks</div>
                 <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-                <button type="button" class="btn btn-primary" :disabled="is_submitting || !module_name" @click="submit()">
+                <button type="button" class="btn btn-primary" :disabled="is_submitting || !module_name || !can_use_connector" @click="submit()">
                     <span v-if="is_submitting" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                     Send to MISP
                 </button>

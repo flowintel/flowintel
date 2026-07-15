@@ -1,7 +1,7 @@
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
 import { confirmDelete } from '/static/js/confirm.js'
-const { ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue
+const { ref, computed, onMounted, onUnmounted, watch, nextTick, reactive } = Vue
 export default {
     delimiters: ['[[', ']]'],
     components: { 'misp-object-link': MispObjectLink },
@@ -50,6 +50,8 @@ export default {
         const show_unsynced_only = ref(false)
         const current_page = ref(1)
         const per_page = 10
+        const expanded_sync_lists = reactive({})
+        const MAX_SYNC_BADGES = 2
 
         const filtered_objects = computed(() => {
             // Spotlight mode: show only the highlighted object
@@ -85,6 +87,26 @@ export default {
             const names = [...new Set(case_misp_objects.value.map(o => o.object_name))]
             return names.sort()
         })
+
+        function syncListKey(prefix, id) {
+            return `${prefix}-${id}`
+        }
+
+        function visibleSyncInstances(instances, key) {
+            if (!instances || instances.length <= MAX_SYNC_BADGES || expanded_sync_lists[key]) {
+                return instances || []
+            }
+            return instances.slice(0, MAX_SYNC_BADGES)
+        }
+
+        function hiddenSyncCount(instances, key) {
+            if (!instances || expanded_sync_lists[key]) return 0
+            return Math.max(0, instances.length - MAX_SYNC_BADGES)
+        }
+
+        function toggleSyncList(key) {
+            expanded_sync_lists[key] = !expanded_sync_lists[key]
+        }
 
         watch([search_query, type_filter, show_unsynced_only], () => { current_page.value = 1; activeTabIdx.value = 0 })
         watch(() => props.spotlight_id, () => { current_page.value = 1; activeTabIdx.value = 0 })
@@ -797,7 +819,11 @@ export default {
             new_object_task_ids,
             toggleAssignTasks,
             saveAssignTasks,
-            scroll_to_task
+            scroll_to_task,
+            syncListKey,
+            visibleSyncInstances,
+            hiddenSyncCount,
+            toggleSyncList
 		}
     },
 
@@ -1106,11 +1132,13 @@ export default {
                         <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object.object_name ]]
                     </button>
                     <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
-                        <span v-for="si in misp_object.synced_instances" :key="si.instance_id"
+                        <span v-for="si in visibleSyncInstances(misp_object.synced_instances, syncListKey('card', misp_object.object_id))" :key="si.instance_id"
                             class="badge bg-info text-dark"
                             :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
                             <i class="fa-solid fa-cloud me-1 fa-sm"></i>[[ si.instance_name ]]
                         </span>
+                        <button v-if="hiddenSyncCount(misp_object.synced_instances, syncListKey('card', misp_object.object_id))" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('card', misp_object.object_id))">+[[ hiddenSyncCount(misp_object.synced_instances, syncListKey('card', misp_object.object_id)) ]] more</button>
+                        <button v-else-if="misp_object.synced_instances.length > 2" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('card', misp_object.object_id))">show less</button>
                     </template>
                     <template v-if="misp_object.tasks && misp_object.tasks.length">
                         <span v-for="t in misp_object.tasks" :key="t.id"
@@ -1374,11 +1402,13 @@ export default {
                     <div class="d-flex align-items-center justify-content-between py-2 px-3 border-bottom">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
-                                <span v-for="si in misp_object.synced_instances" :key="si.instance_id"
+                                <span v-for="si in visibleSyncInstances(misp_object.synced_instances, syncListKey('tab', misp_object.object_id))" :key="si.instance_id"
                                       class="badge bg-info text-dark"
                                       :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
                                     <i class="fa-solid fa-cloud me-1 fa-sm"></i>[[ si.instance_name ]]
                                 </span>
+                                <button v-if="hiddenSyncCount(misp_object.synced_instances, syncListKey('tab', misp_object.object_id))" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('tab', misp_object.object_id))">+[[ hiddenSyncCount(misp_object.synced_instances, syncListKey('tab', misp_object.object_id)) ]] more</button>
+                                <button v-else-if="misp_object.synced_instances.length > 2" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('tab', misp_object.object_id))">show less</button>
                             </template>
                             <template v-if="misp_object.tasks && misp_object.tasks.length">
                                 <span v-for="t in misp_object.tasks" :key="t.id"

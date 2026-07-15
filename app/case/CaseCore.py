@@ -107,6 +107,48 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 pass
         return list(_build_misp_attribute_types())
 
+    def serialize_object_synced_instances(self, case_id, misp_object_id, user):
+        from ..connectors import connectors_core as ConnectorModel
+
+        synced_instances = []
+        synced_rows = Misp_Object_Instance_Uuid.query.filter_by(
+            misp_object_id=misp_object_id,
+            case_id=int(case_id)
+        ).all()
+        can_view_all = CommonModel.can_access_all_case_connectors(int(case_id), user)
+        for sync in synced_rows:
+            inst = CommonModel.get_instance(sync.instance_id)
+            if not inst or (not can_view_all and not ConnectorModel.is_instance_visible_to_user(inst, user)):
+                continue
+            synced_instances.append({
+                "instance_id": sync.instance_id,
+                "instance_name": inst.name if inst else str(sync.instance_id),
+                "instance_url": inst.url if inst else None,
+                "object_uuid": sync.object_instance_uuid
+            })
+        return synced_instances
+
+    def serialize_attribute_synced_instances(self, case_id, misp_attribute_id, user):
+        from ..connectors import connectors_core as ConnectorModel
+
+        synced_instances = []
+        synced_rows = Misp_Attribute_Instance_Uuid.query.filter_by(
+            misp_attribute_id=misp_attribute_id,
+            case_id=int(case_id)
+        ).all()
+        can_view_all = CommonModel.can_access_all_case_connectors(int(case_id), user)
+        for sync in synced_rows:
+            inst = CommonModel.get_instance(sync.instance_id)
+            if not inst or (not can_view_all and not ConnectorModel.is_instance_visible_to_user(inst, user)):
+                continue
+            synced_instances.append({
+                "instance_id": sync.instance_id,
+                "instance_name": inst.name if inst else str(sync.instance_id),
+                "instance_url": inst.url if inst else None,
+                "uuid": sync.attribute_instance_uuid
+            })
+        return synced_instances
+
 
     def create_case(self, form_dict, user):
         privileged_case = form_dict.get("privileged_case", False)
@@ -1626,15 +1668,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
             return {"message": "Connector instance not found"}
-
-        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
+        if not CommonModel.can_use_case_connector(loc_instance, user, loc_case.id):
+            return {"message": "Action not allowed", "toast_class": "warning-subtle"}
 
         instance = loc_instance.to_json()
-        if loc_instance.global_api_key:
-            instance["api_key"] = loc_instance.global_api_key
-        elif user_instance:
-            instance["api_key"] = user_instance.api_key
-        else:
+        instance["api_key"] = CommonModel.get_case_connector_api_key(loc_instance, user, loc_case.id)
+        if not instance["api_key"]:
             return {"message": "No API key configured for this connector"}
         instance["identifier"] = case_instance.identifier
 
@@ -2167,7 +2206,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def result_standalone_attr_module(self, attr_uuid_list, instance_id, case_id):
         """Save UUID of standalone attributes for a MISP instance"""
         for attr in attr_uuid_list:
-            loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
+            loc_attr_uuid = self.get_exact_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
             if loc_attr_uuid:
                 loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
                 db.session.commit()
@@ -2196,6 +2235,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     return obj
         return None
 
+    def get_exact_misp_object_instance_uuid(self, object_id, instance_id, case_id):
+        return Misp_Object_Instance_Uuid.query.filter_by(
+            misp_object_id=object_id,
+            instance_id=instance_id,
+            case_id=case_id
+        ).first()
+
     def get_misp_attribute_instance_uuid(self, attr_id, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)
         mattributes = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, case_id=case_id).all()
@@ -2207,6 +2253,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
+
+    def get_exact_misp_attribute_instance_uuid(self, attr_id, instance_id, case_id):
+        return Misp_Attribute_Instance_Uuid.query.filter_by(
+            misp_attribute_id=attr_id,
+            instance_id=instance_id,
+            case_id=case_id
+        ).first()
     
     def get_misp_object_instance_by_instance_uuid(self, object_uuid, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)
@@ -2262,7 +2315,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def result_misp_object_module(self, object_uuid_list, instance_id, case_id):
         """Save uuid of objects and attributes for a instance of MISP"""
         for object_id in object_uuid_list:
-            loc_object_uuid = self.get_misp_object_instance_uuid(object_id, instance_id, case_id)
+            loc_object_uuid = self.get_exact_misp_object_instance_uuid(object_id, instance_id, case_id)
             if loc_object_uuid:
                 loc_object_uuid.object_instance_uuid = object_uuid_list[object_id]["uuid"]
                 db.session.commit()
@@ -2277,7 +2330,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
 
             for attr in object_uuid_list[object_id]["attributes"]:
-                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
+                loc_attr_uuid = self.get_exact_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
                 if loc_attr_uuid:
                     loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
                     db.session.commit()
