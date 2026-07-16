@@ -151,8 +151,8 @@ configure_repo_dev:
 	#cp -n template.env .env.mariadb
 	##
 	# MacOS Tweak: Let's ignore the error exit code 1 on MacOS (file already exist -> no overwrite)
-	- cp -n conf/config.py.default conf/config.py
-	- cp -n conf/config_module.py.default conf/config_module.py
+	cp -n conf/config.py.default conf/config.py
+	cp -n conf/config_module.py.default conf/config_module.py
 	#
 	echo
 	echo "The repository was configured for local dev running."
@@ -190,7 +190,7 @@ new_migration_postgres: dev_localinfra_postgres_run
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	echo "Install the application in Dockerised Local Dev Infra first, with run_postgres"
 	read wait_for_me
-	cp -f .env.postgres .env
+	cp -f .env.postgres.custom .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	#
@@ -209,7 +209,7 @@ new_migration_maria: dev_localinfra_maria_run
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	echo "Install the application in Dockerised Local Dev Infra first, with run_maria"
 	read wait_for_me
-	cp -f .env.mariadb .env
+	cp -f .env.mariadb.custom .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	#
@@ -228,6 +228,7 @@ full_new_migration:
 	echo "Up to the user to extract the file created inside the container"
 	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
+	cp -f .env.postgres.custom .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
@@ -239,6 +240,7 @@ full_new_migration:
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade
 	echo "New migrations applied"
+	rm .env
 
 full_new_migration_maria:
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
@@ -247,6 +249,7 @@ full_new_migration_maria:
 	echo "Up to the user to extract the file created inside the container"
 	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
+	cp -f .env.mariadb.custom .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
@@ -257,13 +260,14 @@ full_new_migration_maria:
 	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i -c "./migrate.sh --upgrade"
+	rm .env
 
 # Install and Run Application
 install_postgres: first_install dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
-	cp -f .env.postgres .env
+	cp -f .env.postgres.custom .env
 	VENV_DIR=".venv" ./install.sh
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
@@ -276,7 +280,7 @@ install_maria: first_install dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
-	cp -f .env.mariadb .env
+	cp -f .env.mariadb.custom .env
 	VENV_DIR=".venv" ./install.sh
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
@@ -289,7 +293,7 @@ run_postgres: first_install dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
-	cp -f .env.postgres .env
+	cp -f .env.postgres.custom .env
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
@@ -301,7 +305,7 @@ run_maria: first_install dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
-	cp -f .env.mariadb .env
+	cp -f .env.mariadb.custom .env
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
 	echo "Press Enter to close..."
@@ -313,34 +317,34 @@ runfull_postgres: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_full_postgres_stop -s >/dev/null' EXIT
-	cp -f .env.full.postgres .env.docker
+	cp -f .env.full.postgres.custom docker/.env
 	docker compose -f docker/docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	rm .env.docker
+	rm docker/.env
 
 runfull_maria: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_full_maria_stop -s >/dev/null' EXIT
-	cp -f .env.full.mariadb .env.docker
+	cp -f .env.full.mariadb.custom docker/.env
 	docker compose -f docker/docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	rm .env.docker
+	rm docker/.env
 
 runfullofficial_postgres: configure_repo_dev
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_fullofficial_postgres_stop -s >/dev/null' EXIT
-	cp -f .env.full.postgres .env.docker
+	cp -f .env.full.postgres.custom docker/.env
 	docker compose -f docker/docker-compose.yml up
 	echo "Press Enter to close..."
 	read _
 	sleep 1
-	rm .env.docker
+	rm docker/.env
 
 ########################################################################################
 

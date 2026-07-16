@@ -69,3 +69,5 @@ tests/testdata/.community-api-keys.json
 dump.rdb
 
 *.backup
+
+*.custom
