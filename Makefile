@@ -154,10 +154,14 @@ configure_repo_dev:
 	cp -n conf/config.py.default conf/config.py
 	cp -n conf/config_module.py.default conf/config_module.py
 	#
+	cp -n template.env.full.mariadb .env.full.mariadb.custom
+	cp -n template.env.full.postgres .env.full.postgres.custom
+	cp -n template.env.mariadb .env.mariadb.custom
+	cp -n template.env.postgres .env.postgres.custom
 	echo
 	echo "The repository was configured for local dev running."
 	echo
-	echo -e "${BLUE}${BOLD}Please edit the files .env.postgres and .env.mariadb and conf/config.py before proceeding.${RESET}"
+	echo -e "${BLUE}${BOLD}Please edit the files .env.*.custom and conf/config.py before proceeding.${RESET}"
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
 
