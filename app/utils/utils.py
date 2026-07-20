@@ -249,44 +249,50 @@ def check_tag(tag):
 def get_object_templates():
     """Get object template.
     
-    Enumerate misp-objects by walking through misp-objects submodule directory
+    Enumerate top-level MISP object templates and ignore nested asset folders
+    such as `icon/`.
     """
     templates = []
     objects_dir = os.path.join(os.getcwd(), "modules/misp-objects/objects")
 
-    for root, dirs, __ in os.walk(objects_dir):
-        for template_dir in dirs:
-            template_def = os.path.join(root, template_dir, "definition.json")
-            raw_template = open(template_def)
-            raw_template = json.load(raw_template)
+    for template_dir in os.scandir(objects_dir):
+        if not template_dir.is_dir():
+            continue
 
-            attributes = []
-            for name, attribute in raw_template["attributes"].items():
-                attributes.append(
-                    {
-                        "name": name,
-                        "description": attribute.get("description"),
-                        "disable_correlation": attribute.get(
-                            "disable_correlation", False
-                        ),
-                        "misp_attribute": attribute["misp-attribute"],
-                        "multiple": attribute.get("multiple", False),
-                        "ui_priority": attribute.get("ui-priority", 0),
-                        "sane_default": attribute.get("sane_default"),
-                    }
-                )
+        template_def = os.path.join(template_dir.path, "definition.json")
+        if not os.path.isfile(template_def):
+            continue
 
-            template = {
-                "uuid": raw_template["uuid"],
-                "name": raw_template["name"],
-                "description": raw_template["description"],
-                "meta_category": raw_template["meta-category"],
-                "version": raw_template["version"],
-                "attributes": attributes,
-                "requiredOneOf": raw_template.get("requiredOneOf", []),
-            }
+        with open(template_def, "r") as raw_template_file:
+            raw_template = json.load(raw_template_file)
 
-            templates.append(template)
+        attributes = []
+        for name, attribute in raw_template["attributes"].items():
+            attributes.append(
+                {
+                    "name": name,
+                    "description": attribute.get("description"),
+                    "disable_correlation": attribute.get(
+                        "disable_correlation", False
+                    ),
+                    "misp_attribute": attribute["misp-attribute"],
+                    "multiple": attribute.get("multiple", False),
+                    "ui_priority": attribute.get("ui-priority", 0),
+                    "sane_default": attribute.get("sane_default"),
+                }
+            )
+
+        template = {
+            "uuid": raw_template["uuid"],
+            "name": raw_template["name"],
+            "description": raw_template["description"],
+            "meta_category": raw_template["meta-category"],
+            "version": raw_template["version"],
+            "attributes": attributes,
+            "requiredOneOf": raw_template.get("requiredOneOf", []),
+        }
+
+        templates.append(template)
 
     templates = sorted(templates, key=lambda d: d['name'])
 

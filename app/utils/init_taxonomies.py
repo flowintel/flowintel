@@ -154,48 +154,84 @@ def create_galaxies_core(galaxies, clusters, install=False):
             )
             db.session.add(galax)
             db.session.commit()
-        elif galaxy_db.version < current_galaxy.version and not install:
-            galaxy_db.name = current_galaxy.name
-            galaxy_db.version = current_galaxy.version
-            galaxy_db.description = current_galaxy.description
-            galaxy_db.icon = current_galaxy.icon
-            galaxy_db.type = current_galaxy.type
-            db.session.commit()
+        elif not install:
+            galaxy_changed = False
+            if galaxy_db.name != current_galaxy.name:
+                galaxy_db.name = current_galaxy.name
+                galaxy_changed = True
+            if galaxy_db.version != current_galaxy.version:
+                galaxy_db.version = current_galaxy.version
+                galaxy_changed = True
+            if galaxy_db.description != current_galaxy.description:
+                galaxy_db.description = current_galaxy.description
+                galaxy_changed = True
+            if galaxy_db.icon != current_galaxy.icon:
+                galaxy_db.icon = current_galaxy.icon
+                galaxy_changed = True
+            if galaxy_db.type != current_galaxy.type:
+                galaxy_db.type = current_galaxy.type
+                galaxy_changed = True
+            if galaxy_changed:
+                db.session.commit()
 
     for cluster in list(clusters.keys()):
         current_cluster_info = clusters.get(cluster)
+        galaxy_db = Galaxy.query.filter_by(type=current_cluster_info.type).first()
+        if not galaxy_db:
+            continue
+
         for cl in list(current_cluster_info.keys()):
             current_cluster = current_cluster_info.get(cl)
+            cluster_name = getattr(current_cluster, "value", None) or cl
+            if current_cluster.meta:
+                meta = json.dumps(current_cluster.meta.to_json())
+            else:
+                meta = ""
+            tag = f'misp-galaxy:{cluster}="{cluster_name}"'
+
             cluster_db = Cluster.query.filter_by(uuid=current_cluster.uuid).first()
             if not cluster_db:
-                if current_cluster.meta:
-                    meta = json.dumps(current_cluster.meta.to_json())
-                else:
-                    meta = ""
+                cluster_db = Cluster.query.filter_by(tag=tag).first()
 
+            if not cluster_db:
                 cluster_created = Cluster(
-                    name = cl,
-                    uuid = current_cluster.uuid,
-                    version = current_cluster_info.version,
-                    description = current_cluster.description,
-                    galaxy_id = Galaxy.query.filter_by(type=current_cluster_info.type).first().id,
-                    tag = f'misp-galaxy:{cluster}="{cl}"',
-                    meta = meta
+                    name=cluster_name,
+                    uuid=current_cluster.uuid,
+                    version=current_cluster_info.version,
+                    description=current_cluster.description,
+                    galaxy_id=galaxy_db.id,
+                    tag=tag,
+                    meta=meta
                 )
 
                 db.session.add(cluster_created)
                 db.session.commit()
 
-            elif cluster_db.version < current_cluster_info.version and not install:
-                if current_cluster.meta:
-                    meta = json.dumps(current_cluster.meta.to_json())
-                else:
-                    meta = ""
-                cluster_db.name = cluster
-                cluster_db.version = current_cluster_info.version
-                cluster_db.description = current_cluster.description
-                cluster_db.meta = meta
-                db.session.commit()
+            elif not install:
+                cluster_changed = False
+                if cluster_db.name != cluster_name:
+                    cluster_db.name = cluster_name
+                    cluster_changed = True
+                if cluster_db.uuid != current_cluster.uuid:
+                    cluster_db.uuid = current_cluster.uuid
+                    cluster_changed = True
+                if cluster_db.version != current_cluster_info.version:
+                    cluster_db.version = current_cluster_info.version
+                    cluster_changed = True
+                if cluster_db.description != current_cluster.description:
+                    cluster_db.description = current_cluster.description
+                    cluster_changed = True
+                if cluster_db.meta != meta:
+                    cluster_db.meta = meta
+                    cluster_changed = True
+                if cluster_db.tag != tag:
+                    cluster_db.tag = tag
+                    cluster_changed = True
+                if cluster_db.galaxy_id != galaxy_db.id:
+                    cluster_db.galaxy_id = galaxy_db.id
+                    cluster_changed = True
+                if cluster_changed:
+                    db.session.commit()
 
 def create_galaxies(install=False):
     if install:
