@@ -21,14 +21,17 @@ class Config:
     WTF_CSRF_TIME_LIMIT = 8 * 3600
     
     # =============================================================================
-    # FLASK APPLICATION BINDING
+    # FLOWINTEL APP BINDING - Used by both Flask dev server AND Gunicorn appservers
     # =============================================================================
-    # FLASK_URL: IP address Flask binds to
+    # Flask dev server: app.run(host=FLOWINTEL_APP_HOST, port=FLOWINTEL_APP_PORT)
+    # Gunicorn: gunicorn -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT (read via Python one-liner)
+    # Other scripts: current_app.config.get('FLOWINTEL_APP_HOST')
+    # FLOWINTEL_APP_HOST: IP address for binding
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
     #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
-    # FLASK_PORT: Port number Flask listens on (default 7006)
-    FLASK_URL = '127.0.0.1'
-    FLASK_PORT = 7006
+    # FLOWINTEL_APP_PORT: Port number the appserver listens on (default 7006)
+    FLOWINTEL_APP_HOST = '127.0.0.1'
+    FLOWINTEL_APP_PORT = 7006
 
     # =============================================================================
     # MISP MODULES
@@ -61,7 +64,7 @@ class Config:
     # =============================================================================
     # REVERSE PROXY
     # =============================================================================
-    # SECURITY: Only enable if Flask is NOT directly accessible (firewall blocks Flask port)
+    # SECURITY: Only enable if the appserver is NOT directly accessible (firewall blocks Application port)
     BEHIND_PROXY = os.getenv('BEHIND_PROXY', 'true').lower() == 'true'
     PROXY_X_FOR = int(os.getenv('PROXY_X_FOR', 1))       # Number of proxies to trust
     PROXY_X_PROTO = int(os.getenv('PROXY_X_PROTO', 1))   # Trust X-Forwarded-Proto

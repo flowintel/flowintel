@@ -117,8 +117,8 @@ def _ensure_mcp():
         # attributes on the possibly-detached `current_user` object.
         env = {}
         env["FLOWINTEL_URL"] = (
-            f'http://{current_app.config.get("FLASK_URL")}'
-            f':{current_app.config.get("FLASK_PORT")}/api'
+            f'http://{current_app.config.get("FLOWINTEL_APP_HOST")}'
+            f':{current_app.config.get("FLOWINTEL_APP_PORT")}/api'
         )
 
         api_key = None
