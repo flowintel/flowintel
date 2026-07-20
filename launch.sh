@@ -56,6 +56,16 @@ function prepare_app_run {
     mkdir -p logs  # Directory for log files
 }
 
+function start_misp_modules_screen {
+    if ! command -v misp-modules >/dev/null 2>&1; then
+        echo "[WARN] 'misp-modules' command not found." >&2
+        echo "[WARN] MISP modules will not be started. Install it or add it to your PATH to enable this feature." >&2
+        return 1
+    fi
+
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+}
+
 
 function killscript {
     echo "Stopping existing sessions..."
@@ -82,7 +92,7 @@ function taxo_galaxy_update {
 function misp_module_update {
     prepare_app_run
     export FLASKENV="${FLASKENV:-development}"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
     sleep 3
     python3 app.py -mm
     killscript
@@ -96,7 +106,7 @@ function launch {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     # Display logs
     tail -n 0 -F logs/fcm.log logs/misp.log &
@@ -122,7 +132,7 @@ function production {
     killscript
 
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     tail -n 0 -F logs/fcm.log logs/misp.log &
     TAIL_PID=$!
@@ -137,7 +147,7 @@ function init_db {
     export FLASKENV="development"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     python3 app.py -i
     python3 app.py -tg
@@ -152,7 +162,7 @@ function init_db_prod {
     export FLASKENV="production"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     python3 app.py -i
     python3 app.py -tg
@@ -177,7 +187,7 @@ function launch_docker {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     # Display logs
     tail -n 0 -F logs/fcm.log logs/misp.log &
@@ -193,7 +203,7 @@ function init_db_docker {
     export FLASKENV="docker"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     python3 app.py -i
     python3 app.py -tg
