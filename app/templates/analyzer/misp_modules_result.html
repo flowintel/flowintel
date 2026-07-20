@@ -396,16 +396,17 @@ Value: [[misp_attr]]
                 }
 
                 async function nextPage(){
-                    let data_to_pass = editor.state.doc.toString().trim()
-                    if(!data_to_pass){
-                        data_to_pass = analyzer_results.value.result
-                    }
                     let loc_obj = JSON.stringify(misp_object_list.value)
                     if(!loc_obj)
                         loc_obj = null
                     let loc_attr = JSON.stringify(misp_attribute_list.value)
                     if(!loc_attr)
                         loc_attr = null
+
+                    let data_to_pass = editor.state.doc.toString().trim()
+                    if(!data_to_pass && !loc_obj && !loc_attr){
+                        data_to_pass = analyzer_results.value.result
+                    }
 
                     $('#insert_form').append(
                         $('<form>').attr({"action": "/analyzer/misp-modules/result_to_case", "name": "flowintel", "method": "post", "style": "display:none"}).append(
