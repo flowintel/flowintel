@@ -4,6 +4,38 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+    {{ super() }}
+    <style>
+        .admin-wrap-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .admin-detail-table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .admin-detail-table td {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .admin-taxonomy-tag {
+            display: inline-flex;
+            align-items: center;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     <div class="case-core-style" style="border-radius: 0">
         <div class="row align-items-center">
@@ -88,10 +120,10 @@
                         </template>
                         <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action case-index-list py-1">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-0" style="font-size: 0.9rem;">[[taxonomy.name]]</h6>
+                                <h6 class="mb-0 admin-wrap-text" style="font-size: 0.9rem;">[[taxonomy.name]]</h6>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <small class="text-muted mb-0" style="font-size: 0.8rem;">[[taxonomy.description]]</small>
+                                <small class="text-muted mb-0 admin-wrap-text" style="font-size: 0.8rem;">[[taxonomy.description]]</small>
                             </div>
                         </a>
                     </div>
@@ -101,11 +133,11 @@
                     <div class="card card-body" :id="'card-body_'+taxonomy.id" style="background-color: whitesmoke;">
                         <template v-if="tags_table">
                             <template v-if="tags_table[taxonomy.id]">
-                                <table>
+                                <table class="admin-detail-table">
                                     <template v-for="tag in tags_table[taxonomy.id]">
                                         <tr>
                                             <td title="Tag">
-                                                <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
+                                                <div class="tag admin-taxonomy-tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
                                                     <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
                                                     [[tag.name]]
                                                 </div>

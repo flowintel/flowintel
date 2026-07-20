@@ -4,6 +4,29 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+    {{ super() }}
+    <style>
+        .admin-wrap-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .admin-detail-table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .admin-detail-table td {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     <div class="case-core-style" style="border-radius: 0">
         <div class="row align-items-center">
@@ -88,10 +111,10 @@
                         </template>
                         <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action py-1">
                             <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-0" style="font-size: 0.9rem;">[[galaxy.name]]</h6>
+                                <h6 class="mb-0 admin-wrap-text" style="font-size: 0.9rem;">[[galaxy.name]]</h6>
                             </div>
                             <div class="d-flex w-100 justify-content-between">
-                                <small class="text-muted mb-0" style="font-size: 0.8rem;">[[galaxy.description]]</small>
+                                <small class="text-muted mb-0 admin-wrap-text" style="font-size: 0.8rem;">[[galaxy.description]]</small>
                             </div>
                         </a>
                     </div>
@@ -101,14 +124,14 @@
                     <div class="card card-body" :id="'card-body_'+galaxy.id" style="background-color: whitesmoke;">
                         <template v-if="clusters_table">
                             <template v-if="clusters_table[galaxy.id]">
-                                <table>
+                                <table class="admin-detail-table">
                                     <template v-for="cluster in clusters_table[galaxy.id]">
                                         <tr>
-                                            <td title="Cluster">
+                                            <td title="Cluster" class="admin-wrap-text">
                                                 [[cluster.tag]]
                                                 <ul>
-                                                    <li v-if="cluster.description">Description: [[cluster.description]]</li>
-                                                    <li v-if="cluster.meta">Metadata: [[JSON.parse(cluster.meta)]]</li>
+                                                    <li v-if="cluster.description" class="admin-wrap-text">Description: [[cluster.description]]</li>
+                                                    <li v-if="cluster.meta" class="admin-wrap-text">Metadata: [[JSON.parse(cluster.meta)]]</li>
                                                 </ul>
                                                 
                                             </td>
