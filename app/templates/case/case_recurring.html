@@ -20,13 +20,14 @@
 
             <div class="mb-3 w-50">
                 <label class="col-form-label" for="recurring">Type of recurring: <span style="color: red;">*</span></label>
-                <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring" required>
+                <select data-placeholder="recurring option" class="form-control" name="recurring" id="recurring" required
+                        @change="recurring_mode = $event.target.value">
                     <option value="" disabled {% if not current_mode %}selected{% endif %} hidden>-- Select a type --</option>
-                    <option @click="recurring_mode=1" value="1" {% if current_mode == 1 %}selected{% endif %}>One day (once)</option>
-                    <option @click="recurring_mode=2" value="2" {% if current_mode == 2 %}selected{% endif %}>Daily</option>
-                    <option @click="recurring_mode=3" value="3" {% if current_mode == 3 %}selected{% endif %}>Weekly</option>
-                    <option @click="recurring_mode=4" value="4" {% if current_mode == 4 %}selected{% endif %}>Monthly</option>
-                    <option @click="recurring_mode=5" value="5" {% if not case.recurring_type %}disabled title="Nothing to remove"{% endif %}>Remove</option>
+                    <option value="1" {% if current_mode == 1 %}selected{% endif %}>One day (once)</option>
+                    <option value="2" {% if current_mode == 2 %}selected{% endif %}>Daily</option>
+                    <option value="3" {% if current_mode == 3 %}selected{% endif %}>Weekly</option>
+                    <option value="4" {% if current_mode == 4 %}selected{% endif %}>Monthly</option>
+                    <option value="5" {% if not case.recurring_type %}disabled title="Nothing to remove"{% endif %}>Remove</option>
                 </select>
             </div>
 
