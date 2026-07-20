@@ -251,6 +251,9 @@ export default {
             remote_standalone_attrs.value = []
             show_unsynced_only.value = false
             Object.keys(expanded_sync_lists).forEach(key => { delete expanded_sync_lists[key] })
+            if (props.direction !== 'send') {
+                active_panel.value = 'objects'
+            }
             // default module depending on panel
             module_name.value = active_panel.value === 'objects' ? 'misp_object_event' : ''
             // initialize selected_tasks_map from provided case tasks
@@ -384,7 +387,7 @@ export default {
         <div class="mb-2">
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-sm" :class="active_panel==='objects' ? 'btn-primary' : 'btn-outline-secondary'" @click="active_panel='objects'">Objects & Attributes</button>
-                <button type="button" class="btn btn-sm" :class="active_panel==='case_tasks' ? 'btn-primary' : 'btn-outline-secondary'" @click="active_panel='case_tasks'">Case & Task</button>
+                <button v-if="direction === 'send'" type="button" class="btn btn-sm" :class="active_panel==='case_tasks' ? 'btn-primary' : 'btn-outline-secondary'" @click="active_panel='case_tasks'">Case & Task</button>
             </div>
         </div>
 
@@ -655,7 +658,7 @@ export default {
             </div>
         </template>
 
-        <template v-else>
+        <template v-else-if="direction === 'send'">
             <!-- Case & Task selection -->
             <div class="row g-3">
                 <div class="col-md-6">
