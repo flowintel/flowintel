@@ -5,7 +5,7 @@ from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, db, DATETIME_FORMAT_FULL
+from ..db_class.db import Misp_Object_Instance_Uuid, Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, db, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
@@ -665,7 +665,7 @@ def misp_objects_preview(cid, ciid):
     if not api_key:
         return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
 
-    objects, error = ConnectorsModel.misp_get_event_objects(loc_instance, api_key, case_instance.identifier)
+    objects, error = ConnectorModel.misp_get_event_objects(loc_instance, api_key, case_instance.identifier)
     if error:
         return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
     return {"objects": objects.get("objects", []), "standalone_attributes": objects.get("standalone_attributes", [])}, 200
@@ -686,7 +686,7 @@ def get_sync_logs(cid, ciid):
     if not case_instance or case_instance.case_id != int(cid):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
-    return {"sync_logs": ConnectorsModel.get_connector_sync_logs(cid, ciid)}, 200
+    return {"sync_logs": ConnectorModel.get_connector_sync_logs(cid, ciid)}, 200
 
 
 @case_blueprint.route("/<int:cid>/connectors/<int:ciid>/import_event_report", methods=['POST'])
@@ -718,7 +718,7 @@ def import_event_report(cid, ciid):
     if not api_key:
         return {"message": "No API key configured for this connector", "toast_class": "warning-subtle"}, 400
 
-    note_content, error = ConnectorsModel.misp_get_event_reports(loc_instance, api_key, case_instance.identifier)
+    note_content, error = ConnectorModel.misp_get_event_reports(loc_instance, api_key, case_instance.identifier)
     if error:
         return {"message": error["message"], "toast_class": error["toast_class"]}, error["status"]
 
