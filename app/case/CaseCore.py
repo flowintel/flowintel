@@ -1590,6 +1590,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     ##############
 
     def add_connector(self, cid, request_json, current_user) -> bool:
+        new_case_connectors = []
+        seen_instance_ids = set()
+
         for connector in request_json["connectors"]:
             instance = None
             if "id" in connector:
@@ -1608,20 +1611,28 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 and not CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id)
             ):
                 return False
-            if Case_Connector_Instance.query.filter_by(case_id=cid, instance_id=instance.id).first():
+            if (
+                instance.id in seen_instance_ids
+                or CommonModel.get_case_connectors_both(cid, instance.id)
+            ):
                 continue
-            if "identifier" in connector: loc_identfier = connector["identifier"]
-            else: loc_identfier = ""
-            c = Case_Connector_Instance(
+
+            loc_identfier = connector["identifier"] if "identifier" in connector else ""
+            new_case_connectors.append(Case_Connector_Instance(
                 case_id=cid,
                 instance_id=instance.id,
                 identifier=loc_identfier
-            )
-            db.session.add(c)
-            db.session.commit()
-            case = CommonModel.get_case(cid)
-            CommonModel.save_history(case.uuid, current_user, f"New Connector added")
-            CommonModel.update_last_modif(cid)
+            ))
+            seen_instance_ids.add(instance.id)
+
+        if not new_case_connectors:
+            return True
+
+        db.session.add_all(new_case_connectors)
+        db.session.commit()
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, "New Connector added")
+        CommonModel.update_last_modif(cid)
         return True
 
     def remove_connector(self, case_instance_id):

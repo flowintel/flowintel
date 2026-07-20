@@ -19,7 +19,7 @@ module_config = {
 
 def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
-    instance: name, url, description, uuid, connector_id, type, api_key, identifier
+    instance: name, url, description, uuid, connector_id, api_key, identifier
 
     case: id, uuid, title, description, creation_date, last_modif, status_id, status, completed, owner_org_id
           org_name, org_uuid, recurring_type, deadline, finish_date, tasks, clusters, connectors

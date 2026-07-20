@@ -168,7 +168,6 @@ export default {
                     <tr>
                         <th>Instance name</th>
                         <th>Instance url</th>
-                        <th>Type</th>
                         <th>Identifier on the instance</th>
                         <th></th>
                     </tr>
@@ -185,10 +184,6 @@ export default {
                             <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                         </td>
 
-                        <td v-if="instance.details.type">
-                            <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
-                        </td>
-                        <td v-else><i>None</i></td>
 
                         <td v-if="instance.identifier">
                             <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>

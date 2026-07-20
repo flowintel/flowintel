@@ -1435,7 +1435,7 @@
                         const res = await fetch(`/case/{{case.id}}/add_connector`, {
                             method: 'POST',
                             headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ connectors: [{ name: pending_selected_instance.value.name, identifier: pending_connector_identifier.value }] })
+                            body: JSON.stringify({ connectors: [{ id: pending_selected_instance.value.id, name: pending_selected_instance.value.name, identifier: pending_connector_identifier.value }] })
                         })
                         if (res.status === 200) {
                             await fetch_case_connectors()
