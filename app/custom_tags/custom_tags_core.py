@@ -27,7 +27,7 @@ def change_config_core(request_json):
     """Change config for a custom_tag"""
     custom_tag = get_custom_tag(request_json["custom_tag_id"])
     if custom_tag:
-        custom_tag.name = request_json["custom_tag_name"]
+        custom_tag.name = request_json["custom_tag_name"].strip()
         custom_tag.icon = request_json["custom_tag_icon"]
         custom_tag.color = request_json["custom_tag_color"]
         db.session.commit()
