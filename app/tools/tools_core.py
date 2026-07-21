@@ -411,19 +411,27 @@ def stats_core(cases):
     cases_closed_month = {month: 0 for month in calendar.month_name if month}
     cases_closed_year = {}
     cases_elapsed_time = {}
+    cases_resolution_total = 0
     total_opened_cases = 0
     total_closed_cases = 0
+    overdue_cases = 0
 
     tasks_opened_month = {month: 0 for month in calendar.month_name if month}
     tasks_opened_year = {}
     tasks_closed_month = {month: 0 for month in calendar.month_name if month}
     tasks_closed_year = {}
     tasks_elapsed_time = {}
+    tasks_resolution_total = 0
     tasks_per_case = {}
     total_opened_tasks = 0
     total_closed_tasks = 0
+    overdue_tasks = 0
+    due_soon_tasks = 0
 
     current_year = datetime.datetime.now().year
+    now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
+    upcoming_cutoff = now + datetime.timedelta(days=7)
+    top_cases_by_tasks = []
 
     for case in cases:
         if case.creation_date.year == current_year:
@@ -445,13 +453,20 @@ def stats_core(cases):
             if loc not in cases_elapsed_time:
                 cases_elapsed_time[loc] = 0
             cases_elapsed_time[loc] += 1
+            cases_resolution_total += loc
 
             total_closed_cases += 1
         else:
             total_opened_cases += 1
+            if case.deadline and case.deadline < now:
+                overdue_cases += 1
+
+        case_tasks = list(case.tasks)
+        case_open_tasks = 0
+        case_closed_tasks = 0
 
         # Tasks part
-        for task in case.tasks:
+        for task in case_tasks:
             if task.creation_date.year == current_year:
                 tasks_opened_month[task.creation_date.strftime("%B")] += 1
                 if task.finish_date:
@@ -471,14 +486,33 @@ def stats_core(cases):
                 if loc not in tasks_elapsed_time:
                     tasks_elapsed_time[loc] = 0
                 tasks_elapsed_time[loc] += 1
+                tasks_resolution_total += loc
 
                 total_closed_tasks += 1
+                case_closed_tasks += 1
             else:
                 total_opened_tasks += 1
-            
-            if not case.nb_tasks in tasks_per_case:
-                tasks_per_case[case.nb_tasks] = 0
-            tasks_per_case[case.nb_tasks] += 1
+                case_open_tasks += 1
+                if task.deadline:
+                    if task.deadline < now:
+                        overdue_tasks += 1
+                    elif task.deadline <= upcoming_cutoff:
+                        due_soon_tasks += 1
+
+        task_count = case.nb_tasks if case.nb_tasks is not None else len(case_tasks)
+        if task_count not in tasks_per_case:
+            tasks_per_case[task_count] = 0
+        tasks_per_case[task_count] += 1
+
+        top_cases_by_tasks.append({
+            "id": case.id,
+            "title": case.title,
+            "task_count": task_count,
+            "open_tasks": case_open_tasks,
+            "closed_tasks": case_closed_tasks,
+            "completed": bool(case.completed),
+            "last_modif": case.last_modif.strftime(DATETIME_FORMAT_FULL) if case.last_modif else "",
+        })
 
 
     loc_cases_opened_month = chart_dict_constructor(cases_opened_month)
@@ -498,14 +532,28 @@ def stats_core(cases):
     loc_tasks_elapsed_time = chart_dict_constructor(tasks_elapsed_time)
     loc_tasks_per_case = chart_dict_constructor(tasks_per_case)
 
+    total_cases = total_opened_cases + total_closed_cases
+    total_tasks = total_opened_tasks + total_closed_tasks
+    top_cases_by_tasks.sort(key=lambda row: (-row["task_count"], row["title"].lower()))
+
     return {"cases-opened-month": loc_cases_opened_month, "cases-opened-year": loc_cases_opened_year,
             "cases-closed-month": loc_cases_closed_month, "cases-closed-year": loc_cases_closed_year,
             "cases-elapsed-time": loc_cases_elapsed_time,
             "total_opened_cases": total_opened_cases, "total_closed_cases": total_closed_cases,
+            "total_cases": total_cases,
+            "case_closure_rate": round((total_closed_cases / total_cases) * 100, 1) if total_cases else 0,
+            "avg_case_resolution_weeks": round(cases_resolution_total / total_closed_cases, 1) if total_closed_cases else None,
+            "overdue_cases": overdue_cases,
             "tasks-opened-month": loc_tasks_opened_month, "tasks-opened-year": loc_tasks_opened_year,
             "tasks-closed-month": loc_tasks_closed_month, "tasks-closed-year": loc_tasks_closed_year,
             "tasks-elapsed-time": loc_tasks_elapsed_time, "tasks-per-case": loc_tasks_per_case,
-            "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks}
+            "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks,
+            "total_tasks": total_tasks,
+            "task_closure_rate": round((total_closed_tasks / total_tasks) * 100, 1) if total_tasks else 0,
+            "avg_task_resolution_weeks": round(tasks_resolution_total / total_closed_tasks, 1) if total_closed_tasks else None,
+            "overdue_tasks": overdue_tasks,
+            "due_soon_tasks": due_soon_tasks,
+            "top_cases_by_tasks": top_cases_by_tasks[:5]}
 
 def get_case_by_tags(current_user, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
@@ -574,7 +622,7 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     task_cluster_map = {}
 
     for case in cases:
-        case_info = {"id": case.id, "title": case.title}
+        case_info = {"id": case.id, "title": case.title, "description": case.description or ""}
 
         for c in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all():
             e = case_tag_map.setdefault(c.name, {"count": 0, "cases": []})
@@ -618,6 +666,146 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
         "case_clusters": top_n(case_cluster_map),
         "task_tags": top_n(task_tag_map),
         "task_clusters": top_n(task_cluster_map),
+    }
+
+
+def get_misp_stats(current_user, cutoff=None, limit=10):
+    """Aggregate visible MISP objects and standalone attributes for the stats UI."""
+    cases = Case.query.join(Case_Org, Case_Org.case_id == Case.id).where(Case_Org.org_id == current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_by_date(cases, cutoff)
+    case_ids = [case.id for case in cases]
+
+    if not case_ids:
+        return {
+            "total_objects": 0,
+            "unique_object_names": 0,
+            "total_object_attributes": 0,
+            "total_standalone_attributes": 0,
+            "linked_task_object_refs": 0,
+            "linked_task_attribute_refs": 0,
+            "objects_per_case": [],
+            "object_names": [],
+            "standalone_types": [],
+            "standalone_relations": [],
+            "top_objects": [],
+            "top_standalone_types": [],
+            "top_standalone_relations": [],
+        }
+
+    case_map = {case.id: {"id": case.id, "title": case.title, "description": case.description or ""} for case in cases}
+    case_rows = [{"label": case.title, "count": 0} for case in cases]
+    case_row_index = {case.id: idx for idx, case in enumerate(cases)}
+
+    object_name_counts = {}
+    standalone_type_counts = {}
+    standalone_relation_counts = {}
+    top_objects_map = {}
+    top_standalone_type_map = {}
+    top_standalone_relation_map = {}
+    total_object_attributes = 0
+
+    objects = Case_Misp_Object.query.filter(Case_Misp_Object.case_id.in_(case_ids)).all()
+    object_ids = [obj.id for obj in objects]
+
+    for obj in objects:
+        object_attrs = obj.attributes.all()
+        attr_count = len(object_attrs)
+        total_object_attributes += attr_count
+
+        case_info = case_map.get(obj.case_id)
+        if obj.case_id in case_row_index:
+            case_rows[case_row_index[obj.case_id]]["count"] += 1
+
+        name_key = obj.name or "(unnamed object)"
+        object_name_counts[name_key] = object_name_counts.get(name_key, 0) + 1
+
+        entry = top_objects_map.setdefault(name_key, {
+            "name": name_key,
+            "count": 0,
+            "attribute_count": 0,
+            "cases": [],
+        })
+        entry["count"] += 1
+        entry["attribute_count"] += attr_count
+        if case_info and not any(c["id"] == case_info["id"] for c in entry["cases"]):
+            entry["cases"].append(case_info)
+
+    standalone_attributes = Misp_Attribute.query.filter(
+        Misp_Attribute.case_id.in_(case_ids),
+        Misp_Attribute.case_misp_object_id == None,
+    ).all()
+    standalone_ids = [attr.id for attr in standalone_attributes]
+
+    for attr in standalone_attributes:
+        case_info = case_map.get(attr.case_id)
+        type_key = attr.type or "(no type)"
+        relation_key = attr.object_relation or "(no relation)"
+
+        standalone_type_counts[type_key] = standalone_type_counts.get(type_key, 0) + 1
+        standalone_relation_counts[relation_key] = standalone_relation_counts.get(relation_key, 0) + 1
+
+        type_entry = top_standalone_type_map.setdefault(type_key, {
+            "name": type_key,
+            "count": 0,
+            "cases": [],
+            "attributes": [],
+        })
+        type_entry["count"] += 1
+        if case_info and not any(c["id"] == case_info["id"] for c in type_entry["cases"]):
+            type_entry["cases"].append(case_info)
+        type_entry["attributes"].append({
+            "id": attr.id,
+            "value": attr.value,
+            "type": attr.type,
+            "case_id": attr.case_id,
+            "case_title": case_info["title"] if case_info else "",
+        })
+
+        relation_entry = top_standalone_relation_map.setdefault(relation_key, {
+            "name": relation_key,
+            "count": 0,
+            "cases": [],
+            "attributes": [],
+        })
+        relation_entry["count"] += 1
+        if case_info and not any(c["id"] == case_info["id"] for c in relation_entry["cases"]):
+            relation_entry["cases"].append(case_info)
+        relation_entry["attributes"].append({
+            "id": attr.id,
+            "value": attr.value,
+            "type": attr.type,
+            "case_id": attr.case_id,
+            "case_title": case_info["title"] if case_info else "",
+        })
+
+    linked_task_object_refs = Task_Misp_Object.query.filter(Task_Misp_Object.misp_object_id.in_(object_ids)).count() if object_ids else 0
+    linked_task_attribute_refs = Task_Misp_Attribute.query.filter(Task_Misp_Attribute.misp_attribute_id.in_(standalone_ids)).count() if standalone_ids else 0
+
+    def _sorted_chart_rows(data_dict):
+        return [{"label": key, "count": value} for key, value in sorted(data_dict.items(), key=lambda item: item[1], reverse=True)]
+
+    def _top_rows(data_map):
+        rows = sorted(data_map.values(), key=lambda row: row["count"], reverse=True)[:limit]
+        for row in rows:
+            if "attributes" in row:
+                row["attributes"] = row["attributes"][:25]
+        return rows
+
+    return {
+        "total_objects": len(objects),
+        "unique_object_names": len(object_name_counts),
+        "total_object_attributes": total_object_attributes,
+        "total_standalone_attributes": len(standalone_attributes),
+        "linked_task_object_refs": linked_task_object_refs,
+        "linked_task_attribute_refs": linked_task_attribute_refs,
+        "objects_per_case": case_rows,
+        "object_names": _sorted_chart_rows(object_name_counts),
+        "standalone_types": _sorted_chart_rows(standalone_type_counts),
+        "standalone_relations": _sorted_chart_rows(standalone_relation_counts),
+        "top_objects": _top_rows(top_objects_map),
+        "top_standalone_types": _top_rows(top_standalone_type_map),
+        "top_standalone_relations": _top_rows(top_standalone_relation_map),
     }
 
 
@@ -1147,6 +1335,14 @@ def get_community_stats():
     # Total counts
     total_orgs = Org.query.count()
     total_users = User.query.count()
+    active_cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=30)
+    active_users_30d = User.query.filter(User.last_login != None, User.last_login >= active_cutoff).count()
+    never_logged_in = User.query.filter(User.last_login == None).count()
+    orgs_without_users = db.session.query(Org.id)\
+        .outerjoin(User, User.org_id == Org.id)\
+        .group_by(Org.id)\
+        .having(db.func.count(User.id) == 0)\
+        .count()
     
     # Users per organisation
     users_per_org = db.session.query(
@@ -1191,6 +1387,10 @@ def get_community_stats():
     return {
         "total_orgs": total_orgs,
         "total_users": total_users,
+        "active_users_30d": active_users_30d,
+        "never_logged_in": never_logged_in,
+        "orgs_without_users": orgs_without_users,
+        "avg_users_per_org": round(total_users / total_orgs, 1) if total_orgs else 0,
         "users_per_org": [{"org_name": row.org_name, "count": row.count} for row in users_per_org],
         "users_per_role": [{"role_name": row.role_name, "count": row.count} for row in users_per_role],
         "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
@@ -1264,6 +1464,7 @@ def get_unassigned_tasks(current_user, limit=20):
 def get_admin_extra_stats(days=90):
     """Notification backlog + login activity per day for the last `days` days."""
     notif_backlog = Notification.query.filter_by(is_read=False).count()
+    total_notifications = Notification.query.count()
 
     cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
     rows = db.session.query(
@@ -1277,7 +1478,9 @@ def get_admin_extra_stats(days=90):
 
     return {
         "notification_backlog": notif_backlog,
+        "total_notifications": total_notifications,
         "login_activity": activity,
+        "recent_login_count": sum(row["count"] for row in activity),
         "login_activity_days": days,
     }
 

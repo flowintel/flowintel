@@ -1,423 +1,717 @@
-<!-- 
+<!--
     Author: David Cruciani
 -->
 
 {% extends 'base.html' %}
 
-{% block head %}
-<script src="{{ url_for('static',filename='js/vendor/chart.umd.min.js') }}"></script>
-
-{{ super() }}
-{%endblock%}
-
-{% block content %}
-{% macro chart_card(title, canvas_id, height='45vh') -%}
-<div class="d-flex align-items-center justify-content-between mt-4 mb-2">
-    <h3 class="mb-0">{{ title }}</h3>
-    <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv('{{ canvas_id }}', '{{ canvas_id }}.csv')" title="Export as CSV">
-        <i class="fa-solid fa-download me-1"></i>CSV
-    </button>
-</div>
-<div class="card card-body p-4 mb-4">
-    <div class="chart-wrapper" style="position: relative; height:{{ height }}"><canvas id="{{ canvas_id }}"></canvas></div>
-</div>
+{% macro chart_card(title, canvas_id, height='380px', subtitle='') -%}
+<section class="stats-panel mb-4">
+    <div class="stats-panel-header">
+        <div>
+            <h3 class="stats-panel-title mb-1">{{ title }}</h3>
+            {% if subtitle %}
+            <p class="stats-panel-subtitle mb-0">{{ subtitle }}</p>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <button type="button" class="btn btn-sm btn-outline-primary" @click="open_chart_modal('{{ canvas_id }}', '{{ title }}')" title="Expand chart">
+                <i class="fa-solid fa-up-right-and-down-left-from-center me-1"></i>Expand
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv('{{ canvas_id }}', '{{ canvas_id }}.csv')" title="Export as CSV">
+                <i class="fa-solid fa-download me-1"></i>CSV
+            </button>
+        </div>
+    </div>
+    <div class="chart-wrapper" style="height: {{ height }};">
+        <canvas id="{{ canvas_id }}"></canvas>
+        <div class="chart-overlay-hint"><i class="fa-solid fa-expand me-1"></i>Click Expand</div>
+    </div>
+</section>
 {%- endmacro %}
 
-<div class="case-core-style" style="border-radius: 0">
-    <h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Dashboard</h5>
-</div>
-<hr class="fading-line-2 mb-4 mt-4">
+{% block head %}
+<script src="{{ url_for('static',filename='js/vendor/chart.umd.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/stat.css') }}">
+{{ super() }}
+{% endblock %}
 
-<div class="d-flex align-items-center justify-content-end mb-3 flex-wrap gap-2">
-    <span class="small text-muted me-auto"><i class="fa-regular fa-clock me-1"></i>Generated on [[ generated_on ]]</span>
-    <label class="me-2 small text-muted mb-0" for="period-filter">Period:</label>
-    <select id="period-filter" class="form-select form-select-sm w-auto" v-model="period_days" @change="reload_all">
-        <option value="">All time</option>
-        <option value="1">Last 24 hours</option>
-        <option value="7">Last week</option>
-        <option value="30">Last 30 days</option>
-        <option value="90">Last 90 days</option>
-        <option value="365">Last year</option>
-    </select>
-</div>
+{% block content %}
+<div class="stats-shell">
+    <section class="stats-hero">
+        <div class="stats-hero-meta">
+            <div>
+                <div class="stats-hero-kicker">Flowintel analytics</div>
+                <h1 class="stats-hero-title">Stats dashboard</h1>
+                <p class="stats-hero-subtitle">
+                    A cleaner view of workload, throughput, and community activity for
+                    <strong>{{ org_name|default('your organisation', true) }}</strong>.
+                </p>
+            </div>
+            <div class="stats-filter-meta">
+                <i class="fa-regular fa-clock me-1"></i>Generated on [[ generated_on || 'loading...' ]]
+            </div>
+        </div>
+    </section>
 
-<ul class="nav nav-tabs" style="margin-bottom: 10px;">
-    <li class="nav-item">
+    <section class="stats-filter-bar">
+        <div class="stats-filter-meta">
+            <strong>View:</strong> [[ periodLabel() ]]
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="small text-muted mb-0" for="period-filter">Period</label>
+            <select id="period-filter" class="form-select form-select-sm w-auto" v-model="period_days" @change="reload_all">
+                <option value="">All time</option>
+                <option value="1">Last 24 hours</option>
+                <option value="7">Last week</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+            </select>
+        </div>
+    </section>
+
+    <nav class="stats-tabs nav" aria-label="Stats tabs">
         <button class="nav-link active" id="tab-case" aria-current="page" @click="active_tab('case')">Cases</button>
-    </li>
-    <li class="nav-item">
         <button class="nav-link" id="tab-task" @click="active_tab('task')">Tasks</button>
-    </li>
-    <li class="nav-item">
-        <button class="nav-link" id="tab-tags" @click="active_tab('tags')">Context elements</button>
-    </li>
-    <li class="nav-item">
+        <button class="nav-link" id="tab-tags" @click="active_tab('tags')">Context</button>
+        <button class="nav-link" id="tab-misp" @click="active_tab('misp')">MISP</button>
         {% if current_user.is_admin() %}
-            <button class="nav-link" id="tab-admin" @click="active_tab('admin')">Admin</button>
-        {%else%}
-            <button class="nav-link disabled" id="tab-admin" @click="active_tab('admin')"><i class="fa-solid fa-lock me-1"></i>Admin</button>
-        {%endif%}
-    </li>
-    <li class="nav-item">
-        {% if current_user.is_admin() %}
-            <button class="nav-link" id="tab-community" @click="active_tab('community')">Community</button>
-        {%else%}
-            <button class="nav-link disabled" id="tab-community" @click="active_tab('community')"><i class="fa-solid fa-lock me-1"></i>Community</button>
-        {%endif%}
-    </li>
-</ul>
+        <button class="nav-link" id="tab-admin" @click="active_tab('admin')">Admin</button>
+        <button class="nav-link" id="tab-community" @click="active_tab('community')">Community</button>
+        {% else %}
+        <button class="nav-link disabled" id="tab-admin" @click="active_tab('admin')"><i class="fa-solid fa-lock me-1"></i>Admin</button>
+        <button class="nav-link disabled" id="tab-community" @click="active_tab('community')"><i class="fa-solid fa-lock me-1"></i>Community</button>
+        {% endif %}
+    </nav>
 
-<div class="case-core-style">
-<template v-if="main_tab == 'case'">
-    <p class="mb-3"><i>Cases where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
-
-    <div class="card card-body mb-4">
-        <div class="row text-center">
-            <div class="col">
-                <h6 class="text-muted mb-1">Open cases</h6>
-                <h3 class="mb-0">[[case_stat.total_opened_cases]]</h3>
+    <template v-if="main_tab == 'case'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">Case workload</h2>
+                <p class="stats-section-copy">Open versus closed case volume, average resolution time, and the busiest cases in scope.</p>
             </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Closed cases</h6>
-                <h3 class="mb-0">[[case_stat.total_closed_cases]]</h3>
-            </div>
-        </div>
-    </div>
+            <div class="stats-filter-meta">Participating cases for {{ org_name|default('your organisation', true) }}</div>
+        </section>
 
-    {{ chart_card('Cases per month', 'cases-month') }}
-    {{ chart_card('Cases per year', 'cases-year') }}
-    {{ chart_card('Elapsed time', 'cases-elapsed-time') }}
-    {{ chart_card('Cases per custom tag', 'case-custom-tags', '50vh') }}
-    {{ chart_card('Cases per taxonomy', 'case-tags') }}
-    {{ chart_card('Cases per galaxy cluster', 'case-clusters', '50vh') }}
-</template>
+        <section class="stats-card-grid">
+            <article class="stats-card soft-accent">
+                <div class="stats-card-label"><i class="fa-solid fa-folder-tree"></i>Total cases</div>
+                <div class="stats-card-value">[[ formatNumber(case_stat.total_cases) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(case_stat.total_opened_cases) ]] open and [[ formatNumber(case_stat.total_closed_cases) ]] closed</p>
+            </article>
+            <article class="stats-card soft-success">
+                <div class="stats-card-label"><i class="fa-solid fa-circle-check"></i>Closure rate</div>
+                <div class="stats-card-value">[[ formatPercent(case_stat.case_closure_rate) ]]</div>
+                <p class="stats-card-note">Share of visible cases already completed</p>
+            </article>
+            <article class="stats-card soft-warning">
+                <div class="stats-card-label"><i class="fa-solid fa-hourglass-half"></i>Avg. time to close</div>
+                <div class="stats-card-value">[[ formatWeeks(case_stat.avg_case_resolution_weeks) ]]</div>
+                <p class="stats-card-note">Average for closed cases in the selected period</p>
+            </article>
+            <article class="stats-card soft-danger">
+                <div class="stats-card-label"><i class="fa-solid fa-triangle-exclamation"></i>Overdue cases</div>
+                <div class="stats-card-value">[[ formatNumber(case_stat.overdue_cases) ]]</div>
+                <p class="stats-card-note">Open cases with a deadline in the past</p>
+            </article>
+        </section>
 
-<template v-else-if="main_tab == 'task'">
-    <p class="mb-3"><i>Tasks where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
-
-    <div class="card card-body mb-4">
-        <div class="row text-center">
-            <div class="col">
-                <h6 class="text-muted mb-1">Open tasks</h6>
-                <h3 class="mb-0">[[case_stat.total_opened_tasks]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Closed tasks</h6>
-                <h3 class="mb-0">[[case_stat.total_closed_tasks]]</h3>
-            </div>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
-            <div class="card card-body h-100">
-                <h6 class="text-muted mb-1"><i class="fa-solid fa-clock-rotate-left me-1"></i>Overdue tasks</h6>
-                <h3 class="mb-2">[[ overdue.count ]]</h3>
-                <div v-if="overdue.tasks && overdue.tasks.length" class="small">
-                    <ul class="list-unstyled mb-0">
-                        <li v-for="t in overdue.tasks" :key="'ov-'+t.id">
-                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
-                            <span class="text-muted ms-1">— due [[ t.deadline ]]</span>
-                        </li>
-                    </ul>
-                    <p v-if="overdue.count > overdue.tasks.length" class="text-muted small mb-0 mt-1">
-                        Showing [[ overdue.tasks.length ]] of [[ overdue.count ]]
-                    </p>
+        <section class="stats-dual-grid">
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Most active cases</h3>
+                        <p class="stats-panel-subtitle mb-0">Cases with the highest task volume right now.</p>
+                    </div>
                 </div>
-                <p v-else class="text-muted small mb-0">No overdue tasks.</p>
-            </div>
-        </div>
-        <div class="col-12 col-xl-6">
-            <div class="card card-body h-100">
-                <h6 class="text-muted mb-1"><i class="fa-solid fa-user-slash me-1"></i>Tasks without assignee</h6>
-                <h3 class="mb-2">[[ unassigned.count ]]</h3>
-                <div v-if="unassigned.tasks && unassigned.tasks.length" class="small">
-                    <ul class="list-unstyled mb-0">
-                        <li v-for="t in unassigned.tasks" :key="'un-'+t.id">
-                            <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
-                        </li>
-                    </ul>
-                    <p v-if="unassigned.count > unassigned.tasks.length" class="text-muted small mb-0 mt-1">
-                        Showing [[ unassigned.tasks.length ]] of [[ unassigned.count ]]
-                    </p>
+                <ul v-if="case_stat.top_cases_by_tasks && case_stat.top_cases_by_tasks.length" class="stats-inline-list">
+                    <li v-for="row in case_stat.top_cases_by_tasks" :key="'case-top-' + row.id">
+                        <div>
+                            <a :href="'/case/' + row.id" class="fw-semibold">[[ row.title ]]</a>
+                            <div class="small text-muted mt-1">Last activity [[ row.last_modif || 'unknown' ]]</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-semibold">[[ formatNumber(row.task_count) ]] tasks</div>
+                            <div class="small text-muted">[[ formatNumber(row.open_tasks) ]] open / [[ formatNumber(row.closed_tasks) ]] closed</div>
+                        </div>
+                    </li>
+                </ul>
+                <p v-else class="text-muted mb-0">No case activity found for this period.</p>
+            </section>
+
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Task health</h3>
+                        <p class="stats-panel-subtitle mb-0">Fast signals that impact delivery across your visible cases.</p>
+                    </div>
                 </div>
-                <p v-else class="text-muted small mb-0">All open tasks have an assignee.</p>
+                <div class="stats-card-grid">
+                    <article class="stats-card soft-danger">
+                        <div class="stats-card-label"><i class="fa-solid fa-clock-rotate-left"></i>Overdue tasks</div>
+                        <div class="stats-card-value">[[ formatNumber(case_stat.overdue_tasks) ]]</div>
+                        <p class="stats-card-note">Tasks already past deadline</p>
+                    </article>
+                    <article class="stats-card soft-warning">
+                        <div class="stats-card-label"><i class="fa-solid fa-calendar-day"></i>Due soon</div>
+                        <div class="stats-card-value">[[ formatNumber(case_stat.due_soon_tasks) ]]</div>
+                        <p class="stats-card-note">Open tasks due within 7 days</p>
+                    </article>
+                    <article class="stats-card">
+                        <div class="stats-card-label"><i class="fa-solid fa-user-slash"></i>Unassigned</div>
+                        <div class="stats-card-value">[[ formatNumber(unassigned.count) ]]</div>
+                        <p class="stats-card-note">Open tasks waiting for an owner</p>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+        <section class="stats-dual-grid">
+            {{ chart_card('Cases per month', 'cases-month', '380px', 'Opened and closed cases for the current year.') }}
+            {{ chart_card('Cases per year', 'cases-year', '380px', 'Longer trend across the visible dataset.') }}
+            {{ chart_card('Case resolution time', 'cases-elapsed-time', '380px', 'How many weeks closed cases stayed open.') }}
+            {{ chart_card('Cases by taxonomy', 'case-tags', '380px', 'Taxonomy distribution for visible cases.') }}
+            {{ chart_card('Cases by custom tag', 'case-custom-tags', '380px', 'Most used custom tags on cases.') }}
+            {{ chart_card('Cases by galaxy cluster', 'case-clusters', '380px', 'Galaxy cluster distribution on cases.') }}
+        </section>
+    </template>
+
+    <template v-else-if="main_tab == 'task'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">Task operations</h2>
+                <p class="stats-section-copy">Task throughput, assignment pressure, and deadline risk in one place.</p>
+            </div>
+            <div class="stats-filter-meta">Tasks visible through {{ org_name|default('your organisation', true) }}</div>
+        </section>
+
+        <section class="stats-card-grid">
+            <article class="stats-card soft-accent">
+                <div class="stats-card-label"><i class="fa-solid fa-list-check"></i>Total tasks</div>
+                <div class="stats-card-value">[[ formatNumber(case_stat.total_tasks) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(case_stat.total_opened_tasks) ]] open and [[ formatNumber(case_stat.total_closed_tasks) ]] closed</p>
+            </article>
+            <article class="stats-card soft-success">
+                <div class="stats-card-label"><i class="fa-solid fa-chart-simple"></i>Closure rate</div>
+                <div class="stats-card-value">[[ formatPercent(case_stat.task_closure_rate) ]]</div>
+                <p class="stats-card-note">Share of visible tasks already completed</p>
+            </article>
+            <article class="stats-card soft-warning">
+                <div class="stats-card-label"><i class="fa-solid fa-stopwatch"></i>Avg. time to close</div>
+                <div class="stats-card-value">[[ formatWeeks(case_stat.avg_task_resolution_weeks) ]]</div>
+                <p class="stats-card-note">Average duration for closed tasks</p>
+            </article>
+            <article class="stats-card soft-danger">
+                <div class="stats-card-label"><i class="fa-solid fa-calendar-day"></i>Due within 7 days</div>
+                <div class="stats-card-value">[[ formatNumber(case_stat.due_soon_tasks) ]]</div>
+                <p class="stats-card-note">Open tasks approaching deadline</p>
+            </article>
+        </section>
+
+        <section class="stats-dual-grid">
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Overdue tasks</h3>
+                        <p class="stats-panel-subtitle mb-0">Most urgent work items across your visible cases.</p>
+                    </div>
+                </div>
+                <ul v-if="overdue.tasks && overdue.tasks.length" class="stats-inline-list">
+                    <li v-for="t in overdue.tasks" :key="'ov-' + t.id">
+                        <div>
+                            <a :href="'/case/' + t.case_id + '#task-' + t.id" class="fw-semibold">[[ t.title ]]</a>
+                            <div class="small text-muted mt-1">Due [[ t.deadline ]]</div>
+                        </div>
+                        <span class="stats-badge stats-badge-open">Overdue</span>
+                    </li>
+                </ul>
+                <p v-else class="text-muted mb-0">No overdue tasks.</p>
+            </section>
+
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Tasks without assignee</h3>
+                        <p class="stats-panel-subtitle mb-0">Open tasks that still need an owner.</p>
+                    </div>
+                </div>
+                <ul v-if="unassigned.tasks && unassigned.tasks.length" class="stats-inline-list">
+                    <li v-for="t in unassigned.tasks" :key="'un-' + t.id">
+                        <div>
+                            <a :href="'/case/' + t.case_id + '#task-' + t.id" class="fw-semibold">[[ t.title ]]</a>
+                            <div class="small text-muted mt-1">Created [[ t.creation_date || 'unknown' ]]</div>
+                        </div>
+                        <span class="stats-badge stats-badge-open">Needs owner</span>
+                    </li>
+                </ul>
+                <p v-else class="text-muted mb-0">All open tasks have an assignee.</p>
+            </section>
+        </section>
+
+        <section class="stats-dual-grid">
+            {{ chart_card('Tasks per month', 'tasks-month', '380px', 'Opened and closed tasks for the current year.') }}
+            {{ chart_card('Tasks per year', 'tasks-year', '380px', 'Longer trend across the visible dataset.') }}
+            {{ chart_card('Task resolution time', 'tasks-elapsed-time', '380px', 'How many weeks closed tasks stayed open.') }}
+            {{ chart_card('Tasks per case', 'tasks-per-case', '380px', 'Distribution of task counts across cases.') }}
+            {{ chart_card('Tasks by taxonomy', 'task-tags', '380px', 'Taxonomy distribution for visible tasks.') }}
+            {{ chart_card('Tasks by custom tag', 'task-custom-tags', '380px', 'Most used custom tags on tasks.') }}
+            {{ chart_card('Tasks by galaxy cluster', 'task-clusters', '380px', 'Galaxy cluster distribution on tasks.') }}
+        </section>
+    </template>
+
+    <template v-else-if="main_tab == 'tags'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">Context elements</h2>
+                <p class="stats-section-copy">The most common tags and galaxy clusters used across visible cases and tasks.</p>
+            </div>
+            <div class="stats-filter-meta">Pick a row on the left to inspect the impacted cases or tasks on the right.</div>
+        </section>
+
+        <section class="stats-context-layout">
+            <div class="stats-context-grid">
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-tag me-2"></i>Top tags on cases</h3>
+                            <p class="stats-panel-subtitle mb-0">Click a row to inspect linked cases.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-' + idx" :class="selected_case_tag === row ? 'table-active' : ''" @click="set_context_selection('case_tag', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td>[[ row.tag ]]</td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!tag_stats.case_tags || tag_stats.case_tags.length === 0">
+                                <td colspan="3" class="text-muted">No tags found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-tag me-2"></i>Top tags on tasks</h3>
+                            <p class="stats-panel-subtitle mb-0">Click a row to inspect linked tasks.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-' + idx" :class="selected_task_tag === row ? 'table-active' : ''" @click="set_context_selection('task_tag', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td>[[ row.tag ]]</td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!tag_stats.task_tags || tag_stats.task_tags.length === 0">
+                                <td colspan="3" class="text-muted">No tags found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-spider me-2"></i>Top clusters on cases</h3>
+                            <p class="stats-panel-subtitle mb-0">Galaxy clusters attached to visible cases.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-' + idx" :class="selected_case_cluster === row ? 'table-active' : ''" @click="set_context_selection('case_cluster', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td><span :title="row.tag">[[ row.name || row.tag ]]</span><small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small></td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!tag_stats.case_clusters || tag_stats.case_clusters.length === 0">
+                                <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-spider me-2"></i>Top clusters on tasks</h3>
+                            <p class="stats-panel-subtitle mb-0">Galaxy clusters attached to visible tasks.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-' + idx" :class="selected_task_cluster === row ? 'table-active' : ''" @click="set_context_selection('task_cluster', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td><span :title="row.tag">[[ row.name || row.tag ]]</span><small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small></td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!tag_stats.task_clusters || tag_stats.task_clusters.length === 0">
+                                <td colspan="3" class="text-muted">No galaxy clusters found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            <aside class="stats-panel stats-context-detail">
+                <template v-if="context_selection.row">
+                    <div class="stats-detail-hero">
+                        <div class="stats-detail-kicker">[[ context_selection.label ]]</div>
+                        <div class="stats-detail-title">[[ context_selection.title ]]</div>
+                        <div class="stats-detail-meta">
+                            <span class="stats-badge stats-badge-open">[[ formatNumber(context_selection.row.count) ]] linked [[ context_selection.itemLabel ]]</span>
+                            <span v-if="context_selection.row.name && context_selection.row.tag && context_selection.row.name !== context_selection.row.tag" class="stats-badge stats-badge-closed">[[ context_selection.row.tag ]]</span>
+                        </div>
+                        <p class="stats-card-note mb-0">[[ context_selection.description ]]</p>
+                    </div>
+
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1">Linked [[ context_selection.itemLabel ]]</h3>
+                            <p class="stats-panel-subtitle mb-0">Direct links for quick drill-down.</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="clear_context_selection">Clear</button>
+                    </div>
+                    <div class="stats-detail-scroll">
+                        <ul v-if="context_selection.items.length" class="stats-detail-list">
+                            <li v-for="item in context_selection.items" :key="context_selection.key + '-' + item.id">
+                                <a :href="context_item_href(item)" :title="item.description || ''" class="fw-semibold">[[ item.title ]]</a>
+                                <div class="stats-detail-actions text-muted" v-if="context_selection.scope === 'task'">Case #[[ item.case_id ]]</div>
+                            </li>
+                        </ul>
+                        <p v-else class="text-muted mb-0">No linked elements found for this selection.</p>
+                    </div>
+                </template>
+                <div v-else class="stats-detail-empty">
+                    <div>
+                        <div class="mb-2"><i class="fa-solid fa-arrow-pointer fa-lg"></i></div>
+                        <div class="fw-semibold mb-1">Select a tag or cluster</div>
+                        <div class="small">The related cases or tasks will appear here in a dedicated detail view.</div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+    </template>
+
+    <template v-else-if="main_tab == 'misp'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">MISP objects and standalone attributes</h2>
+                <p class="stats-section-copy">A focused view of structured MISP content attached to the visible cases for your organisation.</p>
+            </div>
+            <div class="stats-filter-meta">Pick an object name, attribute type, or relation to inspect the linked cases.</div>
+        </section>
+
+        <section class="stats-card-grid">
+            <article class="stats-card soft-accent">
+                <div class="stats-card-label"><i class="fa-solid fa-cubes"></i>MISP objects</div>
+                <div class="stats-card-value">[[ formatNumber(misp_stat.total_objects) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(misp_stat.unique_object_names) ]] unique object names</p>
+            </article>
+            <article class="stats-card soft-success">
+                <div class="stats-card-label"><i class="fa-solid fa-diagram-project"></i>Object attributes</div>
+                <div class="stats-card-value">[[ formatNumber(misp_stat.total_object_attributes) ]]</div>
+                <p class="stats-card-note">Attributes attached inside MISP objects</p>
+            </article>
+            <article class="stats-card soft-warning">
+                <div class="stats-card-label"><i class="fa-solid fa-fingerprint"></i>Standalone attributes</div>
+                <div class="stats-card-value">[[ formatNumber(misp_stat.total_standalone_attributes) ]]</div>
+                <p class="stats-card-note">Attributes stored directly on cases</p>
+            </article>
+            <article class="stats-card soft-danger">
+                <div class="stats-card-label"><i class="fa-solid fa-link"></i>Task links</div>
+                <div class="stats-card-value">[[ formatNumber((misp_stat.linked_task_object_refs || 0) + (misp_stat.linked_task_attribute_refs || 0)) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(misp_stat.linked_task_object_refs) ]] object links and [[ formatNumber(misp_stat.linked_task_attribute_refs) ]] attribute links from tasks</p>
+            </article>
+        </section>
+
+        <section class="stats-dual-grid">
+            {{ chart_card('MISP objects per case', 'misp-objects-per-case', '380px', 'How many MISP objects are attached to each visible case.') }}
+            {{ chart_card('Top MISP object names', 'misp-object-names', '380px', 'Most common structured object names across visible cases.') }}
+            {{ chart_card('Standalone attributes by type', 'misp-standalone-types', '380px', 'Most common standalone MISP attribute types.') }}
+            {{ chart_card('Standalone attributes by relation', 'misp-standalone-relations', '380px', 'Most common standalone MISP object relations.') }}
+        </section>
+
+        <section class="stats-context-layout">
+            <div class="stats-context-grid">
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-cube me-2"></i>Top MISP object names</h3>
+                            <p class="stats-panel-subtitle mb-0">Click a row to inspect the cases using that object type.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Object</th><th>Count</th><th>Attributes</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in misp_stat.top_objects" :key="'mo-' + idx" :class="misp_selection.key === 'object_name' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('object_name', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td>[[ row.name ]]</td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                                <td><span class="text-muted small">[[ formatNumber(row.attribute_count) ]]</span></td>
+                            </tr>
+                            <tr v-if="!misp_stat.top_objects || misp_stat.top_objects.length === 0">
+                                <td colspan="4" class="text-muted">No MISP objects found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-fingerprint me-2"></i>Standalone attributes by type</h3>
+                            <p class="stats-panel-subtitle mb-0">Click a row to inspect the matching cases and example values.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Type</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in misp_stat.top_standalone_types" :key="'mt-' + idx" :class="misp_selection.key === 'standalone_type' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_type', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td>[[ row.name ]]</td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!misp_stat.top_standalone_types || misp_stat.top_standalone_types.length === 0">
+                                <td colspan="3" class="text-muted">No standalone attributes found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="stats-panel">
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-sitemap me-2"></i>Standalone attributes by relation</h3>
+                            <p class="stats-panel-subtitle mb-0">Click a row to inspect the matching cases and example values.</p>
+                        </div>
+                    </div>
+                    <table class="table table-hover stats-table mb-0">
+                        <thead><tr><th>#</th><th>Relation</th><th>Count</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(row, idx) in misp_stat.top_standalone_relations" :key="'mr-' + idx" :class="misp_selection.key === 'standalone_relation' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_relation', row)">
+                                <td>[[ idx + 1 ]]</td>
+                                <td>[[ row.name ]]</td>
+                                <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
+                            </tr>
+                            <tr v-if="!misp_stat.top_standalone_relations || misp_stat.top_standalone_relations.length === 0">
+                                <td colspan="3" class="text-muted">No standalone relations found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            <aside class="stats-panel stats-context-detail">
+                <template v-if="misp_selection.row">
+                    <div class="stats-detail-hero">
+                        <div class="stats-detail-kicker">[[ misp_selection.label ]]</div>
+                        <div class="stats-detail-title">[[ misp_selection.title ]]</div>
+                        <div class="stats-detail-meta">
+                            <span class="stats-badge stats-badge-open">[[ formatNumber(misp_selection.row.count) ]] linked cases</span>
+                            <span v-if="misp_selection.row.attribute_count" class="stats-badge stats-badge-closed">[[ formatNumber(misp_selection.row.attribute_count) ]] nested attributes</span>
+                        </div>
+                        <p class="stats-card-note mb-0">[[ misp_selection.description ]]</p>
+                    </div>
+
+                    <div class="stats-panel-header">
+                        <div>
+                            <h3 class="stats-panel-title mb-1">Linked cases</h3>
+                            <p class="stats-panel-subtitle mb-0">Quick drill-down into the impacted investigations.</p>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="clear_misp_selection">Clear</button>
+                    </div>
+                    <div class="stats-detail-scroll">
+                        <ul v-if="misp_selection.items.length" class="stats-detail-list">
+                            <li v-for="item in misp_selection.items" :key="misp_selection.key + '-case-' + item.id">
+                                <a :href="'/case/' + item.id" :title="item.description || ''" class="fw-semibold">[[ item.title ]]</a>
+                            </li>
+                        </ul>
+                        <p v-else class="text-muted mb-3">No linked cases found for this selection.</p>
+
+                        <template v-if="misp_selection.attributes && misp_selection.attributes.length">
+                            <div class="stats-panel-header mt-3 mb-2">
+                                <div>
+                                    <h3 class="stats-panel-title mb-1">Example standalone values</h3>
+                                    <p class="stats-panel-subtitle mb-0">A sample of attributes in this grouping.</p>
+                                </div>
+                            </div>
+                            <ul class="stats-detail-list">
+                                <li v-for="attr in misp_selection.attributes" :key="misp_selection.key + '-attr-' + attr.id">
+                                    <div class="fw-semibold">[[ attr.value ]]</div>
+                                    <div class="stats-detail-actions text-muted">[[ attr.type ]] on <a :href="'/case/' + attr.case_id">[[ attr.case_title || ('Case #' + attr.case_id) ]]</a></div>
+                                </li>
+                            </ul>
+                        </template>
+                    </div>
+                </template>
+                <div v-else class="stats-detail-empty">
+                    <div>
+                        <div class="mb-2"><i class="fa-solid fa-cube fa-lg"></i></div>
+                        <div class="fw-semibold mb-1">Select a MISP grouping</div>
+                        <div class="small">The linked cases and example standalone values will appear here.</div>
+                    </div>
+                </div>
+            </aside>
+        </section>
+    </template>
+
+    <template v-else-if="main_tab == 'admin'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">Instance operations</h2>
+                <p class="stats-section-copy">Whole-instance workload, notification pressure, and login activity for admins.</p>
+            </div>
+        </section>
+
+        <section class="stats-card-grid">
+            <article class="stats-card soft-accent">
+                <div class="stats-card-label"><i class="fa-solid fa-folder-open"></i>Open cases</div>
+                <div class="stats-card-value">[[ formatNumber(admin_stat.total_opened_cases) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(admin_stat.total_closed_cases) ]] cases already closed</p>
+            </article>
+            <article class="stats-card soft-success">
+                <div class="stats-card-label"><i class="fa-solid fa-list-check"></i>Open tasks</div>
+                <div class="stats-card-value">[[ formatNumber(admin_stat.total_opened_tasks) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(admin_stat.total_closed_tasks) ]] tasks already closed</p>
+            </article>
+            <article class="stats-card soft-warning">
+                <div class="stats-card-label"><i class="fa-regular fa-bell"></i>Unread notifications</div>
+                <div class="stats-card-value">[[ formatNumber(admin_stat.notification_backlog) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(admin_stat.total_notifications) ]] total notifications stored</p>
+            </article>
+            <article class="stats-card soft-danger">
+                <div class="stats-card-label"><i class="fa-solid fa-right-to-bracket"></i>Recent logins</div>
+                <div class="stats-card-value">[[ formatNumber(admin_stat.recent_login_count) ]]</div>
+                <p class="stats-card-note">Recorded during the last [[ admin_stat.login_activity_days || 90 ]] days</p>
+            </article>
+        </section>
+
+        <section class="stats-dual-grid">
+            {{ chart_card('Cases per month', 'admin-cases-month', '380px', 'Opened and closed case volume across the instance.') }}
+            {{ chart_card('Tasks per month', 'admin-tasks-month', '380px', 'Opened and closed task volume across the instance.') }}
+            {{ chart_card('Cases per year', 'admin-cases-year', '380px', 'Long-term case trend.') }}
+            {{ chart_card('Tasks per year', 'admin-tasks-year', '380px', 'Long-term task trend.') }}
+            {{ chart_card('Case resolution time', 'admin-cases-elapsed-time', '380px', 'How long closed cases stay open.') }}
+            {{ chart_card('Task resolution time', 'admin-tasks-elapsed-time', '380px', 'How long closed tasks stay open.') }}
+            {{ chart_card('Tasks per case', 'admin-tasks-per-case', '380px', 'Task distribution across cases.') }}
+            {{ chart_card('Login activity', 'admin-login-activity', '380px', 'Daily login volume over the selected admin activity window.') }}
+        </section>
+    </template>
+
+    <template v-else-if="main_tab == 'community'">
+        <section class="stats-section-intro">
+            <div>
+                <h2 class="stats-section-title">Community health</h2>
+                <p class="stats-section-copy">Organisation footprint, user activity, and account hygiene at community level.</p>
+            </div>
+        </section>
+
+        <section class="stats-card-grid">
+            <article class="stats-card soft-accent">
+                <div class="stats-card-label"><i class="fa-solid fa-building"></i>Organisations</div>
+                <div class="stats-card-value">[[ formatNumber(community_stat.total_orgs) ]]</div>
+                <p class="stats-card-note">Average [[ community_stat.avg_users_per_org || 0 ]] users per organisation</p>
+            </article>
+            <article class="stats-card soft-success">
+                <div class="stats-card-label"><i class="fa-solid fa-users"></i>Users</div>
+                <div class="stats-card-value">[[ formatNumber(community_stat.total_users) ]]</div>
+                <p class="stats-card-note">[[ formatNumber(community_stat.active_users_30d) ]] logged in during the last 30 days</p>
+            </article>
+            <article class="stats-card soft-warning">
+                <div class="stats-card-label"><i class="fa-solid fa-user-clock"></i>Never logged in</div>
+                <div class="stats-card-value">[[ formatNumber(community_stat.never_logged_in) ]]</div>
+                <p class="stats-card-note">Accounts still missing a first login</p>
+            </article>
+            <article class="stats-card soft-danger">
+                <div class="stats-card-label"><i class="fa-solid fa-building-circle-xmark"></i>Orgs without users</div>
+                <div class="stats-card-value">[[ formatNumber(community_stat.orgs_without_users) ]]</div>
+                <p class="stats-card-note">Organisations that currently have no user attached</p>
+            </article>
+        </section>
+
+        <section class="stats-dual-grid">
+            {{ chart_card('Users per organisation', 'community-users-per-org', '380px', 'How the user base is distributed across organisations.') }}
+            {{ chart_card('Users per role', 'community-users-per-role', '380px', 'Role distribution for the current community.') }}
+            {{ chart_card('Open cases per organisation', 'community-cases-per-org', '380px', 'Which organisations currently own the most open cases.') }}
+            {{ chart_card('Open tasks per user', 'community-tasks-per-user', '380px', 'Who is carrying the largest open task load.') }}
+        </section>
+
+        <section class="stats-dual-grid">
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Inactive users</h3>
+                        <p class="stats-panel-subtitle mb-0">No login in the last [[ inactive_users.days || 90 ]] days.</p>
+                    </div>
+                </div>
+                <p class="mb-2"><strong>[[ inactive_users.count || 0 ]]</strong> inactive user(s)</p>
+                <div v-if="inactive_users.users && inactive_users.users.length">
+                    <table class="table table-sm table-hover stats-table mb-0">
+                        <thead><tr><th>Name</th><th>Email</th><th>Last login</th></tr></thead>
+                        <tbody>
+                            <tr v-for="u in inactive_users.users" :key="'iu-' + u.id">
+                                <td>[[ u.name ]]</td>
+                                <td><span class="text-muted small">[[ u.email ]]</span></td>
+                                <td><span v-if="u.last_login" class="small">[[ u.last_login ]]</span><span v-else class="badge text-bg-secondary">never</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p v-else class="text-muted mb-0">No inactive users.</p>
+            </section>
+
+            <section class="stats-panel">
+                <div class="stats-panel-header">
+                    <div>
+                        <h3 class="stats-panel-title mb-1">Recent logins</h3>
+                        <p class="stats-panel-subtitle mb-0">The latest 20 recorded logins.</p>
+                    </div>
+                </div>
+                <div v-if="recent_logins.logins && recent_logins.logins.length">
+                    <table class="table table-sm table-hover stats-table mb-0">
+                        <thead><tr><th>User</th><th>Email</th><th>Login time</th></tr></thead>
+                        <tbody>
+                            <tr v-for="(l, i) in recent_logins.logins" :key="'rl-' + i">
+                                <td>[[ l.name ]]</td>
+                                <td><span class="text-muted small">[[ l.email ]]</span></td>
+                                <td><span class="small">[[ l.login_date ]]</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p v-else class="text-muted mb-0">No recent logins recorded.</p>
+            </section>
+        </section>
+    </template>
+</div>
+
+<div v-if="expanded_chart.open" class="stats-modal-backdrop" @click.self="close_chart_modal">
+    <section class="stats-modal-card">
+        <div class="stats-panel-header">
+            <div>
+                <h3 class="stats-panel-title mb-1">[[ expanded_chart.title ]]</h3>
+                <p class="stats-panel-subtitle mb-0">Expanded view for easier reading and comparison.</p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv(expanded_chart.canvasId, expanded_chart.canvasId + '.csv')">
+                    <i class="fa-solid fa-download me-1"></i>CSV
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" @click="close_chart_modal">
+                    <i class="fa-solid fa-xmark me-1"></i>Close
+                </button>
             </div>
         </div>
-    </div>
-
-    {{ chart_card('Tasks per month', 'tasks-month') }}
-    {{ chart_card('Tasks per year', 'tasks-year') }}
-    {{ chart_card('Elapsed time', 'tasks-elapsed-time') }}
-    {{ chart_card('Tasks per case', 'tasks-per-case') }}
-    {{ chart_card('Tasks per custom tag', 'task-custom-tags', '50vh') }}
-    {{ chart_card('Tasks per taxonomy', 'task-tags') }}
-    {{ chart_card('Tasks per galaxy cluster', 'task-clusters', '50vh') }}
-</template>
-
-<template v-else-if="main_tab == 'tags'">
-    <p class="mb-3"><i>Top tags and galaxy clusters used in cases and tasks where <strong>{{ org_name|default('your organisation', true) }}</strong> is participating in</i></p>
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-tag me-2"></i>Top tags on cases</h3>
-    <div class="card card-body mb-4">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-'+idx"
-                    style="cursor:pointer"
-                    :class="selected_case_tag === row ? 'table-active' : ''"
-                    @click="selected_case_tag = (selected_case_tag === row ? null : row)">
-                    <td>[[ idx + 1 ]]</td>
-                    <td>[[ row.tag ]]</td>
-                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
-                </tr>
-                <tr v-if="!tag_stats.case_tags || tag_stats.case_tags.length === 0">
-                    <td colspan="3" class="text-muted">No tags found</td>
-                </tr>
-            </tbody>
-        </table>
-        <div v-if="selected_case_tag" class="mt-3 border-top pt-2">
-            <small class="text-muted">Cases tagged <strong>[[ selected_case_tag.tag ]]</strong></small>
-            <ul class="list-unstyled mt-1 mb-0">
-                <li v-for="c in selected_case_tag.cases" :key="c.id">
-                    <a :href="'/case/' + c.id">[[ c.title ]]</a>
-                </li>
-            </ul>
+        <div class="stats-modal-chart">
+            <canvas id="expanded-chart-canvas"></canvas>
         </div>
-    </div>
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-tag me-2"></i>Top tags on tasks</h3>
-    <div class="card card-body mb-4">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-'+idx"
-                    style="cursor:pointer"
-                    :class="selected_task_tag === row ? 'table-active' : ''"
-                    @click="selected_task_tag = (selected_task_tag === row ? null : row)">
-                    <td>[[ idx + 1 ]]</td>
-                    <td>[[ row.tag ]]</td>
-                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
-                </tr>
-                <tr v-if="!tag_stats.task_tags || tag_stats.task_tags.length === 0">
-                    <td colspan="3" class="text-muted">No tags found</td>
-                </tr>
-            </tbody>
-        </table>
-        <div v-if="selected_task_tag" class="mt-3 border-top pt-2">
-            <small class="text-muted">Tasks tagged <strong>[[ selected_task_tag.tag ]]</strong></small>
-            <ul class="list-unstyled mt-1 mb-0">
-                <li v-for="t in selected_task_tag.tasks" :key="t.id">
-                    <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on cases</h3>
-    <div class="card card-body mb-4">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-'+idx"
-                    style="cursor:pointer"
-                    :class="selected_case_cluster === row ? 'table-active' : ''"
-                    @click="selected_case_cluster = (selected_case_cluster === row ? null : row)">
-                    <td>[[ idx + 1 ]]</td>
-                    <td>
-                        <span :title="row.tag">[[ row.name || row.tag ]]</span>
-                        <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
-                    </td>
-                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
-                </tr>
-                <tr v-if="!tag_stats.case_clusters || tag_stats.case_clusters.length === 0">
-                    <td colspan="3" class="text-muted">No galaxy clusters found</td>
-                </tr>
-            </tbody>
-        </table>
-        <div v-if="selected_case_cluster" class="mt-3 border-top pt-2">
-            <small class="text-muted">Cases with cluster <strong>[[ selected_case_cluster.name || selected_case_cluster.tag ]]</strong></small>
-            <ul class="list-unstyled mt-1 mb-0">
-                <li v-for="c in selected_case_cluster.cases" :key="c.id">
-                    <a :href="'/case/' + c.id">[[ c.title ]]</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-spider me-2"></i>Top galaxy clusters on tasks</h3>
-    <div class="card card-body mb-4">
-        <table class="table table-hover mb-0">
-            <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
-            <tbody>
-                <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-'+idx"
-                    style="cursor:pointer"
-                    :class="selected_task_cluster === row ? 'table-active' : ''"
-                    @click="selected_task_cluster = (selected_task_cluster === row ? null : row)">
-                    <td>[[ idx + 1 ]]</td>
-                    <td>
-                        <span :title="row.tag">[[ row.name || row.tag ]]</span>
-                        <small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small>
-                    </td>
-                    <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
-                </tr>
-                <tr v-if="!tag_stats.task_clusters || tag_stats.task_clusters.length === 0">
-                    <td colspan="3" class="text-muted">No galaxy clusters found</td>
-                </tr>
-            </tbody>
-        </table>
-        <div v-if="selected_task_cluster" class="mt-3 border-top pt-2">
-            <small class="text-muted">Tasks with cluster <strong>[[ selected_task_cluster.name || selected_task_cluster.tag ]]</strong></small>
-            <ul class="list-unstyled mt-1 mb-0">
-                <li v-for="t in selected_task_cluster.tasks" :key="t.id">
-                    <a :href="'/case/' + t.case_id + '#task-' + t.id">[[ t.title ]]</a>
-                </li>
-            </ul>
-        </div>
-    </div>
-</template>
-
-<template v-else-if="main_tab == 'admin'">
-    <p class="mb-3"><i>Statistics across the whole instance</i></p>
-
-    <div class="card card-body mb-4">
-        <div class="row text-center">
-            <div class="col">
-                <h6 class="text-muted mb-1">Open cases</h6>
-                <h3 class="mb-0">[[admin_stat.total_opened_cases]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Closed cases</h6>
-                <h3 class="mb-0">[[admin_stat.total_closed_cases]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Open tasks</h6>
-                <h3 class="mb-0">[[admin_stat.total_opened_tasks]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Closed tasks</h6>
-                <h3 class="mb-0">[[admin_stat.total_closed_tasks]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1"><i class="fa-regular fa-bell me-1"></i>Unread notifications</h6>
-                <h3 class="mb-0">[[admin_stat.notification_backlog || 0]]</h3>
-            </div>
-        </div>
-    </div>
-
-    <h3 class="mt-4 mb-2">Cases &amp; tasks per month</h3>
-    <div class="row mb-4">
-        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-cases-month"></canvas></div>
-            </div>
-        </div>
-        <div class="col-12 col-xl-6">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-tasks-month"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <h3 class="mt-4 mb-2">Cases &amp; tasks per year</h3>
-    <div class="row mb-4">
-        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-cases-year"></canvas></div>
-            </div>
-        </div>
-        <div class="col-12 col-xl-6">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-tasks-year"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <h3 class="mt-4 mb-2">Elapsed time</h3>
-    <div class="row mb-4">
-        <div class="col-12 col-xl-6 mb-3 mb-xl-0">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-cases-elapsed-time"></canvas></div>
-            </div>
-        </div>
-        <div class="col-12 col-xl-6">
-            <div class="card card-body p-4">
-                <div style="position: relative; height:45vh"><canvas id="admin-tasks-elapsed-time"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    {{ chart_card('Tasks per case', 'admin-tasks-per-case') }}
-    <div class="d-flex align-items-center justify-content-between mt-4 mb-2">
-        <h3 class="mb-0">Login activity (last [[ admin_stat.login_activity_days || 90 ]] days)</h3>
-        <button type="button" class="btn btn-sm btn-outline-secondary" @click="download_csv('admin-login-activity', 'admin-login-activity.csv')" title="Export as CSV">
-            <i class="fa-solid fa-download me-1"></i>CSV
-        </button>
-    </div>
-    <div class="card card-body p-4 mb-4">
-        <div class="chart-wrapper" style="position: relative; height:45vh"><canvas id="admin-login-activity"></canvas></div>
-    </div>
-</template>
-
-<template v-else-if="main_tab == 'community'">
-    <p class="mb-3"><i>Statistics about organisations and users in the community</i></p>
-
-    <div class="card card-body mb-4">
-        <div class="row text-center">
-            <div class="col">
-                <h6 class="text-muted mb-1">Organisations</h6>
-                <h3 class="mb-0">[[community_stat.total_orgs]]</h3>
-            </div>
-            <div class="col">
-                <h6 class="text-muted mb-1">Users</h6>
-                <h3 class="mb-0">[[community_stat.total_users]]</h3>
-            </div>
-        </div>
-    </div>
-
-    {{ chart_card('Users per organisation', 'community-users-per-org') }}
-    {{ chart_card('Users per role', 'community-users-per-role') }}
-    {{ chart_card('Open cases per organisation', 'community-cases-per-org') }}
-    {{ chart_card('Open tasks per user', 'community-tasks-per-user', '50vh') }}
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-user-clock me-2"></i>Inactive users <small class="text-muted">(no login in the last [[ inactive_users.days || 90 ]] days)</small></h3>
-    <div class="card card-body mb-4">
-        <p class="mb-2"><strong>[[ inactive_users.count || 0 ]]</strong> inactive user(s)</p>
-        <div v-if="inactive_users.users && inactive_users.users.length">
-            <table class="table table-sm table-hover mb-0">
-                <thead><tr><th>Name</th><th>Email</th><th>Last login</th></tr></thead>
-                <tbody>
-                    <tr v-for="u in inactive_users.users" :key="'iu-'+u.id">
-                        <td>[[ u.name ]]</td>
-                        <td><span class="text-muted small">[[ u.email ]]</span></td>
-                        <td>
-                            <span v-if="u.last_login" class="small">[[ u.last_login ]]</span>
-                            <span v-else class="badge text-bg-secondary">never</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <p v-else class="text-muted small mb-0">No inactive users.</p>
-    </div>
-
-    <h3 class="mt-4 mb-2"><i class="fa-solid fa-right-to-bracket me-2"></i>20 last logins</h3>
-    <div class="card card-body mb-4">
-        <div v-if="recent_logins.logins && recent_logins.logins.length">
-            <table class="table table-sm table-hover mb-0">
-                <thead><tr><th>User</th><th>Email</th><th>Login time</th></tr></thead>
-                <tbody>
-                    <tr v-for="(l, i) in recent_logins.logins" :key="'rl-'+i">
-                        <td>[[ l.name ]]</td>
-                        <td><span class="text-muted small">[[ l.email ]]</span></td>
-                        <td><span class="small">[[ l.login_date ]]</span></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <p v-else class="text-muted small mb-0">No recent logins recorded.</p>
-    </div>
-</template>
+    </section>
 </div>
 {% endblock %}
 
@@ -429,16 +723,27 @@
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            // Section headings are rendered as <h3> above each chart card so
-            // the layout stays consistent across all tabs; suppress the
-            // built-in Chart.js title to avoid showing the same label twice.
             Chart.defaults.plugins.title.display = false
+            Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif"
+            Chart.defaults.color = '#4c5d73'
+            Chart.defaults.scale.grid.color = 'rgba(18, 37, 63, 0.08)'
+            Chart.defaults.plugins.legend.labels.usePointStyle = true
+
+            const palette = {
+                blue: '#1d5f94',
+                sky: '#67a6d8',
+                green: '#2f7a59',
+                amber: '#c88a17',
+                red: '#c95e4a',
+                slate: '#6e7f92',
+            }
 
             const case_stat = ref({})
             const admin_stat = ref({})
             const community_stat = ref({})
             const case_tags_stats = ref({})
             const tag_stats = ref({})
+            const misp_stat = ref({})
             const overdue = ref({count: 0, tasks: []})
             const unassigned = ref({count: 0, tasks: []})
             const inactive_users = ref({days: 90, count: 0, users: []})
@@ -450,8 +755,31 @@
             const selected_task_tag = ref(null)
             const selected_case_cluster = ref(null)
             const selected_task_cluster = ref(null)
-
-            // Helpers
+            const context_selection = ref({
+                key: '',
+                label: '',
+                title: '',
+                description: '',
+                itemLabel: 'items',
+                scope: 'case',
+                row: null,
+                items: [],
+            })
+            const misp_selection = ref({
+                key: '',
+                label: '',
+                title: '',
+                description: '',
+                row: null,
+                items: [],
+                attributes: [],
+            })
+            const expanded_chart = ref({
+                open: false,
+                canvasId: '',
+                title: '',
+            })
+            let expandedChartInstance = null
 
             function with_period(url) {
                 if (!period_days.value) return url
@@ -459,8 +787,134 @@
                 return url + sep + 'days=' + encodeURIComponent(period_days.value)
             }
 
+            function periodLabel() {
+                const labels = {
+                    '': 'All time',
+                    '1': 'Last 24 hours',
+                    '7': 'Last week',
+                    '30': 'Last 30 days',
+                    '90': 'Last 90 days',
+                    '365': 'Last year',
+                }
+                return labels[String(period_days.value)] || 'All time'
+            }
+
+            function formatNumber(value) {
+                return Number(value || 0).toLocaleString()
+            }
+
+            function formatPercent(value) {
+                return (value ?? 0) + '%'
+            }
+
+            function formatWeeks(value) {
+                if (value === null || value === undefined) return 'N/A'
+                return value + ' wk'
+            }
+
+            function clear_context_selection() {
+                context_selection.value = {
+                    key: '',
+                    label: '',
+                    title: '',
+                    description: '',
+                    itemLabel: 'items',
+                    scope: 'case',
+                    row: null,
+                    items: [],
+                }
+                selected_case_tag.value = null
+                selected_task_tag.value = null
+                selected_case_cluster.value = null
+                selected_task_cluster.value = null
+            }
+
+            function clear_misp_selection() {
+                misp_selection.value = {
+                    key: '',
+                    label: '',
+                    title: '',
+                    description: '',
+                    row: null,
+                    items: [],
+                    attributes: [],
+                }
+            }
+
+            function set_context_selection(type, row) {
+                const sameSelected =
+                    (type === 'case_tag' && selected_case_tag.value === row) ||
+                    (type === 'task_tag' && selected_task_tag.value === row) ||
+                    (type === 'case_cluster' && selected_case_cluster.value === row) ||
+                    (type === 'task_cluster' && selected_task_cluster.value === row)
+
+                if (sameSelected) {
+                    clear_context_selection()
+                    return
+                }
+
+                selected_case_tag.value = type === 'case_tag' ? row : null
+                selected_task_tag.value = type === 'task_tag' ? row : null
+                selected_case_cluster.value = type === 'case_cluster' ? row : null
+                selected_task_cluster.value = type === 'task_cluster' ? row : null
+
+                const isTask = type.startsWith('task')
+                const isCluster = type.includes('cluster')
+                const title = row.name || row.tag
+                const itemLabel = isTask ? 'tasks' : 'cases'
+                const description = isCluster
+                    ? `This galaxy cluster is currently linked to ${row.count} visible ${itemLabel}.`
+                    : `This tag is currently linked to ${row.count} visible ${itemLabel}.`
+
+                context_selection.value = {
+                    key: type,
+                    label: isCluster ? (isTask ? 'Task cluster' : 'Case cluster') : (isTask ? 'Task tag' : 'Case tag'),
+                    title,
+                    description,
+                    itemLabel,
+                    scope: isTask ? 'task' : 'case',
+                    row,
+                    items: isTask ? (row.tasks || []) : (row.cases || []),
+                }
+            }
+
+            function set_misp_selection(type, row) {
+                const sameSelected = misp_selection.value.key === type && misp_selection.value.row === row
+                if (sameSelected) {
+                    clear_misp_selection()
+                    return
+                }
+
+                const descriptions = {
+                    object_name: `This object name appears ${row.count} times across the visible cases.`,
+                    standalone_type: `This standalone attribute type appears ${row.count} times across the visible cases.`,
+                    standalone_relation: `This standalone attribute relation appears ${row.count} times across the visible cases.`,
+                }
+                const labels = {
+                    object_name: 'MISP object name',
+                    standalone_type: 'Standalone attribute type',
+                    standalone_relation: 'Standalone attribute relation',
+                }
+
+                misp_selection.value = {
+                    key: type,
+                    label: labels[type] || 'MISP detail',
+                    title: row.name,
+                    description: descriptions[type] || '',
+                    row,
+                    items: row.cases || [],
+                    attributes: row.attributes || [],
+                }
+            }
+
+            function context_item_href(item) {
+                return context_selection.value.scope === 'task'
+                    ? '/case/' + item.case_id + '#task-' + item.id
+                    : '/case/' + item.id
+            }
+
             function set_active_tab_class(tab_id) {
-                for (const id of ['tab-case', 'tab-task', 'tab-tags', 'tab-admin', 'tab-community']) {
+                for (const id of ['tab-case', 'tab-task', 'tab-tags', 'tab-misp', 'tab-admin', 'tab-community']) {
                     const el = document.getElementById(id)
                     if (!el) continue
                     el.classList.toggle('active', id === tab_id)
@@ -476,8 +930,8 @@
                     canvas.style.display = 'none'
                     if (!overlay) {
                         overlay = document.createElement('p')
-                        overlay.className = 'chart-empty-state text-muted text-center my-4 mb-0'
-                        overlay.innerHTML = '<i class="fa-regular fa-folder-open me-2"></i>' + (message || 'No data for the selected period')
+                        overlay.className = 'chart-empty-state text-muted text-center'
+                        overlay.innerHTML = '<span><i class="fa-regular fa-folder-open me-2"></i>' + (message || 'No data for the selected period') + '</span>'
                         wrapper.appendChild(overlay)
                     }
                 } else {
@@ -489,6 +943,63 @@
             function csv_escape(v) {
                 const s = String(v ?? '')
                 return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+            }
+
+            function cloneChartOptions(options) {
+                try {
+                    return structuredClone(options || {})
+                } catch {
+                    return JSON.parse(JSON.stringify(options || {}))
+                }
+            }
+
+            function cloneChartData(data) {
+                return {
+                    labels: [...(data.labels || [])],
+                    datasets: (data.datasets || []).map(dataset => ({
+                        ...dataset,
+                        data: Array.isArray(dataset.data) ? [...dataset.data] : dataset.data,
+                    })),
+                }
+            }
+
+            function clone_chart_to_modal(sourceCanvasId) {
+                const sourceChart = Chart.getChart(sourceCanvasId)
+                const modalCanvas = document.getElementById('expanded-chart-canvas')
+                if (!sourceChart || !modalCanvas) return
+
+                if (expandedChartInstance) {
+                    expandedChartInstance.destroy()
+                    expandedChartInstance = null
+                }
+
+                expandedChartInstance = new Chart(modalCanvas, {
+                    type: sourceChart.config.type,
+                    data: cloneChartData(sourceChart.data),
+                    options: {
+                        ...cloneChartOptions(sourceChart.options),
+                        responsive: true,
+                        maintainAspectRatio: false,
+                    },
+                })
+            }
+
+            async function open_chart_modal(canvasId, title) {
+                expanded_chart.value = {
+                    open: true,
+                    canvasId,
+                    title,
+                }
+                await nextTick()
+                clone_chart_to_modal(canvasId)
+            }
+
+            function close_chart_modal() {
+                expanded_chart.value.open = false
+                if (expandedChartInstance) {
+                    expandedChartInstance.destroy()
+                    expandedChartInstance = null
+                }
             }
 
             function download_csv(canvas_id, filename) {
@@ -514,7 +1025,22 @@
                 URL.revokeObjectURL(url)
             }
 
-            // Chart builders
+            function baseOptions(extra = {}) {
+                return {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    ...extra,
+                }
+            }
 
             function create_chart_double(stats_list, chart_type, id_balise, opened_label, closed_label, opened_key, closed_key) {
                 Chart.getChart(id_balise)?.destroy()
@@ -528,10 +1054,27 @@
                     data: {
                         labels: opened.map(r => r.calendar),
                         datasets: [
-                            {label: opened_label, data: opened.map(r => r.count), borderWidth: 3},
-                            {label: closed_label, data: closed.map(r => r.count), borderWidth: 3},
+                            {
+                                label: opened_label,
+                                data: opened.map(r => r.count),
+                                borderWidth: 3,
+                                borderColor: palette.blue,
+                                backgroundColor: 'rgba(29, 95, 148, 0.15)',
+                                fill: chart_type === 'line',
+                                tension: 0.3,
+                            },
+                            {
+                                label: closed_label,
+                                data: closed.map(r => r.count),
+                                borderWidth: 3,
+                                borderColor: palette.green,
+                                backgroundColor: 'rgba(47, 122, 89, 0.14)',
+                                fill: chart_type === 'line',
+                                tension: 0.3,
+                            },
                         ]
-                    }
+                    },
+                    options: baseOptions(),
                 })
             }
 
@@ -545,12 +1088,29 @@
                     type: chart_type,
                     data: {
                         labels: data.map(r => r.calendar),
-                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
+                        datasets: [{
+                            label: label,
+                            data: data.map(r => r.count),
+                            borderWidth: 2,
+                            borderColor: palette.blue,
+                            backgroundColor: [
+                                'rgba(29, 95, 148, 0.85)',
+                                'rgba(103, 166, 216, 0.85)',
+                                'rgba(47, 122, 89, 0.85)',
+                                'rgba(200, 138, 23, 0.85)',
+                                'rgba(201, 94, 74, 0.85)',
+                                'rgba(110, 127, 146, 0.85)',
+                            ],
+                        }]
                     },
-                    options: {
-                        plugins: {legend: {display: true, position: 'right'}},
-                        responsive: true,
-                    }
+                    options: baseOptions({
+                        plugins: {
+                            legend: {
+                                display: chart_type !== 'bar',
+                                position: 'right',
+                            },
+                        },
+                    }),
                 })
             }
 
@@ -564,8 +1124,17 @@
                     type: 'bar',
                     data: {
                         labels: data.map(r => r[name_key]),
-                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
-                    }
+                        datasets: [{
+                            label: label,
+                            data: data.map(r => r.count),
+                            borderWidth: 1,
+                            borderColor: palette.blue,
+                            backgroundColor: 'rgba(29, 95, 148, 0.75)',
+                        }]
+                    },
+                    options: baseOptions({
+                        plugins: { legend: { display: false } },
+                    }),
                 })
             }
 
@@ -579,18 +1148,30 @@
                     type: 'pie',
                     data: {
                         labels: data.map(r => r[name_key]),
-                        datasets: [{label: label, data: data.map(r => r.count), borderWidth: 3}]
-                    }
+                        datasets: [{
+                            label: label,
+                            data: data.map(r => r.count),
+                            backgroundColor: [
+                                palette.blue,
+                                palette.sky,
+                                palette.green,
+                                palette.amber,
+                                palette.red,
+                                palette.slate,
+                            ],
+                        }]
+                    },
+                    options: baseOptions({
+                        plugins: { legend: { position: 'right' } },
+                    }),
                 })
             }
-
-            // Per-tab init
 
             function init_chart_case() {
                 create_chart_double(case_stat.value, 'line', 'cases-month', 'Cases opened by month', 'Cases closed by month', 'cases-opened-month', 'cases-closed-month')
                 create_chart_double(case_stat.value, 'bar', 'cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
                 create_chart_simple(case_stat.value, 'bar', 'cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
-                create_chart_simple(case_tags_stats.value, 'pie', 'case-custom-tags', 'Cases per custom tag', 'case_custom_tags')
+                create_chart_simple(case_tags_stats.value, 'doughnut', 'case-custom-tags', 'Cases per custom tag', 'case_custom_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Cases per taxonomy', 'case_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'case-clusters', 'Cases per galaxy cluster', 'case_clusters')
             }
@@ -600,17 +1181,17 @@
                 create_chart_double(case_stat.value, 'bar', 'tasks-year', 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year', 'tasks-closed-year')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case')
-                create_chart_simple(case_tags_stats.value, 'pie', 'task-custom-tags', 'Tasks per custom tag', 'task_custom_tags')
+                create_chart_simple(case_tags_stats.value, 'doughnut', 'task-custom-tags', 'Tasks per custom tag', 'task_custom_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'task-tags', 'Tasks per taxonomy', 'task_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'task-clusters', 'Tasks per galaxy cluster', 'task_clusters')
             }
 
             function init_chart_admin() {
                 create_chart_double(admin_stat.value, 'line', 'admin-cases-month', 'Cases opened by month', 'Cases closed by month', 'cases-opened-month', 'cases-closed-month')
-                create_chart_double(admin_stat.value, 'bar', 'admin-cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
-                create_chart_simple(admin_stat.value, 'bar', 'admin-cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
                 create_chart_double(admin_stat.value, 'line', 'admin-tasks-month', 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month', 'tasks-closed-month')
+                create_chart_double(admin_stat.value, 'bar', 'admin-cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
                 create_chart_double(admin_stat.value, 'bar', 'admin-tasks-year', 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year', 'tasks-closed-year')
+                create_chart_simple(admin_stat.value, 'bar', 'admin-cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
                 create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time')
                 create_chart_simple(admin_stat.value, 'bar', 'admin-tasks-per-case', 'Number of tasks per case', 'tasks-per-case')
                 create_chart_simple({login: admin_stat.value.login_activity || []}, 'bar', 'admin-login-activity', 'Logins per day', 'login')
@@ -623,7 +1204,12 @@
                 create_named_bar('community-tasks-per-user', community_stat.value.tasks_per_user, 'user_name', 'Number of open tasks')
             }
 
-            // Tab switching
+            function init_chart_misp() {
+                create_named_bar('misp-objects-per-case', misp_stat.value.objects_per_case, 'label', 'Number of MISP objects')
+                create_named_bar('misp-object-names', misp_stat.value.object_names, 'label', 'Number of objects')
+                create_named_pie('misp-standalone-types', misp_stat.value.standalone_types, 'label', 'Number of standalone attributes')
+                create_named_bar('misp-standalone-relations', misp_stat.value.standalone_relations, 'label', 'Number of standalone attributes')
+            }
 
             async function active_tab(tab_name) {
                 main_tab.value = tab_name
@@ -631,50 +1217,57 @@
                 await nextTick()
                 if (tab_name === 'case') init_chart_case()
                 else if (tab_name === 'task') init_chart_task()
+                else if (tab_name === 'misp') init_chart_misp()
                 else if (tab_name === 'admin') init_chart_admin()
                 else if (tab_name === 'community') init_chart_community()
-                else if (tab_name === 'tags') {
-                    selected_case_tag.value = null
-                    selected_task_tag.value = null
-                    selected_case_cluster.value = null
-                    selected_task_cluster.value = null
-                }
+                else if (tab_name === 'tags') clear_context_selection()
             }
-
-            // Fetches
 
             async function fetch_case_stat() {
                 const res = await fetch(with_period('/tools/case_stats'))
                 if (res.status === 200) case_stat.value = await res.json()
             }
+
             async function fetch_admin_stat() {
                 const res = await fetch(with_period('/tools/admin_stats'))
                 if (res.status === 200) admin_stat.value = await res.json()
             }
+
             async function fetch_case_tag_stat() {
                 const res = await fetch(with_period('/tools/case_tags_stats'))
                 if (res.status === 200) case_tags_stats.value = await res.json()
             }
+
             async function fetch_community_stat() {
                 const res = await fetch('/tools/community_stats')
                 if (res.status === 200) community_stat.value = await res.json()
             }
+
             async function fetch_tag_galaxy_stats() {
                 const res = await fetch(with_period('/tools/tag_galaxy_stats'))
                 if (res.status === 200) tag_stats.value = await res.json()
             }
+
+            async function fetch_misp_stats() {
+                const res = await fetch(with_period('/tools/misp_stats'))
+                if (res.status === 200) misp_stat.value = await res.json()
+            }
+
             async function fetch_overdue_tasks() {
                 const res = await fetch('/tools/overdue_tasks')
                 if (res.status === 200) overdue.value = await res.json()
             }
+
             async function fetch_unassigned_tasks() {
                 const res = await fetch('/tools/unassigned_tasks')
                 if (res.status === 200) unassigned.value = await res.json()
             }
+
             async function fetch_inactive_users() {
-                const res = await fetch('/tools/inactive_users')
+                const res = await fetch(with_period('/tools/inactive_users'))
                 if (res.status === 200) inactive_users.value = await res.json()
             }
+
             async function fetch_recent_logins() {
                 const res = await fetch('/tools/recent_logins?limit=20')
                 if (res.status === 200) recent_logins.value = await res.json()
@@ -687,6 +1280,7 @@
                     fetch_case_stat(),
                     fetch_case_tag_stat(),
                     fetch_tag_galaxy_stats(),
+                    fetch_misp_stats(),
                     fetch_overdue_tasks(),
                     fetch_unassigned_tasks(),
                 ]
@@ -700,9 +1294,14 @@
                 }
                 await Promise.all(tasks)
                 generated_on.value = new Date().toLocaleString()
+                if (expanded_chart.value.open && expanded_chart.value.canvasId) {
+                    await nextTick()
+                    clone_chart_to_modal(expanded_chart.value.canvasId)
+                }
                 await nextTick()
                 if (main_tab.value === 'case') init_chart_case()
                 else if (main_tab.value === 'task') init_chart_task()
+                else if (main_tab.value === 'misp') init_chart_misp()
                 else if (main_tab.value === 'admin') init_chart_admin()
                 else if (main_tab.value === 'community') init_chart_community()
             }
@@ -718,6 +1317,7 @@
                 community_stat,
                 case_tags_stats,
                 tag_stats,
+                misp_stat,
                 overdue,
                 unassigned,
                 inactive_users,
@@ -729,7 +1329,21 @@
                 selected_task_tag,
                 selected_case_cluster,
                 selected_task_cluster,
+                context_selection,
+                misp_selection,
+                expanded_chart,
+                formatNumber,
+                formatPercent,
+                formatWeeks,
+                periodLabel,
+                clear_context_selection,
+                clear_misp_selection,
+                set_context_selection,
+                set_misp_selection,
+                context_item_href,
                 active_tab,
+                open_chart_modal,
+                close_chart_modal,
                 reload_all,
                 download_csv,
             }

@@ -331,6 +331,12 @@ def get_tag_galaxy_stats():
     cutoff = ToolsModel.days_cutoff(request.args.get('days'))
     return ToolsModel.get_tag_galaxy_top_stats(current_user, cutoff=cutoff)
 
+@tools_blueprint.route("/misp_stats")
+@login_required
+def misp_stats():
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    return ToolsModel.get_misp_stats(current_user, cutoff=cutoff)
+
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
