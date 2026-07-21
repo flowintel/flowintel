@@ -38,6 +38,7 @@ export default {
         const module_desc = ref('')
         const is_submitting = ref(false)
         const is_importing_report = ref(false)
+        const create_extended_event = ref(false)
 
         // Panels: 'objects' | 'case_tasks'
         const active_panel = ref('objects')
@@ -110,6 +111,19 @@ export default {
                 selected_local_ids.value.includes(o.object_id)
             ).length
         })
+
+        const CASE_TASK_ONLY_MODULES = ['misp_event_task', 'misp_event_partial']
+
+        function is_module_available(key, mod) {
+            if ((props.direction === 'send' ? mod.type !== 'send_to' : mod.type !== 'receive_from') || mod.config?.connector !== 'misp') {
+                return false
+            }
+            if (props.direction !== 'send') return true
+            if (active_panel.value === 'case_tasks') {
+                return CASE_TASK_ONLY_MODULES.includes(key)
+            }
+            return !CASE_TASK_ONLY_MODULES.includes(key)
+        }
 
         function syncListKey(prefix, id) {
             return `${prefix}-${id}`
@@ -236,6 +250,13 @@ export default {
             }
         }
 
+        const current_event_url = computed(() => {
+            const baseUrl = props.instance?.details?.url
+            const identifier = props.instance?.identifier
+            if (!baseUrl || !identifier) return ''
+            return (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + 'events/view/' + identifier
+        })
+
         async function on_show() {
             module_name.value = ''
             module_desc.value = ''
@@ -250,6 +271,7 @@ export default {
             remote_objects.value = []
             remote_standalone_attrs.value = []
             show_unsynced_only.value = false
+            create_extended_event.value = false
             Object.keys(expanded_sync_lists).forEach(key => { delete expanded_sync_lists[key] })
             if (props.direction !== 'send') {
                 active_panel.value = 'objects'
@@ -286,6 +308,9 @@ export default {
                 module: module_name.value,
                 case_task_instance_id: props.instance.case_task_instance_id
             }
+            if (props.direction === 'send') {
+                body.create_extended_event = create_extended_event.value
+            }
             if (props.direction === 'send' && module_name.value === 'misp_object_event') {
                 body.selected_objects = selected_local_ids.value
                 body.selected_standalone_attrs = selected_local_sa_ids.value
@@ -317,6 +342,7 @@ export default {
             const body = {
                 module: module_name.value,
                 case_task_instance_id: props.instance.case_task_instance_id,
+                create_extended_event: create_extended_event.value,
                 selected_case_fields: [],
                 selected_tasks: []
             }
@@ -372,10 +398,12 @@ export default {
             local_objects, local_standalone_attrs, local_search, local_type_filter, selected_local_ids, selected_local_sa_ids, is_loading_local,
             remote_objects, remote_standalone_attrs, remote_search, remote_type_filter, selected_remote_uuids, selected_remote_sa_uuids, is_loading_remote,
             module_name, module_desc, is_submitting, is_importing_report,
+            create_extended_event, current_event_url,
             filtered_local, filtered_remote, local_type_options, remote_type_options,
             show_unsynced_only,
             load_remote_objects, toggle_local_all, toggle_local_sa_all, toggle_remote_all, toggle_remote_sa_all,
             submit, import_event_report, on_show, on_module_change, is_synced_locally,
+            is_module_available,
             // new panel state
             active_panel, case_fields, selected_tasks_map, tasks, selected_report_count,
             syncListKey, visibleSyncInstances, hiddenSyncCount, toggleSyncList
@@ -399,7 +427,7 @@ export default {
                     <select class="form-select form-select-sm" v-model="module_name" @change="on_module_change">
                         <option value="">-- select module --</option>
                         <template v-for="(mod, key) in modules">
-                            <option v-if="(direction === 'send' ? mod.type === 'send_to' : mod.type === 'receive_from') && mod.config?.connector === 'misp'" :value="key">[[ key ]]</option>
+                            <option v-if="is_module_available(key, mod)" :value="key">[[ key ]]</option>
                         </template>
                     </select>
                 </div>
@@ -417,6 +445,18 @@ export default {
                     use[[ selected_report_count === 1 ? 's' : '' ]] the MISP <strong>report</strong> template and
                     will also be created as a MISP Event Report on the event.
                 </span>
+            </div>
+
+            <div v-if="direction === 'send' && instance?.identifier" class="mb-3">
+                <div class="form-check">
+                <input class="form-check-input" type="checkbox" :id="'extend-event-'+instance.case_task_instance_id" v-model="create_extended_event">
+                <label class="form-check-label" :for="'extend-event-'+instance.case_task_instance_id">
+                    Create an extended event from the current MISP event
+                </label>
+                <div class="form-text">
+                    Uses the current connector identifier as the base event, creates a new extended event, then updates this connector to the new event UUID.
+                </div>
+                </div>
             </div>
 
             <div class="row g-3">
@@ -707,12 +747,24 @@ export default {
                     <select class="form-select form-select-sm" v-model="module_name" @change="on_module_change">
                         <option value="">-- select module --</option>
                         <template v-for="(mod, key) in modules">
-                            <option v-if="(direction === 'send' ? mod.type === 'send_to' : mod.type === 'receive_from') && mod.config?.connector === 'misp'" :value="key">[[ key ]]</option>
+                            <option v-if="is_module_available(key, mod)" :value="key">[[ key ]]</option>
                         </template>
                     </select>
                 </div>
                 <div class="col-md-7 text-muted small" v-if="module_desc" style="padding-top:1.75rem;">
                     [[ module_desc ]]
+                </div>
+            </div>
+
+            <div v-if="instance?.identifier" class="mb-3">
+                <div class="form-check">
+                <input class="form-check-input" type="checkbox" :id="'extend-event-case-task-'+instance.case_task_instance_id" v-model="create_extended_event">
+                <label class="form-check-label" :for="'extend-event-case-task-'+instance.case_task_instance_id">
+                    Create an extended event from the current MISP event
+                </label>
+                <div class="form-text">
+                    Uses the current connector identifier as the base event, creates a new extended event, then updates this connector to the new event UUID.
+                </div>
                 </div>
             </div>
 

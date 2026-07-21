@@ -6,7 +6,7 @@ from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
-from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event
 from app.case.CaseCore import FILE_FOLDER
 
 logger = logging.getLogger(__name__)
@@ -395,7 +395,7 @@ def add_external_references_to_event(misp, event, case):
                 logger.warning("MISP export: failed to add external reference '%s': %s", url, e)
 
 
-def handler(instance, case, user, case_model=None, db_session=None):
+def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, api_key, identifier
 
@@ -413,9 +413,18 @@ def handler(instance, case, user, case_model=None, db_session=None):
         return {"message": "Error connecting to MISP"}
     flag = False
     object_uuid_list = {}
+    create_extended = bool(payload and payload.get("create_extended_event"))
+    base_event = None
+    if create_extended and not instance.get("identifier"):
+        return {"message": "Cannot create an extended event without a current MISP event identifier"}
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
+            if create_extended:
+                return {"message": "Current MISP event not found; cannot create an extended event"}
+            flag = True
+        elif create_extended:
+            base_event = event
             flag = True
         else:
             misp_objects = event.get_objects_by_name("flowintel-case")
@@ -601,11 +610,17 @@ def handler(instance, case, user, case_model=None, db_session=None):
 
     ## Event doesn't exist
     if flag:
-        event = MISPEvent()
-        event.uuid = str(uuid.uuid4())
-        event.info = f"Case: {case['title']}"  # Required
-        event.threat_level_id = current_app.config.get("MISP_EVENT_THREAT_LEVEL", 4)
-        event.analysis = current_app.config.get("MISP_EVENT_ANALYSIS", 0)
+        is_extended_event = create_extended and base_event is not None
+        if is_extended_event:
+            event = create_extended_event(misp, base_event, f"Case: {case['title']}")
+            if isinstance(event, dict) and event.get("message"):
+                return event
+        else:
+            event = MISPEvent()
+            event.uuid = str(uuid.uuid4())
+            event.info = f"Case: {case['title']}"  # Required
+            event.threat_level_id = current_app.config.get("MISP_EVENT_THREAT_LEVEL", 4)
+            event.analysis = current_app.config.get("MISP_EVENT_ANALYSIS", 0)
 
         misp_object = create_case(case)
         event.add_object(misp_object)
@@ -633,7 +648,11 @@ def handler(instance, case, user, case_model=None, db_session=None):
                 misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                 event.add_object(misp_object)
 
-        event = misp.add_event(event, pythonify=True)
+        if is_extended_event:
+            event = bump_event_timestamp(event)
+            event = misp.update_event(event, pythonify=True)
+        else:
+            event = misp.add_event(event, pythonify=True)
 
         add_case_task_references(misp, event, case)
 

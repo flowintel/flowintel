@@ -328,6 +328,15 @@ export default {
                                             <span :class="sync_selected_instance.identifier ? 'fw-semibold' : 'fst-italic text-muted'" style="color:var(--bs-primary);">
                                                 [[ sync_selected_instance.identifier || 'None' ]]
                                             </span>
+                                            <a v-if="sync_selected_instance.is_misp_connector && sync_selected_instance.identifier && sync_selected_instance.details?.url"
+                                               :href="((sync_selected_instance.details.url.endsWith('/') ? sync_selected_instance.details.url : sync_selected_instance.details.url + '/') + 'events/view/' + sync_selected_instance.identifier)"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="btn btn-link btn-sm p-0 ms-1"
+                                               style="color:var(--bs-primary); line-height:1;"
+                                               title="Open current MISP event">
+                                                <i class="fa-solid fa-arrow-up-right-from-square fa-xs"></i>
+                                            </a>
                                             <span>
                                                 <button v-if="is_case && sync_selected_instance.can_interact_connector" class="btn btn-link btn-sm p-0 ms-1" style="color:var(--bs-primary); line-height:1;" @click="start_edit_identifier()" title="Edit identifier">
                                                     <i class="fa-solid fa-pen fa-xs"></i>

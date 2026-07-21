@@ -2,7 +2,7 @@ from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
 from flask import current_app
 import conf.config_module as Config
-from .misp_object_event import bump_event_timestamp
+from .misp_object_event import bump_event_timestamp, create_extended_event
 
 module_config = {
     "connector": "misp",
@@ -88,11 +88,20 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     except Exception:
         return {"message": "Error connecting to MISP"}
     flag = False
+    create_extended = bool(payload and payload.get("create_extended_event"))
+    base_event = None
+    if create_extended and not instance.get("identifier"):
+        return {"message": "Cannot create an extended event without a current MISP event identifier"}
 
     # If there's an identifier, attempt to fetch and update the event
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
+            if create_extended:
+                return {"message": "Current MISP event not found; cannot create an extended event"}
+            flag = True
+        elif create_extended:
+            base_event = event
             flag = True
         else:
             # Process each task in the case
@@ -205,9 +214,14 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     # Event doesn't exist: create and add all tasks
     if flag:
-        event = MISPEvent()
-        event.uuid = str(uuid.uuid4())
-        event.info = f"Case: {case['title']}"  # Required
+        if create_extended and base_event is not None:
+            event = create_extended_event(misp, base_event, f"Case: {case['title']}")
+            if isinstance(event, dict) and event.get("message"):
+                return event
+        else:
+            event = MISPEvent()
+            event.uuid = str(uuid.uuid4())
+            event.info = f"Case: {case['title']}"  # Required
 
         for task in case.get("tasks", []):
             loc_misp_task_object = create_task(task, case["uuid"])
@@ -223,7 +237,10 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
                 misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                 event.add_object(misp_object)
 
-        event = misp.add_event(event, pythonify=True)
+        if not (create_extended and base_event is not None):
+            event = misp.add_event(event, pythonify=True)
+        else:
+            event = misp.update_event(event, pythonify=True)
 
         # Tasks' notes event report (aggregated)
         loc_notes = ""

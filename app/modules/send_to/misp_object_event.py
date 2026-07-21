@@ -32,6 +32,35 @@ def bump_event_timestamp(event):
     return event
 
 
+def create_extended_event(misp, base_event, title):
+    """Create a new event extending the provided base event."""
+    base_extends_uuid = getattr(base_event, "extends_uuid", None) or (base_event.get("extends_uuid") if hasattr(base_event, "get") else None)
+    if base_extends_uuid:
+        return {"message": "The current MISP event is already an extended event"}
+
+    extended_event = MISPEvent()
+    extended_event.uuid = str(uuid.uuid4())
+    extended_event.info = title
+
+    base_uuid = getattr(base_event, "uuid", None) or (base_event.get("uuid") if hasattr(base_event, "get") else None)
+    if base_uuid:
+        extended_event.extends_uuid = base_uuid
+
+    base_threat = getattr(base_event, "threat_level_id", None) or (base_event.get("threat_level_id") if hasattr(base_event, "get") else None)
+    if base_threat:
+        extended_event.threat_level_id = base_threat
+
+    base_analysis = getattr(base_event, "analysis", None) or (base_event.get("analysis") if hasattr(base_event, "get") else None)
+    if base_analysis is not None:
+        extended_event.analysis = base_analysis
+
+    base_distribution = getattr(base_event, "distribution", None) or (base_event.get("distribution") if hasattr(base_event, "get") else None)
+    if base_distribution is not None:
+        extended_event.distribution = base_distribution
+
+    return misp.add_event(extended_event, pythonify=True)
+
+
 def create_object(misp, object, event_id):
     misp_object = MISPObject(object["name"], standalone=False)
     attr_uuid_list = list()
@@ -281,6 +310,8 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         return {"message": "Error connecting to MISP"}
     flag = False
     object_uuid_list = {}
+    create_extended = bool(payload and payload.get("create_extended_event"))
+    base_event = None
 
     # Optional filter: only send objects whose id is in selected_objects
     objects = case["objects"]
@@ -289,9 +320,17 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         objects = [o for o in objects if str(o.get("object_id", o.get("id", ""))) in selected_ids]
 
     details = []
+    if create_extended and not instance.get("identifier"):
+        return {"message": "Cannot create an extended event without a current MISP event identifier"}
+
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
+            if create_extended:
+                return {"message": "Current MISP event not found; cannot create an extended event"}
+            flag = True
+        elif create_extended:
+            base_event = event
             flag = True
         else:
             details, object_uuid_list = all_object_to_misp(misp, event, objects, object_uuid_list)
@@ -302,10 +341,15 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     ## Event doesn't exist
     if flag:
-        event = MISPEvent()
-        event.uuid = str(uuid.uuid4())
-        event.info = f"Case: {case['title']}"  # Required
-        event = misp.add_event(event, pythonify=True)
+        if create_extended and base_event is not None:
+            event = create_extended_event(misp, base_event, f"Case: {case['title']}")
+            if isinstance(event, dict) and event.get("message"):
+                return event
+        else:
+            event = MISPEvent()
+            event.uuid = str(uuid.uuid4())
+            event.info = f"Case: {case['title']}"  # Required
+            event = misp.add_event(event, pythonify=True)
 
         for object in objects:
             res, object_uuid_list = manage_object_creation(misp, event, object, object_uuid_list)
