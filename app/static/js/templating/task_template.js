@@ -355,6 +355,11 @@ export default {
                 <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[ key_loop+1 ]]-[[ template.title ]]</h5>
             </div>
             <div class="case-meta-grid" style="margin-bottom: 4px;">
+				<div class="case-meta-item" v-if="template.creation_date" :title="'Created: ' + template.creation_date">
+                    <i class="fa-solid fa-calendar-plus fa-fw"></i>
+                    <span class="meta-label">Created</span>
+                    <span class="meta-value">[[ dayjs.utc(template.creation_date).fromNow() ]]</span>
+                </div>
                 <div class="case-meta-item" v-if="template.last_modif" :title="'Modified: ' + template.last_modif">
                     <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
                     <span class="meta-label">Modified</span>
