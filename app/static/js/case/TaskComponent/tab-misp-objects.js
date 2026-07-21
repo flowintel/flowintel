@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, computed, onBeforeUnmount } = Vue
 
 export default {
@@ -59,6 +60,7 @@ export default {
                 const loc = await res.json()
                 if (!props.task.misp_object_links) props.task.misp_object_links = []
                 props.task.misp_object_links.push(loc.link)
+                touchTaskAndCaseLastModif(props.task, props.cases_info)
                 create_message('MISP object linked', 'success-subtle', false, 'fas fa-link')
                 window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_object_id: obj.object_id } }))
                 try {
@@ -88,6 +90,7 @@ export default {
                 const loc = await res.json()
                 if (!props.task.misp_attribute_links) props.task.misp_attribute_links = []
                 props.task.misp_attribute_links.push(loc.link)
+                touchTaskAndCaseLastModif(props.task, props.cases_info)
                 create_message('Standalone MISP attribute linked', 'success-subtle', false, 'fas fa-link')
                 window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_attribute_id: attr.id } }))
                 try {
@@ -109,6 +112,7 @@ export default {
             if (res.status === 200) {
                 const idx = props.task.misp_object_links.findIndex(l => l.misp_object_id === obj.id)
                 if (idx > -1) props.task.misp_object_links.splice(idx, 1)
+                touchTaskAndCaseLastModif(props.task, props.cases_info)
                 create_message('MISP object unlinked', 'success-subtle', false, 'fas fa-unlink')
                 window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_object_id: obj.id } }))
             } else {
@@ -121,6 +125,7 @@ export default {
             if (res.status === 200) {
                 const idx = props.task.misp_attribute_links.findIndex(l => l.misp_attribute_id === attr.id)
                 if (idx > -1) props.task.misp_attribute_links.splice(idx, 1)
+                touchTaskAndCaseLastModif(props.task, props.cases_info)
                 create_message('Standalone MISP attribute unlinked', 'success-subtle', false, 'fas fa-unlink')
                 window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_attribute_id: attr.id } }))
             } else {

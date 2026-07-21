@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -30,6 +31,7 @@ export default {
 			)
 			if (await res.status == 200) {
 				document.getElementById('formFileMultipleCase').value = ''
+				touchCaseLastModif(props.cases_info)
 				emit('files_change')
 			}
 
@@ -46,6 +48,7 @@ export default {
 			if (!ok) return
 			const res = await fetch('/case/' + props.case_id + '/delete_case_file/' + file.id)
 			if (await res.status == 200) {
+				touchCaseLastModif(props.cases_info)
 				emit('files_change')
 			}
 			await display_toast(res)
@@ -61,6 +64,7 @@ export default {
 			})
 			if (res.status == 200) {
 				let loc = await res.clone().json()
+				touchCaseLastModif(props.cases_info)
 				if (loc.notes !== undefined) {
 					emit('note_change', loc.notes)
 				}

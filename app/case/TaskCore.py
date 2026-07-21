@@ -841,7 +841,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             tasks = tasks[start:start + per_page]
         return {"tasks": self.get_task_info(tasks, user), "total": total}
 
-    def change_order(self, case, task, request_json):
+    def change_order(self, case, task, request_json, current_user=None):
         """Change the order of tasks"""
         # Get tasks ordered by case_order_id
         tasks_list = [t for t in case.tasks if not t.completed]
@@ -870,6 +870,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 loc_task.case_order_id = i
 
             db.session.commit()
+            if current_user:
+                self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' reordered")
+            else:
+                CommonModel.update_last_modif(case.id)
             return True
         return False
 
@@ -1111,7 +1115,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             return True
         return False
     
-    def change_order_subtask(self, task, subtask, up_down):
+    def change_order_subtask(self, task, subtask, up_down, current_user=None):
         """Change the order of tasks"""
         for subtask_in_task in task.subtasks:
             # A task move up, case_order_id decrease by one
@@ -1126,6 +1130,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     subtask.task_order_id += 1
                     break
         db.session.commit()
+        if current_user:
+            self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' reordered for '{task.title}'")
+        else:
+            CommonModel.update_last_modif(task.case_id)
 
 
     

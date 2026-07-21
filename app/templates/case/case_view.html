@@ -2259,6 +2259,7 @@
                         )
                         if(await res_msg.status == 200){
                             cases_info.value.case.notes = notes_loc
+                            cases_info.value.case.last_modif = Date.now()
                         }
                     }
                     setTimeout(autosave_case_note, 30000);
@@ -2283,6 +2284,7 @@
                                     }
                                 }
                             }
+                            cases_info.value.case.last_modif = Date.now()
                             var myModalEl = document.getElementById('add_new_link');
                             var modal = bootstrap.Modal.getInstance(myModalEl)
                             modal.hide();
@@ -2297,6 +2299,7 @@
                         let index = cases_info.case.link_to.indexOf(case_loc)
                         if(index > -1)
                             cases_info.case.link_to.splice(index, 1)
+                        cases_info.case.last_modif = Date.now()
                     }
                     display_toast(res)
                 }
@@ -2416,6 +2419,7 @@
                                         body: JSON.stringify(dataToSend)
                                     })
                                     if(await res.status == 200){
+                                        cases_info.value.case.last_modif = Date.now()
                                         // let task = cases_info.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
                                         
                                         // Sort tasks by case_order_id ascending

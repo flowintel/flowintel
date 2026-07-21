@@ -1,6 +1,7 @@
 import { display_toast } from '../toaster.js'
 import edition_select from './edition_select.js'
 import { getTextColor, mapIcon } from '/static/js/utils.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -58,6 +59,9 @@ export default {
                 props.current_case.tags = selected_tags.value
                 props.current_case.clusters = selected_clusters.value
                 props.current_case.custom_tags = selected_custom_tags.value
+                if (props.type_object == 'case') {
+                    touchCaseLastModif({ case: props.current_case })
+                }
 
                 var myModalEl = document.getElementById('ModalEditTags');
                 var modal = bootstrap.Modal.getInstance(myModalEl)

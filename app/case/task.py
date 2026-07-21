@@ -690,7 +690,7 @@ def change_order(cid, tid):
             task = CommonModel.get_task(tid)
             if task:
                 if task.case_id == case.id:
-                    if TaskModel.change_order(case, task, request.json):
+                    if TaskModel.change_order(case, task, request.json, current_user):
                         flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "New index is not one of an other task", 'toast_class': "danger-subtle"}, 400
@@ -1237,7 +1237,7 @@ def change_order_subtask(cid, tid, sid):
                     up_down = None
                     if "up_down" in request.args:
                         up_down = request.args.get("up_down")
-                        TaskModel.change_order_subtask(task, subtask, up_down)
+                        TaskModel.change_order_subtask(task, subtask, up_down, current_user)
                         flowintel_log("audit", 200, "Subtask order changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, Direction=up_down)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
@@ -1246,4 +1246,3 @@ def change_order_subtask(cid, tid, sid):
         flowintel_log("audit", 403, "Change subtask order: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
-

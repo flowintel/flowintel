@@ -1,5 +1,6 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 
 const { ref } = Vue
 
@@ -69,6 +70,7 @@ export default {
                 let loc = await res.json()
 
                 ensure_url_tools(task).push({ "id": loc["id"], "name": name, "task_id": task.id })
+                touchTaskAndCaseLastModif(task, props.cases_info)
                 create_message("url_tool created", "success-subtle", false, "fas fa-plus")
                 create_name.value = ""
                 $("#create_url_tool_" + task.id).modal("hide")
@@ -110,6 +112,7 @@ export default {
                         break
                     }
                 }
+                touchTaskAndCaseLastModif(task, props.cases_info)
                 $("#edit_url_tool_" + url_tool_id).modal("hide")
             }
             await display_toast(res)
@@ -139,6 +142,7 @@ export default {
                     }
                 }
                 if (loc_i !== undefined) task_url_tools.splice(loc_i, 1)
+                touchTaskAndCaseLastModif(task, props.cases_info)
             }
             await display_toast(res)
         }

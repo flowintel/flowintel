@@ -160,7 +160,7 @@ def add_attributes(cid, oid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "object-template" in request.json:
                 if "attributes" in request.json:
-                    if CaseModel.add_attributes_object(cid, oid, request.json):
+                    if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
                         flowintel_log("audit", 200, "Attributes added to MISP object", User=current_user.email, CaseId=cid, ObjectId=oid)
                         return {"message": "Receive", "toast_class": "success-subtle"}, 200
                     return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
@@ -180,7 +180,7 @@ def edit_attr(cid, oid, aid):
             if "value" in request.json:
                 if "type" in request.json:
                     flowintel_log("audit", 200, "Edit attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
-                    return CaseModel.edit_attr(cid, oid, aid, request.json)
+                    return CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
                 return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
             return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -195,7 +195,7 @@ def delete_attribute(cid, oid, aid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             flowintel_log("audit", 200, "Delete attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
-            return CaseModel.delete_attribute(cid, oid, aid)
+            return CaseModel.delete_attribute(cid, oid, aid, current_user)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -338,7 +338,7 @@ def edit_misp_attribute(cid, aid):
     data = request.get_json()
     if not data:
         return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
-    result, status = CaseModel.edit_standalone_attr(cid, aid, data)
+    result, status = CaseModel.edit_standalone_attr(cid, aid, data, current_user)
     return result, status
 
 
@@ -350,7 +350,7 @@ def delete_misp_attribute(cid, aid):
     case = CommonModel.get_case(cid)
     if not case or not check_user_private_case(case):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
-    result, status = CaseModel.delete_standalone_attr(cid, aid)
+    result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
     return result, status
 
 
@@ -607,7 +607,7 @@ def remove_connector(cid, ciid):
     """Remove a connector from case"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_connector(ciid):
+            if CaseModel.remove_connector(ciid, current_user):
                 flowintel_log("audit", 200, "Connector removed from case", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
                 return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
             return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
@@ -628,7 +628,7 @@ def edit_connector(cid, ciid):
             if not case_instance or int(case_instance.case_id) != int(cid) or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             if "identifier" in request.json:
-                if CaseModel.edit_connector(ciid, request.json):
+                if CaseModel.edit_connector(ciid, request.json, current_user):
                     flowintel_log("audit", 200, "Connector edited", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
@@ -765,6 +765,7 @@ def link_remote_misp_object(cid, oid):
     )
     db.session.add(link)
     db.session.commit()
+    CommonModel.update_last_modif(cid)
     flowintel_log("audit", 200, f"Linked local object {oid} to remote UUID {remote_uuid}", User=current_user.email, CaseId=cid)
     return {"message": "Object linked to remote MISP object", "toast_class": "success-subtle"}, 200
 
@@ -794,6 +795,7 @@ def unlink_remote_misp_object(cid, oid, instance_id):
 
     db.session.delete(link)
     db.session.commit()
+    CommonModel.update_last_modif(cid)
     flowintel_log("audit", 200, f"Unlinked local object {oid} from instance {instance_id}", User=current_user.email, CaseId=cid)
     return {"message": "Link removed", "toast_class": "success-subtle"}, 200
 

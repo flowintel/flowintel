@@ -1,5 +1,6 @@
 import { display_toast } from '../toaster.js'
 import MispSyncPanel from './MispSyncPanel.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, reactive, computed, nextTick, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -75,6 +76,7 @@ export default {
             })
             if (res.status === 200) {
                 inst.identifier = identifier_draft.value
+                touchCaseLastModif(props.cases_info)
                 identifier_editing.value = false
                 identifier_draft.value = ''
             }
@@ -188,6 +190,7 @@ export default {
             state.appending = false
             if (res.status == 200) {
                 const loc = await res.clone().json()
+                touchCaseLastModif(props.cases_info)
                 if (props.is_case && loc.notes !== undefined) {
                     emit('note_change', loc.notes)
                 } else if (!props.is_case && loc.note) {
@@ -198,6 +201,7 @@ export default {
         }
 
         function on_sync_done({ direction, instance }) {
+            touchCaseLastModif(props.cases_info)
             emit('modif_misp_objects')
             emit("case_connectors", true)
         }

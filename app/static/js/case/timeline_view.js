@@ -1,5 +1,6 @@
 import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, nextTick, computed } = Vue
 
 export default {
@@ -174,6 +175,7 @@ export default {
                 new_date_text.value = ''
                 new_description.value = ''
                 show_add_form.value = false
+                touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
             await display_toast(res)
@@ -210,6 +212,7 @@ export default {
             })
             if (res.status === 200) {
                 editing_event_id.value = null
+                touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
             await display_toast(res)
@@ -223,6 +226,7 @@ export default {
             if (!ok) return
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event/' + ev_id)
             if (res.status === 200) {
+                touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
             await display_toast(res)
@@ -307,6 +311,7 @@ export default {
             })
             if (res.status === 200) {
                 show_import_modal.value = false
+                touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
             await display_toast(res)

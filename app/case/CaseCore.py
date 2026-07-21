@@ -1635,19 +1635,35 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def remove_connector(self, case_instance_id):
+    def remove_connector(self, case_instance_id, current_user=None):
+        case_instance = Case_Connector_Instance.query.get(case_instance_id)
+        if not case_instance:
+            return False
+        case_id = case_instance.case_id
         try:
-            Case_Connector_Instance.query.filter_by(id=case_instance_id).delete()
+            db.session.delete(case_instance)
             db.session.commit()
+            CommonModel.update_last_modif(case_id)
+            if current_user:
+                case = CommonModel.get_case(case_id)
+                CommonModel.save_history(case.uuid, current_user, "Connector removed")
         except SQLAlchemyError:
+            db.session.rollback()
+            return False
+        except Exception:
+            db.session.rollback()
             return False
         return True
 
-    def edit_connector(self, case_instance_id, request_json):
+    def edit_connector(self, case_instance_id, request_json, current_user=None):
         c = Case_Connector_Instance.query.get(case_instance_id)
         if c:
-            c.identifier = request_json["identifier"]            
+            c.identifier = request_json["identifier"]
             db.session.commit()
+            CommonModel.update_last_modif(c.case_id)
+            if current_user:
+                case = CommonModel.get_case(c.case_id)
+                CommonModel.save_history(case.uuid, current_user, "Connector edited")
             return True
         return False
 
@@ -1898,7 +1914,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
 
-    def add_attributes_object(self, cid, oid, request_json):
+    def add_attributes_object(self, cid, oid, request_json, current_user=None):
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
             for attribute in request_json["attributes"]:
@@ -1943,10 +1959,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             
             misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
             db.session.commit()
+            CommonModel.update_last_modif(cid)
+            if current_user:
+                case = CommonModel.get_case(cid)
+                CommonModel.save_history(case.uuid, current_user, f"Attributes added to MISP object {oid}")
             return True
         return False
 
-    def edit_attr(self, case_id, object_id, attr_id, request_json):
+    def edit_attr(self, case_id, object_id, attr_id, request_json, current_user=None):
         misp_object = self.get_misp_object(object_id)
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
@@ -1987,18 +2007,28 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
                 misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                 db.session.commit()
+                CommonModel.update_last_modif(case_id)
+                if current_user:
+                    case = CommonModel.get_case(case_id)
+                    CommonModel.save_history(case.uuid, current_user, f"MISP object attribute {attr_id} edited")
                 return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
 
 
-    def delete_attribute(self, case_id, object_id, attr_id):
+    def delete_attribute(self, case_id, object_id, attr_id, current_user=None):
         misp_object = self.get_misp_object(object_id)
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
             if attribute.case_misp_object_id == int(object_id):
                 db.session.delete(attribute)
                 db.session.commit()
+                misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                db.session.commit()
+                CommonModel.update_last_modif(case_id)
+                if current_user:
+                    case = CommonModel.get_case(case_id)
+                    CommonModel.save_history(case.uuid, current_user, f"MISP object attribute {attr_id} deleted")
                 return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
@@ -2100,7 +2130,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Get all standalone MISP attributes for a case"""
         return Misp_Attribute.query.filter_by(case_id=cid, case_misp_object_id=None).all()
 
-    def edit_standalone_attr(self, cid, aid, data):
+    def edit_standalone_attr(self, cid, aid, data, current_user=None):
         """Edit a standalone MISP attribute"""
         attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
         if not attr:
@@ -2137,9 +2167,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         attr.disable_correlation = disable_correlation
         attr.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
         db.session.commit()
+        CommonModel.update_last_modif(cid)
+        if current_user:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Standalone MISP attribute {aid} edited")
         return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
 
-    def delete_standalone_attr(self, cid, aid):
+    def delete_standalone_attr(self, cid, aid, current_user=None):
         """Delete a standalone MISP attribute"""
         attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
         if not attr:
@@ -2156,6 +2190,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         db.session.delete(attr)
         db.session.commit()
+        CommonModel.update_last_modif(cid)
+        if current_user:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Standalone MISP attribute {aid} deleted")
         return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
 
     def set_standalone_attribute_tasks(self, cid, aid, task_ids, current_user):
@@ -2418,12 +2456,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
     
-    def remove_note_template(self, case_id):
+    def remove_note_template(self, case_id, current_user=None):
         """Remove a note template from a case"""
         c = self.get_case_note_template(case_id)
         if c:
             db.session.delete(c)
             db.session.commit()
+            CommonModel.update_last_modif(case_id)
+            if current_user:
+                case = CommonModel.get_case(case_id)
+                CommonModel.save_history(case.uuid, current_user, "Note Template removed")
             return True
         return False
 
@@ -2720,6 +2762,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return None
         link.label = label or None
         db.session.commit()
+        case = CommonModel.get_case(link.case_id)
+        CommonModel.save_history(case.uuid, current_user, "Timeline event link edited")
+        CommonModel.update_last_modif(link.case_id)
         return link
 
 CaseModel = CaseCore()

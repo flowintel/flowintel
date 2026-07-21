@@ -777,7 +777,7 @@ class EditConnectorsCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
-                    if CaseModel.edit_connector(ciid, request.json):
+                    if CaseModel.edit_connector(ciid, request.json, current_user):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -792,7 +792,7 @@ class RemoveConnectors(Resource):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_connector(ciid):
+                if CaseModel.remove_connector(ciid, current_user):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403
@@ -877,7 +877,7 @@ class RemoveNoteTemplate(Resource):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_note_template(cid):
+                if CaseModel.remove_note_template(cid, current_user):
                     return {"message": "Note template removed"}, 200
                 return {"message": "Something went wrong"}, 400
             return {"message": "Permission denied"}, 403
@@ -969,7 +969,7 @@ class ChangeOrder(Resource):
                 if task:
                     if 'new-index' in request.json:
                         request.json['new-index'] = request.json['new-index']-1
-                        if TaskModel.change_order(case, task, request.json):
+                        if TaskModel.change_order(case, task, request.json, current_user):
                             flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
@@ -1129,7 +1129,7 @@ class ModifNoteCase(Resource):
                     if request.json:
                         if "object-template" in request.json:
                             if "attributes" in request.json:
-                                if CaseModel.add_attributes_object(cid, oid, request.json):
+                                if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
                                     return {"message": "Receive"}, 200
                                 return {"message": "Object not found in this case"}, 404
                             return {"message": "Need to pass 'attributes'"}, 400
@@ -1150,7 +1150,7 @@ class ModifNoteCase(Resource):
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if request.json:
                         if "value" in request.json and "type" in request.json:
-                            return CaseModel.edit_attr(cid, oid, aid, request.json)
+                            return CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
                         if "type" not in request.json:
                             return {"message": "Need to pass 'type'"}, 400
                         return {"message": "Need to pass 'value'"}, 400
@@ -1167,7 +1167,7 @@ class ModifNoteCase(Resource):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    return CaseModel.delete_attribute(cid, oid, aid)
+                    return CaseModel.delete_attribute(cid, oid, aid, current_user)
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
 
@@ -1259,7 +1259,7 @@ class ModifNoteCase(Resource):
             if "type" not in request.json:
                 return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
 
-            result, status = CaseModel.edit_standalone_attr(cid, aid, request.json)
+            result, status = CaseModel.edit_standalone_attr(cid, aid, request.json, current_user)
             if status == 200:
                 flowintel_log("audit", 200, "Standalone MISP attribute edited", User=current_user.email, CaseId=cid, AttributeId=aid)
             return result, status
@@ -1278,7 +1278,7 @@ class ModifNoteCase(Resource):
             if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
                 return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
 
-            result, status = CaseModel.delete_standalone_attr(cid, aid)
+            result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
             if status == 200:
                 flowintel_log("audit", 200, "Standalone MISP attribute deleted", User=current_user.email, CaseId=cid, AttributeId=aid)
             return result, status

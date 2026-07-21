@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, nextTick, onMounted, watch, computed } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 export default {
@@ -87,6 +88,7 @@ export default {
 			const res = await fetch('/case/' + props.task.case_id + '/create_note/' + props.task.id)
 
 			if (await res.status == 200) {
+				touchTaskAndCaseLastModif(props.task, props.cases_info)
 				let loc = await res.json()
 				props.task.notes.push(loc["note"])
 				let key = props.task.notes.length - 1
@@ -120,6 +122,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id=' + note_id)
 
 			if (await res.status == 200) {
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				// Tear down the editor bound to this slot and drop the slot's state.
 				// note_preview_html and _previewResolvers are keyed by array index, so
 				// reset them wholesale; the deep watcher on note_editor_render will
@@ -234,7 +237,7 @@ export default {
 			if (await res_msg.status == 200) {
 				let loc = await res_msg.json()
 				edit_mode.value = -1
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				if (note_id == -1) {
 					note_id = loc["note"]["id"]
 					task.notes.push(loc["note"])

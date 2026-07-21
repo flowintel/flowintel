@@ -335,7 +335,7 @@ def remove_note_template(cid):
     """Remove note template of a case"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_note_template(cid):
+            if CaseModel.remove_note_template(cid, current_user):
                 flowintel_log("audit", 200, "Case note template removed", User=current_user.email, CaseId=cid)
                 return {"message": "Note Template removed", "toast_class": "success-subtle"}, 200
             return {"message": "Something went wrong", "toast_class": "warning-subtle"}, 400

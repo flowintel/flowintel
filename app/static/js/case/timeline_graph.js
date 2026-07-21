@@ -1,5 +1,6 @@
 import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, nextTick } = Vue
 
 export default {
@@ -121,6 +122,7 @@ export default {
                 new_date_text.value = ''
                 new_description.value = ''
                 show_add_event.value = false
+                touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -149,6 +151,7 @@ export default {
                 link_target.value = ''
                 link_label.value = ''
                 show_add_link.value = false
+                touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -163,6 +166,7 @@ export default {
             })
             if (res.status === 200) {
                 selected_edge.value = null
+                touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -178,6 +182,7 @@ export default {
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event_link/' + selected_edge.value.id)
             if (res.status === 200) {
                 selected_edge.value = null
+                touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -196,6 +201,7 @@ export default {
             const res = await fetch('/case/' + props.case_id + '/delete_timeline_event/' + selected_node.value.id)
             if (res.status === 200) {
                 selected_node.value = null
+                touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
             }
             await display_toast(res)

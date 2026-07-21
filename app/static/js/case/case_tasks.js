@@ -6,7 +6,7 @@ import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabMispObjects from './TaskComponent/tab-misp-objects.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
-import { isCompleteTaskDisabled, getCompleteTaskTooltip } from './helpers.js'
+import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed, nextTick } = Vue
 export default {
@@ -50,7 +50,7 @@ export default {
 					props.open_closed["closed"] += 1
 					props.open_closed["open"] -= 1
 				}
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.completed = !task.completed
 				let status = task.status_id
 				if (props.status_info.status.find(s => s.id === task.status_id)?.name == 'Finished') {
@@ -117,7 +117,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
 
 			if (await res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.is_current_user_assigned = false
 
 				let index = -1
@@ -138,7 +138,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
 
 			if (await res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.is_current_user_assigned = true
 				task.users.push(current_user)
 			}

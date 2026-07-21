@@ -1,5 +1,6 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -33,7 +34,7 @@ export default {
 				const res_files = await fetch('/case/' + task.case_id + '/get_files/' + task.id)
 
 				if (await res_files.status == 200) {
-					task.last_modif = Date.now()
+					touchTaskAndCaseLastModif(task, props.cases_info)
 					let loc = await res_files.json()
 					task.files = []
 					for (let file in loc['files']) {
@@ -57,7 +58,7 @@ export default {
 			if (!ok) return
 			const res = await fetch('/case/task/' + task.id + '/delete_file/' + file.id)
 			if (await res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 
 				// Remove the file from list
 				let index = task.files.indexOf(file)
@@ -77,7 +78,7 @@ export default {
 			})
 			const loc = await res.json()
 			if (res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				if (loc.note) {
 					task.notes.push(loc.note)
 					task.nb_notes += 1

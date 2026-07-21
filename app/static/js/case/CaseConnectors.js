@@ -1,6 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
 import MispSyncPanel from './MispSyncPanel.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, reactive, onMounted, computed, nextTick, watch } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -104,6 +105,7 @@ export default {
                     try { $(sel).val(null).trigger('change') } catch(e) {}
                     connectors_selected.value = []
                     show_add_page.value = false
+                    touchCaseLastModif(props.cases_info)
                     emit('case_connectors', true)
                 }
                 display_toast(res)
@@ -130,6 +132,7 @@ export default {
                     }
                 }
                 props.case_task_connectors_list.splice(loc, 1)
+                touchCaseLastModif(props.cases_info)
             }
             display_toast(res)
         }
@@ -159,6 +162,7 @@ export default {
                         props.case_task_connectors_list[i].identifier = editing_identifier.value
                     }
                 }
+                touchCaseLastModif(props.cases_info)
                 editing_id.value = null
                 editing_identifier.value = ''
             }
