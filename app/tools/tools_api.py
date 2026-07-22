@@ -71,9 +71,10 @@ class CaseMispEvent(Resource):
         "misp_instance_id": "Required. Id of a misp instance",
         "misp_event_id": "Required. Id of a misp event on the misp instance",
         "selected_object_uuids": "Optional. List of MISP object UUIDs to import. Omit to import every object on the event.",
-        "selected_attribute_uuids": "Optional. List of MISP attribute UUIDs to include in the attributes note. Only used when 'import_attributes_note' is true; omit to include all attributes.",
+        "selected_attribute_uuids": "Optional. List of MISP attribute UUIDs to import as standalone case attributes and/or include in the attributes note. Omit to include all event-level attributes.",
         "import_event_info_note": "Optional boolean (default false on the API). Add a task with a note summarising the MISP event (info, orgs, date, threat level, analysis, distribution).",
         "import_attributes_note": "Optional boolean (default false). Add a task with a markdown table of the (selected) individual attributes.",
+        "import_standalone_attributes": "Optional boolean (default false). Create case-level standalone MISP attributes from the selected event-level attributes.",
         "import_misp_reports": "Optional boolean (default false). Attach every MISP event report to the case as a Markdown (.md) file.",
         "import_misp_files": "Optional boolean (default false). Attach every MISP attachment/malware-sample attribute to the case as a file."
     })

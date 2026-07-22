@@ -23,6 +23,53 @@ from ..case.common_core import check_user_in_private_cases
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
 
+def _parse_misp_datetime(value):
+    """Best-effort conversion of a MISP timestamp-like value into datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    if not value:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M', DATETIME_FORMAT_FULL):
+        try:
+            return datetime.datetime.strptime(str(value), fmt)
+        except Exception:
+            continue
+    return None
+
+
+def _import_event_standalone_attributes(case, event, instance_id, selected_attribute_uuids=None):
+    """Create case-level standalone MISP attributes from an event."""
+    standalone_attr_uuid_list = []
+    selected_attribute_uuids = set(selected_attribute_uuids or [])
+
+    for event_attr in getattr(event, 'attributes', []):
+        if event_attr.object_id and int(event_attr.object_id) != 0:
+            continue
+        if selected_attribute_uuids and event_attr.uuid not in selected_attribute_uuids:
+            continue
+
+        sa_attr = Misp_Attribute(
+            case_misp_object_id=None,
+            case_id=case.id,
+            value=str(event_attr.value),
+            type=event_attr.type,
+            object_relation=getattr(event_attr, "object_relation", "") or "",
+            first_seen=_parse_misp_datetime(getattr(event_attr, "first_seen", None)),
+            last_seen=_parse_misp_datetime(getattr(event_attr, "last_seen", None)),
+            comment=event_attr.comment or "",
+            ids_flag=event_attr.to_ids or False,
+            disable_correlation=getattr(event_attr, 'disable_correlation', False) or False,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(sa_attr)
+        db.session.commit()
+        standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": event_attr.uuid})
+
+    if standalone_attr_uuid_list:
+        CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=instance_id, case_id=case.id)
+
+
 def case_creation_from_importer(case, current_user):
     if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
@@ -1084,6 +1131,8 @@ def create_case_misp_event(request_form, current_user):
 
     raw_object_uuids = request_form.get("selected_object_uuids")
     selected_object_uuids = set(raw_object_uuids) if isinstance(raw_object_uuids, list) else None
+    raw_attribute_uuids = request_form.get("selected_attribute_uuids")
+    selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
 
     object_uuid_list = {}
     for obje in event.objects:
@@ -1104,6 +1153,14 @@ def create_case_misp_event(request_form, current_user):
     if object_uuid_list:
         CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
+    if request_form.get("import_standalone_attributes"):
+        _import_event_standalone_attributes(
+            case,
+            event,
+            instance.id,
+            selected_attribute_uuids=selected_attribute_uuids,
+        )
+
     event_label = f'event {event.id} "{event.info}"'
 
     if request_form.get("import_event_info_note"):
@@ -1116,8 +1173,6 @@ def create_case_misp_event(request_form, current_user):
         )
 
     if request_form.get("import_attributes_note"):
-        raw_attribute_uuids = request_form.get("selected_attribute_uuids")
-        selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
         _add_markdown_task(
             case,
             "MISP attributes",

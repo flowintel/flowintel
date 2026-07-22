@@ -48,7 +48,7 @@ def validate_case_from_misp(request_json: dict, current_user: User):
         if value is not None and not (isinstance(value, list) and all(isinstance(v, str) for v in value)):
             return {"message": f"'{key}' must be a list of UUID strings"}
 
-    for key in ("import_event_info_note", "import_attributes_note", "import_misp_reports", "import_misp_files"):
+    for key in ("import_event_info_note", "import_attributes_note", "import_standalone_attributes", "import_misp_reports", "import_misp_files"):
         value = request_json.get(key)
         if value is not None and not isinstance(value, bool):
             return {"message": f"'{key}' must be a boolean"}
