@@ -70,6 +70,40 @@ def _import_event_standalone_attributes(case, event, instance_id, selected_attri
         CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=instance_id, case_id=case.id)
 
 
+def _upsert_case_misp_connector(case, instance, identifier):
+    """Keep a single connector occurrence for the MISP connector used to create the case."""
+    existing_links = (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Connector_Instance.id == Case_Connector_Instance.instance_id)
+        .filter(
+            Case_Connector_Instance.case_id == case.id,
+            Connector_Instance.connector_id == instance.connector_id,
+        )
+        .order_by(Case_Connector_Instance.id.asc())
+        .all()
+    )
+
+    if existing_links:
+        primary_link = existing_links[0]
+        primary_link.instance_id = instance.id
+        primary_link.identifier = identifier
+        primary_link.is_updating_case = True
+
+        for duplicate_link in existing_links[1:]:
+            Connector_Sync_Log.query.filter_by(case_connector_instance_id=duplicate_link.id).delete()
+            db.session.delete(duplicate_link)
+        return primary_link
+
+    case_connector_instance = Case_Connector_Instance(
+        case_id=case.id,
+        instance_id=instance.id,
+        identifier=identifier,
+        is_updating_case=True
+    )
+    db.session.add(case_connector_instance)
+    return case_connector_instance
+
+
 def case_creation_from_importer(case, current_user):
     if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
@@ -1200,13 +1234,7 @@ def create_case_misp_event(request_form, current_user):
     if request_form.get("import_misp_files"):
         _import_misp_attribute_files(misp, misp_event_id, current_user, case)
 
-    case_connector_instance = Case_Connector_Instance(
-        case_id=case.id,
-        instance_id=instance.id,
-        identifier=misp_event_id,
-        is_updating_case=True
-    )
-    db.session.add(case_connector_instance)
+    _upsert_case_misp_connector(case, instance, misp_event_id)
     db.session.commit()
 
     return case
