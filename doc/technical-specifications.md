@@ -1,41 +1,30 @@
 # Flowintel Technical Specifications and System Architecture
 
-This document describes the technical design of Flowintel using UML and related diagrams.
+## 1. Introduction
+
+This document describes the technical design of Flowintel.
+
 It covers the overall architecture, the structural view (classes, components and
 deployment), the behavioural view (use cases, sequences, states and activities) and the
 data model (conceptual, logical and physical).
 
 ---
 
-## 2. System Overview
+## 2. System overview
 
-Flowintel is an open-source platform for incident response and case management, used by
-CSIRT and SOC teams. Analysts create and share investigation cases, split them into tasks
-and subtasks, and add notes, files and external references. They classify the work with
-MISP taxonomies and galaxies, and enrich observables through MISP modules. Repeatable work
-is driven by reusable templates. Cases can be synchronised with MISP and other platforms
-through connectors. The platform is reached both through a web interface and through a
-documented REST API.
+Flowintel is an open-source platform for incident response and case management. Analysts create and share investigation cases, split them into tasks and subtasks, and add notes, files and external references. They classify the work with taxonomies and galaxies, and enrich observables through MISP modules. Repeatable work is driven by reusable templates. Cases can be synchronised with MISP and other platforms through connectors. The platform is reached both through a web interface and through a documented REST API.
 
 ---
 
 ## 2.1 System architecture
 
-Flowintel is built as a layered modular monolith.
+Flowintel is organised as a modular monolith with a layered internal architecture. What does this mean?
 
-- **Monolith.** The whole application is built and run as a single Python and Flask
-  process. Gunicorn runs several worker processes, and NGINX sits in front as a reverse
-  proxy. There is no separate frontend application and no set of microservices. All
-  features live in one codebase and one runtime, which keeps operation, monitoring and
-  backup simple.
-- **Modular.** The application is split into feature modules, built as Flask blueprints.
-  Each module owns one functional area and is mounted under its own URL prefix (`/case`,
-  `/admin`, `/account`, `/connectors`, `/analyzer`, `/templating`, `/notification`,
-  `/alerts`, `/calendar`, `/my_assignment`, `/custom_tags`, `/tools`, and the
-  REST API). The boundaries between features are therefore clear.
+- **Monolith.** The whole application is built and run as a single Python and Flask   process. Gunicorn runs several worker processes, and NGINX sits in front as a reverse proxy. There is no separate frontend application and no set of microservices. All features live in one codebase, which keeps operation, monitoring and backup simple.
+- **Modular.** The application is split into feature modules, built as Flask blueprints. Each module owns one functional area and is mounted under its own URL prefix (such as `/case`, `/admin`, `/account`, `/connectors` and more). The boundaries between features are therefore clear.
 - **Layered.** Inside each module the code follows the same layers:
 
-  | Layer | Responsibility | Representative artefacts |
+  | Layer | Responsibility | Where to find it in the code |
   |---|---|---|
   | **Presentation / View** | HTTP routing, request handling, HTML rendering | `case.py`, `admin.py`, `account.py` (blueprint routes) and Jinja2 templates under `app/templates/` |
   | **API** | Programmatic REST interface (`flask-restx`, Swagger at `/api/`) | `case_api.py`, `task_api.py`, `admin_api.py`, `validation_api.py` |
@@ -44,63 +33,32 @@ Flowintel is built as a layered modular monolith.
   | **Data / Persistence** | Object-relational mapping and queries | `app/db_class/db.py` (SQLAlchemy models) |
   | **Database** | Durable storage | PostgreSQL in production; SQLite for development |
 
-  A normal request does not pass through all six layers in a straight line. It enters
-  through one of the two entry layers: the Presentation/View layer for the web interface, or
-  the API layer for the REST interface. The entry layer checks the input (the Input
-  validation layer), then calls the Core service, which uses the Data / Persistence layer
-  (the SQLAlchemy models) to read from or write to the Database. The View layer returns a Jinja2
-  page, and the API layer returns a JSON
-  document. So the API layer is an alternative to the View layer, not a step after it, and
-  input validation happens inside the entry layer before the Core is called.
+  A normal request does not pass through all six layers in a straight line. It enters through one of the two entry layers: the Presentation/View layer for the web interface, or the API layer for the REST interface. The entry layer checks the input (the Input validation layer), then calls the Core service, which uses the Data / Persistence layer (the SQLAlchemy models) to read from or write to the Database. The View layer returns a Jinja2 page, and the API layer returns a JSON  document. So the API layer is an alternative to the View layer, not a step after it, and input validation happens inside the entry layer before the Core is called.
 
-  This matches the template's "FrontendView, FrontendController, BackendService, DAO, Data
-  layer" chain. For example, a web request runs `case.py` (View), checked by `form.py`
-  (Input validation), then `CaseCore.py` (Service), then the models in `db.py` (DAO), then
-  PostgreSQL.
+  This matches the template's "FrontendView, FrontendController, BackendService, DAO, Data layer" chain. For example, a web request runs `case.py` (View), checked by `form.py` (Input validation), then `CaseCore.py` (Service), then the models in `db.py` (DAO), then PostgreSQL.
 
-**Technical components.** Flowintel is a Python web application built on the Flask framework.
-It runs as a service on a Linux server and is reached through a standard web browser. It is
-built from a small number of well-established open-source components, each with a clear role.
-This keeps the running cost predictable and avoids tying the organisation to a single
-supplier.
+  For readers familiar with MVC: the Model is the Data / Persistence layer (backed by the Database), the View is the Presentation / View layer and the API layer, and what MVC calls the Controller is split here into the Presentation / View and API layer route handlers, the Input validation layer, and a dedicated Business logic / Service (Core) layer.
 
-- **Flask application:** the Flowintel codebase itself, written in Python. It implements the
-  case workflow, the user interface, the permissions and the links to external systems.
-- **Gunicorn:** runs the Flask application as several worker processes that handle requests
-  in parallel.
-- **NGINX:** the public entry point. It terminates HTTPS, serves the static files and
-  exposes both the web interface and the REST API to the network.
-- **PostgreSQL:** the database that records cases, tasks, users, audit information and
-  configuration. SQLite is used for development and demonstrations only.
-- **Valkey:** an in-memory store, compatible with Redis, that holds user session data.
-  Keeping sessions out of the database keeps the interface responsive.
-- **misp-modules service:** an enrichment engine that pulls extra context on observables
-  (IP addresses, domains, files and similar) from third-party sources. It runs as a separate
-  service and is called on demand.
-- **MISP taxonomies and galaxies:** open vocabularies from the wider threat-intelligence
-  community, so that classifications and threat-actor labels stay aligned with other teams.
-- **Notifications service:** a background worker that produces updates and alerts inside the
-  interface, so analysts see new assignments and changes without refreshing the page.
-- **Template repositories:** case and task templates live in Git repositories that Flowintel
-  pulls into a local folder, so teams can version their playbooks and share them between
-  instances.
-- **GPG:** Flowintel can sign and encrypt outbound notifications, and accept encrypted input
-  where the workflow needs it.
-- **SQLAlchemy:** maps the Python models to relational tables and manages queries,
-  relationships and transactions, which keeps the data model clear and the code mostly
-  independent of low-level SQL.
-- **Optional integrations:** single sign-on with Keycloak and Microsoft Entra ID, mailbox
-  ingestion over IMAP, outbound webhooks, and links to MISP, AIL or Matrix. None of these
-  are required; each is turned on only when the organisation has the matching
-  infrastructure.
+### 2.1.1 Technical components
 
-In a typical installation these components run on the same host.
+Flowintel is a Python web application built on the Flask framework. It runs as a service on a Linux server and is reached through a standard web browser. It is built from a small number of well-established open-source components, each with a clear role. This avoids tying the organisation to a single supplier.
 
-Some concerns are handled in one central place: authentication and sessions (Flask-Login
-and Flask-Session, stored in Valkey), CSRF protection (Flask-WTF), authorisation through
-role decorators (`@admin_required`, `@login_required`), database migrations (Flask-Migrate
-and Alembic), background notifications, logging to rotating files, and the links to
-external systems (MISP, misp-modules, Matrix, and the identity providers Keycloak and
+- **Flask application:** the Flowintel codebase itself, written in Python. It implements the case workflow, the user interface, the permissions and the links to external systems.
+- **Gunicorn:** runs the Flask application as several worker processes that handle requests in parallel.
+- **NGINX:** the public entry point. It terminates HTTPS, serves the static files and exposes both the web interface and the REST API to the network.
+- **PostgreSQL:** the database that records cases, tasks, users, audit information and configuration. SQLite is used for development and demonstrations only.
+- **Valkey:** an in-memory store, compatible with Redis, that holds user session data. Keeping sessions out of the database keeps the interface responsive.
+- **misp-modules service:** an enrichment engine that pulls extra context on observables from third-party sources. It runs as a separate service and is called on demand.
+- **MISP taxonomies and galaxies:** open vocabularies from the wider threat-intelligence community, so that classifications and threat-actor labels stay aligned with other organisations.
+- **Notifications service:** a background worker that produces updates and alerts inside the interface, so analysts see new assignments and changes without refreshing the page.
+- **Template repositories:** case and task templates, so teams can version their playbooks and share them between instances.
+- **GPG:** Flowintel can sign case reports.
+- **SQLAlchemy:** maps the Python models to relational tables and manages queries, relationships and transactions, which keeps the data model clear and the code mostly independent of low-level SQL.
+- **Optional integrations:** single sign-on with Keycloak and Microsoft Entra ID, and links to MISP, AIL or Matrix. None of these are required.
+
+In a typical installation all these components run on the same host.
+
+Some features are handled in one central place: authentication and sessions (Flask-Login and Flask-Session, stored in Valkey), CSRF protection (Flask-WTF), authorisation through role decorators (`@admin_required`, `@login_required`), database migrations (Flask-Migrate and Alembic), background notifications, logging to rotating files, and the links to external systems (MISP, misp-modules, Matrix, and the identity providers Keycloak and
 Microsoft Entra ID).
 
 The diagram below shows the layers and the main external systems.
@@ -143,49 +101,34 @@ flowchart TB
     pres -. SSO .-> idp
 ```
 
-**How the components work together at runtime.** A user's browser talks to NGINX over
-HTTPS. NGINX serves the static files itself and forwards the application requests to
-Gunicorn, which passes each request to one of its Flask worker processes. The workers are
-the runtime units of the application: separate Python processes, each able to handle a
-request on its own. They are deliberately stateless between requests, so all lasting state is
-kept in the backend services.
+### 2.1.2 How the components work together at runtime.
 
-Operational data is stored in PostgreSQL: cases, tasks, notes, tags, assignments, history
-and connector metadata. User session data is stored in Valkey. When an analyst asks for
-enrichment on an observable, the worker calls the misp-modules service and stores the result
-back on the case. The notifications service runs alongside the application and creates the
-notification records shown in the interface. Users sign in with a local account or through
-single sign-on with Keycloak or Microsoft Entra ID, and a case can be synchronised with a
-MISP instance through a connector.
+ A user's browser talks to **NGINX** over HTTPS. NGINX serves the static files itself and forwards the application requests to **Gunicorn**, which passes each request to one of its Flask worker processes. The workers are the runtime units of the application: separate Python processes, each able to handle a
+request on its own. They are deliberately stateless between requests, so all lasting state is kept in the backend services.
 
-Each component runs as its own systemd service on the host, so the platform starts with the
-server and can be restarted one component at a time during maintenance.
+Operational data is stored in **PostgreSQL**: cases, tasks, notes, tags, assignments, history and connector metadata. User session data is stored in Valkey. When an analyst asks for enrichment on an observable, the worker calls the misp-modules service and stores the result back on the case. The notifications service runs alongside the application and creates the
+notification records shown in the interface. Users sign in with a local **account** or through single sign-on with Keycloak or Microsoft Entra ID, and a case can be synchronised with a MISP instance through a connector.
 
-Flowintel keeps two kinds of audit trail. Activity that belongs to a case (status changes,
-comments, file uploads, task updates) is stored in the database next to the case, so analysts
-can see the full history from the interface. Application events (logins, errors, background
-jobs) are written to rotating log files under `logs/`, with `logs/record.log` as the main
-file.
+Each component runs as its own systemd service on the host, so the platform starts with the server and can be restarted one component at a time during maintenance.
 
-Backups are handled at the data layer: a regular dump of the PostgreSQL database, together
-with the `uploads/` folder, is enough to restore a working instance on a fresh server. For
-deployments that need protection of data at rest, Flowintel can be installed on encrypted
-volumes.
+Flowintel keeps two kinds of audit trail. Activity that belongs to a case (status changes, comments, file uploads, task updates) is stored in the database next to the case, so analysts can see the full history from the interface. Application events (logins, errors, background
+jobs) are written to rotating log files under `logs/`, with `logs/record.log` as the main file.
 
-**Supported operating systems.** Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS.
-Other Debian-based distributions may work but are not officially tested.
+Backups are handled at the data layer: a regular dump of the PostgreSQL database, together with the `uploads/` folder, is enough to restore a working instance on a fresh server. For deployments that need protection of data at rest, Flowintel can be installed on encrypted volumes.
 
-### 2.1.1 Implementation frameworks
+### 2.1.3. Supported operating systems.
 
-Flowintel is a Python 3.12 application. The table below lists the main frameworks and
-libraries per area. It reflects the real project dependencies (`requirements.in`,
-`app/assets/package.json`), not a planned stack.
+Flowintel runs on Ubuntu Linux 22.04 LTS and 24.04 LTS. Other Debian-based distributions may work but are not officially tested.
+
+### 2.1.4 Implementation frameworks
+
+Flowintel is a Python 3.12 application. The table below lists the main frameworks and libraries per area. It reflects the project dependencies (`requirements.in`, `app/assets/package.json`), not a planned stack.
 
 | Concern | Framework / library | Notes |
 |---|---|---|
-| **Web framework (back-end)** | **Flask** | Application factory `create_app()`, blueprint-based feature modules |
+| **Web framework (back-end)** | **Flask** | Application start `create_app()`, blueprint-based feature modules |
 | **REST API** | **Flask-RESTX** | Namespaced REST API with an interactive Swagger UI at `/api/` |
-| **ORM / data access** | **SQLAlchemy** and **Flask-SQLAlchemy** | 71 model classes in `app/db_class/db.py` |
+| **ORM / data access** | **SQLAlchemy** and **Flask-SQLAlchemy** | Model classes in `app/db_class/db.py` |
 | **Database migrations** | **Flask-Migrate** (Alembic) | Versioned schema changes under `migrations/` |
 | **Templating (front-end)** | **Jinja2** (server-side) | HTML rendered on the server; templates under `app/templates/` |
 | **UI toolkit / client JS** | **Bootstrap 5**, **jQuery**, **Vue 3** (progressive), **Chart.js**, **FullCalendar**, **CodeMirror**, **Mermaid** | Bundled with **Vite**. Vue is used for single interactive components, not as a SPA |
@@ -213,23 +156,15 @@ pinned to a specific Git commit instead of a released version.
 
 ## 2.2 Structural view
 
-The structural view describes what the system is made of. Flowintel has 71 persistent
-model classes, so the class diagram is split by subdomain instead of shown as one large
-diagram. The component and deployment diagrams then show how the modules and the runtime
-nodes fit together.
+The structural view describes what the system is made of. Flowintel has multiple persistent model classes, so the class diagram is split by subdomain instead of shown as one large diagram. The component and deployment diagrams then show how the modules and the runtime nodes fit together.
 
 ### 2.2.1 Class diagram
 
-The domain model falls into six subdomains. The diagrams show only the main attributes and
-methods. The association (join) classes are described in the data model section.
+The domain model falls into six subdomains. The diagrams show only the main attributes and methods. The association (join) classes are described in the data model section.
 
 **(a) Identity and access: users, organisations and roles**
 
-A `User` belongs to one `Org` and points to one `Role`. The `Role` holds a set of boolean
-permission flags (admin, read-only, org-admin, case-admin, queue-admin, queuer,
-audit-viewer, template-editor, misp-editor and importer). The `User` helper methods
-(`is_admin()`, `is_org_admin()` and so on) read these flags. An editor is a role that is
-not read-only.
+A `User` belongs to one `Org` and points to one `Role`. The `Role` holds a set of boolean permission flags (admin, read-only, org-admin, case-admin, queue-admin, queuer, audit-viewer, template-editor, misp-editor and importer). The `User` helper methods (`is_admin()`, `is_org_admin()` and so on) read these flags. An editor is a role that is not read-only.
 
 ```mermaid
 classDiagram
@@ -282,11 +217,7 @@ classDiagram
 
 **(b) Case management: the main work items**
 
-This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes
-its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links
-to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Cases are
-shared with organisations through `Case_Org`, and users are assigned to tasks through
-`Task_User`.
+This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Cases are shared with organisations through `Case_Org`, and users are assigned to tasks through `Task_User`.
 
 ```mermaid
 classDiagram
@@ -356,9 +287,7 @@ classDiagram
 
 **(c) Templating: reusable playbooks**
 
-`Case_Template` and `Task_Template` follow the same shape as cases and tasks, and are
-linked through `Case_Task_Template`. Templates are shared through Git-backed repositories,
-modelled by `Template_Repository` and `Template_Repository_Entry`. Reusable note skeletons
+`Case_Template` and `Task_Template` follow the same shape as cases and tasks, and are linked through `Case_Task_Template`. Templates are modelled by `Template_Repository` and `Template_Repository_Entry`. Reusable note skeletons
 are stored in `Note_Template_Model`.
 
 ```mermaid
@@ -409,9 +338,7 @@ classDiagram
 
 **(d) Classification: taxonomies, galaxies and custom tags**
 
-A `Taxonomy` owns `Tags`, and a `Galaxy` owns `Cluster`s. Cases, tasks and their templates
-are tagged through separate association tables (for example `Case_Tags` and
-`Task_Galaxy_Tags`). Free-form `Custom_Tags` give labels outside the MISP vocabulary.
+A `Taxonomy` owns `Tags`, and a `Galaxy` owns `Cluster`s. Cases, tasks and their templates are tagged through separate association tables (for example `Case_Tags` and `Task_Galaxy_Tags`). Free-form `Custom_Tags` give labels outside the default vocabulary.
 
 ```mermaid
 classDiagram
@@ -452,11 +379,8 @@ classDiagram
 
 **(e) Integrations: connectors and enrichment**
 
-A `Connector` (for example MISP or AIL) has many `Connector_Instance`s, which are the
-configured endpoints. Cases and tasks are linked to instances through
-`Case_Connector_Instance` and `Task_Connector_Instance`. Every synchronisation is recorded
-in `Connector_Sync_Log`. `Misp_Module` and `Misp_Module_Result` model the on-demand
-enrichment of observables.
+A `Connector` (for example MISP or AIL) has many `Connector_Instance`s, which are the configured endpoints. Cases and tasks are linked to instances through
+`Case_Connector_Instance` and `Task_Connector_Instance`. Every synchronisation is recorded in `Connector_Sync_Log`. `Misp_Module` and `Misp_Module_Result` model the on-demand enrichment of observables.
 
 ```mermaid
 classDiagram
@@ -503,10 +427,7 @@ classDiagram
 
 **(f) MISP objects: structured observables inside a case**
 
-`Case_Misp_Object` holds a MISP object attached to a case, and each object has many
-`Misp_Attribute`s. Tasks refer to these objects through `Task_Misp_Object`. The identity of
-an object on a remote, synchronised MISP instance is tracked by the `*_Instance_Uuid`
-tables.
+`Case_Misp_Object` holds a MISP object attached to a case, and each object has many `Misp_Attribute`s. Tasks refer to these objects through `Task_Misp_Object`. The identity of an object on a remote, synchronised MISP instance is tracked by the `*_Instance_Uuid` tables.
 
 ```mermaid
 classDiagram
@@ -536,10 +457,7 @@ classDiagram
 
 ### 2.2.2 Object diagram
 
-An object diagram is a snapshot at instance level. It shows specific objects and their
-links at one moment in time. For a data-driven application like Flowintel, the shape at
-runtime follows directly from the class diagram above, so one example snapshot is enough
-for this section.
+An object diagram is a snapshot at instance level. It shows specific objects and their links at one moment in time. For a data-driven application like Flowintel, the shape at runtime follows directly from the class diagram above, so one example snapshot is enough for this section.
 
 The snapshot below shows a phishing investigation: case #42, owned by the CSIRT
 organisation, with two tasks, one assignee and one MISP object.
@@ -564,11 +482,7 @@ flowchart LR
 
 ### 2.2.3 Component diagram
 
-The component diagram groups the Flask blueprints into functional areas and shows what they
-depend on, both the infrastructure and the external systems. Each area is a set of
-blueprints (named in brackets). All internal components run inside the single application
-process. The arrows are calls inside that process, except where they reach an external system
-over the network.
+The component diagram groups the Flask blueprints into functional areas and shows what they depend on, both the infrastructure and the external systems. Each area is a set of blueprints (named in brackets). All internal components run inside the single application process. The arrows are calls inside that process, except where they reach an external system over the network.
 
 ```mermaid
 flowchart TB
@@ -613,9 +527,7 @@ flowchart TB
 
 ### 2.2.4 Deployment diagram
 
-The deployment diagram maps the software onto runtime nodes. In a normal single-host
-installation, every component runs on one Linux server (Ubuntu 22.04 or 24.04 LTS), each as
-its own `systemd` service.
+The deployment diagram maps the software onto runtime nodes. In a normal single-host installation, every component runs on one Linux server (Ubuntu 22.04 or 24.04 LTS), each as its own `systemd` service.
 
 ![Flowintel deployment diagram](technical-specifications-diagrams/flowintel-technical-Deployment.png)
 
@@ -665,40 +577,26 @@ flowchart TB
 
 ### 2.3.1 Use-Cases
 
-The use cases below are the functional requirements for Flowintel.
+The use cases below are based on the functional requirements for Flowintel.
 
-**Actors.** The actors are the human roles from the permission system, plus the external
-systems that Flowintel connects to.
+**Actors.** The actors are the human roles from the permission system, plus the external systems that Flowintel connects to.
 
-- **Any authenticated user.** Logs in, views the cases and tasks that are visible to their
-  organisation, and manages their own profile and notifications.
+- **Any authenticated user.** Logs in, views the cases and tasks that are visible to their organisation, and manages their own profile and notifications.
 - **Editor.** The everyday user, who creates and works on cases, tasks and their
   metadata, adds MISP objects and runs enrichment modules.
 - **Read Only user.** Views cases, tasks and the calendar, but cannot change them.
 - **Org Admin.** Manages the user accounts of their own organisation.
-- **Administrator.** Full control over users, organisations, connectors, custom tags,
-  taxonomies, galaxies, statistics and audit logs.
-- **Case Admin, Queue Admin and Queuer.** Run the four-eye (privileged case) workflow. A
-  Queuer submits a task for approval, and a Queue Admin or Case Admin approves or rejects
-  it.
-- **Template Editor.** Manages case, task and note templates and the central template
-  repositories.
+- **Administrator.** Full control over users, organisations, connectors, custom tags, taxonomies, galaxies, statistics and audit logs.
+- **Case Admin, Queue Admin and Queuer.** Run the four-eye (privileged case) workflow. A Queuer submits a task for approval, and a Queue Admin or Case Admin approves or rejects it.
+- **Template Editor.** Manages case, task and note templates and the central template repositories.
 - **MISP Editor.** Adds and edits MISP objects on cases and tasks.
-- **Importer.** Imports data into cases and tasks, including creating a case from a MISP
-  event.
+- **Importer.** Imports data into cases and tasks, including creating a case from a MISP event.
 - **Audit Viewer.** Reads the audit logs.
-- **External systems.** MISP (event and attribute synchronisation, enrichment, and
-  creating a case from an event) and the SSO identity providers Keycloak and Microsoft
-  Entra ID.
+- **External systems.** MISP (event and attribute synchronisation, enrichment, and  creating a case from an event) and the SSO identity providers Keycloak and Microsoft Entra ID.
 
-**Common precondition.** Apart from UC-01 (Log in), every use case needs an authenticated
-user with a role or permission that allows the action. Whether a case is visible also
-depends on the user's organisation and on the private-case and privileged-case flags.
+**Common precondition.** Apart from UC-01 (Log in), every use case needs an authenticated user with a role or permission that allows the action. Whether a case is visible also depends on the user's organisation and on the private-case and privileged-case flags.
 
-There are 29 use cases. To keep the diagram readable, it shows the actors and the
-functional areas they work in, instead of drawing all 29 use cases at once. Each area groups
-several use cases. The exact use cases, with the titles used in the test plan, are in the
-catalogue table that follows.
+There are 29 use cases. To keep the diagram readable, it shows the actors and the functional areas they work in, instead of drawing all use cases at once. Each area groups several use cases.
 
 ```mermaid
 flowchart LR
@@ -741,8 +639,7 @@ flowchart LR
 
 **Use-case catalogue**
 
-The table lists all 29 use cases with their primary actors, a short description and the
-main variations. The detailed flows and the test coverage are in the test plan.
+The table lists all use cases with their primary actors, a short description and the main variations.
 
 | ID | Use case | Primary actor(s) | Description | Alternative courses |
 |---|---|---|---|---|
@@ -782,14 +679,11 @@ main variations. The detailed flows and the test coverage are in the test plan.
 |---|---|---|
 | UC-11 Manage users (create a user) | The administrator or org admin is authenticated and authorised. | 1. Open the "Add user" page; 2. Fill in the user details and select the role and organisation; 3. Submit to create the user. |
 
-The sequence diagram and the collaboration diagram in the following subsections show this
-same flow (UC-11 Manage users) in more detail.
+The sequence diagram and the collaboration diagram in the following subsections show this same flow (UC-11 Manage users) in more detail.
 
 ### 2.3.2 Sequence diagram
 
-**Generic overview: a typical request through the layers.** This shows the path that a
-normal interactive request follows, from the frontend, through the backend layers, to the
-data layer. It includes the session check that Flask-Login does against Valkey.
+**Generic overview: a typical request through the layers.** This shows the path that a normal interactive request follows, from the frontend, through the backend layers, to the data layer. It includes the session check that Flask-Login does against Valkey.
 
 ```mermaid
 sequenceDiagram
@@ -821,16 +715,9 @@ sequenceDiagram
     NGINX-->>User: HTTPS response
 ```
 
-**Detailed flow: UC-11 Manage users, create a user.** This follows the create-a-user flow
-through the real Flowintel modules: `admin.py` (View), then the `@admin_required` check,
-then `RegistrationForm` (WTForms), then `admin_core.add_user_core` (Service), then the
-`User` model (DAO), then PostgreSQL. This matches the template's "View, Controller,
-Service, DAO, Data layer" shape.
+**Detailed flow: UC-11 Manage users, create a user.** This follows the create-a-user flow through the real Flowintel modules: `admin.py` (View), then the `@admin_required` check, then `RegistrationForm` (WTForms), then `admin_core.add_user_core` (Service), then the `User` model (DAO), then PostgreSQL. This matches the template's "View, Controller, Service, DAO, Data layer" shape.
 
-Form validation includes a uniqueness check. The `validate_email` validator queries the
-`User` table, and if the email is already registered the form is rejected and no user is
-created. A unique index on the email column backs this up at the database level. The diagram
-below shows both outcomes: the email is new, or the email already exists.
+Form validation includes a uniqueness check. The `validate_email` validator queries the `User` table, and if the email is already registered the form is rejected and no user is created. A unique index on the email column backs this up at the database level. The diagram below shows both outcomes: the email is new, or the email already exists.
 
 ```mermaid
 sequenceDiagram
@@ -869,11 +756,7 @@ sequenceDiagram
 
 ### 2.3.3 Collaboration diagram
 
-A collaboration (communication) diagram shows the same interactions as the sequence diagram
-for the create-a-user flow, but arranged around the links between the participants, with
-numbered messages instead of a time line. It carries the same information as the sequence
-diagram, so one example is enough (again UC-11 Manage users). Mermaid has no dedicated
-notation for this, so it is drawn as a linked graph with numbered messages.
+A collaboration (communication) diagram shows the same interactions as the sequence diagram for the create-a-user flow, but arranged around the links between the participants, with numbered messages instead of a time line. It carries the same information as the sequence diagram, so one example is enough (again UC-11 Manage users). Mermaid has no dedicated notation for this, so it is drawn as a linked graph with numbered messages.
 
 ```mermaid
 flowchart LR
@@ -895,12 +778,7 @@ flowchart LR
 
 ### 2.3.4 Statechart diagram
 
-This diagram shows the state changes behind UC-02 (Create cases) and UC-05 (Manage tasks).
-Tasks move through the nine `Status` values created at start-up (`Created`, `Requested`,
-`Approved`, `Ongoing`, `Request Review`, `Finished`, `Rejected`, `Recurring`,
-`Unavailable`). On a normal case a task follows Created, then Ongoing, then Finished. On a
-privileged (four-eye) case the approval comes first: a new task is Requested, and an
-approver sets it to Approved or Rejected. Only an approved task is worked on. When the work
+This diagram shows the state changes behind UC-02 (Create cases) and UC-05 (Manage tasks). Tasks move through the nine `Status` values created at start-up (`Created`, `Requested`, `Approved`, `Ongoing`, `Request Review`, `Finished`, `Rejected`, `Recurring`, `Unavailable`). On a normal case a task follows Created, then Ongoing, then Finished. On a privileged (four-eye) case the approval comes first: a new task is Requested, and an approver sets it to Approved or Rejected. Only an approved task is worked on. When the work
 is done the task goes to Request Review, and a reviewer sets it to Finished.
 
 ```mermaid
@@ -930,13 +808,7 @@ stateDiagram-v2
 
 ### 2.3.5 Activity diagram
 
-The activity diagram below shows the whole investigation workflow: create a case, add
-tasks, do the work, enrich and optionally synchronise with MISP, and finally report. A
-privileged (four-eye) case has two approval gates. The first is at the start: a new task is
-Requested and an approver must approve it before any work begins. The second is at the end:
-the finished work goes to Request Review, and a reviewer accepts it. A normal case skips
-both gates. The diagram ties together several use cases, mainly UC-02, UC-05, UC-13, UC-14
-and UC-28.
+The activity diagram below shows the whole investigation workflow: create a case, add tasks, do the work, enrich and optionally synchronise with MISP, and finally report. A privileged (four-eye) case has two approval gates. The first is at the start: a new task is Requested and an approver must approve it before any work begins. The second is at the end: the finished work goes to Request Review, and a reviewer accepts it. A normal case skips both gates. The diagram ties together several use cases, mainly UC-02, UC-05, UC-13, UC-14 and UC-28.
 
 ```mermaid
 flowchart TD
@@ -969,19 +841,11 @@ flowchart TD
 
 ## 3. Data Model
 
-Flowintel uses a relational data model, built with SQLAlchemy and changed over time through
-versioned Alembic migrations. The model is shown at three levels: the conceptual schema
-(what data exists), the logical schema (attributes, keys and relationships, independent of
-any database system) and the physical schema (how it is built on the real database system,
-which is PostgreSQL in production and SQLite in development). All three come directly from
-the model definitions in `app/db_class/db.py` and the migrations in `migrations/`.
+Flowintel uses a relational data model, built with SQLAlchemy and changed over time through versioned Alembic migrations. The model is shown at three levels: the conceptual schema (what data exists), the logical schema (attributes, keys and relationships, independent of any database system) and the physical schema (how it is built on the real database system, which is PostgreSQL in production and SQLite in development). All three come directly from the model definitions in `app/db_class/db.py` and the migrations in `migrations/`.
 
 ### 3.1 Conceptual schema
 
-The conceptual schema shows the main entities and how they relate, without attributes. It
-is centred on Case and Task, surrounded by identity (User, Org, Role), classification
-(Taxonomy and Tag, Galaxy and Cluster, Custom Tag), templating and integration (Connector,
-MISP object) entities.
+The conceptual schema shows the main entities and how they relate, without attributes. It is centred on Case and Task, surrounded by identity (User, Org, Role), classification (Taxonomy and Tag, Galaxy and Cluster, Custom Tag), templating and integration (Connector, sMISP object) entities.
 
 ```mermaid
 erDiagram
@@ -1013,13 +877,9 @@ erDiagram
 
 ### 3.2 Logical schema
 
-The logical schema adds attributes, primary keys (PK) and foreign keys (FK). It is still
-independent of the database system. The diagram below shows the core case-management group.
-The identity, templating, classification and integration groups follow the same pattern,
-and the full column lists are in `app/db_class/db.py`. Many-to-many relationships use
-explicit association tables (for example `Case_Org`, `Task_User`, `Case_Tags`,
-`Case_Galaxy_Tags` and `Case_Connector_Instance`). This is why the logical model has 71
-tables in total.
+The logical schema adds attributes, primary keys (PK) and foreign keys (FK). It is still independent of the database system. The diagram below shows the core case-management group.
+
+The identity, templating, classification and integration groups follow the same pattern, and the full column lists are in `app/db_class/db.py`. Many-to-many relationships use explicit association tables (for example `Case_Org`, `Task_User`, `Case_Tags`, `Case_Galaxy_Tags` and `Case_Connector_Instance`). 
 
 ```mermaid
 erDiagram
@@ -1125,16 +985,9 @@ erDiagram
 
 ### 3.3 Physical schema
 
-The physical schema describes how the logical model is built on the real database system,
-which is PostgreSQL in production. (SQLite is supported for development and demos only.) It
-is derived from the SQLAlchemy models and the Alembic migration history, so no running
-database is needed.
+The physical schema describes how the logical model is built on the real database system, which is PostgreSQL in production. (SQLite is supported for development and demos only.) It is derived from the SQLAlchemy models and the Alembic migration history, so no running database is needed.
 
-**Table naming.** Flask-SQLAlchemy builds the table names from the class names. It makes
-them lower case and adds an underscore before each capital inside the name. Several class
-names already contain an underscore, so the table names end up with double underscores. The
-table below is a representative selection, not the full list. All 71 model classes follow
-the same rule.
+**Table naming.** Flask-SQLAlchemy builds the table names from the class names. It makes them lower case and adds an underscore before each capital inside the name. Several class names already contain an underscore, so the table names end up with double underscores. The table below is a representative selection, not the full list. All model classes follow the same rule.
 
 | Model class | PostgreSQL table |
 |---|---|
@@ -1151,8 +1004,7 @@ the same rule.
 | `Case_Misp_Object` | `case__misp__object` |
 | `Task_Misp_Object` | `task__misp__object` |
 
-A few models set the table name explicitly with `__tablename__`, but the result follows the
-same rule (for example `Template_Repository` maps to `template__repository`).
+A few models set the table name explicitly with `__tablename__`, but the result follows the same rule (for example `Template_Repository` maps to `template__repository`).
 
 **Type mapping.** The SQLAlchemy column types map to PostgreSQL types like this:
 
@@ -1168,21 +1020,8 @@ same rule (for example `Template_Repository` maps to `template__repository`).
 **Keys, indexes and integrity.**
 
 - Every table has an auto-incrementing integer primary key called `id` (`SERIAL`).
-- Foreign keys with `ON DELETE CASCADE` keep the ownership hierarchy consistent. Deleting a
-  `case` row also deletes its `task` and `file` rows, and, through the tasks, the `subtask`,
-  `note` and MISP-object rows. These are set where the models use
-  `db.ForeignKey(..., ondelete="CASCADE")` together with `cascade="all, delete-orphan"`
-  relationships.
-- Columns marked `index=True` (for example `email`, `uuid`, `api_key`, `status_id`,
-  `case_id`, `task_id` and the timestamps) become B-tree indexes. Columns marked
-  `unique=True` (for example `User.email`, `Role.name`, `Status.name` and `File.uuid`)
-  become unique indexes.
-- Some relationships (tags, galaxy tags and connector links) use association tables that
-  hold only integer id columns with indexes, instead of declared foreign-key constraints.
-  For those, the service layer keeps the references consistent.
+- Foreign keys with `ON DELETE CASCADE` keep the ownership hierarchy consistent. Deleting a `case` row also deletes its `task` and `file` rows, and, through the tasks, the `subtask`, `note` and MISP-object rows. These are set where the models use `db.ForeignKey(..., ondelete="CASCADE")` together with `cascade="all, delete-orphan"` relationships.
+- Columns marked `index=True` (for example `email`, `uuid`, `api_key`, `status_id`, `case_id`, `task_id` and the timestamps) become B-tree indexes. Columns marked `unique=True` (for example `User.email`, `Role.name`, `Status.name` and `File.uuid`) become unique indexes.
+- Some relationships (tags, galaxy tags and connector links) use association tables that hold only integer id columns with indexes, instead of declared foreign-key constraints. For those, the service layer keeps the references consistent.
 
-**Schema lifecycle.** The physical schema is created and changed only through Alembic
-migrations (`flask db upgrade`), which run automatically during an upgrade. The connection
-settings (host, port, database, user and password) come from environment variables
-(`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). Session data is stored in
-Valkey, not in PostgreSQL, so the transactional data and the session data stay separate.
+**Schema lifecycle.** The physical schema is created and changed only through Alembic migrations (`flask db upgrade`), which run automatically during an upgrade. The connection settings (host, port, database, user and password) come from environment variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). Session data is stored in Valkey, not in PostgreSQL, so the transactional data and the session data stay separate.
