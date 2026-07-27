@@ -208,7 +208,7 @@ classDiagram
 
 **(b) Case management: the main work items**
 
-This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Each `Case` has exactly one **owner organisation** (`owner_org_id`), while one or more organisations are **assigned to collaborate** on it through the `Case_Org` join table. Users are assigned to tasks through `Task_User`.
+This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Each `Case` has exactly one **owner organisation** (`owner_org_id`), while one or more organisations are **assigned to collaborate** on it through the `Case_Org` join table. Users are assigned to tasks through `Task_User`. A `Case` also holds `Case_Timeline_Event`s, which can be connected to each other through `Case_Timeline_Event_Link` to build an investigation timeline.
 
 ```mermaid
 classDiagram
@@ -287,6 +287,21 @@ classDiagram
         +int case_id
         +int org_id
     }
+    class Case_Timeline_Event {
+        +int id
+        +int case_id
+        +string date_text
+        +datetime date_parsed
+        +string description
+        +int misp_object_id
+    }
+    class Case_Timeline_Event_Link {
+        +int id
+        +int case_id
+        +int source_event_id
+        +int target_event_id
+        +string label
+    }
     Case "1" *-- "many" Task : contains
     Task "1" *-- "many" Subtask : contains
     Task "1" *-- "many" Note : contains
@@ -300,6 +315,8 @@ classDiagram
     Org "1" <-- "many" Case : owns (owner_org_id)
     Case "1" --> "many" Case_Org : shared via
     Org "1" --> "many" Case_Org : assigned to collaborate
+    Case "1" *-- "many" Case_Timeline_Event : has
+    Case_Timeline_Event "1" --> "many" Case_Timeline_Event_Link : links
 ```
 
 **(c) Templating: reusable playbooks**
@@ -497,7 +514,7 @@ flowchart LR
 
 #### 2.2.3 Component diagram
 
-The component diagram groups the Flask blueprints into **functional areas** and shows what they depend on, both the infrastructure and the external systems. Each area is a set of blueprints (named in brackets). All internal components run inside the single application process. The arrows are calls inside that process, except where they reach an external system over the network.
+The component diagram groups the Flask blueprints into **functional areas** and shows what they depend on, both the infrastructure and the external systems. Each area groups one or more Flask blueprints and their routes (named in brackets); some names (for example `MISP objects` and `timeline`) are route groups inside the `case` blueprint rather than separate blueprints. All internal components run inside the single application process. The arrows are calls inside that process, except where they reach an external system over the network.
 
 ```mermaid
 flowchart TB
@@ -561,7 +578,7 @@ The use cases below are based on the functional requirements for Flowintel.
     - **Administrator.** Full control over the whole platform: every case and task, and users, organisations, connectors, custom tags, taxonomies, galaxies, statistics and audit logs.
     - **Editor.** The everyday user, who creates and works on cases, tasks and their metadata, and can build cases and tasks from existing templates.
     - **Read Only user.** Views cases, tasks and the calendar, but cannot change them.
-- **Actors with additional permissions*
+- **Actors with additional permissions**
     - **Org Admin.** Manages the user accounts of their own organisation.
     - **Case Admin, Queue Admin and Queuer.** Run the four-eye (privileged case) workflow. A Queuer submits a task for approval, and a Queue Admin or Case Admin approves or rejects it.
     - **Template Editor.** Manages case, task and note templates and the central template repositories.
@@ -585,6 +602,7 @@ flowchart LR
     orgadmin(("Org Admin"))
     admin(("Administrator"))
     auditor(("Audit Viewer"))
+    importer(("Importer"))
     sso(("SSO provider"))
 
     subgraph sys["Flowintel"]
@@ -617,6 +635,8 @@ flowchart LR
     admin --- security
     admin --- audit
     auditor --- audit
+    importer --- cases
+    importer --- mispg
     sso --- access
 ```
 
@@ -856,6 +876,8 @@ erDiagram
     TASK }o--o{ CUSTOM_TAG : labelled
     CASE ||--o{ CASE_MISP_OBJECT : holds
     CASE_MISP_OBJECT ||--o{ MISP_ATTRIBUTE : has
+    CASE ||--o{ CASE_TIMELINE_EVENT : has
+    CASE_TIMELINE_EVENT ||--o{ CASE_TIMELINE_EVENT_LINK : links
     CASE }o--o{ CONNECTOR_INSTANCE : synced
     CONNECTOR ||--o{ CONNECTOR_INSTANCE : configures
     CASE_TEMPLATE ||--o{ TASK_TEMPLATE : contains
@@ -897,7 +919,10 @@ erDiagram
         boolean case_admin
         boolean queue_admin
         boolean queuer
+        boolean audit_viewer
         boolean template_editor
+        boolean misp_editor
+        boolean importer
     }
     CASE {
         int id PK
@@ -1016,780 +1041,3 @@ A few models set the table name explicitly with `__tablename__`, but the result 
 ### In summary
 
 The three schemas describe the same data model at increasing levels of detail: the conceptual schema fixes the entities and their relationships, the logical schema adds attributes and keys, and the physical schema maps them onto PostgreSQL. All three derive from a single source of truth, the SQLAlchemy models in `app/db_class/db.py`, with Alembic migrations keeping the running database in step as those models evolve. Because of this, the data model can be reviewed and reasoned about directly from the code, without needing to inspect a live database.
-
----
-
-## Appendix A. Mermaid diagram definitions
-
-This appendix collects the source definitions of every diagram used in this document, for reference. The diagrams themselves appear, rendered, in the sections noted. Each entry below gives the title and purpose of a diagram, followed by its Mermaid definition.
-
-### A.1 Layered architecture
-
-*Purpose:* High-level view of the Flowintel process, showing the presentation and API, business-logic and data-access layers together with the data stores and optional external services (see 2.1.1).
-
-```mermaid
-flowchart TB
-    browser["Browser / REST client"]
-
-    subgraph linux["Linux system (Ubuntu 22.04 / 24.04 LTS)"]
-        proxy["Reverse proxy<br/>(NGINX or Apache)"]
-        subgraph app["Flowintel (Gunicorn / Flask, N workers)"]
-            direction TB
-            pres["Presentation and API layer<br/>(routes, Jinja2, flask-restx)"]
-            core["Business-logic layer<br/>(Core services)"]
-            data["Data-access layer<br/>(SQLAlchemy models)"]
-            pres --> core
-            core --> data
-        end
-        mispmod["MISP modules<br/>(enrichment engine)"]
-        valkey[("Valkey<br/>(session storage)")]
-        postgres[("PostgreSQL<br/>SQLite for development")]
-    end
-
-    subgraph external["External services (optional)"]
-        idp["Keycloak / Microsoft Entra ID"]
-        misp["MISP"]
-        matrix["Matrix"]
-        ail["AIL project"]
-    end
-
-    browser -->|HTTPS| proxy
-    proxy --> pres
-    data -->|data| postgres
-    core -->|enrichment| mispmod
-    pres -. sessions .-> valkey
-    pres -. SSO .-> idp
-    core -->|threat events| misp
-    core -->|notifications| matrix
-    core -->|data| ail
-```
-
-### A.2 Class diagram: Identity and access
-
-*Purpose:* Users, organisations and roles, and the permission flags that govern access (see 2.2.1a).
-
-```mermaid
-classDiagram
-    class User {
-        +int id
-        +string first_name
-        +string last_name
-        +string email
-        +string api_key
-        +int role_id
-        +int org_id
-        +string auth_provider
-        +datetime last_login
-        +verify_password(pw) bool
-        +is_admin() bool
-        +is_org_admin() bool
-        +is_case_admin() bool
-        +is_queuer() bool
-    }
-    class Org {
-        +int id
-        +string name
-        +string uuid
-        +bool default_org
-        +owns_cases() bool
-        +has_users() bool
-    }
-    class Role {
-        +int id
-        +string name
-        +bool admin
-        +bool read_only
-        +bool org_admin
-        +bool case_admin
-        +bool queue_admin
-        +bool queuer
-        +bool audit_viewer
-        +bool template_editor
-        +bool misp_editor
-        +bool importer
-    }
-    class Login_Event {
-        +int id
-        +int user_id
-        +datetime login_date
-    }
-    Org "1" o-- "many" User : employs
-    Role "1" <-- "many" User : granted
-    User "1" --> "many" Login_Event : records
-```
-
-### A.3 Class diagram: Case management
-
-*Purpose:* The core work items: cases, tasks, subtasks, notes, files and status (see 2.2.1b).
-
-```mermaid
-classDiagram
-    class Case {
-        +int id
-        +string uuid
-        +string title
-        +string description
-        +datetime deadline
-        +int status_id
-        +int owner_org_id
-        +bool is_private
-        +bool privileged_case
-        +bool completed
-        +to_json()
-        +download()
-    }
-    class Task {
-        +int id
-        +string uuid
-        +string title
-        +int case_id
-        +int status_id
-        +int case_order_id
-        +bool completed
-        +to_json()
-    }
-    class Subtask {
-        +int id
-        +int task_id
-        +string description
-        +bool completed
-    }
-    class Note {
-        +int id
-        +string uuid
-        +string note
-        +int task_id
-    }
-    class Task_Url_Tool {
-        +int id
-        +string uuid
-        +string name
-        +int task_id
-    }
-    class Task_External_Reference {
-        +int id
-        +string uuid
-        +string url
-        +int task_id
-    }
-    class File {
-        +int id
-        +string name
-        +string uuid
-        +int case_id
-        +int task_id
-        +int file_size
-    }
-    class Status {
-        +int id
-        +string name
-        +int order
-        +string bootstrap_style
-    }
-    class Task_User {
-        +int task_id
-        +int user_id
-    }
-    class Org {
-        +int id
-        +string name
-        +string uuid
-    }
-    class Case_Org {
-        +int case_id
-        +int org_id
-    }
-    Case "1" *-- "many" Task : contains
-    Task "1" *-- "many" Subtask : contains
-    Task "1" *-- "many" Note : contains
-    Task "1" *-- "many" Task_Url_Tool : contains
-    Task "1" *-- "many" Task_External_Reference : contains
-    Case "1" *-- "many" File : attaches
-    Task "1" *-- "many" File : attaches
-    Status "1" <-- "many" Case : has
-    Status "1" <-- "many" Task : has
-    Task "1" --> "many" Task_User : assigned via
-    Org "1" <-- "many" Case : owns (owner_org_id)
-    Case "1" --> "many" Case_Org : shared via
-    Org "1" --> "many" Case_Org : assigned to collaborate
-```
-
-### A.4 Class diagram: Templating
-
-*Purpose:* Reusable case, task and note templates and the repositories that publish them (see 2.2.1c).
-
-```mermaid
-classDiagram
-    class Case_Template {
-        +int id
-        +string uuid
-        +string title
-        +int version
-    }
-    class Task_Template {
-        +int id
-        +string uuid
-        +string title
-        +int version
-    }
-    class Subtask_Template {
-        +int id
-        +int template_id
-    }
-    class Note_Template {
-        +int id
-        +int template_id
-    }
-    class Case_Task_Template {
-        +int case_id
-        +int task_id
-        +int case_order_id
-    }
-    class Template_Repository {
-        +int id
-        +string name
-        +string url
-        +string local_path
-    }
-    class Template_Repository_Entry {
-        +int id
-        +int repository_id
-        +string type
-        +string download_url
-    }
-    Case_Template "1" --> "many" Case_Task_Template
-    Task_Template "1" --> "many" Case_Task_Template
-    Task_Template "1" *-- "many" Subtask_Template
-    Task_Template "1" *-- "many" Note_Template
-    Template_Repository "1" *-- "many" Template_Repository_Entry
-```
-
-### A.5 Class diagram: Classification
-
-*Purpose:* Taxonomies, galaxies, clusters and custom tags used to label cases and tasks (see 2.2.1d).
-
-```mermaid
-classDiagram
-    class Taxonomy {
-        +int id
-        +string name
-        +string version
-    }
-    class Tags {
-        +int id
-        +string name
-        +string color
-        +int taxonomy_id
-    }
-    class Galaxy {
-        +int id
-        +string name
-        +string type
-    }
-    class Cluster {
-        +int id
-        +string name
-        +string tag
-        +int galaxy_id
-    }
-    class Custom_Tags {
-        +int id
-        +string name
-        +string color
-        +bool is_active
-    }
-    Taxonomy "1" *-- "many" Tags
-    Galaxy "1" *-- "many" Cluster
-    Tags "many" ..> "many" Case : via Case_Tags
-    Cluster "many" ..> "many" Case : via Case_Galaxy_Tags
-    Custom_Tags "many" ..> "many" Case : via Case_Custom_Tags
-```
-
-### A.6 Class diagram: Integrations
-
-*Purpose:* Connectors, their configured instances, synchronisation logs and MISP-module enrichment (see 2.2.1e).
-
-```mermaid
-classDiagram
-    class Connector {
-        +int id
-        +string name
-        +string uuid
-    }
-    class Connector_Instance {
-        +int id
-        +string name
-        +string url
-        +string type
-        +int connector_id
-    }
-    class Case_Connector_Instance {
-        +int case_id
-        +int instance_id
-        +datetime last_sync
-    }
-    class Connector_Sync_Log {
-        +int id
-        +int case_id
-        +string direction
-        +string status
-        +int objects_synced
-    }
-    class Misp_Module {
-        +int id
-        +string name
-        +string input_attr
-    }
-    class Misp_Module_Result {
-        +int id
-        +string uuid
-        +string result
-        +int user_id
-    }
-    Connector "1" *-- "many" Connector_Instance
-    Connector_Instance "1" --> "many" Case_Connector_Instance
-    Case_Connector_Instance "1" --> "many" Connector_Sync_Log
-    Misp_Module "1" ..> "many" Misp_Module_Result : produces
-```
-
-### A.7 Class diagram: MISP objects
-
-*Purpose:* MISP objects and their attributes attached to cases and tasks (see 2.2.1f).
-
-```mermaid
-classDiagram
-    class Case_Misp_Object {
-        +int id
-        +int case_id
-        +string template_uuid
-        +string name
-    }
-    class Misp_Attribute {
-        +int id
-        +int case_misp_object_id
-        +string type
-        +string value
-        +string object_relation
-        +bool ids_flag
-    }
-    class Task_Misp_Object {
-        +int id
-        +int task_id
-        +int misp_object_id
-    }
-    Case_Misp_Object "1" *-- "many" Misp_Attribute
-    Case_Misp_Object "1" <-- "many" Task_Misp_Object : referenced by
-    Task_Misp_Object "many" --> "1" Task
-```
-
-### A.8 Object diagram
-
-*Purpose:* An instance-level snapshot of a phishing investigation at one moment in time (see 2.2.2).
-
-```mermaid
-flowchart LR
-    c42["c42 : Case<br/>title = 'Phishing campaign'<br/>status = Ongoing<br/>owner_org = CSIRT"]
-    t1["t1 : Task<br/>title = 'Triage email'<br/>status = Finished"]
-    t2["t2 : Task<br/>title = 'Analyse URL'<br/>status = Ongoing"]
-    u7["u7 : User<br/>nickname = 'alice'<br/>role = Editor"]
-    org1["org1 : Org<br/>name = 'CSIRT'"]
-    obj["o5 : Case_Misp_Object<br/>name = 'url'"]
-    attr["a9 : Misp_Attribute<br/>type = 'url'<br/>value = 'http://bad.example'"]
-
-    c42 --- t1
-    c42 --- t2
-    c42 --- org1
-    t2 --- u7
-    c42 --- obj
-    obj --- attr
-```
-
-### A.9 Component diagram
-
-*Purpose:* The Flask blueprints grouped by functional area and their dependencies on infrastructure and external systems (see 2.2.3).
-
-```mermaid
-flowchart TB
-    subgraph flowintel["Flowintel application"]
-        direction TB
-        access["Access, calendar and profile<br/>(main, account, calendar, my_assignment)"]
-        cases["Cases and tasks<br/>(case, task, MISP objects, timeline)"]
-        templates["Templates<br/>(templating)"]
-        tags["Tags<br/>(custom_tags)"]
-        integ["Integrations<br/>(connectors, analyzer)"]
-        admin["Administration and audit<br/>(admin, tools, audit_logs)"]
-        notif["Notifications and alerts<br/>(notification, alerts)"]
-        api["REST API (flask-restx)"]
-        dbc["db_class (SQLAlchemy models)"]
-    end
-
-    postgres[("PostgreSQL")]
-    valkey[("Valkey")]
-    misp["MISP"]
-    mispmod["misp-modules"]
-    matrix["Matrix"]
-    idp["Keycloak / Entra ID"]
-    gitrepos["Template Git repositories"]
-
-    access --> dbc
-    cases --> dbc
-    templates --> dbc
-    tags --> dbc
-    integ --> dbc
-    admin --> dbc
-    notif --> dbc
-    api --> dbc
-    dbc --> postgres
-    access -. sessions .-> valkey
-    access -. SSO .-> idp
-    cases --> misp
-    integ --> misp
-    integ --> mispmod
-    notif --> matrix
-    templates -. git pull .-> gitrepos
-```
-
-### A.10 Use-case diagram
-
-*Purpose:* The actors and the functional areas they work in (see 2.3.1).
-
-```mermaid
-flowchart LR
-    anyuser(("Any user"))
-    readonly(("Read Only<br/>user"))
-    editor(("Editor"))
-    mispeditor(("MISP Editor"))
-    foureye(("Queuer /<br/>Queue Admin /<br/>Case Admin"))
-    tpled(("Template Editor"))
-    orgadmin(("Org Admin"))
-    admin(("Administrator"))
-    auditor(("Audit Viewer"))
-    sso(("SSO provider"))
-
-    subgraph sys["Flowintel"]
-        access["Access and profile"]
-        cases["Cases"]
-        tasks["Tasks and calendar"]
-        mispg["MISP and enrichment"]
-        templates["Templates"]
-        classif["Classification"]
-        adminarea["Administration"]
-        audit["Audit logs"]
-        security["Platform security"]
-    end
-
-    anyuser --- access
-    anyuser --- cases
-    anyuser --- tasks
-    readonly --- cases
-    readonly --- tasks
-    editor --- cases
-    editor --- tasks
-    editor --- mispg
-    editor --- templates
-    mispeditor --- mispg
-    foureye --- tasks
-    tpled --- templates
-    orgadmin --- adminarea
-    admin --- adminarea
-    admin --- classif
-    admin --- security
-    admin --- audit
-    auditor --- audit
-    sso --- access
-```
-
-### A.11 Sequence diagram: generic request
-
-*Purpose:* The path a typical interactive request follows through the layers, including the session check (see 2.3.2).
-
-```mermaid
-sequenceDiagram
-    actor User as Browser
-    participant RP as Reverse proxy
-    participant GU as Gunicorn/Flask worker
-    participant V as View (blueprint route)
-    participant AUTH as Flask-Login
-    participant VK as Valkey
-    participant C as Core service
-    participant M as SQLAlchemy model
-    participant DB as PostgreSQL
-
-    User->>RP: HTTPS request
-    RP->>GU: proxy HTTP (X-Forwarded-*)
-    GU->>V: dispatch route
-    V->>AUTH: @login_required
-    AUTH->>VK: load session
-    VK-->>AUTH: session data
-    AUTH-->>V: current_user
-    V->>C: call business logic
-    C->>M: query / persist
-    M->>DB: SQL
-    DB-->>M: rows
-    M-->>C: objects
-    C-->>V: result
-    V-->>GU: rendered HTML / JSON
-    GU-->>RP: response
-    RP-->>User: HTTPS response
-```
-
-### A.12 Sequence diagram: create a user (UC-11)
-
-*Purpose:* The create-a-user flow, including the e-mail uniqueness check and both outcomes (see 2.3.2).
-
-```mermaid
-sequenceDiagram
-    actor Admin
-    participant V as admin.py (View)
-    participant DEC as @admin_required
-    participant F as RegistrationForm (WTForms)
-    participant S as admin_core.add_user_core (Service)
-    participant U as User model (DAO)
-    participant DB as PostgreSQL
-
-    Admin->>V: GET /admin/add_user
-    V->>DEC: authorise
-    DEC-->>V: ok (is_admin / is_org_admin)
-    V->>F: build form (role and org choices)
-    V-->>Admin: render add_user.html
-    Admin->>V: POST /admin/add_user (form data)
-    V->>F: validate_on_submit()
-    F->>U: validate_email: query User by email
-    U->>DB: SELECT user by email
-    DB-->>U: existing user or none
-    U-->>F: result
-    alt email already registered
-        F-->>V: invalid (Email already registered)
-        V-->>Admin: re-render add_user.html with error
-    else email is new
-        F-->>V: valid
-        V->>S: add_user_core(form_dict)
-        S->>U: create User, hash password
-        U->>DB: INSERT user
-        DB-->>U: user id
-        S-->>V: user created
-        V-->>Admin: redirect to /admin/users (flash success)
-    end
-```
-
-### A.13 Collaboration diagram: create a user
-
-*Purpose:* The same create-a-user flow arranged around the links between participants, with numbered messages (see 2.3.3).
-
-```mermaid
-flowchart LR
-    Admin(("Admin"))
-    V["admin.py<br/>(View)"]
-    S["add_user_core<br/>(Service)"]
-    U["User model<br/>(DAO)"]
-    DB[("PostgreSQL")]
-
-    Admin -->|"1: submit form"| V
-    V -->|"2: validate (email must be unique)"| V
-    V -->|"3: add_user_core() if email is new"| S
-    S -->|"4: create User and hash password"| U
-    U -->|"5: INSERT"| DB
-    DB -->|"6: id"| U
-    S -->|"7: created"| V
-    V -->|"8: redirect and flash"| Admin
-```
-
-### A.14 Statechart: task status
-
-*Purpose:* The status transitions of a task on normal and privileged (four-eye) cases (see 2.3.4).
-
-```mermaid
-stateDiagram-v2
-    [*] --> Created : normal case
-    [*] --> Requested : privileged case
-
-    Requested --> Approved : approve
-    Requested --> Rejected : decline
-    Approved --> Ongoing : start work
-    Created --> Ongoing : work started
-
-    Ongoing --> Unavailable : blocked
-    Unavailable --> Ongoing : unblocked
-    Ongoing --> Finished : completed
-    Ongoing --> Request_Review : submit for review
-
-    Request_Review --> Finished : accept
-    Request_Review --> Ongoing : rework
-
-    Created --> Recurring : schedule
-    Recurring --> Ongoing : next run
-
-    Finished --> [*]
-    Rejected --> [*]
-```
-
-### A.15 Activity diagram: investigation workflow
-
-*Purpose:* The end-to-end investigation workflow from creating a case to reporting, including the two approval gates (see 2.3.5).
-
-```mermaid
-flowchart TD
-    start([Start]) --> create[Create case, privileged or not]
-    create --> addtask[Add a task, optionally from a template]
-    addtask --> priv{Privileged case?}
-
-    priv -->|No| ongoing[Task status Created,<br/>then set to Ongoing]
-    priv -->|Yes| requested[Task status Requested]
-    requested --> appr{Approver decision}
-    appr -->|Decline| rejected[Status Rejected]
-    rejected --> done([End])
-    appr -->|Approve| ongoing
-
-    ongoing --> work[Work on the task:<br/>notes, files, subtasks, tags]
-    work --> enrich[Enrich if needed:<br/>MISP modules, MISP objects,<br/>optional MISP sync]
-    enrich --> gate{Privileged case?}
-
-    gate -->|Yes| review[Status Request Review]
-    review --> rev{Reviewer decision}
-    rev -->|Send back| work
-    rev -->|Accept| finished[Status Finished]
-    gate -->|No| finished
-
-    finished --> report[Generate or export the report,<br/>optionally GPG-signed]
-    report --> done
-```
-
-### A.16 Conceptual schema
-
-*Purpose:* The main entities and their relationships, without attributes (see 3.1).
-
-```mermaid
-erDiagram
-    ORG ||--o{ USER : employs
-    ROLE ||--o{ USER : grants
-    ORG ||--o{ CASE : owns
-    CASE ||--o{ TASK : contains
-    TASK ||--o{ SUBTASK : contains
-    TASK ||--o{ NOTE : contains
-    CASE ||--o{ FILE : attaches
-    TASK ||--o{ FILE : attaches
-    USER ||--o{ TASK : assigned
-    STATUS ||--o{ CASE : classifies
-    STATUS ||--o{ TASK : classifies
-    CASE }o--o{ ORG : shared_with
-    CASE }o--o{ TAG : tagged
-    TASK }o--o{ TAG : tagged
-    TAXONOMY ||--o{ TAG : defines
-    GALAXY ||--o{ CLUSTER : defines
-    CASE }o--o{ CLUSTER : tagged
-    TASK }o--o{ CLUSTER : tagged
-    CASE }o--o{ CUSTOM_TAG : labelled
-    TASK }o--o{ CUSTOM_TAG : labelled
-    CASE ||--o{ CASE_MISP_OBJECT : holds
-    CASE_MISP_OBJECT ||--o{ MISP_ATTRIBUTE : has
-    CASE }o--o{ CONNECTOR_INSTANCE : synced
-    CONNECTOR ||--o{ CONNECTOR_INSTANCE : configures
-    CASE_TEMPLATE ||--o{ TASK_TEMPLATE : contains
-    TEMPLATE_REPOSITORY ||--o{ TEMPLATE_REPOSITORY_ENTRY : publishes
-```
-
-### A.17 Logical schema
-
-*Purpose:* The core case-management group with attributes, primary keys and foreign keys (see 3.2).
-
-```mermaid
-erDiagram
-    USER {
-        int id PK
-        string first_name
-        string last_name
-        string email UK
-        string password_hash
-        string api_key
-        int role_id FK
-        int org_id FK
-        string auth_provider
-        datetime last_login
-    }
-    ORG {
-        int id PK
-        string name
-        string uuid
-        boolean default_org
-    }
-    ROLE {
-        int id PK
-        string name UK
-        boolean admin
-        boolean read_only
-        boolean org_admin
-        boolean case_admin
-        boolean queue_admin
-        boolean queuer
-        boolean template_editor
-    }
-    CASE {
-        int id PK
-        string uuid
-        string title
-        string description
-        datetime deadline
-        int status_id
-        int owner_org_id
-        boolean is_private
-        boolean privileged_case
-        boolean completed
-    }
-    TASK {
-        int id PK
-        string uuid
-        string title
-        int case_id FK
-        int status_id
-        int case_order_id
-        boolean completed
-    }
-    SUBTASK {
-        int id PK
-        int task_id FK
-        string description
-        boolean completed
-    }
-    NOTE {
-        int id PK
-        string uuid
-        string note
-        int task_id FK
-    }
-    FILE {
-        int id PK
-        string name
-        string uuid UK
-        int case_id FK
-        int task_id FK
-    }
-    STATUS {
-        int id PK
-        string name UK
-        int order
-    }
-    CASE_ORG {
-        int id PK
-        int case_id
-        int org_id
-    }
-    TASK_USER {
-        int id PK
-        int task_id
-        int user_id
-    }
-
-    ORG ||--o{ USER : employs
-    ROLE ||--o{ USER : grants
-    CASE ||--o{ TASK : contains
-    TASK ||--o{ SUBTASK : contains
-    TASK ||--o{ NOTE : contains
-    CASE ||--o{ FILE : attaches
-    TASK ||--o{ FILE : attaches
-    STATUS ||--o{ CASE : classifies
-    STATUS ||--o{ TASK : classifies
-    CASE ||--o{ CASE_ORG : shared_via
-    ORG ||--o{ CASE_ORG : shares
-    TASK ||--o{ TASK_USER : assigned_via
-    USER ||--o{ TASK_USER : assignee
-```
