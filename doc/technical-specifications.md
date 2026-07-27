@@ -37,9 +37,9 @@ Flowintel is organised as a modular monolith with a layered internal architectur
 
 #### 2.1.1 Technical components
 
-Flowintel is a Python web application built on the Flask framework. It runs as a service on a Linux server and is reached through a standard web browser. It is built from a small number of well-established open-source components, each with a clear role. This keeps the operating cost predictable and avoids tying the organisation to a single supplier.
+Flowintel is a Python web application built on the Flask framework. It runs as a service on a Linux server and is reached through a **standard web browser**. It is built from a small number of well-established **open-source components**, each with a clear role. This keeps the operating cost predictable and avoids tying the organisation to a single supplier.
 
-The diagram below gives a high-level overview of how these components fit together. Each one is described in the list that follows.
+The diagram below gives a high-level overview of how these components fit together.
 
 ![Flowintel architecture overview](installation-manual-diagrams/flowintel-installation-Architecture.png)
 
@@ -49,7 +49,7 @@ The diagram below gives a high-level overview of how these components fit togeth
 - **PostgreSQL:** the database that records cases, tasks, users, audit information and configuration. SQLite is used for development and demonstrations only.
 - **Valkey:** an in-memory store, compatible with Redis, that holds user session data. Keeping sessions out of the database keeps the interface responsive and makes it easier to scale the application tier later.
 - **misp-modules service:** an enrichment engine that pulls extra context on observables (IP addresses, domains, files and similar) from third-party sources such as VirusTotal or CIRCL PassiveDNS. It runs as a separate service and is called on demand.
-- **MISP taxonomies and galaxies:** open vocabularies from the wider threat-intelligence community, so that classifications, attack techniques and threat-actor labels stay aligned with other organisations.
+- **MISP taxonomies and galaxies:** vocabularies from the wider threat-intelligence community, so that classifications, attack techniques and threat-actor labels stay aligned with other organisations.
 - **Notifications service:** a background worker that produces updates and alerts inside the interface, so analysts see new assignments and changes without refreshing the page.
 - **Template repositories:** case and task templates so teams can keep their playbooks under version control, share them between instances and bring in templates published by other organisations.
 - **GPG:** Flowintel can sign case reports. 
@@ -103,13 +103,13 @@ flowchart TB
 
 A user's browser talks to the **reverse proxy** (NGINX or Apache) over HTTPS. The reverse proxy serves the static files itself and forwards the application requests to **Gunicorn**, which passes each request to one of its Flask worker processes. The workers are the runtime units of the application: separate Python processes, each able to handle a request on its own. They are deliberately stateless between requests, so all lasting state is kept in the backend services.
 
-Operational data is stored in **PostgreSQL**: cases, tasks, notes, tags, assignments, history and connector metadata. User session data is stored in Valkey. When an analyst asks for enrichment on an observable, the worker calls the misp-modules service and stores the result back on the case. The notifications service runs alongside the application and creates the notification records shown in the interface. Users sign in with a local **account** or through single sign-on with Keycloak or Microsoft Entra ID, and a case can be synchronised with a MISP instance through a connector.
+Operational data is stored in **PostgreSQL**: cases, tasks, notes, tags, assignments, history and connector metadata. User session data is stored in Valkey. When an analyst asks for enrichment on an observable, the worker calls the MISP modules service and stores the result back on the case. The notifications service runs alongside the application and creates the notification records shown in the interface. Users sign in with a local **account** or through single sign-on with Keycloak or Microsoft Entra ID, and a case can be synchronised with a MISP instance through a connector.
 
 Each component runs as its own systemd service on the host, so the platform starts with the server and can be restarted one component at a time during maintenance.
 
 Flowintel keeps two kinds of audit trail. Activity that belongs to a case (status changes, comments, file uploads, task updates) is stored in the database next to the case, so analysts can see the full history from the interface. Application events (logins, errors, background jobs) are written to rotating log files under `logs/`, with `logs/record.log` as the main file.
 
-Backups are handled at the data layer: a regular dump of the PostgreSQL database, together with the `uploads/` folder, is enough to restore a working instance on a fresh server. For deployments that need protection of data at rest, Flowintel can be installed on encrypted volumes.
+Backups are handled at the data layer: a regular dump of the PostgreSQL database, together with the `uploads/` folder and the configuration folder `conf/`, is enough to restore a working instance on a fresh server. For deployments that need protection of data at rest, Flowintel can be installed on encrypted volumes.
 
 #### 2.1.3 Supported operating systems
 
@@ -126,7 +126,7 @@ Flowintel is a Python 3.12 application. The table below lists the main framework
 | **ORM / data access** | **SQLAlchemy** and **Flask-SQLAlchemy** | Model classes in `app/db_class/db.py` |
 | **Database migrations** | **Flask-Migrate** (Alembic) | Versioned schema changes under `migrations/` |
 | **Templating (front-end)** | **Jinja2** (server-side) | HTML rendered on the server; templates under `app/templates/` |
-| **UI toolkit / client JS** | **Bootstrap 5**, **jQuery**, **Vue 3** (progressive), **Chart.js**, **FullCalendar**, **CodeMirror**, **Mermaid** | Bundled with **Vite**. Vue is used for single interactive components, not as a SPA |
+| **UI toolkit / client JS** | **Bootstrap 5**, **jQuery**, **Vue 3**, **Chart.js**, **FullCalendar**, **CodeMirror**, **Mermaid** | Bundled with **Vite**. Vue is used for single interactive components, not as a SPA |
 | **Forms and validation** | **Flask-WTF** and **WTForms** | Server-side form validation and CSRF protection |
 | **Authentication / session** | **Flask-Login**, **Flask-Session**, **MSAL**, Keycloak (OIDC) | Local accounts, plus SSO through Microsoft Entra ID and Keycloak |
 | **Session / cache store** | **Valkey** (Redis-compatible) | Server-side session storage; keeps session data out of the relational database |
@@ -140,7 +140,7 @@ Flowintel is a Python 3.12 application. The table below lists the main framework
 | **Scheduling** | **schedule** | Recurring notifications and periodic jobs |
 | **Testing** | **pytest** | Test suite under `tests/` |
 
-**Dependency management.** The Python dependencies are kept in two files. `requirements.in` is the short source list that the developers maintain by hand, and it names only the direct dependencies. `requirements.txt` is generated from `requirements.in` with `pip-compile` (part of pip-tools). It pins every package to an exact version and adds the indirect dependencies, so every install uses the same tested set. A few dependencies are pinned to a specific Git commit instead of a released version.
+**Dependency management.** The Python dependencies are kept in two files. `requirements.in` is the short source list that the developers maintain by hand, and it names only the direct dependencies. The `requirements.txt` is generated from `requirements.in` with `pip-compile` (part of pip-tools). It pins every package to an **exact version** and adds the indirect dependencies, so every install uses the same tested set. A few dependencies are pinned to a specific Git commit instead of a released version.
 
 ---
 
@@ -154,7 +154,7 @@ The domain model falls into six subdomains. The diagrams show only the main attr
 
 **(a) Identity and access: users, organisations and roles**
 
-A `User` belongs to one `Org` and points to one `Role`. The `Role` holds a set of boolean permission flags (admin, read-only, org-admin, case-admin, queue-admin, queuer, audit-viewer, template-editor, misp-editor and importer). The `User` helper methods (`is_admin()`, `is_org_admin()` and so on) read these flags. An editor is a role that is not read-only.
+A `User` belongs to one `Org` and points to one `Role`. The `Role` holds a set of boolean permission flags (admin, read-only, org-admin, case-admin, queue-admin, queuer, audit-viewer, template-editor, misp-editor and importer). The combination of the permission flags admin and read-only (or absence of these flags), defines the three system roles: Admin, Editor and Read-only.  The `User` helper methods (`is_admin()`, `is_org_admin()` and so on) read these flags.
 
 ```mermaid
 classDiagram
@@ -191,6 +191,7 @@ classDiagram
         +bool case_admin
         +bool queue_admin
         +bool queuer
+        +bool audit_viewer
         +bool template_editor
         +bool misp_editor
         +bool importer
@@ -207,7 +208,7 @@ classDiagram
 
 **(b) Case management: the main work items**
 
-This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Cases are shared with organisations through `Case_Org`, and users are assigned to tasks through `Task_User`.
+This is the core of the model. A `Case` owns many `Task`s, and deleting the case deletes its tasks. A `Task` owns `Subtask`s, `Note`s, URLs and tools, external references and links to MISP objects. Both `Case` and `Task` point to a `Status` and can hold `File`s. Each `Case` has exactly one **owner organisation** (`owner_org_id`), while one or more organisations are **assigned to collaborate** on it through the `Case_Org` join table. Users are assigned to tasks through `Task_User`.
 
 ```mermaid
 classDiagram
@@ -247,6 +248,18 @@ classDiagram
         +string note
         +int task_id
     }
+    class Task_Url_Tool {
+        +int id
+        +string uuid
+        +string name
+        +int task_id
+    }
+    class Task_External_Reference {
+        +int id
+        +string uuid
+        +string url
+        +int task_id
+    }
     class File {
         +int id
         +string name
@@ -265,14 +278,28 @@ classDiagram
         +int task_id
         +int user_id
     }
+    class Org {
+        +int id
+        +string name
+        +string uuid
+    }
+    class Case_Org {
+        +int case_id
+        +int org_id
+    }
     Case "1" *-- "many" Task : contains
     Task "1" *-- "many" Subtask : contains
     Task "1" *-- "many" Note : contains
+    Task "1" *-- "many" Task_Url_Tool : contains
+    Task "1" *-- "many" Task_External_Reference : contains
     Case "1" *-- "many" File : attaches
     Task "1" *-- "many" File : attaches
     Status "1" <-- "many" Case : has
     Status "1" <-- "many" Task : has
     Task "1" --> "many" Task_User : assigned via
+    Org "1" <-- "many" Case : owns (owner_org_id)
+    Case "1" --> "many" Case_Org : shared via
+    Org "1" --> "many" Case_Org : assigned to collaborate
 ```
 
 **(c) Templating: reusable playbooks**
@@ -448,7 +475,7 @@ classDiagram
 
 An object diagram is a **snapshot at instance level**. It shows specific objects and their links at one moment in time. For a data-driven application like Flowintel, the shape at runtime follows directly from the class diagram above, so one example snapshot is enough for this section.
 
-The snapshot below shows an example phishing investigation: case #42, owned by the CSIRT organisation, with two tasks, one assignee and one MISP object.
+*The snapshot below shows an example phishing investigation: case #42, owned by the CSIRT organisation, with two tasks, one assignee and one MISP object.*
 
 ```mermaid
 flowchart LR
@@ -530,31 +557,34 @@ The use cases below are based on the functional requirements for Flowintel.
 **Actors.** The actors are the human roles from the permission system, plus the external systems that Flowintel connects to.
 
 - **Any authenticated user.** Logs in, views the cases and tasks that are visible to their organisation, and manages their own profile and notifications.
-- **Editor.** The everyday user, who creates and works on cases, tasks and their
-  metadata.
-- **Read Only user.** Views cases, tasks and the calendar, but cannot change them.
-- **Org Admin.** Manages the user accounts of their own organisation.
-- **Administrator.** Full control over users, organisations, connectors, custom tags, taxonomies, galaxies, statistics and audit logs.
-- **Case Admin, Queue Admin and Queuer.** Run the four-eye (privileged case) workflow. A Queuer submits a task for approval, and a Queue Admin or Case Admin approves or rejects it.
-- **Template Editor.** Manages case, task and note templates and the central template repositories.
-- **MISP Editor.** Adds and edits MISP objects on cases and tasks.
-- **Importer.** Imports data into cases and tasks, including creating a case from a MISP event.
-- **Audit Viewer.** Reads the audit logs.
+- **Actors with system roles**
+    - **Administrator.** Full control over the whole platform: every case and task, and users, organisations, connectors, custom tags, taxonomies, galaxies, statistics and audit logs.
+    - **Editor.** The everyday user, who creates and works on cases, tasks and their metadata, and can build cases and tasks from existing templates.
+    - **Read Only user.** Views cases, tasks and the calendar, but cannot change them.
+- **Actors with additional permissions*
+    - **Org Admin.** Manages the user accounts of their own organisation.
+    - **Case Admin, Queue Admin and Queuer.** Run the four-eye (privileged case) workflow. A Queuer submits a task for approval, and a Queue Admin or Case Admin approves or rejects it.
+    - **Template Editor.** Manages case, task and note templates and the central template repositories.
+    - **MISP Editor.** Adds and edits MISP objects on cases and tasks.
+    - **Importer.** Imports data into cases and tasks, including creating a case from a MISP event.
+    - **Audit Viewer.** Reads the audit logs.
 - **External systems.** MISP (event and attribute synchronisation, enrichment, and creating a case from an event) and the SSO identity providers Keycloak and Microsoft Entra ID.
 
-**Common precondition.** Apart from UC-01 (Log in), every use case needs an authenticated user with a role or permission that allows the action. Whether a case is visible also depends on the user's organisation and on the private-case and privileged-case flags.
+**Common precondition.** Apart from UC-01 (Log in) and UC-29 (Encryption of data storage), every use case needs an authenticated user with a role or permission that allows the action. Whether a case is visible also depends on the user's organisation and on the private-case and privileged-case flags.
 
-There are 29 use cases. To keep the diagram readable, it shows the actors and the functional areas they work in, instead of drawing all use cases at once. Each area groups several use cases.
+There are 29 use cases. To keep the diagram readable, it shows the actors and the functional areas they work in, instead of drawing all use cases at once, and each area groups several use cases. The Administrator has full access to every area; to keep the diagram uncluttered, its everyday access to cases, tasks and the other shared areas is left out, and only the areas that are specific to the Administrator (administration, classification, platform security and audit logs) are drawn.
 
 ```mermaid
 flowchart LR
     anyuser(("Any user"))
+    readonly(("Read Only<br/>user"))
     editor(("Editor"))
+    mispeditor(("MISP Editor"))
     foureye(("Queuer /<br/>Queue Admin /<br/>Case Admin"))
     tpled(("Template Editor"))
+    orgadmin(("Org Admin"))
     admin(("Administrator"))
     auditor(("Audit Viewer"))
-    misp(("MISP"))
     sso(("SSO provider"))
 
     subgraph sys["Flowintel"]
@@ -565,23 +595,28 @@ flowchart LR
         templates["Templates"]
         classif["Classification"]
         adminarea["Administration"]
+        audit["Audit logs"]
         security["Platform security"]
     end
 
     anyuser --- access
     anyuser --- cases
     anyuser --- tasks
+    readonly --- cases
+    readonly --- tasks
     editor --- cases
     editor --- tasks
     editor --- mispg
+    editor --- templates
+    mispeditor --- mispg
     foureye --- tasks
     tpled --- templates
+    orgadmin --- adminarea
     admin --- adminarea
     admin --- classif
     admin --- security
-    auditor --- adminarea
-    misp --- cases
-    misp --- mispg
+    admin --- audit
+    auditor --- audit
     sso --- access
 ```
 
@@ -628,6 +663,8 @@ The table lists all use cases with their primary actors, a short description and
 | UC-11 Manage users (create a user) | The administrator or org admin is authenticated and authorised. | 1. Open the "Add user" page; 2. Fill in the user details and select the role and organisation; 3. Submit to create the user. |
 
 The sequence diagram and the collaboration diagram in the following subsections show this same flow (UC-11 Manage users) in more detail.
+
+> **Note.** UC-11 is elaborated here as a single representative example. Almost all other use cases follow the same layered path: View (blueprint route) > authorisation decorator > form validation (where applicable) > core service > SQLAlchemy model > PostgreSQL. They differ only in the specific modules and data involved. Drawing a separate sequence and collaboration diagram for every use case would repeat this pattern without adding immediate value, so only UC-11 is shown in full.
 
 #### 2.3.2 Sequence diagram
 
@@ -814,7 +851,9 @@ erDiagram
     TAXONOMY ||--o{ TAG : defines
     GALAXY ||--o{ CLUSTER : defines
     CASE }o--o{ CLUSTER : tagged
+    TASK }o--o{ CLUSTER : tagged
     CASE }o--o{ CUSTOM_TAG : labelled
+    TASK }o--o{ CUSTOM_TAG : labelled
     CASE ||--o{ CASE_MISP_OBJECT : holds
     CASE_MISP_OBJECT ||--o{ MISP_ATTRIBUTE : has
     CASE }o--o{ CONNECTOR_INSTANCE : synced
@@ -825,7 +864,7 @@ erDiagram
 
 ### 3.2 Logical schema
 
-The logical schema adds attributes, primary keys (PK) and foreign keys (FK). It is still independent of the database system. The diagram below shows the core case-management group.
+The logical schema adds attributes, primary keys (PK) and foreign keys (FK). It is still independent of the database system. The diagram below shows the *core case-management group*.
 
 The identity, templating, classification and integration groups follow the same pattern, and the full column lists are in `app/db_class/db.py`. Many-to-many relationships use explicit association tables (for example `Case_Org`, `Task_User`, `Case_Tags`, `Case_Galaxy_Tags` and `Case_Connector_Instance`). 
 
@@ -933,9 +972,9 @@ erDiagram
 
 ### 3.3 Physical schema
 
-The physical schema describes how the logical model is built on the real database system, which is PostgreSQL in production. (SQLite is supported for development and demos only.) It is derived from the SQLAlchemy models and the Alembic migration history, so no running database is needed.
+The physical schema describes how the logical model is built on the real database system, which is PostgreSQL in production (SQLite is supported for development and demos only.) It is derived from the SQLAlchemy models and the Alembic migration history, so no running database is needed.
 
-**Table naming.** Flask-SQLAlchemy builds the table names from the class names. It makes them lower case and adds an underscore before each capital inside the name. Several class names already contain an underscore, so the table names end up with double underscores. The table below is a representative selection, not the full list. All model classes follow the same rule.
+**Table naming.** Flask-SQLAlchemy builds the table names from the class names. It makes them lower case and adds an underscore before each capital inside the name. Several class names already contain an underscore, so the table names end up with double underscores. The table below is a *representative selection*, not the full list. All model classes follow the same rule.
 
 | Model class | PostgreSQL table |
 |---|---|
@@ -973,6 +1012,10 @@ A few models set the table name explicitly with `__tablename__`, but the result 
 - Some relationships (tags, galaxy tags and connector links) use association tables that hold only integer id columns with indexes, instead of declared foreign-key constraints. For those, the service layer keeps the references consistent.
 
 **Schema lifecycle.** The physical schema is created and changed only through Alembic migrations (`flask db upgrade`), which run automatically during an upgrade. The connection settings (host, port, database, user and password) come from environment variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). Session data is stored in Valkey, not in PostgreSQL, so the transactional data and the session data stay separate.
+
+### In summary
+
+The three schemas describe the same data model at increasing levels of detail: the conceptual schema fixes the entities and their relationships, the logical schema adds attributes and keys, and the physical schema maps them onto PostgreSQL. All three derive from a single source of truth, the SQLAlchemy models in `app/db_class/db.py`, with Alembic migrations keeping the running database in step as those models evolve. Because of this, the data model can be reviewed and reasoned about directly from the code, without needing to inspect a live database.
 
 ---
 
@@ -1060,6 +1103,7 @@ classDiagram
         +bool case_admin
         +bool queue_admin
         +bool queuer
+        +bool audit_viewer
         +bool template_editor
         +bool misp_editor
         +bool importer
@@ -1116,6 +1160,18 @@ classDiagram
         +string note
         +int task_id
     }
+    class Task_Url_Tool {
+        +int id
+        +string uuid
+        +string name
+        +int task_id
+    }
+    class Task_External_Reference {
+        +int id
+        +string uuid
+        +string url
+        +int task_id
+    }
     class File {
         +int id
         +string name
@@ -1134,14 +1190,28 @@ classDiagram
         +int task_id
         +int user_id
     }
+    class Org {
+        +int id
+        +string name
+        +string uuid
+    }
+    class Case_Org {
+        +int case_id
+        +int org_id
+    }
     Case "1" *-- "many" Task : contains
     Task "1" *-- "many" Subtask : contains
     Task "1" *-- "many" Note : contains
+    Task "1" *-- "many" Task_Url_Tool : contains
+    Task "1" *-- "many" Task_External_Reference : contains
     Case "1" *-- "many" File : attaches
     Task "1" *-- "many" File : attaches
     Status "1" <-- "many" Case : has
     Status "1" <-- "many" Task : has
     Task "1" --> "many" Task_User : assigned via
+    Org "1" <-- "many" Case : owns (owner_org_id)
+    Case "1" --> "many" Case_Org : shared via
+    Org "1" --> "many" Case_Org : assigned to collaborate
 ```
 
 ### A.4 Class diagram: Templating
@@ -1386,12 +1456,14 @@ flowchart TB
 ```mermaid
 flowchart LR
     anyuser(("Any user"))
+    readonly(("Read Only<br/>user"))
     editor(("Editor"))
+    mispeditor(("MISP Editor"))
     foureye(("Queuer /<br/>Queue Admin /<br/>Case Admin"))
     tpled(("Template Editor"))
+    orgadmin(("Org Admin"))
     admin(("Administrator"))
     auditor(("Audit Viewer"))
-    misp(("MISP"))
     sso(("SSO provider"))
 
     subgraph sys["Flowintel"]
@@ -1402,23 +1474,28 @@ flowchart LR
         templates["Templates"]
         classif["Classification"]
         adminarea["Administration"]
+        audit["Audit logs"]
         security["Platform security"]
     end
 
     anyuser --- access
     anyuser --- cases
     anyuser --- tasks
+    readonly --- cases
+    readonly --- tasks
     editor --- cases
     editor --- tasks
     editor --- mispg
+    editor --- templates
+    mispeditor --- mispg
     foureye --- tasks
     tpled --- templates
+    orgadmin --- adminarea
     admin --- adminarea
     admin --- classif
     admin --- security
-    auditor --- adminarea
-    misp --- cases
-    misp --- mispg
+    admin --- audit
+    auditor --- audit
     sso --- access
 ```
 
@@ -1600,7 +1677,9 @@ erDiagram
     TAXONOMY ||--o{ TAG : defines
     GALAXY ||--o{ CLUSTER : defines
     CASE }o--o{ CLUSTER : tagged
+    TASK }o--o{ CLUSTER : tagged
     CASE }o--o{ CUSTOM_TAG : labelled
+    TASK }o--o{ CUSTOM_TAG : labelled
     CASE ||--o{ CASE_MISP_OBJECT : holds
     CASE_MISP_OBJECT ||--o{ MISP_ATTRIBUTE : has
     CASE }o--o{ CONNECTOR_INSTANCE : synced
