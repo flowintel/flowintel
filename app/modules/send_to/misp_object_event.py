@@ -8,6 +8,8 @@ import urllib3
 urllib3.disable_warnings()
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+logging.getLogger("pymisp").setLevel(logging.WARNING)
 
 module_config = {
     "connector": "misp",
@@ -107,13 +109,17 @@ def manage_object_creation(misp, event, object, object_uuid_list):
     }
     return "", object_uuid_list
 
-def all_object_to_misp(misp, event, objects, object_uuid_list):
+def all_object_to_misp(misp, event, objects, object_uuid_list, selected_attr_ids=None):
     details = []
+    selected_attr_ids = set(str(i) for i in (selected_attr_ids or []))
     for object in objects:
         try:
             loc_object = event.get_object_by_uuid(object["uuid"])
             attr_uuid_list = list()
-            for attr in object["attributes"]:
+            object_attrs = object["attributes"]
+            if selected_attr_ids:
+                object_attrs = [attr for attr in object_attrs if str(attr.get("id", "")) in selected_attr_ids]
+            for attr in object_attrs:
                 try:
                     attribute = loc_object.get_attribute_by_uuid(attr["uuid"])
                     flag_modif = False
@@ -302,7 +308,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     user: id, first_name, last_name, email, role_id, password_hash, api_key, org_id
 
-    payload: optional dict; if payload["selected_objects"] is a list of local object IDs, only those are synced
+    payload: optional dict; conflict follow-ups may pass local ID selectors for targeted syncs
     """
     try:
         misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
@@ -312,12 +318,24 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     object_uuid_list = {}
     create_extended = bool(payload and payload.get("create_extended_event"))
     base_event = None
+    selected_object_attr_ids = set()
+    if payload and isinstance(payload.get("selected_object_attributes"), list):
+        selected_object_attr_ids = set(str(i) for i in payload["selected_object_attributes"])
 
     # Optional filter: only send objects whose id is in selected_objects
     objects = case["objects"]
     if payload and isinstance(payload.get("selected_objects"), list):
         selected_ids = set(str(i) for i in payload["selected_objects"])
         objects = [o for o in objects if str(o.get("object_id", o.get("id", ""))) in selected_ids]
+    if selected_object_attr_ids:
+        filtered_objects = []
+        for obj in objects:
+            object_attrs = [attr for attr in obj.get("attributes", []) if str(attr.get("id", "")) in selected_object_attr_ids]
+            if object_attrs:
+                obj_copy = dict(obj)
+                obj_copy["attributes"] = object_attrs
+                filtered_objects.append(obj_copy)
+        objects = filtered_objects
 
     details = []
     if create_extended and not instance.get("identifier"):
@@ -333,7 +351,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
             base_event = event
             flag = True
         else:
-            details, object_uuid_list = all_object_to_misp(misp, event, objects, object_uuid_list)
+            details, object_uuid_list = all_object_to_misp(misp, event, objects, object_uuid_list, selected_object_attr_ids)
 
     ## No identifier for this connector or the event doesn't exist anymore
     else: 

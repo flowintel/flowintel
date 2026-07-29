@@ -1173,6 +1173,90 @@ class Connector_Sync_Log(db.Model):
         }
 
 
+class Case_Misp_Sync_Schedule(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    case_connector_instance_id = db.Column(db.Integer, index=True)
+    direction = db.Column(db.String(10), index=True)  # 'send' or 'receive'
+    enabled = db.Column(db.Boolean, default=False, nullable=False)
+    interval = db.Column(db.String(20), default="manual", nullable=False)
+    on_change = db.Column(db.Boolean, default=False, nullable=False)
+    module_name = db.Column(db.String(128), nullable=True)
+    payload = db.Column(db.JSON, nullable=True)
+    conflict_strategy = db.Column(db.String(30), default="ask", nullable=False)
+    last_run_at = db.Column(db.DateTime, nullable=True)
+    next_run_at = db.Column(db.DateTime, index=True, nullable=True)
+    last_seen_case_modif = db.Column(db.DateTime, nullable=True)
+    created_by_id = db.Column(db.Integer, index=True, nullable=True)
+    updated_by_id = db.Column(db.Integer, index=True, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint('case_connector_instance_id', 'direction', name='uq_case_misp_sync_schedule_connector_direction'),
+    )
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "case_connector_instance_id": self.case_connector_instance_id,
+            "direction": self.direction,
+            "enabled": self.enabled,
+            "interval": self.interval,
+            "on_change": self.on_change,
+            "module_name": self.module_name,
+            "payload": self.payload or {},
+            "conflict_strategy": self.conflict_strategy,
+            "last_run_at": self.last_run_at.strftime(DATETIME_FORMAT_FULL) if self.last_run_at else None,
+            "next_run_at": self.next_run_at.strftime(DATETIME_FORMAT_FULL) if self.next_run_at else None,
+            "last_seen_case_modif": self.last_seen_case_modif.strftime(DATETIME_FORMAT_FULL) if self.last_seen_case_modif else None,
+            "created_by_id": self.created_by_id,
+            "updated_by_id": self.updated_by_id,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT_FULL) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT_FULL) if self.updated_at else None
+        }
+
+
+class Case_Misp_Sync_Conflict(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, index=True)
+    case_connector_instance_id = db.Column(db.Integer, index=True)
+    direction = db.Column(db.String(10), index=True)
+    item_type = db.Column(db.String(30), index=True)  # object, attribute, case, task, report
+    local_ref = db.Column(db.String, nullable=True)
+    remote_ref = db.Column(db.String, nullable=True)
+    status = db.Column(db.String(20), default="pending", index=True, nullable=False)
+    base_snapshot = db.Column(db.JSON, nullable=True)
+    local_snapshot = db.Column(db.JSON, nullable=True)
+    remote_snapshot = db.Column(db.JSON, nullable=True)
+    resolution = db.Column(db.String(30), nullable=True)
+    resolution_payload = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolved_by_id = db.Column(db.Integer, index=True, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "case_connector_instance_id": self.case_connector_instance_id,
+            "direction": self.direction,
+            "item_type": self.item_type,
+            "local_ref": self.local_ref,
+            "remote_ref": self.remote_ref,
+            "status": self.status,
+            "base_snapshot": self.base_snapshot or {},
+            "local_snapshot": self.local_snapshot or {},
+            "remote_snapshot": self.remote_snapshot or {},
+            "resolution": self.resolution,
+            "resolution_payload": self.resolution_payload or {},
+            "created_at": self.created_at.strftime(DATETIME_FORMAT_FULL) if self.created_at else None,
+            "resolved_at": self.resolved_at.strftime(DATETIME_FORMAT_FULL) if self.resolved_at else None,
+            "resolved_by_id": self.resolved_by_id
+        }
+
+
 class Case_Template_Connector_Instance(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_template_id = db.Column(db.Integer, index=True)

@@ -1,8 +1,10 @@
 import datetime
+import logging
 from dateutil.parser import parse as parse_date
 from pymisp import PyMISP
 import urllib3
 urllib3.disable_warnings()
+logging.getLogger("pymisp").setLevel(logging.WARNING)
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 
@@ -47,10 +49,13 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     from app.utils import misp_object_helper
     from app.case import common_core as CommonModel
 
-    # Optional filter: only sync objects whose UUID is in selected_objects
+    # Optional filters: only sync specific objects and/or specific object attributes.
     selected_uuids = None
     if payload and isinstance(payload.get("selected_objects"), list):
         selected_uuids = set(payload["selected_objects"])
+    selected_attr_uuids = None
+    if payload and isinstance(payload.get("selected_object_attributes"), list):
+        selected_attr_uuids = set(payload["selected_object_attributes"])
 
     object_uuid_list = {}
     details = []
@@ -58,6 +63,11 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         if selected_uuids is not None and obje.uuid not in selected_uuids:
             continue
         try:
+            object_attrs = list(getattr(obje, "attributes", []) or [])
+            if selected_attr_uuids is not None:
+                object_attrs = [attr for attr in object_attrs if getattr(attr, "uuid", None) in selected_attr_uuids]
+                if not object_attrs:
+                    continue
             # Check if object already exists for this instance
             object_exist = case_model.get_misp_object_instance_by_instance_uuid(obje.uuid, instance["id"], case["id"])
             if object_exist:
@@ -67,7 +77,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
                     db_misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                     db_session.session.commit()
 
-                for attr in obje.attributes:
+                for attr in object_attrs:
                     attr_exist = case_model.get_misp_attribute_instance_by_instance_uuid(attr.uuid, instance["id"], case["id"])
                     if attr_exist:
                         db_misp_attr = case_model.get_misp_attribute(attr_exist.misp_attribute_id)
@@ -118,6 +128,8 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
                 details.append({"name": obje.name, "status": "success", "error": None})
             else:
+                if selected_attr_uuids is not None:
+                    obje.attributes = object_attrs
                 def append_dict(base, new):
                     for key, value in new.items():
                         if key in base:

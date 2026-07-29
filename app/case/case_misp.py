@@ -5,7 +5,7 @@ from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorModel
-from ..db_class.db import Misp_Object_Instance_Uuid, Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, db, DATETIME_FORMAT_FULL
+from ..db_class.db import Misp_Object_Instance_Uuid, Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, db, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 from ..utils.utils import get_object_templates
@@ -126,6 +126,7 @@ def create_misp_object(cid):
             if "object-template" in request.json:
                 if "attributes" in request.json:
                     CaseModel.create_misp_object(cid, request.json, current_user)
+                    CaseModel.trigger_misp_send_on_change(cid, current_user)
                     flowintel_log("audit", 200, "MISP object created", User=current_user.email, CaseId=cid, ObjectTemplate=request.json["object-template"])
                     return {"message": "Object created", "toast_class": "success-subtle"}, 200
                 return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
@@ -143,6 +144,7 @@ def delete_object(cid, oid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_object(cid, oid, current_user):
+                CaseModel.trigger_misp_send_on_change(cid, current_user)
                 flowintel_log("audit", 200, "MISP object deleted", User=current_user.email, CaseId=cid, ObjectId=oid)
                 return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
@@ -161,6 +163,7 @@ def add_attributes(cid, oid):
             if "object-template" in request.json:
                 if "attributes" in request.json:
                     if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
+                        CaseModel.trigger_misp_send_on_change(cid, current_user)
                         flowintel_log("audit", 200, "Attributes added to MISP object", User=current_user.email, CaseId=cid, ObjectId=oid)
                         return {"message": "Receive", "toast_class": "success-subtle"}, 200
                     return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
@@ -180,7 +183,10 @@ def edit_attr(cid, oid, aid):
             if "value" in request.json:
                 if "type" in request.json:
                     flowintel_log("audit", 200, "Edit attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
-                    return CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
+                    result, status = CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
+                    if status == 200:
+                        CaseModel.trigger_misp_send_on_change(cid, current_user)
+                    return result, status
                 return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
             return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -195,7 +201,10 @@ def delete_attribute(cid, oid, aid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             flowintel_log("audit", 200, "Delete attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
-            return CaseModel.delete_attribute(cid, oid, aid, current_user)
+            result, status = CaseModel.delete_attribute(cid, oid, aid, current_user)
+            if status == 200:
+                CaseModel.trigger_misp_send_on_change(cid, current_user)
+            return result, status
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -324,6 +333,7 @@ def create_misp_attribute(cid):
     if not data.get("type"):
         return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
     attr = CaseModel.create_standalone_attribute(cid, data, current_user)
+    CaseModel.trigger_misp_send_on_change(cid, current_user)
     return {"message": "Attribute created", "toast_class": "success-subtle", "attribute": attr.to_json()}, 201
 
 
@@ -339,6 +349,8 @@ def edit_misp_attribute(cid, aid):
     if not data:
         return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
     result, status = CaseModel.edit_standalone_attr(cid, aid, data, current_user)
+    if status == 200:
+        CaseModel.trigger_misp_send_on_change(cid, current_user)
     return result, status
 
 
@@ -351,6 +363,8 @@ def delete_misp_attribute(cid, aid):
     if not case or not check_user_private_case(case):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
     result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
+    if status == 200:
+        CaseModel.trigger_misp_send_on_change(cid, current_user)
     return result, status
 
 
@@ -687,6 +701,142 @@ def get_sync_logs(cid, ciid):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
 
     return {"sync_logs": ConnectorModel.get_connector_sync_logs(cid, ciid)}, 200
+
+
+def _get_case_connector_for_automation(cid, ciid, require_write=False):
+    case = CommonModel.get_case(cid)
+    if not case:
+        return None, None, ({"message": "Case not found", "toast_class": "danger-subtle"}, 404)
+    if not check_user_private_case(case):
+        return None, None, ({"message": "Permission denied", "toast_class": "danger-subtle"}, 403)
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return None, None, ({"message": "Connector not found", "toast_class": "danger-subtle"}, 404)
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    connector = CommonModel.get_connector(loc_instance.connector_id) if loc_instance else None
+    if not loc_instance or not connector or connector.name != "MISP":
+        return None, None, ({"message": "Connector is not a MISP connector", "toast_class": "warning-subtle"}, 400)
+
+    if require_write:
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            return None, None, ({"message": "Action not allowed", "toast_class": "warning-subtle"}, 403)
+        if not CommonModel.can_use_case_connector(loc_instance, current_user, cid):
+            return None, None, ({"message": "Action not allowed", "toast_class": "warning-subtle"}, 403)
+
+    return case, case_instance, None
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_automation", methods=['GET'])
+@login_required
+@misp_editor_required
+def get_sync_automation(cid, ciid):
+    """Return MISP sync schedules and pending conflicts for a case connector."""
+    case, case_instance, error = _get_case_connector_for_automation(cid, ciid)
+    if error:
+        return error
+
+    if CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid):
+        try:
+            CaseModel.ensure_misp_send_conflict(case_instance.id, case, current_user)
+        except Exception:
+            pass
+
+    return {
+        "schedules": ConnectorModel.get_misp_sync_schedules(case.id, case_instance.id),
+        "conflicts": ConnectorModel.get_pending_misp_sync_conflicts(case.id, case_instance.id),
+        "history": ConnectorModel.get_recent_misp_sync_conflict_history(case.id, case_instance.id),
+        "options": {
+            "intervals": sorted(ConnectorModel.MISP_SYNC_INTERVALS),
+            "conflict_strategies": sorted(ConnectorModel.MISP_SYNC_CONFLICT_STRATEGIES),
+            "resolutions": sorted(ConnectorModel.MISP_SYNC_RESOLUTIONS)
+        }
+    }, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_automation", methods=['POST'])
+@login_required
+@misp_editor_required
+def save_sync_automation(cid, ciid):
+    """Create or update automation settings for one sync direction."""
+    case, case_instance, error = _get_case_connector_for_automation(cid, ciid, require_write=True)
+    if error:
+        return error
+
+    schedule, error = ConnectorModel.upsert_misp_sync_schedule(case.id, case_instance.id, request.get_json(silent=True) or {}, current_user)
+    if error:
+        return {"message": error, "toast_class": "warning-subtle"}, 400
+
+    flowintel_log("audit", 200, "MISP sync automation updated", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, Direction=schedule.direction)
+    return {"message": "Automation updated", "toast_class": "success-subtle", "schedule": ConnectorModel.sanitize_misp_sync_schedule(schedule.to_json())}, 200
+
+
+@case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_conflicts/<int:conflict_id>/resolve", methods=['POST'])
+@login_required
+@misp_editor_required
+def resolve_sync_conflict(cid, ciid, conflict_id):
+    """Resolve a pending MISP sync conflict after user validation."""
+    case, case_instance, error = _get_case_connector_for_automation(cid, ciid, require_write=True)
+    if error:
+        return error
+
+    conflict = Case_Misp_Sync_Conflict.query.get(conflict_id)
+    if not conflict or conflict.case_id != case.id or conflict.case_connector_instance_id != case_instance.id:
+        return {"message": "Conflict not found", "toast_class": "warning-subtle"}, 404
+
+    data = request.get_json(silent=True) or {}
+    requested_resolution = data.get("resolution")
+    resolution_payload = data.get("resolution_payload") or {}
+    resolved, error = ConnectorModel.resolve_misp_sync_conflict(
+        conflict_id,
+        requested_resolution,
+        resolution_payload,
+        current_user
+    )
+    if error:
+        return {"message": error, "toast_class": "warning-subtle"}, 400
+
+    followup = ConnectorModel.get_misp_conflict_followup_action(conflict, requested_resolution, resolution_payload)
+    if followup:
+        result = CaseModel.call_module_case(
+            followup["module_name"],
+            case_instance.id,
+            case,
+            current_user,
+            payload=followup["payload"]
+        )
+        if result:
+            conflict.status = "pending"
+            conflict.resolution = None
+            conflict.resolution_payload = None
+            conflict.resolved_by_id = None
+            conflict.resolved_at = None
+            db.session.commit()
+            return {
+                "message": result.get("message", "Unable to apply the selected resolution"),
+                "toast_class": result.get("toast_class", "warning-subtle")
+            }, 400
+        if followup.get("direction") == "receive" and conflict.direction == "send":
+            refreshed_case = CommonModel.get_case(cid)
+            remote_timestamp = ConnectorModel.as_utc_datetime((conflict.remote_snapshot or {}).get("timestamp"))
+            if remote_timestamp:
+                send_schedule = Case_Misp_Sync_Schedule.query.filter_by(
+                    case_id=int(cid),
+                    case_connector_instance_id=int(case_instance.id),
+                    direction="send"
+                ).first()
+                if send_schedule:
+                    send_schedule.last_run_at = remote_timestamp
+                    send_schedule.last_seen_case_modif = refreshed_case.last_modif if refreshed_case else None
+                    send_schedule.next_run_at = ConnectorModel.calculate_misp_sync_next_run(send_schedule.interval, remote_timestamp) if send_schedule.enabled else None
+                db.session.commit()
+
+    flowintel_log("audit", 200, "MISP sync conflict resolved", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, ConflictId=conflict_id, Resolution=resolved.resolution)
+    message = "Conflict resolved"
+    if followup:
+        message = "Conflict resolved and synchronized"
+    return {"message": message, "toast_class": "success-subtle", "conflict": resolved.to_json()}, 200
 
 
 @case_blueprint.route("/<int:cid>/connectors/<int:ciid>/import_event_report", methods=['POST'])

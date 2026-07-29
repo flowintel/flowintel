@@ -63,7 +63,7 @@ function start_misp_modules_screen {
         return 1
     fi
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    # screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 }
 
 
@@ -71,16 +71,40 @@ function killscript {
     echo "Stopping existing sessions..."
     local isscripted_fcm
     local isscripted_misp_mod
+    local isscripted_misp_sync
 
     isscripted_fcm=$(screen -ls | egrep '[0-9]+\.fcm' | cut -d. -f1 || true)
     isscripted_misp_mod=$(screen -ls | egrep '[0-9]+\.misp_mod_flowintel' | cut -d. -f1 || true)
+    isscripted_misp_sync=$(screen -ls | egrep '[0-9]+\.misp_sync' | cut -d. -f1 || true)
 
     if [ -n "$isscripted_fcm" ]; then
-        screen -X -S fcm quit
+        screen -X -S fcm quit || true
     fi
     if [ -n "$isscripted_misp_mod" ]; then
-        screen -X -S misp_mod_flowintel quit
+        screen -X -S misp_mod_flowintel quit || true
     fi
+    if [ -n "$isscripted_misp_sync" ]; then
+        screen -X -S misp_sync quit || true
+    fi
+}
+
+function cleanup_launch_processes {
+    trap - INT TERM EXIT
+
+    if [ -n "${TAIL_PID:-}" ]; then
+        echo
+        echo "Stopping tail (PID $TAIL_PID)..."
+        kill "$TAIL_PID" 2>/dev/null || true
+        wait "$TAIL_PID" 2>/dev/null || true
+        TAIL_PID=""
+    fi
+
+    killscript
+}
+
+function setup_launch_cleanup {
+    trap cleanup_launch_processes EXIT
+    trap 'cleanup_launch_processes; exit 130' INT TERM
 }
 
 function taxo_galaxy_update {
@@ -106,13 +130,14 @@ function launch {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
     start_misp_modules_screen || true
 
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     # Start our main application
     python3 app.py
@@ -132,12 +157,13 @@ function production {
     killscript
 
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
     start_misp_modules_screen || true
 
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
 }
@@ -187,13 +213,14 @@ function launch_docker {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
     start_misp_modules_screen || true
 
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
 }

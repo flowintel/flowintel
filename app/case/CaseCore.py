@@ -361,6 +361,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         Case_Org.query.filter_by(case_id=case.id).delete()
         Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
         Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
+        Case_Misp_Sync_Schedule.query.filter_by(case_id=case.id).delete()
+        Case_Misp_Sync_Conflict.query.filter_by(case_id=case.id).delete()
         Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
@@ -1667,12 +1669,106 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
 
+    def _misp_send_remote_change_guard(self, loc_case, case, case_instance, loc_instance, api_key, direction, payload=None):
+        """Stop a send when the target MISP event changed since the last sync baseline."""
+        if direction != "send" or not case_instance.identifier:
+            return None
+        if isinstance(payload, dict) and payload.get("force_conflict_resolution"):
+            return None
 
-    def call_module_case(self, module, case_instance_id, loc_case, user, payload=None):
-        """Run a module"""
+        from ..connectors import connectors_core as ConnectorModel
+
+        schedule = Case_Misp_Sync_Schedule.query.filter_by(
+            case_id=int(loc_case.id),
+            case_connector_instance_id=int(case_instance.id),
+            direction="send"
+        ).first()
+        last_run_at = schedule.last_run_at if schedule and schedule.last_run_at else case_instance.last_sync
+        last_run_at = ConnectorModel.as_utc_datetime(last_run_at)
+        if not last_run_at:
+            return None
+
+        remote_event, error = ConnectorModel._misp_get_event_pythonified(loc_instance, api_key, case_instance.identifier)
+        if error or not remote_event:
+            return None
+        remote_timestamp = ConnectorModel._misp_read_event_value(remote_event, "timestamp")
+        remote_metadata = {
+            "id": ConnectorModel._misp_read_event_value(remote_event, "id"),
+            "uuid": ConnectorModel._misp_read_event_value(remote_event, "uuid"),
+            "info": ConnectorModel._misp_read_event_value(remote_event, "info"),
+            "timestamp": str(remote_timestamp) if remote_timestamp is not None else None,
+            "timestamp_at": ConnectorModel.format_misp_sync_datetime(ConnectorModel.as_utc_datetime(remote_timestamp)),
+            "published": bool(ConnectorModel._misp_read_event_value(remote_event, "published")),
+        }
+
+        remote_modified_at = ConnectorModel.as_utc_datetime(remote_timestamp or remote_metadata.get("timestamp_at"))
+        if not remote_modified_at:
+            return None
+
+        # MISP stores event timestamps at second precision; leave a tiny cushion for the run that wrote the baseline.
+        if remote_modified_at <= last_run_at + datetime.timedelta(seconds=2):
+            return None
+
+        remote_ref = remote_metadata.get("uuid") or remote_metadata.get("id")
+        if ConnectorModel.get_resolved_misp_event_conflict(
+            loc_case.id,
+            case_instance.id,
+            "send",
+            remote_ref,
+            remote_timestamp
+        ):
+            return None
+
+        local_last_modif = ConnectorModel.as_utc_datetime(loc_case.last_modif)
+        base_snapshot = {
+            "last_run_at": ConnectorModel.format_misp_sync_datetime(last_run_at),
+            "last_seen_case_modif": ConnectorModel.format_misp_sync_datetime(schedule.last_seen_case_modif) if schedule else None,
+            "case_connector_last_sync": ConnectorModel.format_misp_sync_datetime(case_instance.last_sync)
+        }
+        local_snapshot = {
+            "case_id": loc_case.id,
+            "case_uuid": case.get("uuid"),
+            "case_title": case.get("title"),
+            "case_last_modif": ConnectorModel.format_misp_sync_datetime(local_last_modif),
+            "changed_since_last_run": bool(local_last_modif and local_last_modif > last_run_at),
+            "object_count": len(case.get("objects") or []),
+            "standalone_attribute_count": len(case.get("standalone_attributes") or []),
+            "objects": case.get("objects") or [],
+            "standalone_attributes": case.get("standalone_attributes") or []
+        }
+        conflict_details = ConnectorModel.build_misp_event_conflict_details(local_snapshot, remote_event)
+        local_snapshot["details"] = conflict_details["local"]
+        remote_metadata["details"] = conflict_details["remote"]
+        if not local_snapshot["details"]:
+            ConnectorModel.clear_pending_misp_event_sync_conflict(
+                loc_case.id,
+                case_instance.id,
+                "send",
+                case.get("uuid"),
+                remote_ref
+            )
+            return None
+        conflict, created = ConnectorModel.upsert_misp_event_sync_conflict(
+            loc_case.id,
+            case_instance.id,
+            "send",
+            case.get("uuid"),
+            remote_metadata,
+            base_snapshot,
+            local_snapshot
+        )
+        return {
+            "message": "The MISP event was modified after the last successful sync. Review the pending sync conflict before sending Flowintel changes.",
+            "toast_class": "warning-subtle",
+            "conflict_id": conflict.id,
+            "conflict_created": created
+        }
+
+    def _build_case_sync_context(self, case_instance_id, loc_case, user):
+        """Prepare the case and connector payload used by MISP sync checks and module runs."""
         org = CommonModel.get_org(loc_case.owner_org_id)
 
-        tasks = list()
+        tasks = []
         for task in loc_case.tasks:
             loc_task = task.to_json()
             loc_task["status"] = CommonModel.get_status(task.status_id).name
@@ -1687,25 +1783,63 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         for cluster in case["clusters"]:
             cluster["galaxy"] = Galaxy.query.get(cluster["galaxy_id"]).to_json()
 
-
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
         if not case_instance:
-            return {"message": "Connector instance not found"}
+            return None, None, None, {"message": "Connector instance not found"}
 
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
-            return {"message": "Connector instance not found"}
+            return None, None, None, {"message": "Connector instance not found"}
         if not CommonModel.can_use_case_connector(loc_instance, user, loc_case.id):
-            return {"message": "Action not allowed", "toast_class": "warning-subtle"}
+            return None, None, None, {"message": "Action not allowed", "toast_class": "warning-subtle"}
 
         instance = loc_instance.to_json()
         instance["api_key"] = CommonModel.get_case_connector_api_key(loc_instance, user, loc_case.id)
         if not instance["api_key"]:
-            return {"message": "No API key configured for this connector"}
+            return None, None, None, {"message": "No API key configured for this connector"}
         instance["identifier"] = case_instance.identifier
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
         case["standalone_attributes"] = self.get_standalone_attr_instance(case["id"], instance["id"])
+
+        return case, case_instance, loc_instance, instance
+
+    def ensure_misp_send_conflict(self, case_instance_id, loc_case, user):
+        """Create or refresh a pending send-side MISP collision without running a sync."""
+        case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
+        if not case:
+            return None
+        return self._misp_send_remote_change_guard(
+            loc_case,
+            case,
+            case_instance,
+            loc_instance,
+            instance["api_key"],
+            "send"
+        )
+
+
+    def call_module_case(self, module, case_instance_id, loc_case, user, payload=None):
+        """Run a module"""
+        case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
+        if not case:
+            return instance
+
+        modules, _ = get_modules_list()
+        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
+        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+
+        remote_change_result = self._misp_send_remote_change_guard(
+            loc_case,
+            case,
+            case_instance,
+            loc_instance,
+            instance["api_key"],
+            direction,
+            payload
+        )
+        if remote_change_result:
+            return remote_change_result
 
         # Include file metadata for MISP export
         case["files"] = [f.to_json() for f in loc_case.files]
@@ -1741,16 +1875,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        modules, _ = get_modules_list()
         try:
             result = modules[module].handler(instance, case, user, case_model=self, db_session=db, payload=payload)
         except TypeError:
             # fallback for handlers that don't accept a payload parameter
             result = modules[module].handler(instance, case, user, case_model=self, db_session=db)
-
-        # Determine direction from module config
-        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
-        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
 
         # Module returns None for success, or a dict.
         # Dict with "message" key means error.
@@ -1780,6 +1909,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
 
         # Write success/partial sync log
+        sync_finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
         try:
             synced = result.get("synced_count", 0) if isinstance(result, dict) else 0
             failed = result.get("failed_count", 0) if isinstance(result, dict) else 0
@@ -1794,7 +1924,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 case_id=case["id"],
                 case_connector_instance_id=case_instance_id,
                 direction=direction,
-                timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
+                timestamp=sync_finished_at,
                 status=status,
                 message=None,
                 objects_synced=synced,
@@ -1806,10 +1936,69 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             pass
 
         # Record last sync time on successful module execution
-        case_instance.last_sync = datetime.datetime.now(tz=datetime.timezone.utc)
+        case_instance.last_sync = sync_finished_at
+        try:
+            from ..connectors import connectors_core as ConnectorModel
+            ConnectorModel.mark_misp_sync_schedule_run(case["id"], case_instance_id, direction, loc_case.last_modif, sync_finished_at)
+        except Exception:
+            pass
         db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
+
+    def trigger_misp_send_on_change(self, cid, fallback_user=None):
+        """Run enabled MISP send schedules that are configured for case changes."""
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"ran": 0, "failed": 0}
+
+        schedules = Case_Misp_Sync_Schedule.query.filter_by(
+            case_id=int(cid),
+            direction="send",
+            enabled=True,
+            on_change=True
+        ).all()
+        ran = 0
+        failed = 0
+        for schedule in schedules:
+            user = User.query.get(schedule.created_by_id) if schedule.created_by_id else fallback_user
+            if not user:
+                failed += 1
+                flowintel_log("warning", 400, "MISP on-change sync skipped: no schedule owner", CaseId=cid, ScheduleId=schedule.id)
+                continue
+
+            payload = dict(schedule.payload or {})
+            module_name = schedule.module_name or "misp_object_event"
+            payload["module"] = module_name
+            payload["case_task_instance_id"] = schedule.case_connector_instance_id
+
+            try:
+                res = self.call_module_case(module_name, schedule.case_connector_instance_id, case, user, payload=payload)
+                if res:
+                    failed += 1
+                    flowintel_log(
+                        "warning",
+                        400,
+                        f"MISP on-change sync failed: {res.get('message', 'unknown error')}",
+                        User=user.email,
+                        CaseId=cid,
+                        ConnectorInstanceId=schedule.case_connector_instance_id,
+                        ScheduleId=schedule.id
+                    )
+                else:
+                    ran += 1
+            except Exception as e:
+                failed += 1
+                flowintel_log(
+                    "error",
+                    500,
+                    f"MISP on-change sync raised an exception: {e}",
+                    User=getattr(user, "email", None),
+                    CaseId=cid,
+                    ConnectorInstanceId=schedule.case_connector_instance_id,
+                    ScheduleId=schedule.id
+                )
+        return {"ran": ran, "failed": failed}
 
     ###############
     # MISP Object #

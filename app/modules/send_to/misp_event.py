@@ -10,6 +10,8 @@ from .misp_object_event import all_object_to_misp, manage_object_creation, _sync
 from app.case.CaseCore import FILE_FOLDER
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+logging.getLogger("pymisp").setLevel(logging.WARNING)
 
 
 module_config = {

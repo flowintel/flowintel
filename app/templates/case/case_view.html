@@ -744,6 +744,13 @@
                         </button>
                     </li>
                     <li class="nav-item">
+                        <button :class="['nav-link', {active: subtab_misp === 'automation'}]" id="subtab-misp-automation" @click="active_subtab_misp('automation')">
+                            <i class="fa-solid fa-calendar-days fa-sm me-1"></i><span class="section-title">Automation</span>
+                            <span v-if="misp_automation_enabled" class="badge rounded-pill bg-success ms-1 align-text-bottom" title="Automation is enabled for at least one MISP connector">On</span>
+                            <span v-if="misp_automation_conflicts_count > 0" class="badge rounded-pill bg-warning text-dark ms-1 align-text-bottom" title="Pending automation collisions">[[ misp_automation_conflicts_count ]]</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
                         <button :class="['nav-link', {active: subtab_misp === 'search'}]" id="subtab-misp-search" @click="active_subtab_misp('search')">
                             <i class="fa-solid fa-magnifying-glass fa-sm me-1"></i><span class="section-title">Search</span>
                         </button>
@@ -763,7 +770,21 @@
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
                         @modif_misp_objects="(msg) => { fetch_case_misp_objects(); fetch_sorted_tasks(); }"
+                        @automation_change="fetch_misp_automation_status"
                         @note_change="on_connector_note_change">
+                    </casemispconnectors>
+                </template>
+                <template v-else-if="subtab_misp === 'automation'">
+                    <casemispconnectors
+                        mode="automation"
+                        :case_task_connectors_list="misp_case_connectors_list"
+                        :case_misp_objects_list="case_misp_objects_list"
+                        :modules="modules"
+                        :is_case="true"
+                        :object_id="cases_info.case.id"
+                        :cases_info="cases_info"
+                        @case_connectors="(msg) => fetch_case_connectors()"
+                        @automation_change="fetch_misp_automation_status">
                     </casemispconnectors>
                 </template>
                 <template v-else-if="subtab_misp === 'search'">
@@ -1257,6 +1278,8 @@
                 const nb_misp_total = computed(() => nb_misp_objects.value + nb_misp_attrs.value)
                 const misp_spotlight_id = ref(null)
                 const case_misp_objects_list = ref([])
+                const misp_automation_enabled = ref(false)
+                const misp_automation_conflicts_count = ref(0)
 
                 // Dynamic connector module components
                 const loaded_module_components = ref({})
@@ -1627,7 +1650,31 @@
                         // refresh MISP-link badge in the header — modules such as misp_event
                         // may have just attached the case to a MISP event
                         await refresh_misp_link_status()
+                        await fetch_misp_automation_status()
                     }
+                }
+                async function fetch_misp_automation_status(){
+                    const connectors = misp_case_connectors_list.value || []
+                    if (!connectors.length) {
+                        misp_automation_enabled.value = false
+                        misp_automation_conflicts_count.value = 0
+                        return
+                    }
+                    const statuses = await Promise.all(connectors.map(async (inst) => {
+                        try {
+                            const res = await fetch(`/case/{{case.id}}/connectors/${inst.case_task_instance_id}/sync_automation`)
+                            if (res.status !== 200) return { enabled: false, conflicts: 0 }
+                            const data = await res.json()
+                            return {
+                                enabled: !!(data.schedules?.send?.enabled || data.schedules?.receive?.enabled),
+                                conflicts: Array.isArray(data.conflicts) ? data.conflicts.length : 0
+                            }
+                        } catch (e) {
+                            return { enabled: false, conflicts: 0 }
+                        }
+                    }))
+                    misp_automation_enabled.value = statuses.some(status => status.enabled)
+                    misp_automation_conflicts_count.value = statuses.reduce((sum, status) => sum + status.conflicts, 0)
                 }
                 async function refresh_misp_link_status(){
                     if(!cases_info.value || !cases_info.value.case) return
@@ -2557,6 +2604,8 @@
                     nb_misp_total,
                     misp_spotlight_id,
                     case_misp_objects_list,
+                    misp_automation_enabled,
+                    misp_automation_conflicts_count,
                     can_edit_case,
                     can_use_connectors,
                     onInput,
@@ -2589,6 +2638,7 @@
                     edit_note,
                     export_notes,
                     fetch_case_connectors,
+                    fetch_misp_automation_status,
                     openConnectors,
                     fetch_case_files,
                     on_connector_note_change,

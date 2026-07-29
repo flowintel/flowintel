@@ -10,17 +10,17 @@ export default {
         is_case: Boolean,
         object_id: Number,
         cases_info: Object,
-        mode: { type: String, required: true },   // 'sync' | 'search'
+        mode: { type: String, required: true },   // 'sync' | 'automation' | 'search'
         case_misp_objects_list: { type: Array, default: null }
     },
-    emits: ['case_connectors', 'note_change', 'task_note_added', 'modif_misp_objects'],
+    emits: ['case_connectors', 'note_change', 'task_note_added', 'modif_misp_objects', 'automation_change'],
     components: { 'misp-sync-panel': MispSyncPanel },
     setup(props, { emit }) {
         const sidebar_visible = ref(true)
 
         // Sync state
         const sync_panel_ref = ref(null)
-        const sync_direction = ref('send')
+        const sync_direction = ref(props.mode === 'automation' ? 'automation' : 'send')
         const sync_instance_idx = ref(0)
         const sync_selected_instance = computed(() => {
             if (!props.case_task_connectors_list || !props.case_task_connectors_list.length) return null
@@ -38,6 +38,7 @@ export default {
 
         // Sync logs state (keyed by case_task_instance_id)
         const sync_logs_map = ref({})
+        const automation_map = ref({})
 
         // Inline identifier editing
         const identifier_editing = ref(false)
@@ -110,7 +111,219 @@ export default {
             sync_direction.value = dir
             if (dir === 'logs' && sync_selected_instance.value) {
                 load_sync_logs(sync_selected_instance.value.case_task_instance_id)
+            } else if (dir === 'automation' && sync_selected_instance.value) {
+                load_automation(sync_selected_instance.value.case_task_instance_id)
             }
+        }
+
+        function default_automation_schedule(direction) {
+            return {
+                direction,
+                enabled: false,
+                interval: 'manual',
+                on_change: false,
+                module_name: direction === 'receive' ? 'receive_misp_object' : 'misp_object_event',
+                payload: {},
+                conflict_strategy: 'ask',
+                last_run_at: null,
+                next_run_at: null
+            }
+        }
+
+        function get_automation_state(instance_id) {
+            if (!automation_map.value[instance_id]) {
+                automation_map.value = {
+                    ...automation_map.value,
+                    [instance_id]: {
+                        loading: false,
+                        loaded: false,
+                        saving: {},
+                        resolving: {},
+                        show_history: false,
+                        schedules: {
+                            send: default_automation_schedule('send'),
+                            receive: default_automation_schedule('receive')
+                        },
+                        conflicts: [],
+                        history: []
+                    }
+                }
+            }
+            return automation_map.value[instance_id]
+        }
+
+        function normalize_automation_schedule(direction, schedule) {
+            const allowedConflictStrategies = ['ask', 'prefer_flowintel', 'prefer_misp']
+            const conflictStrategy = allowedConflictStrategies.includes(schedule?.conflict_strategy)
+                ? schedule.conflict_strategy
+                : 'ask'
+            return {
+                ...default_automation_schedule(direction),
+                ...(schedule || {}),
+                conflict_strategy: conflictStrategy || 'ask',
+                payload: schedule?.payload || {}
+            }
+        }
+
+        async function load_automation(instance_id, force = false) {
+            const state = get_automation_state(instance_id)
+            if (state.loaded && !force) return
+            state.loading = true
+            const res = await fetch('/case/' + getCaseId() + '/connectors/' + instance_id + '/sync_automation')
+            state.loading = false
+            if (res.status === 200) {
+                const data = await res.json()
+                state.schedules = {
+                    send: normalize_automation_schedule('send', data.schedules?.send),
+                    receive: normalize_automation_schedule('receive', data.schedules?.receive)
+                }
+                state.conflicts = data.conflicts || []
+                state.history = data.history || []
+                state.loaded = true
+                emit('automation_change')
+            } else {
+                display_toast(res)
+            }
+        }
+
+        async function save_automation(instance, direction) {
+            if (!instance?.can_use_connector) return
+            const state = get_automation_state(instance.case_task_instance_id)
+            const schedule = state.schedules[direction]
+            state.saving = { ...state.saving, [direction]: true }
+            const res = await fetch('/case/' + getCaseId() + '/connectors/' + instance.case_task_instance_id + '/sync_automation', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                body: JSON.stringify(schedule)
+            })
+            state.saving = { ...state.saving, [direction]: false }
+            if (res.status === 200) {
+                const data = await res.json()
+                state.schedules = {
+                    ...state.schedules,
+                    [direction]: normalize_automation_schedule(direction, data.schedule)
+                }
+                emit('automation_change')
+            }
+            display_toast(res)
+        }
+
+        async function resolve_automation_conflict(instance, conflict, resolution) {
+            if (!instance?.can_use_connector) return
+            const state = get_automation_state(instance.case_task_instance_id)
+            state.resolving = { ...state.resolving, [conflict.id]: true }
+            const conflictId = conflict.parent_conflict_id || conflict.id
+            const resolutionPayload = {}
+            if (conflict.detail_token) {
+                resolutionPayload.detail_token = conflict.detail_token
+            }
+            const res = await fetch('/case/' + getCaseId() + '/connectors/' + instance.case_task_instance_id + '/sync_conflicts/' + conflictId + '/resolve', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': $('#csrf_token').val(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resolution, resolution_payload: resolutionPayload })
+            })
+            state.resolving = { ...state.resolving, [conflict.id]: false }
+            if (res.status === 200) {
+                state.conflicts = state.conflicts.filter(c => c.id !== conflict.id)
+                touchCaseLastModif(props.cases_info)
+                emit('modif_misp_objects')
+                emit('case_connectors', true)
+                emit('automation_change')
+            }
+            display_toast(res)
+        }
+
+        function automation_module_options(direction) {
+            const expected_type = direction === 'send' ? 'send_to' : 'receive_from'
+            return Object.keys(props.modules || {}).filter(key => {
+                const mod = props.modules[key]
+                return mod?.type === expected_type && mod?.config?.connector === 'misp'
+            })
+        }
+
+        function has_active_automation(instance_id) {
+            const state = get_automation_state(instance_id)
+            return !!(state.schedules?.send?.enabled || state.schedules?.receive?.enabled)
+        }
+
+        function snapshot_label(key) {
+            const labels = {
+                value: 'Value',
+                type: 'Type',
+                comment: 'Comment',
+                object_relation: 'Relation',
+                first_seen: 'First seen',
+                last_seen: 'Last seen',
+                timestamp_at: 'Modified at',
+                timestamp: 'Timestamp',
+                info: 'Event',
+                case_title: 'Case',
+                case_last_modif: 'Case modified',
+                last_run_at: 'Last sync'
+            }
+            return labels[key] || key.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())
+        }
+
+        function is_snapshot_scalar(value) {
+            return ['string', 'number', 'boolean'].includes(typeof value)
+        }
+
+        function format_snapshot_scalar(value) {
+            if (value === null || value === undefined || value === '') return null
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+            return String(value)
+        }
+
+        function conflict_snapshot_lines(conflict, side) {
+            const local = conflict?.local_snapshot || {}
+            const remote = conflict?.remote_snapshot || {}
+            const source = side === 'local' ? local : remote
+            const other = side === 'local' ? remote : local
+
+            if (source.details && Array.isArray(source.details)) {
+                const detailLines = []
+                for (const detail of source.details.slice(0, 3)) {
+                    if (!detail || typeof detail !== 'object') continue
+                    const value = format_snapshot_scalar(detail.value || detail.error || detail.status)
+                    if (!value) continue
+                    const fieldLabel = detail.field ? snapshot_label(detail.field) : null
+                    const detailLabel = [detail.label, fieldLabel].filter(Boolean).join(' - ')
+                    detailLines.push({
+                        key: `detail-${detail.name || detail.label || detailLines.length}`,
+                        label: detailLabel || detail.name || detail.label || 'Detail',
+                        value
+                    })
+                }
+                if (detailLines.length) return detailLines
+            }
+
+            const preferredKeys = ['value', 'type', 'comment', 'object_relation', 'first_seen', 'last_seen']
+            const allKeys = [...new Set([...preferredKeys, ...Object.keys(source), ...Object.keys(other)])]
+            const lines = []
+
+            for (const key of allKeys) {
+                const sourceValue = source[key]
+                const otherValue = other[key]
+                if (!is_snapshot_scalar(sourceValue)) continue
+                const formattedValue = format_snapshot_scalar(sourceValue)
+                if (!formattedValue) continue
+                if (format_snapshot_scalar(sourceValue) === format_snapshot_scalar(otherValue)) continue
+                lines.push({
+                    key,
+                    label: snapshot_label(key),
+                    value: formattedValue
+                })
+            }
+
+            return lines.slice(0, 4)
+        }
+
+        function history_resolution_label(conflict) {
+            const resolution = conflict?.resolved_resolution || conflict?.resolution
+            if (resolution === 'prefer_flowintel') return 'Flowintel'
+            if (resolution === 'prefer_misp') return 'MISP'
+            if (resolution === 'skip') return 'Skip'
+            return '-'
         }
 
         function get_misp_search(instance_id) {
@@ -207,18 +420,25 @@ export default {
         }
 
         // Auto-init MispSyncPanel when instance or direction changes; reset identifier edit on instance change
-        watch(sync_selected_instance, () => {
+        watch(sync_selected_instance, (inst) => {
             identifier_editing.value = false
             identifier_draft.value = ''
             connector_info_expanded.value = false
-        })
+            if ((props.mode === 'sync' || props.mode === 'automation') && inst) {
+                load_automation(inst.case_task_instance_id)
+            }
+        }, { immediate: true })
         watch(search_selected_instance, () => {
             connector_info_expanded.value = false
         })
         watch([sync_selected_instance, sync_direction], async ([inst, dir]) => {
-            if (props.mode !== 'sync' || !inst) return
+            if ((props.mode !== 'sync' && props.mode !== 'automation') || !inst) return
             if (dir === 'logs') {
                 load_sync_logs(inst.case_task_instance_id)
+                return
+            }
+            if (dir === 'automation') {
+                load_automation(inst.case_task_instance_id)
                 return
             }
             await nextTick()
@@ -234,12 +454,21 @@ export default {
             search_instance_idx,
             search_selected_instance,
             sync_logs_map,
+            automation_map,
             identifier_editing,
             identifier_draft,
             connector_info_expanded,
             can_view_extended_details,
             set_sync_direction,
             refresh_sync_logs,
+            get_automation_state,
+            load_automation,
+            save_automation,
+            resolve_automation_conflict,
+            automation_module_options,
+            has_active_automation,
+            conflict_snapshot_lines,
+            history_resolution_label,
             start_edit_identifier,
             cancel_edit_identifier,
             save_edit_identifier,
@@ -250,8 +479,8 @@ export default {
         }
     },
     template: `
-        <!-- MODE: sync (Send & Receive) -->
-        <template v-if="mode === 'sync'">
+        <!-- MODE: sync / automation -->
+        <template v-if="mode === 'sync' || mode === 'automation'">
             <div v-if="!case_task_connectors_list || !case_task_connectors_list.length" class="text-muted py-3">
                 <i class="fa-solid fa-circle-info me-2"></i>No MISP connector linked to this case yet.
             </div>
@@ -346,11 +575,11 @@ export default {
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="!sync_selected_instance.can_use_connector && sync_direction !== 'logs'" class="alert alert-info py-2 px-3 mb-3">
+                            <div v-if="mode === 'sync' && !sync_selected_instance.can_use_connector && sync_direction !== 'logs'" class="alert alert-info py-2 px-3 mb-3">
                                 You can inspect which objects are synced with this connector, but only connectors you can use directly are interactive.
                             </div>
                             <!-- Direction tabs: Send / Receive / Logs -->
-                            <ul class="nav nav-tabs mb-3">
+                            <ul v-if="mode === 'sync'" class="nav nav-tabs mb-3">
                                 <li class="nav-item">
                                     <button :class="['nav-link', {active: sync_direction === 'send'}]" @click="set_sync_direction('send')">
                                         <i class="fa-solid fa-arrow-up fa-sm me-1"></i>Send
@@ -368,7 +597,7 @@ export default {
                                 </li>
                             </ul>
                             <!-- MispSyncPanel (Send / Receive) -->
-                            <template v-if="sync_direction !== 'logs'">
+                            <template v-if="mode === 'sync' && sync_direction !== 'logs' && sync_direction !== 'automation'">
                                     <misp-sync-panel
                                         :ref="el => sync_panel_ref = el"
                                         :case_id="object_id"
@@ -380,6 +609,212 @@ export default {
                                         :cases_info="cases_info"
                                         @sync_done="(e) => on_sync_done(e)">
                                     </misp-sync-panel>
+                            </template>
+                            <!-- Automation panel -->
+                            <template v-else-if="sync_direction === 'automation'">
+                                <div v-if="get_automation_state(sync_selected_instance.case_task_instance_id).loading" class="text-muted small">
+                                    <span class="spinner-border spinner-border-sm me-2"></span>Loading automation…
+                                </div>
+                                <template v-else>
+                                    <div v-if="!sync_selected_instance.can_use_connector" class="alert alert-info py-2 px-3 mb-3">
+                                        Automation can only be changed on connectors you can use directly.
+                                    </div>
+                                    <div class="row g-3">
+                                        <div v-for="direction in ['send', 'receive']" :key="'automation-'+direction" class="col-lg-6">
+                                            <div class="card h-100">
+                                                <div class="card-header d-flex align-items-center justify-content-between py-2">
+                                                    <span class="fw-semibold">
+                                                        <i :class="direction === 'send' ? 'fa-solid fa-arrow-up me-1' : 'fa-solid fa-arrow-down me-1'"></i>
+                                                        [[ direction === 'send' ? 'Update MISP from case' : 'Update case from MISP' ]]
+                                                    </span>
+                                                    <div class="form-check form-switch mb-0">
+                                                        <input class="form-check-input" type="checkbox"
+                                                               :id="'automation-enabled-'+sync_selected_instance.case_task_instance_id+'-'+direction"
+                                                               v-model="get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].enabled"
+                                                               :disabled="!sync_selected_instance.can_use_connector">
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row g-2">
+                                                        <div class="col-md-6">
+                                                            <label class="form-label small fw-semibold mb-1">Frequency</label>
+                                                            <select class="form-select form-select-sm"
+                                                                    v-model="get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].interval"
+                                                                    :disabled="!sync_selected_instance.can_use_connector">
+                                                                <option value="manual">Manual only</option>
+                                                                <option value="daily">Daily</option>
+                                                                <option value="weekly">Weekly</option>
+                                                                <option value="monthly">Monthly</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label class="form-label small fw-semibold mb-1">Module</label>
+                                                            <select class="form-select form-select-sm"
+                                                                    v-model="get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].module_name"
+                                                                    :disabled="!sync_selected_instance.can_use_connector">
+                                                                <option v-for="module_key in automation_module_options(direction)" :key="'automation-module-'+direction+'-'+module_key" :value="module_key">[[ module_key ]]</option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                       :id="'automation-change-'+sync_selected_instance.case_task_instance_id+'-'+direction"
+                                                                       v-model="get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].on_change"
+                                                                       :disabled="!sync_selected_instance.can_use_connector">
+                                                                <label class="form-check-label small" :for="'automation-change-'+sync_selected_instance.case_task_instance_id+'-'+direction">
+                                                                    Run when the Flowintel case changes
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-7">
+                                                            <label class="form-label small fw-semibold mb-1">Collision handling</label>
+                                                            <select class="form-select form-select-sm"
+                                                                    v-model="get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].conflict_strategy"
+                                                                    :disabled="!sync_selected_instance.can_use_connector">
+                                                                <option value="ask">Ask for validation</option>
+                                                                <option value="prefer_flowintel">Prefer Flowintel</option>
+                                                                <option value="prefer_misp">Prefer MISP</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
+                                                        <div class="text-muted small">
+                                                            <div>Last run: [[ get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].last_run_at || 'Never' ]]</div>
+                                                            <div>Next run: [[ get_automation_state(sync_selected_instance.case_task_instance_id).schedules[direction].next_run_at || 'Not scheduled' ]]</div>
+                                                        </div>
+                                                        <button type="button" class="btn btn-sm btn-primary"
+                                                                :disabled="!sync_selected_instance.can_use_connector || get_automation_state(sync_selected_instance.case_task_instance_id).saving[direction]"
+                                                                @click="save_automation(sync_selected_instance, direction)">
+                                                            <span v-if="get_automation_state(sync_selected_instance.case_task_instance_id).saving[direction]" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
+                                                            Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <span class="text-muted small fw-semibold">Pending collision review</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="load_automation(sync_selected_instance.case_task_instance_id, true)">
+                                                <i class="fa-solid fa-rotate-right fa-xs"></i>
+                                            </button>
+                                        </div>
+                                        <div v-if="!get_automation_state(sync_selected_instance.case_task_instance_id).conflicts.length" class="text-muted small">
+                                            <i class="fa-solid fa-circle-info me-1"></i>No pending collisions.
+                                        </div>
+                                        <div v-else class="table-responsive">
+                                            <table class="table table-sm align-middle">
+                                                <thead>
+                                                    <tr class="text-muted" style="font-size:0.8em;">
+                                                        <th>Created</th>
+                                                        <th>Direction</th>
+                                                        <th>Item</th>
+                                                        <th>Flowintel</th>
+                                                        <th>MISP</th>
+                                                        <th class="text-end">Resolve</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="conflict in get_automation_state(sync_selected_instance.case_task_instance_id).conflicts" :key="'conflict-'+conflict.id" style="font-size:0.85em;">
+                                                        <td class="text-muted">[[ conflict.created_at ]]</td>
+                                                        <td>
+                                                            <span v-if="conflict.direction === 'send'" class="badge bg-secondary"><i class="fa-solid fa-arrow-up me-1"></i>Send</span>
+                                                            <span v-else class="badge bg-info text-dark"><i class="fa-solid fa-arrow-down me-1"></i>Receive</span>
+                                                        </td>
+                                                        <td><span class="badge bg-light text-dark border">[[ conflict.item_type ]]</span></td>
+                                                        <td>
+                                                            <div class="text-muted small">[[ conflict.local_ref || '-' ]]</div>
+                                                            <div v-for="line in conflict_snapshot_lines(conflict, 'local')" :key="'local-'+conflict.id+'-'+line.key" class="small lh-sm mt-1">
+                                                                <span class="fw-semibold">[[ line.label ]]: </span>
+                                                                <span class="text-muted">[[ line.value ]]</span>
+                                                            </div>
+                                                            <div v-if="!conflict_snapshot_lines(conflict, 'local').length" class="text-muted small mt-1">No detail</div>
+                                                        </td>
+                                                        <td>
+                                                            <div class="text-muted small">[[ conflict.remote_ref || '-' ]]</div>
+                                                            <div v-for="line in conflict_snapshot_lines(conflict, 'remote')" :key="'remote-'+conflict.id+'-'+line.key" class="small lh-sm mt-1">
+                                                                <span class="fw-semibold">[[ line.label ]]: </span>
+                                                                <span class="text-muted">[[ line.value ]]</span>
+                                                            </div>
+                                                            <div v-if="!conflict_snapshot_lines(conflict, 'remote').length" class="text-muted small mt-1">No detail</div>
+                                                        </td>
+                                                        <td class="text-end">
+                                                            <div class="btn-group btn-group-sm">
+                                                                <button type="button" class="btn btn-outline-secondary"
+                                                                        :disabled="get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"
+                                                                        @click="resolve_automation_conflict(sync_selected_instance, conflict, 'prefer_flowintel')">Flowintel</button>
+                                                                <button type="button" class="btn btn-outline-secondary"
+                                                                        :disabled="get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"
+                                                                        @click="resolve_automation_conflict(sync_selected_instance, conflict, 'prefer_misp')">MISP</button>
+                                                                <button type="button" class="btn btn-outline-warning"
+                                                                        :disabled="get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"
+                                                                        @click="resolve_automation_conflict(sync_selected_instance, conflict, 'skip')">Skip</button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <span class="text-muted small fw-semibold">Past collision sync</span>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-secondary"
+                                                    @click="get_automation_state(sync_selected_instance.case_task_instance_id).show_history = !get_automation_state(sync_selected_instance.case_task_instance_id).show_history">
+                                                <i :class="get_automation_state(sync_selected_instance.case_task_instance_id).show_history ? 'fa-solid fa-chevron-up fa-xs me-1' : 'fa-solid fa-clock-rotate-left fa-xs me-1'"></i>
+                                                [[ get_automation_state(sync_selected_instance.case_task_instance_id).show_history ? 'Hide' : 'Show' ]]
+                                            </button>
+                                        </div>
+                                        <div v-if="get_automation_state(sync_selected_instance.case_task_instance_id).show_history">
+                                            <div v-if="!get_automation_state(sync_selected_instance.case_task_instance_id).history.length" class="text-muted small">
+                                                <i class="fa-solid fa-circle-info me-1"></i>No collision history yet.
+                                            </div>
+                                            <div v-else class="table-responsive">
+                                                <table class="table table-sm align-middle">
+                                                    <thead>
+                                                        <tr class="text-muted" style="font-size:0.8em;">
+                                                            <th>Resolved</th>
+                                                            <th>Direction</th>
+                                                            <th>Item</th>
+                                                            <th>Flowintel</th>
+                                                            <th>MISP</th>
+                                                            <th>Choice</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="conflict in get_automation_state(sync_selected_instance.case_task_instance_id).history" :key="'history-'+conflict.id" style="font-size:0.85em;">
+                                                            <td class="text-muted">[[ conflict.resolved_at || conflict.created_at ]]</td>
+                                                            <td>
+                                                                <span v-if="conflict.direction === 'send'" class="badge bg-secondary"><i class="fa-solid fa-arrow-up me-1"></i>Send</span>
+                                                                <span v-else class="badge bg-info text-dark"><i class="fa-solid fa-arrow-down me-1"></i>Receive</span>
+                                                            </td>
+                                                            <td><span class="badge bg-light text-dark border">[[ conflict.item_type ]]</span></td>
+                                                            <td>
+                                                                <div class="text-muted small">[[ conflict.local_ref || '-' ]]</div>
+                                                                <div v-for="line in conflict_snapshot_lines(conflict, 'local')" :key="'history-local-'+conflict.id+'-'+line.key" class="small lh-sm mt-1">
+                                                                    <span class="fw-semibold">[[ line.label ]]:</span>
+                                                                    <span class="text-muted">[[ line.value ]]</span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div class="text-muted small">[[ conflict.remote_ref || '-' ]]</div>
+                                                                <div v-for="line in conflict_snapshot_lines(conflict, 'remote')" :key="'history-remote-'+conflict.id+'-'+line.key" class="small lh-sm mt-1">
+                                                                    <span class="fw-semibold">[[ line.label ]]:</span>
+                                                                    <span class="text-muted">[[ line.value ]]</span>
+                                                                </div>
+                                                            </td>
+                                                            <td><span class="badge bg-light text-dark border">[[ history_resolution_label(conflict) ]]</span></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
                             </template>
                             <!-- Logs panel -->
                             <template v-else>
