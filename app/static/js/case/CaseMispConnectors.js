@@ -197,15 +197,17 @@ export default {
                 body: JSON.stringify(schedule)
             })
             state.saving = { ...state.saving, [direction]: false }
+            let toastPayload = res
             if (res.status === 200) {
                 const data = await res.json()
+                toastPayload = data
                 state.schedules = {
                     ...state.schedules,
                     [direction]: normalize_automation_schedule(direction, data.schedule)
                 }
                 emit('automation_change')
             }
-            display_toast(res)
+            display_toast(toastPayload)
         }
 
         async function resolve_automation_conflict(instance, conflict, resolution) {
