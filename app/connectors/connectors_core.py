@@ -940,7 +940,7 @@ def get_due_misp_sync_schedules(now=None, limit=50):
                 last_seen = as_utc_datetime(schedule.last_seen_case_modif or schedule.last_run_at or schedule.created_at)
                 case_last_modif = as_utc_datetime(case.last_modif)
                 change_due = bool(case_last_modif and (last_seen is None or case_last_modif > last_seen))
-        if interval_due or change_due:
+        if interval_due or (schedule.interval != "manual" and change_due):
             due.append(schedule)
         if len(due) >= limit:
             break
@@ -1017,7 +1017,7 @@ def get_resolved_misp_event_conflict(case_id, case_connector_instance_id, direct
     ).order_by(Case_Misp_Sync_Conflict.resolved_at.desc()).limit(10).all()
     for conflict in conflicts:
         remote_snapshot = conflict.remote_snapshot or {}
-        if remote_snapshot.get("timestamp") == str(remote_timestamp) and conflict.resolution in {"prefer_flowintel", "prefer_misp"}:
+        if remote_snapshot.get("timestamp") == str(remote_timestamp) and conflict.resolution in {"prefer_flowintel", "prefer_misp", "skip"}:
             return conflict
     return None
 
