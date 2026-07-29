@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
+import { mispObjectIconClass } from '/static/js/utils.js'
 const { ref, computed, watch } = Vue
 
 /**
@@ -137,12 +138,16 @@ export default {
             display_toast(res)
         }
 
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
         return {
             case_connectors, selected_instance_id, is_loading_connectors,
             remote_objects, remote_search, remote_type_filter, is_loading_remote,
             is_linking,
             filtered_remote, remote_type_options, misp_connectors, selected_connector,
-            current_link_for_instance,
+            current_link_for_instance, objectIconClass,
             on_show, load_remote_objects, link_to, unlink
         }
     },
@@ -224,7 +229,7 @@ export default {
                         <div class="col-md-4">
                             <div class="card h-100">
                                 <div class="card-header py-2 fw-semibold">
-                                    <i class="fa-solid fa-cube me-1"></i>Local object
+                                    <i :class="objectIconClass(local_object.object_name, 'me-1')"></i>Local object
                                 </div>
                                 <div class="card-body p-2" v-if="local_object">
                                     <p class="mb-1"><span class="badge bg-secondary">[[ local_object.object_name ]]</span></p>

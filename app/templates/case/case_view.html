@@ -271,7 +271,7 @@
         <li class="nav-item" v-show="is_tab_visible('misp')">
             <button class="nav-link" id="tab-misp" @click="active_tab('misp')">
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
-                <i class="fa-solid fa-plug fa-sm me-1"></i>
+                <i class="misp-icon misp-icon-misp misp-simple me-1"></i>
                 <span class="section-title fs-6">MISP</span>
                 <span class="badge text-bg-secondary ms-1" v-if="nb_misp_total > 0">[[nb_misp_total]]</span>
             </button>
@@ -614,7 +614,7 @@
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">
 					<button class="nav-link active" id="subtab-case-note" aria-current="page" @click="active_subtab_note('case')">
-						<i class="fa-solid fa-briefcase fa-sm me-1"></i><span class="section-title">Case</span>
+						<i class="fa-solid fa-folder-open fa-sm me-1"></i><span class="section-title">Case</span>
 					</button>
 				</li>
 				<li class="nav-item">
@@ -727,13 +727,13 @@
                 <ul class="nav nav-tabs" style="margin-bottom: 10px;">
                     <li class="nav-item">
                         <button :class="['nav-link', {active: subtab_misp === 'objects'}]" id="subtab-misp-objects" @click="active_subtab_misp('objects')">
-                            <i class="fa-solid fa-cubes fa-sm me-1"></i><span class="section-title">MISP Objects</span>
+                            <i class="misp-icon misp-icon-object misp-simple me-1"></i><span class="section-title">MISP Objects</span>
                             <span class="badge text-bg-secondary ms-1" v-if="nb_misp_objects > 0">[[nb_misp_objects]]</span>
                         </button>
                     </li>
                     <li class="nav-item">
                         <button :class="['nav-link', {active: subtab_misp === 'attributes'}]" id="subtab-misp-attributes" @click="active_subtab_misp('attributes')">
-                            <i class="fa-solid fa-tag fa-sm me-1"></i><span class="section-title">MISP Attributes</span>
+                            <i class="misp-icon misp-icon-attribute misp-simple me-1"></i><span class="section-title">MISP Attributes</span>
                             <span v-if="is_loading_misp_attrs" class="spinner-border spinner-border-sm ms-1" role="status" aria-hidden="true" style="width:0.75rem;height:0.75rem;"></span>
                             <span class="badge text-bg-secondary ms-1" v-if="nb_misp_attrs > 0">[[nb_misp_attrs]]</span>
                         </button>
@@ -999,7 +999,7 @@
                         </div>
                     </div>
                     <hr>
-                    <div>Taxonomies:</div>
+                    <div><i class="misp-icon misp-icon-taxonomy misp-simple me-1"></i>Taxonomies:</div>
                     <div class="d-flex w-100 justify-content-center">
                         <div style="display:flex">
                             <span style="margin-right: 10px">OR</span>
@@ -1030,7 +1030,7 @@
                     </div>
                     <hr>
 
-                    <div>Galaxies:</div>
+                    <div><i class="misp-icon misp-icon-galaxy misp-simple me-1"></i>Galaxies:</div>
                     <div class="d-flex w-100 justify-content-center">
                         <div style="display:flex">
                             <span style="margin-right: 10px">OR</span>
@@ -1062,7 +1062,7 @@
                     
                     <hr>
 
-                    <div>Custom Tags:</div>
+                    <div><i class="misp-icon misp-icon-tag misp-simple me-1"></i>Custom Tags:</div>
                     <div>
                         <template v-if="custom_tags">
                             <select data-placeholder="Custom tags" class="select2-filter form-control" multiple name="task_custom_tags_select" id="task_custom_tags_select" >

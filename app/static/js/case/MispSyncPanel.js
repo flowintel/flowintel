@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
+import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
 const { ref, computed, watch, reactive } = Vue
 
 export const REPORT_TEMPLATE_UUID = '70a68471-df22-4e3f-aa1a-5a3be19f82df'
@@ -143,6 +144,14 @@ export default {
 
         function toggleSyncList(key) {
             expanded_sync_lists[key] = !expanded_sync_lists[key]
+        }
+
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
+        function attributeIconClass(attributeType, extraClasses = '') {
+            return mispAttributeIconClass(attributeType, extraClasses)
         }
 
         async function load_local_objects() {
@@ -406,7 +415,8 @@ export default {
             is_module_available,
             // new panel state
             active_panel, case_fields, selected_tasks_map, tasks, selected_report_count,
-            syncListKey, visibleSyncInstances, hiddenSyncCount, toggleSyncList
+            syncListKey, visibleSyncInstances, hiddenSyncCount, toggleSyncList,
+            objectIconClass, attributeIconClass
         }
     },
     template: `
@@ -505,7 +515,7 @@ export default {
                                                v-model="selected_local_ids" :id="'lobj-'+instance.case_task_instance_id+'-'+obj.object_id"
                                                :disabled="direction === 'receive'">
                                         <label class="form-check-label" :for="'lobj-'+instance.case_task_instance_id+'-'+obj.object_id">
-                                            <span class="fw-semibold">[[ obj.object_name ]]</span>
+                                            <span class="fw-semibold"><i :class="objectIconClass(obj.object_name, 'me-1 text-secondary')"></i>[[ obj.object_name ]]</span>
                                             <span class="text-muted ms-1" style="font-size:0.8em;">([[ obj.attributes.length ]] attrs)</span>
                                             <template v-if="obj.synced_instances && obj.synced_instances.length">
                                                 <span v-for="si in visibleSyncInstances(obj.synced_instances, syncListKey('local-object', obj.object_id))" :key="si.instance_id"
@@ -540,7 +550,7 @@ export default {
                             <!-- Standalone attributes in local panel -->
                             <div v-if="local_standalone_attrs.length" class="mt-2 pt-2 border-top">
                                 <div class="d-flex align-items-center justify-content-between mb-1">
-                                    <span class="text-muted small fw-semibold"><i class="fa-solid fa-tag me-1"></i>Standalone attributes ([[ local_standalone_attrs.length ]])</span>
+                                    <span class="text-muted small fw-semibold"><i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone attributes ([[ local_standalone_attrs.length ]])</span>
                                     <button v-if="direction === 'send'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_local_sa_all()">
                                         [[ selected_local_sa_ids.length === local_standalone_attrs.length ? 'Deselect all' : 'Select all' ]]
                                     </button>
@@ -551,7 +561,7 @@ export default {
                                                v-model="selected_local_sa_ids" :id="'lsa-'+instance.case_task_instance_id+'-'+sa.id"
                                                :disabled="direction === 'receive'">
                                         <label class="form-check-label" :for="'lsa-'+instance.case_task_instance_id+'-'+sa.id" style="font-size:0.8em;">
-                                            <span class="badge bg-secondary me-1">[[ sa.type ]]</span>
+                                            <span class="badge bg-secondary me-1"><i :class="attributeIconClass(sa.type, 'me-1')"></i>[[ sa.type ]]</span>
                                             <span>[[ sa.value.length > 50 ? sa.value.substring(0,50)+'…' : sa.value ]]</span>
                                             <template v-if="sa.synced_instances && sa.synced_instances.length">
                                                 <span v-for="s in visibleSyncInstances(sa.synced_instances, syncListKey('local-attr', sa.id))" :key="'lsa-sync-'+sa.id+'-'+s.instance_id"
@@ -629,7 +639,7 @@ export default {
                                                 v-model="selected_remote_uuids" :id="'robj-'+instance.case_task_instance_id+'-'+obj.uuid"
                                                 :disabled="direction === 'send'">
                                         <label class="form-check-label" :for="'robj-'+instance.case_task_instance_id+'-'+obj.uuid">
-                                            <span class="fw-semibold">[[ obj.name ]]</span>
+                                            <span class="fw-semibold"><i :class="objectIconClass(obj.name, 'me-1 text-secondary')"></i>[[ obj.name ]]</span>
                                             <span class="text-muted ms-1" style="font-size:0.8em;">([[ obj.attribute_count ]] attrs)</span>
                                             <span v-if="is_synced_locally(obj.uuid)" class="badge bg-success text-white ms-1" style="font-size:0.65em;" title="Already synced locally">
                                                 <i class="fa-solid fa-check me-1"></i>Synced
@@ -645,7 +655,7 @@ export default {
                                 <!-- Standalone attributes in remote panel -->
                                 <div v-if="remote_standalone_attrs.length" class="mt-2 pt-2 border-top">
                                     <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <span class="text-muted small fw-semibold"><i class="fa-solid fa-tag me-1"></i>Standalone attributes ([[ remote_standalone_attrs.length ]])</span>
+                                        <span class="text-muted small fw-semibold"><i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone attributes ([[ remote_standalone_attrs.length ]])</span>
                                         <button v-if="direction === 'receive'" type="button" class="btn btn-link btn-sm py-0" @click="toggle_remote_sa_all()">
                                             [[ selected_remote_sa_uuids.length === remote_standalone_attrs.length ? 'Deselect all' : 'Select all' ]]
                                         </button>
@@ -656,7 +666,7 @@ export default {
                                                     v-model="selected_remote_sa_uuids" :id="'rsa-'+instance.case_task_instance_id+'-'+sa.uuid"
                                                     :disabled="direction === 'send'">
                                             <label class="form-check-label" :for="'rsa-'+instance.case_task_instance_id+'-'+sa.uuid" style="font-size:0.8em;">
-                                                <span class="badge bg-secondary me-1">[[ sa.type ]]</span>
+                                                <span class="badge bg-secondary me-1"><i :class="attributeIconClass(sa.type, 'me-1')"></i>[[ sa.type ]]</span>
                                                 <span>[[ sa.value.length > 50 ? sa.value.substring(0,50)+'…' : sa.value ]]</span>
                                             </label>
                                         </div>

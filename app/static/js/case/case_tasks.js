@@ -366,10 +366,10 @@ export default {
 						<i class="fa-solid fa-note-sticky me-1"></i> [[ task.notes ? task.notes.length : 0 ]]
 					</span>
 					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Linked MISP-Objects">
-						<i class="fa-solid fa-database me-1"></i> [[ task.misp_object_links.length ? task.misp_object_links.length : 0 ]]
+						<i class="misp-icon misp-icon-object misp-simple me-1"></i> [[ task.misp_object_links.length ? task.misp_object_links.length : 0 ]]
 					</span>
 					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Linked standalone MISP-Attributes">
-						<i class="fa-solid fa-cube me-1"></i> [[ task.misp_attribute_links ? task.misp_attribute_links.length : 0 ]]
+						<i class="misp-icon misp-icon-attribute misp-simple me-1"></i> [[ task.misp_attribute_links ? task.misp_attribute_links.length : 0 ]]
 					</span>
 					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Urls/Tools">
 						<i class="fa-solid fa-link me-1"></i> [[ task.urls_tools ? task.urls_tools.length : 0 ]]
@@ -423,7 +423,7 @@ export default {
 				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+							<i class="misp-icon misp-icon-tag misp-simple" style="margin-right: 3px; margin-left: 3px;"></i>
 							[[tag.name]]
 						</div>
 					</template>

@@ -1,6 +1,7 @@
 import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
+import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
 const { ref, onMounted, nextTick, computed } = Vue
 
 export default {
@@ -97,9 +98,9 @@ export default {
                     const cleanText = text.split('—')[0]
                     const headlineText = cleanText.includes(']') ? (cleanText.split(']').slice(1).join(']').trim() || cleanText) : cleanText
                     if (isStandaloneAttr) {
-                        headline = '<span style="color:#fd7e14;"><i class="fa-solid fa-tag me-1"></i></span> ' + headlineText
+                        headline = '<span style="color:#fd7e14;"><i class="' + mispAttributeIconClass('attribute', 'me-1') + '"></i></span> ' + headlineText
                     } else {
-                        headline = '<span style="color:#17a2b8;"><i class="fa-solid fa-cubes me-1"></i></span> ' + headlineText
+                        headline = '<span style="color:#17a2b8;"><i class="' + mispObjectIconClass('object', 'me-1') + '"></i></span> ' + headlineText
                     }
                 } else {
                     headline = text
@@ -368,7 +369,7 @@ export default {
                     <i class="fa-solid fa-plus me-1"></i>Add Event
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import selected MISP objects and standalone attributes as timeline events">
-                    <i class="fa-solid fa-cubes me-1"></i>Import MISP Data
+                    <i class="misp-icon misp-icon-misp misp-simple me-1"></i>Import MISP Data
                 </button>
             </div>
         </div>
@@ -493,10 +494,10 @@ export default {
                             </td>
                             <td>
                                 <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
-                                    <i class="fa-solid fa-cubes me-1"></i>Object
+                                    <i class="misp-icon misp-icon-object misp-simple me-1"></i>Object
                                 </span>
                                 <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
-                                    <i class="fa-solid fa-tag me-1"></i>Standalone Attr
+                                    <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
                                 </span>
                             </td>
                             <td>
@@ -513,10 +514,10 @@ export default {
                             <td>[[ ev.description ]]</td>
                             <td>
                                 <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
-                                    <i class="fa-solid fa-cubes me-1"></i>Object
+                                    <i class="misp-icon misp-icon-object misp-simple me-1"></i>Object
                                 </span>
                                 <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
-                                    <i class="fa-solid fa-tag me-1"></i>Standalone Attr
+                                    <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
                                 </span>
                             </td>
                             <td>

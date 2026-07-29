@@ -281,10 +281,10 @@
                                 <i class="fa-solid fa-file-lines me-1"></i> [[ case_loc.files ? case_loc.files.length : 0 ]]
                             </span>
                             <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="MISP-Objects">
-                                <i class="fa-solid fa-database me-1"></i> [[ case_loc.nb_objects ? case_loc.nb_objects : 0 ]]
+                                <i class="misp-icon misp-icon-object misp-simple me-1"></i> [[ case_loc.nb_objects ? case_loc.nb_objects : 0 ]]
                             </span>
                             <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Standalone MISP-Attributes">
-                                <i class="fa-solid fa-cube me-1"></i> [[ case_loc.nb_standalone_attrs ? case_loc.nb_standalone_attrs : 0 ]]
+                                <i class="misp-icon misp-icon-attribute misp-simple me-1"></i> [[ case_loc.nb_standalone_attrs ? case_loc.nb_standalone_attrs : 0 ]]
                             </span>
                             <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Links">
                                 <i class="fa-solid fa-link me-1"></i> [[ case_loc.link_to ? case_loc.link_to.length : 0 ]]
@@ -319,14 +319,14 @@
                                     <template v-for="item in visibleTags(case_loc)">
                                         <template v-if="item.type === 'custom'">
                                             <div class="tag" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
-                                                <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
+                                                <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:5px"></i>
                                                 [[ item.data.name ]]
                                             </div>
                                         </template>
                                         <template v-else-if="item.type === 'tag'">
                                             <div class="tag" :title="item.data.description" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
                                                 <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
-                                                <i v-else class="fa-solid fa-tag" style="margin-right:6px"></i>
+                                                <i v-else class="misp-icon misp-icon-tag misp-simple"></i>
                                                 [[ item.data.name ]]
                                             </div>
                                         </template>

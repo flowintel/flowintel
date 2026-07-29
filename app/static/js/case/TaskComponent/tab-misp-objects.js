@@ -1,5 +1,6 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
+import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
 const { ref, onMounted, computed, onBeforeUnmount } = Vue
 
 export default {
@@ -139,6 +140,14 @@ export default {
             return attrType + ': ' + attrValue
         }
 
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
+        function attributeIconClass(attributeType, extraClasses = '') {
+            return mispAttributeIconClass(attributeType, extraClasses)
+        }
+
         function get_attribute_type(attr) {
             return attr.misp_attribute_type || attr.type || 'unknown'
         }
@@ -252,6 +261,8 @@ export default {
             get_attribute_type,
             get_attribute_value,
             get_attribute_relation,
+            objectIconClass,
+            attributeIconClass,
             show_object
         }
     },
@@ -274,7 +285,7 @@ export default {
                 </div>
                 <template v-if="task.misp_object_links && task.misp_object_links.length">
                     <div v-for="link in task.misp_object_links" :key="link.misp_object_id" class="d-flex align-items-center mb-1">
-                        <i class="fa-solid fa-cube me-2 text-secondary"></i>
+                        <i :class="objectIconClass(link.object_name || link.misp_object_name, 'me-2 text-secondary')"></i>
                         <span class="me-2 flex-grow-1">
                             <a href="javascript:void(0)" @click="show_object(link)"><strong>[[format_object_label(link)]]</strong></a>
                             <small class="text-muted ms-1">([[link.misp_object_template_uuid]])</small>
@@ -295,7 +306,7 @@ export default {
 
         <div class="task-section mt-3">
             <div class="task-section-header">
-                <i class="fa-solid fa-tag fa-sm me-1"></i>
+                <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>
                 <span class="section-title">Standalone MISP attributes linked to this task</span>
                 <button class="btn btn-sm btn-outline-secondary ms-auto" type="button" data-bs-toggle="modal" :data-bs-target="'#misp-attribute-link-modal-'+task.id" aria-controls="'misp-attribute-link-modal-'+task.id">
                     <i class="fa-solid fa-list"></i>
@@ -304,7 +315,7 @@ export default {
             <div class="task-section-body">
                 <template v-if="task.misp_attribute_links && task.misp_attribute_links.length">
                     <div v-for="link in task.misp_attribute_links" :key="link.misp_attribute_id" class="d-flex align-items-center mb-1">
-                        <i class="fa-solid fa-tag me-2 text-secondary"></i>
+                        <i :class="attributeIconClass(get_attribute_type(link), 'me-2 text-secondary')"></i>
                         <span class="me-2 d-flex align-items-center gap-1 flex-wrap text-break">
                             <span class="badge bg-light text-dark border">[[ get_attribute_type(link) ]]</span>
                             <strong>[[ get_attribute_value(link) ]]</strong>
@@ -335,7 +346,7 @@ export default {
                         <div class="modal-body">
                             <template v-if="case_misp_objects.length">
                                 <div v-for="obj in case_misp_objects" :key="obj.object_id" class="d-flex align-items-center mb-2">
-                                    <i class="fa-solid fa-cube me-2 text-secondary"></i>
+                                    <i :class="objectIconClass(obj.object_name, 'me-2 text-secondary')"></i>
                                     <span class="me-2">
                                         <a href="javascript:void(0)" @click="show_object(obj)"><strong>[[obj.object_name]]</strong></a>
                                         <small class="text-muted ms-1">([[obj.object_uuid]])</small>
@@ -372,7 +383,7 @@ export default {
                         <div class="modal-body">
                             <template v-if="case_misp_attributes.length">
                                 <div v-for="attr in case_misp_attributes" :key="attr.id" class="d-flex align-items-center mb-2">
-                                    <i class="fa-solid fa-tag me-2 text-secondary"></i>
+                                    <i :class="attributeIconClass(get_attribute_type(attr), 'me-2 text-secondary')"></i>
                                     <span class="me-2 d-flex align-items-center gap-1 flex-wrap text-break">
                                         <span class="badge bg-light text-dark border">[[ get_attribute_type(attr) ]]</span>
                                         <strong>[[ get_attribute_value(attr) ]]</strong>

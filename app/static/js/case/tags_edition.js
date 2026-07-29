@@ -85,7 +85,9 @@ export default {
         <button v-if="can_edit" type="button" class="btn btn-outline-primary btn-sm float-end" data-bs-toggle="modal" data-bs-target="#ModalEditTags">
             <i class="fa-solid fa-pen fa-sm"></i>
         </button>
-        <h6 class="section-title mb-0"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags, taxonomies and galaxies</h6>
+        <h6 class="section-title mb-0">
+            <i class="misp-icon misp-icon-galaxy misp-simple me-1" style="font-size:1.25em;"></i>Tags, taxonomies and galaxies
+        </h6>
         <hr class="fading-line-2 mt-2 mb-2">
         <div v-if="current_case.custom_tags" style="display: flex; flex-wrap: wrap; margin-bottom: 5px;">
             <template v-for="tag in current_case.custom_tags">
@@ -99,7 +101,7 @@ export default {
         <div v-if="current_case.tags" style="display: flex; flex-wrap: wrap; margin-bottom: 5px;">
             <template v-for="tag in current_case.tags">
                 <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                    <i class="fa-solid fa-tag fa-sm" style="margin-right: 3px; margin-left: 3px;"></i>
+                    <i class="misp-icon misp-icon-tag misp-simple"></i>
                     [[tag.name]]
                 </div>
             </template>

@@ -1,6 +1,7 @@
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
 const { ref, computed, onMounted, onUnmounted, watch, nextTick, reactive } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -170,6 +171,14 @@ export default {
 
         function template_attributes(template) {
             return Array.isArray(template?.attributes) ? template.attributes : []
+        }
+
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
+        function attributeIconClass(attributeType, extraClasses = '') {
+            return mispAttributeIconClass(attributeType, extraClasses)
         }
 
         function relation_type_option(attribute) {
@@ -762,6 +771,8 @@ export default {
             activeTemplate,
             activeTemplateAttr,
             template_attributes,
+            objectIconClass,
+            attributeIconClass,
             selectedQuickTemplate,
             list_attr,
             showAddObject,
@@ -830,7 +841,7 @@ export default {
 	template: `
     <div class="mb-1">
         <button v-if="can_edit" class="btn btn-primary" title="Add a new object" @click="toggleAddObject()">
-            <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
+            <i class="fa-solid fa-plus"></i> <i class="misp-icon misp-icon-object misp-simple"></i>
         </button>
         <a v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" 
            type="button" class="btn btn-secondary ms-3" title="Analyze misp-objects"
@@ -1129,7 +1140,7 @@ export default {
                     <button class="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
                             type="button" data-bs-toggle="collapse"
                             :data-bs-target="'#collapse-'+key_obj" aria-expanded="true">
-                        <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object.object_name ]]
+                        <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
                     </button>
                     <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
                         <span v-for="si in visibleSyncInstances(misp_object.synced_instances, syncListKey('card', misp_object.object_id))" :key="si.instance_id"
@@ -1208,7 +1219,7 @@ export default {
                             <tr v-for="attribute, key_attr in misp_object.attributes">
                                 <!-- Display mode -->
                                 <template v-if="editingAttrId !== attribute.id">
-                                    <td class="ps-3">[[attribute.value]]</td>
+                                    <td class="ps-3"><i :class="attributeIconClass(attribute.type, 'me-1 text-secondary fa-sm')"></i>[[attribute.value]]</td>
                                     <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
                                     <td class="text-muted small align-middle">[[attribute.type]]</td>
                                     <td v-show="!compactView" class="small">
@@ -1388,7 +1399,7 @@ export default {
             <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
                 <li v-for="(misp_object, idx) in filtered_objects" :key="misp_object.object_id" class="nav-item flex-shrink-0">
                     <button class="nav-link py-1 px-3" :class="{active: activeTabIdx === idx}" @click="activeTabIdx = idx" type="button">
-                        <i class="fa-solid fa-cube me-1 text-secondary fa-sm"></i>[[ misp_object.object_name ]]
+                        <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
                         <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
                             <i class="fa-solid fa-cloud ms-1 text-info" style="font-size:0.7rem;"></i>
                         </template>
