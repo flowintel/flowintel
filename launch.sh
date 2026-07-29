@@ -196,7 +196,11 @@ function launch_docker {
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' \
+        -b "$APP_URL:$APP_PORT" \
+        --access-logfile - \
+        --error-logfile - \
+        --capture-output
 }
 
 function init_db_docker {
