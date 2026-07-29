@@ -59,7 +59,7 @@ def job():
 
 # job()
 print("[+] Started...")
-schedule.every().day.at("02:00").do(job)
+schedule.every().day.at("03:00").do(job)
 
 while True:
     schedule.run_pending()

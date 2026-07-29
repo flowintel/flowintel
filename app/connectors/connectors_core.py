@@ -759,18 +759,30 @@ def get_connector_sync_logs(case_id, case_connector_instance_id, limit=50):
     return [log.to_json() for log in logs]
 
 
+MISP_SYNC_RUN_HOUR_UTC = 2
+MISP_SYNC_RUN_MINUTE_UTC = 0
+
+
 def calculate_misp_sync_next_run(interval, from_time=None):
     """Return the next UTC run date for a supported interval."""
     if interval == "manual":
         return None
     base = from_time or datetime.datetime.now(tz=datetime.timezone.utc)
+    base = as_utc_datetime(base) or datetime.datetime.now(tz=datetime.timezone.utc)
     if interval == "daily":
-        return base + datetime.timedelta(days=1)
-    if interval == "weekly":
-        return base + datetime.timedelta(weeks=1)
-    if interval == "monthly":
-        return base + datetime.timedelta(days=30)
-    return None
+        target = base + datetime.timedelta(days=1)
+    elif interval == "weekly":
+        target = base + datetime.timedelta(weeks=1)
+    elif interval == "monthly":
+        target = base + datetime.timedelta(days=30)
+    else:
+        return None
+    return target.replace(
+        hour=MISP_SYNC_RUN_HOUR_UTC,
+        minute=MISP_SYNC_RUN_MINUTE_UTC,
+        second=0,
+        microsecond=0
+    )
 
 
 def default_misp_sync_schedule(case_id, case_connector_instance_id, direction):

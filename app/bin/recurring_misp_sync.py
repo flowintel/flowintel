@@ -87,7 +87,7 @@ def run_due_misp_sync_schedules():
 
 
 print("[+] Started recurring MISP sync worker...")
-schedule.every(15).minutes.do(run_due_misp_sync_schedules)
+schedule.every().day.at("03:00").do(run_due_misp_sync_schedules)
 
 while True:
     schedule.run_pending()
