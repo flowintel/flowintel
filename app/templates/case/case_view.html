@@ -428,7 +428,7 @@
                         <div class="mb-2">
                             <button class="btn btn-primary" @click="save_note_case()">Save</button>
                         </div>
-                        <smart_editor v-model="note_editor_render" mode="markdown"></smart_editor>
+                        <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                     </template>
                     <template v-else>
                         <div class="d-flex gap-2 align-items-start mb-2">
@@ -477,7 +477,7 @@
                     <div class="mb-2">
                         <button class="btn btn-primary" @click="save_note_case()">Save</button>
                     </div>
-                    <smart_editor v-model="note_editor_render" mode="markdown"></smart_editor>
+                    <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                 </div>
             </template>
             <template v-else-if="subtab_note == 'template'">
@@ -1065,6 +1065,18 @@
                         resolved_case_notes.value = ''
                         resolved_case_notes_markdown.value = ''
                     }
+                }
+
+                // Passed as :resolve-variables to <smart_editor> for the notes editor —
+                // resolves @this.case.title-style references to real values in its live
+                // preview (mark=true + postProcessVarMarkers so resolved values get the
+                // same "resolved" badge as the rendered view; anything resolution can't
+                // reach falls back to the editor's own "unresolved" badge highlighting).
+                async function resolve_note_preview(text) {
+                    const marked = await FlowintelNoteVariables.resolveNoteVariables(
+                        case_id_for_vars, text, null, true
+                    )
+                    return FlowintelNoteVariables.postProcessVarMarkers(marked)
                 }
 
                 async function resolveAllTaskNotes() {
@@ -1947,6 +1959,7 @@
 
                     resolved_case_notes,
                     resolved_case_notes_markdown,
+                    resolve_note_preview,
                     resolved_all_notes,
                     show_variables_help,
                     showDescription,

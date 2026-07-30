@@ -514,12 +514,14 @@ html[data-json-theme="solarized"] body {
 /*---RENDERED MARKDOWN MODE---*/
 
 .cv-md-body {
+    box-sizing: border-box;
     padding: 16px 20px;
     font-family: var(--font-sans);
-    font-size: .85rem;
-    line-height: 1.7;
+    font-size: .9rem;
+    line-height: 1.8;
     color: var(--text-main);
     background: var(--bg-surface);
+    overflow: auto;
 }
 
 .cv-md-body h1,

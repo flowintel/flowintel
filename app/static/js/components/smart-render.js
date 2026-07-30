@@ -205,7 +205,7 @@ export default {
         code: { type: String, required: true },
         language: { type: String, default: 'auto' },
         title: { type: String, default: '' },
-        maxHeight: { type: String, default: '520px' },
+        maxHeight: { type: String, default: '600px' },
         foldable: { type: Boolean, default: true },
         showLines: { type: Boolean, default: true },
         initialSearch: { type: String, default: '' },
@@ -310,14 +310,14 @@ export default {
         </div>
 
         <!-- ── Rendered markdown mode ───────────────────────────────── -->
-        <!-- No maxHeight cap here (unlike the code/JSON panes below) — markdown
-             content, especially mermaid diagrams, reads better with the page's own
-             scroll than squeezed into a small fixed-height box. -->
+        <!-- Same sizing logic as the code/JSON panes below, and as smart-editor's
+             own markdown preview: bounded by maxHeight, scrolls internally beyond that. -->
         <div
             v-if="markdown_mode"
             class="cv-md-body"
             ref="md_preview_ref"
-            v-html="rendered_md">
+            v-html="rendered_md"
+            :style="{ maxHeight: maxHeight }">
         </div>
 
         <!-- ── Loading ───────────────────────────────────────────────── -->

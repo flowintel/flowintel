@@ -84,7 +84,7 @@
             <div class="row">
                 <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
                 <div class="mb-3">
-                    <smart_editor v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px"></smart_editor>
+                    <smart_editor v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px" :resolve-variables="resolve_description_preview"></smart_editor>
                 </div>
             </div>
             <div class="d-flex gap-2" style="margin-top: 10px;">
@@ -108,12 +108,25 @@
             smart_editor
         },
         setup() {
-            const description_content = `{{description | safe}}`
+            const description_content = {{ (description or '') | tojson }}
             const note_editor_render = ref(description_content)
+            const case_id_for_vars = {{ case_id }}
+
+            // Passed as :resolve-variables to <smart_editor> — resolves @this.case.title
+            // style references to real values in the live preview (mark=true +
+            // postProcessVarMarkers so resolved values get the "resolved" badge; anything
+            // it can't resolve falls back to the editor's own "unresolved" highlighting).
+            async function resolve_description_preview(text) {
+                const marked = await FlowintelNoteVariables.resolveNoteVariables(
+                    case_id_for_vars, text, null, true
+                )
+                return FlowintelNoteVariables.postProcessVarMarkers(marked)
+            }
 
             return {
                 message_list,
-                note_editor_render
+                note_editor_render,
+                resolve_description_preview
             }
         }
     }).mount('#main-container')

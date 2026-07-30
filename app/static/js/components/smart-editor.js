@@ -15,6 +15,9 @@
  *   allowFileImport Boolean  markdown mode only — show the "import from file" toolbar
  *                            button, which replaces the content with a picked file's text
  *                            (default: true)
+ *   allowAtVariables Boolean markdown mode only — @variable autocomplete (case/task note
+ *                            variables, e.g. @this.case.title) plus a toolbar button to
+ *                            insert "@" and open the suggestion list (default: true)
  *
  * Emits:
  *   update:modelValue  (v-model compatible)
@@ -30,7 +33,8 @@
  *   <button type="submit">Save</button>
  */
 
-import { renderMarkdown, runMermaid } from './markdown-render.js'
+import { renderMarkdown, runMermaid, loadNoteVariables } from './markdown-render.js'
+import { attachAtVariableComplete } from './at-variable-complete.js'
 
 // ── Module-level singletons ────────────────────────────────────────────────────
 
@@ -96,6 +100,13 @@ export default {
         readonly:    { type: Boolean, default: false },
         showLineNumbers: { type: Boolean, default: false },
         allowFileImport: { type: Boolean, default: true },
+        allowAtVariables: { type: Boolean, default: true },
+        // markdown mode only — optional async (text) => resolvedText hook, called before
+        // each preview render. The component itself has no notion of case/task id, so a
+        // parent page that does (e.g. case_view.html) wires this to actually resolve
+        // @this.case.title-style references to real values in the live preview, instead
+        // of just leaving them as raw syntax with the "unresolved" badge.
+        resolveVariables: { type: Function, default: null },
     },
 
     emits: ['update:modelValue'],
@@ -179,6 +190,14 @@ export default {
                     <i class="fas fa-file-import"></i>
                 </button>
             </template>
+            <button
+                v-if="allowAtVariables && md_view !== 'preview'"
+                class="se-tb-btn"
+                type="button"
+                title="Insert a note variable (e.g. @this.case.title)"
+                @click="insert_at_variable">
+                <i class="fas fa-at"></i>
+            </button>
             <div class="se-toolbar-sep"></div>
         </template>
 
@@ -401,7 +420,17 @@ export default {
 
         // ── marked + mermaid (shared with code-viewer.js) ────────────────
         async function render_md() {
-            rendered_md.value = await renderMarkdown(inner_value.value, { breaks: true })
+            let text = inner_value.value
+            if (props.resolveVariables) {
+                // A page's resolver typically calls window.FlowintelNoteVariables directly —
+                // make sure note_variables.js is actually loaded first so the page doesn't
+                // need its own <script> tag just for this.
+                try {
+                    if (!window.FlowintelNoteVariables) await loadNoteVariables()
+                    text = await props.resolveVariables(text)
+                } catch { /* fall back to raw text */ }
+            }
+            rendered_md.value = await renderMarkdown(text, { breaks: true })
             nextTick(() => runMermaid(md_preview_ref.value))
         }
 
@@ -692,6 +721,19 @@ export default {
             ta.focus()
         }
 
+        // ── @variable autocomplete (markdown mode) ───────────────────────
+        let at_var_complete = null
+
+        function insert_at_variable() {
+            const ta = ta_ref.value
+            if (!ta) return
+            const s = ta.selectionStart, e = ta.selectionEnd
+            const val = inner_value.value
+            const nv = val.slice(0, s) + '@' + val.slice(e)
+            set_value(ta, nv, s + 1)
+            nextTick(() => { ta.focus(); at_var_complete?.check() })
+        }
+
         // ── Lifecycle ───────────────────────────────────────────────────
         onMounted(async () => {
             if (props.mode === 'code') {
@@ -699,12 +741,22 @@ export default {
                 hljs_ready.value = true
                 refresh_highlight()
             }
+            if (props.mode === 'markdown' && props.allowAtVariables && ta_ref.value) {
+                at_var_complete = attachAtVariableComplete(ta_ref.value, {
+                    onPick(insertText, from, to) {
+                        const val = inner_value.value
+                        const nv = val.slice(0, from) + insertText + val.slice(to)
+                        set_value(ta_ref.value, nv, from + insertText.length)
+                    }
+                })
+            }
             document.addEventListener('keydown', _on_global_keydown)
         })
 
         onBeforeUnmount(() => {
             clearTimeout(_hl_t); clearTimeout(_md_t); clearTimeout(_clear_arm_t)
             document.removeEventListener('keydown', _on_global_keydown)
+            at_var_complete?.destroy()
         })
 
         return {
@@ -717,6 +769,7 @@ export default {
             undo_count, redo_count, btn_undo, btn_redo,
             on_input, on_keydown, sync_scroll, md_action, set_md_view, on_md_scroll,
             toggle_fullscreen, toggle_line_numbers, focus, on_file_import, clear_content,
+            insert_at_variable,
         }
     }
 }

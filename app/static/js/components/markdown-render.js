@@ -95,13 +95,49 @@ function mermaidify(html) {
     )
 }
 
+// note_variables.js (already used for case/task notes elsewhere in the app) exposes
+// styleUnresolvedVariables(), which wraps @this.case.title-style references in a
+// styled <code> badge. Reused here so @variables read clearly in any markdown
+// preview, not just after the backend has actually resolved them.
+let _note_vars_p = null
+export function loadNoteVariables() {
+    if (window.FlowintelNoteVariables) return Promise.resolve(window.FlowintelNoteVariables)
+    if (_note_vars_p) return _note_vars_p
+    _note_vars_p = new Promise((res, rej) => {
+        const s = document.createElement('script')
+        s.src   = '/static/js/note_variables.js'
+        s.onload  = () => res(window.FlowintelNoteVariables)
+        s.onerror = rej
+        document.head.appendChild(s)
+    })
+    return _note_vars_p
+}
+
+// styleUnresolvedVariables() does a blind string replace — applying it to the whole
+// HTML string would also match "@this..." patterns sitting inside attribute values
+// (e.g. a title="@this.case.title" on some inline HTML in the markdown source) and
+// splice a <code> tag into the middle of an attribute, corrupting the markup. Only
+// touch actual text-node content (between a ">" and the next "<"), same technique
+// smart-render.js's own search-match highlighting uses for the same reason.
+function styleVariablesInTextNodes(html) {
+    if (!window.FlowintelNoteVariables) return html
+    return html.replace(/>([^<]*)</g, (full, text) => {
+        if (!text) return full
+        return '>' + window.FlowintelNoteVariables.styleUnresolvedVariables(text) + '<'
+    })
+}
+
 // Renders markdown source to sanitized HTML, with ```mermaid fences left ready for
 // runMermaid() to turn into SVG once the HTML is mounted in the DOM.
-export async function renderMarkdown(text, { breaks = true } = {}) {
+export async function renderMarkdown(text, { breaks = true, styleVariables = true } = {}) {
     if (!window.marked) await loadMarked()
     if (!window.DOMPurify) await loadPurify()
+    if (styleVariables && !window.FlowintelNoteVariables) await loadNoteVariables().catch(() => {})
     try {
-        const html = mermaidify(window.marked.parse(text ?? '', { breaks }))
+        let html = mermaidify(window.marked.parse(text ?? '', { breaks }))
+        if (styleVariables) {
+            html = styleVariablesInTextNodes(html)
+        }
         return sanitizeHtml(html)
     } catch {
         return '<p><em>Render error</em></p>'
