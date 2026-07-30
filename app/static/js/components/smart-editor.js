@@ -233,7 +233,7 @@ export default {
         <!-- MARKDOWN ───────────────────────────────── -->
         <template v-else-if="mode === 'markdown'">
             <div class="se-md-body" :class="'se-md-body--' + md_view" :style="code_wrap_style">
-                <div class="se-md-write" v-show="md_view !== 'preview'">
+                <div class="se-md-write" :class="{ 'se-md-write--numbered': show_line_numbers }" v-show="md_view !== 'preview'">
                     <div v-if="show_line_numbers" class="se-md-gutter" ref="md_gutter_ref" title="Line numbers">
                         <span v-for="n in line_count" :key="n" class="se-md-lnum">{{ n }}</span>
                     </div>

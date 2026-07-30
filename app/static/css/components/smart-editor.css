@@ -352,16 +352,6 @@
     bottom: 0;
 }
 
-.se-md-write {
-    display: flex;
-}
-
-.se-md-write .se-ta--md {
-    flex: 1;
-    min-width: 0;
-    height: auto;
-}
-
 .se-md-body--edit .se-md-write       { left: 0; right: 0; }
 .se-md-body--preview .se-md-preview  { left: 0; right: 0; }
 
@@ -375,10 +365,29 @@
     right: 0;
 }
 
+/* The write pane's own children (gutter + textarea) are absolutely positioned against
+   it too — same trick as .se-code-area's overlay/textarea — rather than relying on
+   flexbox stretch, which does not reliably resolve a definite height on a nested flex
+   item whose own size comes from position:absolute insets on its parent. */
+
+.se-md-write .se-ta--md {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: auto;
+}
+
+.se-md-write--numbered .se-ta--md { left: 30px; }
+
 /* Discreet line-number gutter for the markdown write pane (opt-in) */
 
 .se-md-gutter {
-    flex-shrink: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
     width: 30px;
     overflow: hidden;
     user-select: none;
