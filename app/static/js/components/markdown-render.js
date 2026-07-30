@@ -110,6 +110,9 @@ export async function renderMarkdown(text, { breaks = true } = {}) {
 
 // Turns any <pre class="mermaid"> blocks inside `container` into rendered SVG
 // diagrams. Loads mermaid.min.js lazily, and only if such a block exists.
+// Sizing is left entirely to mermaid itself (its own useMaxWidth behavior) — the
+// caller's CSS just needs to give the container room; see .mermaid in
+// smart-editor.css / smart-render.css.
 export async function runMermaid(container) {
     if (!container) return
     const nodes = container.querySelectorAll('.mermaid')

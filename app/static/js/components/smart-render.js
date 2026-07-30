@@ -310,12 +310,14 @@ export default {
         </div>
 
         <!-- ── Rendered markdown mode ───────────────────────────────── -->
+        <!-- No maxHeight cap here (unlike the code/JSON panes below) — markdown
+             content, especially mermaid diagrams, reads better with the page's own
+             scroll than squeezed into a small fixed-height box. -->
         <div
             v-if="markdown_mode"
             class="cv-md-body"
             ref="md_preview_ref"
-            v-html="rendered_md"
-            :style="{ maxHeight: maxHeight }">
+            v-html="rendered_md">
         </div>
 
         <!-- ── Loading ───────────────────────────────────────────────── -->

@@ -514,7 +514,6 @@ html[data-json-theme="solarized"] body {
 /*---RENDERED MARKDOWN MODE---*/
 
 .cv-md-body {
-    overflow: auto;
     padding: 16px 20px;
     font-family: var(--font-sans);
     font-size: .85rem;
@@ -619,14 +618,12 @@ html[data-json-theme="solarized"] body {
 
 .cv-md-body tr:nth-child(even) { background: var(--bg-elevated); }
 
-/* Mermaid diagrams (```mermaid fences) rendered to inline SVG */
+/* Mermaid diagrams (```mermaid fences) rendered to inline SVG. No size constraints
+   here — mermaid picks its own diagram size. Deliberately not flex/centered: a
+   centered item wider than its scrollable container can leave part of it
+   unreachable by scroll in some browsers. .cv-md-body has no height cap and
+   scrolls with the page, so a diagram bigger than the pane just extends naturally. */
 .cv-md-body .mermaid {
-    display: flex;
-    justify-content: center;
     margin: .8em 0;
     background: transparent;
-}
-.cv-md-body .mermaid svg {
-    max-width: 100%;
-    height: auto;
 }

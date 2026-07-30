@@ -226,6 +226,7 @@
     line-height: 1.7;
     caret-color: var(--brand);
     box-sizing: border-box;
+    white-space: pre;          /* no word-wrap — long lines scroll horizontally instead */
     overflow: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
@@ -532,16 +533,14 @@
 
 .se-md-preview tr:nth-child(even) { background: var(--bg-elevated); }
 
-/* Mermaid diagrams (```mermaid fences) rendered to inline SVG */
+/* Mermaid diagrams (```mermaid fences) rendered to inline SVG. No size constraints
+   here — mermaid picks its own diagram size. Deliberately not flex/centered: a
+   centered item wider than its scrollable container can leave part of it
+   unreachable by scroll in some browsers. .se-md-preview already scrolls both
+   axes (overflow: auto), so a diagram bigger than the pane just scrolls into view. */
 .se-md-preview .mermaid {
-    display: flex;
-    justify-content: center;
     margin: .8em 0;
     background: transparent;
-}
-.se-md-preview .mermaid svg {
-    max-width: 100%;
-    height: auto;
 }
 
 
