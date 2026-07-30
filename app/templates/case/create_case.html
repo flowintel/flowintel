@@ -119,9 +119,9 @@
             </div>
         </div>
         <div class="row">
-            <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
+            <span class="mb-2" style="cursor: text;" @click="description_editor?.focus()"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
             <div class="mb-3">
-                <smart_editor v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px"></smart_editor>
+                <smart_editor ref="description_editor" v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px"></smart_editor>
             </div>
         </div>
 
@@ -257,6 +257,7 @@
             const custom_tags = ref([])
 
             const note_editor_render = ref("")
+            const description_editor = ref(null)
 
 
             let to_hide = true
@@ -356,6 +357,7 @@
                 cluster_list,
                 custom_tags,
                 note_editor_render,
+                description_editor,
                 hide_case_creation
             }
         }

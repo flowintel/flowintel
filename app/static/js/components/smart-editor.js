@@ -598,6 +598,9 @@ export default {
         function btn_undo() { do_undo(ta_ref.value) }
         function btn_redo() { do_redo(ta_ref.value) }
 
+        // Exposed so a parent page can focus this editor from e.g. a clicked field label.
+        function focus() { ta_ref.value?.focus() }
+
         // ── Code overlay scroll sync ────────────────────────────────────
         function sync_scroll(e) {
             if (overlay_ref.value) {
@@ -704,7 +707,7 @@ export default {
             line_count, stat_label, stat_title, body_style, code_wrap_style,
             undo_count, redo_count, btn_undo, btn_redo,
             on_input, on_keydown, sync_scroll, md_action, set_md_view, on_md_scroll,
-            toggle_fullscreen, toggle_line_numbers,
+            toggle_fullscreen, toggle_line_numbers, focus,
         }
     }
 }

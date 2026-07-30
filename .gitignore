@@ -66,3 +66,4 @@ tests/testdata/.community-api-keys.json
 
 # Redis dump files
 dump.rdb
+CLAUDE.md
