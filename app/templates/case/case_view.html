@@ -128,7 +128,7 @@
                 :aria-expanded="showDescription">
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
-        <div v-show="showDescription">
+        <div v-if="showDescription">
             <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
         </div>
     </div>
