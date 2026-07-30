@@ -48,7 +48,7 @@ def audit_logs_data():
     rows.sort(key=lambda r: r["timestamp"], reverse=True)
     rows = core.filter_rows(rows, request.args)
     _log_filtered_access("logs", len(rows))
-    return jsonify({"rows": rows})
+    return jsonify(core.paginate_rows(rows, request.args))
 
 
 @audit_logs_blueprint.route("/audit", methods=["GET"])
@@ -59,7 +59,7 @@ def audit_logs_audit():
     rows.sort(key=lambda r: r["timestamp"], reverse=True)
     rows = core.filter_rows(rows, request.args)
     _log_filtered_access("audit", len(rows))
-    return jsonify({"rows": rows})
+    return jsonify(core.paginate_rows(rows, request.args))
 
 
 @audit_logs_blueprint.route("/export", methods=["GET"])

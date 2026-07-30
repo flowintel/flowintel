@@ -2,6 +2,7 @@
 import csv
 import io
 import json
+import math
 import os
 import re
 from datetime import datetime, timedelta
@@ -28,6 +29,10 @@ AUDIT_LINE_RE = re.compile(
 
 _AUDIT_USER_RE = re.compile(r'\bUser:\s*(\S+)')
 _AUDIT_CASE_RE = re.compile(r'\bCaseId:\s*(\d+)')
+
+DEFAULT_PAGE = 1
+DEFAULT_PER_PAGE = 50
+MAX_PER_PAGE = 200
 
 
 def _safe_path(base, entry):
@@ -110,6 +115,63 @@ def has_active_filters(args):
         (args.get(key) or "").strip()
         for key in ("start_date", "end_date", "user", "action", "exclude")
     )
+
+
+def parse_positive_int(value, default):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def summarize_activity(rows):
+    counts = {}
+    for row in rows:
+        day = (row.get("timestamp") or "")[:10]
+        if not day:
+            continue
+        counts[day] = counts.get(day, 0) + 1
+
+    if not counts:
+        return []
+
+    days = []
+    current = datetime.strptime(min(counts), "%Y-%m-%d")
+    end = datetime.strptime(max(counts), "%Y-%m-%d")
+    while current <= end:
+        key = current.strftime("%Y-%m-%d")
+        days.append({"day": key, "count": counts.get(key, 0)})
+        current += timedelta(days=1)
+    return days
+
+
+def paginate_rows(rows, args):
+    page = parse_positive_int(args.get("page"), DEFAULT_PAGE)
+    per_page = min(
+        parse_positive_int(args.get("per_page"), DEFAULT_PER_PAGE),
+        MAX_PER_PAGE,
+    )
+    total_rows = len(rows)
+    nb_pages = max(1, math.ceil(total_rows / per_page))
+    page = min(page, nb_pages)
+    start = (page - 1) * per_page
+    end = start + per_page
+
+    return {
+        "rows": rows[start:end],
+        "pagination": {
+            "page": page,
+            "per_page": per_page,
+            "total_rows": total_rows,
+            "nb_pages": nb_pages,
+            "has_prev": page > 1,
+            "has_next": page < nb_pages,
+            "start_row": start + 1 if total_rows else 0,
+            "end_row": min(end, total_rows),
+        },
+        "activity": summarize_activity(rows),
+    }
 
 
 def collect_history_rows():
