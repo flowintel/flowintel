@@ -1,8 +1,11 @@
 import { display_toast } from '../toaster.js'
-const { ref, onMounted, onUpdated } = Vue
+import smart_render from '/static/js/components/smart-render.js'
 
 export default {
 	delimiters: ['[[', ']]'],
+	components: {
+		smart_render
+	},
 	props: {
 		note_template: Object,
 		key_loop: Number,
@@ -13,28 +16,7 @@ export default {
 		}
 	},
 	setup(props) {
-		const is_mounted = ref(false)
-
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
-
 		const dayjs = window.dayjs
-
-		onMounted(async () => {
-			const allCollapses = document.getElementById('collapse' + props.note_template.id)
-			if (allCollapses) {
-				allCollapses.addEventListener('shown.bs.collapse', async event => {
-					md.mermaid.init()
-				})
-			}
-			is_mounted.value = true
-		})
-
-		onUpdated(async () => {
-			if (is_mounted.value) {
-				md.mermaid.init()
-			}
-		})
 
 		async function delete_note_template(note_template, notes_array) {
 			const res = await fetch("/tools/delete_note_template/" + note_template.id)
@@ -57,7 +39,6 @@ export default {
 		}
 
 		return {
-			md,
 			dayjs,
 			delete_note_template,
 			toggleCollapse
@@ -143,7 +124,7 @@ export default {
 						<i class="fa-solid fa-file-lines fa-sm me-1"></i><span class="section-title">Content</span>
 					</legend>
 
-					<div v-if="note_template.content" class="markdown-render-result" v-html="md.render(note_template.content)"></div>
+					<smart_render v-if="note_template.content" :code="note_template.content" language="markdown"></smart_render>
 					<div v-else><i style="font-size: 12px;">No content</i></div>
 				</fieldset>
 			</div>

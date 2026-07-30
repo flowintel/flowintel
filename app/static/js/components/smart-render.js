@@ -216,32 +216,26 @@ export default {
         // Wrap long lines instead of pushing them into horizontal scroll —
         // on by default everywhere; pass :word-wrap="false" to opt out.
         wordWrap: { type: Boolean, default: true },
-        // Minimal header — just the Copy button, no title, language badge, search,
-        // line count, Tree/wrap controls. Ignored for markdown content, which never
-        // shows a header at all (see cv-md-float-toolbar below). For dense lists of
-        // many instances (e.g. one per task) where the full toolbar is too heavy to
-        // repeat everywhere.
+        // No header at all — just a floating Copy button (top-right, shown on hover),
+        // same treatment as markdown content always gets (see cv-md-float-toolbar
+        // below). No title, language badge, search, line count, Tree/wrap controls.
+        // For dense lists of many instances (e.g. one per task) where the full
+        // toolbar is too heavy to repeat everywhere.
         simple: { type: Boolean, default: false },
     },
 
     template: `
     <div class="cv-root" :class="{ 'cv-root--simple': simple || effective_lang === 'markdown' }">
 
-        <!-- ── Markdown: no header, just a floating copy toolbar ───────── -->
-        <div class="cv-md-float-toolbar" v-if="effective_lang === 'markdown'">
+        <!-- ── Markdown or simple mode: no header, just a floating copy toolbar,
+             shown on hover ─────────────────────────────────────────────── -->
+        <div class="cv-md-float-toolbar" v-if="effective_lang === 'markdown' || simple">
             <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
                 <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
             </button>
         </div>
 
-        <!-- ── Simple header (non-markdown) ────────────────────────────── -->
-        <div class="cv-header cv-header--simple" v-else-if="simple">
-            <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
-                <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
-            </button>
-        </div>
-
-        <!-- ── Header (non-markdown) ───────────────────────────────────── -->
+        <!-- ── Header (non-markdown, non-simple) ───────────────────────── -->
         <div class="cv-header" v-else>
             <div class="cv-header-left">
                 <span v-if="title" class="cv-title">
