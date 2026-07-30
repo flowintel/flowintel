@@ -1,0 +1,50 @@
+/*
+  theme-bridge.css — Maps flask-launchpad component vars → rulezet CSS vars.
+  Include this once per page that uses any component from the shared library
+  (code-viewer, smart-editor, diff-viewer, etc.).
+*/
+
+:root {
+    --bg-body:        var(--bg-color, #f7f7f7);
+    --bg-surface:     var(--card-bg-color, #ffffff);
+    --bg-elevated:    var(--light-bg-color, #f1f1f1);
+    --border:         var(--border-color, #dee2e6);
+    --border-subtle:  var(--border-color, #dee2e6);
+    --text-main:      var(--text-color, #1e1e1e);
+    --text-secondary: var(--subtle-text-color, #6c757d);
+    --text-muted:     var(--subtle-text-color, #6c757d);
+    --brand:          #0d6efd;
+    --brand-dim:      rgba(13, 110, 253, 0.08);
+    --brand-glow:     rgba(13, 110, 253, 0.25);
+    --font-mono:      'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --font-sans:      system-ui, -apple-system, sans-serif;
+    --radius:         0.375rem;
+    --radius-md:      0.375rem;
+    --radius-sm:      0.25rem;
+    --radius-lg:      0.5rem;
+    --shadow-sm:      0 1px 3px rgba(0, 0, 0, .06);
+    --shadow-md:      0 4px 12px rgba(0, 0, 0, .10);
+    --transition:     .15s ease;
+    --transition-slow:.25s ease;
+    /* Sidebar/bulk-bar dark panel */
+    --bg-sidebar:         #1e293b;
+    --text-sidebar:       #e2e8f0;
+    --text-sidebar-muted: #94a3b8;
+    --border-sidebar:     rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode {
+    --bg-body:        var(--bg-color, #1e293b);
+    --bg-surface:     var(--card-bg-color, #1e2d3d);
+    --bg-elevated:    var(--light-bg-color, #2d3f55);
+    --border:         var(--border-color, #3d5068);
+    --border-subtle:  var(--border-color, #3d5068);
+    --text-main:      var(--text-color, #e2e8f0);
+    --text-secondary: var(--subtle-text-color, #94a3b8);
+    --text-muted:     var(--subtle-text-color, #94a3b8);
+    --brand:          #60a5fa;
+    --brand-dim:      rgba(96, 165, 250, 0.12);
+    --brand-glow:     rgba(96, 165, 250, 0.30);
+    --shadow-sm:      0 1px 4px rgba(0, 0, 0, .25);
+    --shadow-md:      0 4px 16px rgba(0, 0, 0, .35);
+}

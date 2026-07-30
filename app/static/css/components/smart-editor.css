@@ -1,0 +1,562 @@
+/*
+  smart-editor.css — Editor component: text / markdown / code modes
+  Inherits --cv-* syntax token vars from code-viewer.css (must be loaded together).
+  All structure colors use CSS theme variables — no hardcoded values.
+*/
+
+/*---ROOT---*/
+
+.se-root {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;           /* required for resize: vertical */
+    resize: vertical;           /* bottom-right drag handle */
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-sm);
+    font-family: var(--font-sans);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.se-root:focus-within {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+/* Fullscreen — pins the whole editor to the viewport, above the rest of the page */
+.se-root--fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    resize: none;
+    border-radius: 0;
+}
+
+/*---TOOLBAR---*/
+
+.se-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    min-height: 38px;
+}
+
+/* Mode badge — display-only, set by prop */
+.se-mode-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: .7rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.se-mode-badge i { font-size: .65rem; color: var(--brand); }
+
+/* Preview toggle button — standalone pill style, not derived from se-tb-btn */
+.se-preview-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: .7rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.se-preview-toggle i { font-size: .65rem; }
+
+.se-preview-toggle:hover {
+    background: var(--bg-elevated);
+    color: var(--text-main);
+    border-color: var(--text-muted);
+}
+
+.se-preview-toggle.is-active {
+    background: var(--brand-dim);
+    color: var(--brand);
+    border-color: var(--brand-glow);
+    font-weight: 600;
+}
+
+/* Edit / Split / Preview segmented toggle (markdown mode) */
+.se-view-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.se-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    border: none;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    font-size: .68rem;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+}
+
+.se-view-btn + .se-view-btn { border-left: 1px solid var(--border); }
+.se-view-btn:hover      { background: var(--bg-elevated); color: var(--text-main); }
+.se-view-btn.is-active  { background: var(--brand-dim); color: var(--brand); }
+
+/* Generic toolbar button */
+
+.se-tb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: .72rem;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition);
+    flex-shrink: 0;
+}
+
+.se-tb-btn:hover         { background: var(--bg-surface); color: var(--text-main); }
+.se-tb-btn.is-active     { background: var(--brand-dim); color: var(--brand); }
+.se-tb-btn:disabled      { opacity: 0.3; cursor: not-allowed; }
+.se-tb-btn:disabled:hover{ background: transparent; color: var(--text-muted); }
+
+.se-toolbar-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+
+.se-toolbar-spacer { flex: 1; }
+
+.se-char-count {
+    font-size: .65rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+/* Language badge — display-only, set by prop */
+.se-lang-badge {
+    font-size: .65rem;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    padding: 2px 8px;
+    background: var(--brand-dim);
+    color: var(--brand);
+    border: 1px solid var(--brand-glow);
+    border-radius: 4px;
+    text-transform: lowercase;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+/*---BODY---*/
+
+.se-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+}
+
+/*---TEXTAREA (text + markdown write pane)---*/
+
+.se-ta {
+    flex: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 14px 16px;
+    margin: 0;
+    border: none;
+    outline: none;
+    resize: none;              /* root handles resize */
+    background: var(--bg-surface);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    font-size: .85rem;
+    line-height: 1.7;
+    caret-color: var(--brand);
+    box-sizing: border-box;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.se-ta::placeholder { color: var(--text-muted); }
+
+.se-ta::-webkit-scrollbar       { width: 5px; }
+.se-ta::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.se-ta--md {
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    line-height: 1.75;
+}
+
+/*---CODE MODE---*/
+
+.se-code-wrap {
+    display: flex;
+    flex: 1;                   /* fills body when root is resized */
+    min-height: 0;
+    background: var(--bg-surface);
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    line-height: 21px;
+}
+
+.se-gutter {
+    flex-shrink: 0;
+    width: 44px;
+    overflow: hidden;
+    user-select: none;
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border-subtle);
+    padding: 12px 0;
+    box-sizing: border-box;
+}
+
+.se-lnum {
+    display: block;
+    padding: 0 10px 0 6px;
+    font-size: .72rem;
+    line-height: 21px;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* Code editing area: overlay + transparent textarea stacked */
+
+.se-code-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* Highlighted code behind the textarea */
+.se-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+    margin: 0;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    line-height: 21px;
+    white-space: pre;
+    word-wrap: normal;
+    color: var(--text-main);
+    background: transparent;
+    tab-size: 2;
+}
+
+/* The actual textarea — transparent so overlay shows through */
+.se-ta--code {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 12px 14px;
+    margin: 0;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    caret-color: var(--text-main);
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    line-height: 21px;
+    white-space: pre;
+    word-wrap: normal;
+    overflow: auto;
+    box-sizing: border-box;
+    tab-size: 2;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.se-ta--code::-webkit-scrollbar       { width: 6px; height: 6px; }
+.se-ta--code::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.se-code-loading {
+    padding: 8px 14px;
+    font-size: .72rem;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border-subtle);
+    font-family: var(--font-sans);
+}
+
+/*---MARKDOWN MODE---*/
+
+/* Write pane (.se-md-write) + preview pane (.se-md-preview). Both are absolutely
+   positioned inside .se-md-body (like .se-code-area / .se-ta--code in code mode) so
+   their height comes purely from the parent's own box — never from their own content —
+   and each pane scrolls independently via its own overflow:auto instead of growing
+   the page. */
+
+.se-md-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.se-md-write,
+.se-md-body .se-md-preview {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+}
+
+.se-md-write {
+    display: flex;
+}
+
+.se-md-write .se-ta--md {
+    flex: 1;
+    min-width: 0;
+    height: auto;
+}
+
+.se-md-body--edit .se-md-write       { left: 0; right: 0; }
+.se-md-body--preview .se-md-preview  { left: 0; right: 0; }
+
+.se-md-body--split .se-md-write {
+    left: 0;
+    right: 50%;
+    border-right: 1px solid var(--border);
+}
+.se-md-body--split .se-md-preview {
+    left: 50%;
+    right: 0;
+}
+
+/* Discreet line-number gutter for the markdown write pane (opt-in) */
+
+.se-md-gutter {
+    flex-shrink: 0;
+    width: 30px;
+    overflow: hidden;
+    user-select: none;
+    padding: 14px 0;
+    box-sizing: border-box;
+    border-right: 1px solid var(--border-subtle);
+}
+
+.se-md-lnum {
+    display: block;
+    padding-right: 7px;
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    line-height: 21px;
+    color: var(--text-muted);
+    opacity: .55;
+    text-align: right;
+}
+
+.se-md-write .se-ta--md { line-height: 21px; }
+
+/* Markdown preview content */
+
+.se-md-preview {
+    box-sizing: border-box;
+    padding: 16px 20px;
+    font-family: var(--font-sans);
+    font-size: .9rem;
+    line-height: 1.8;
+    color: var(--text-main);
+    overflow: auto;
+}
+
+.se-md-preview h1,
+.se-md-preview h2,
+.se-md-preview h3,
+.se-md-preview h4 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 1.2em 0 .5em;
+    line-height: 1.3;
+}
+
+.se-md-preview h1 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+.se-md-preview h2 { font-size: 1.2rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: .2em; }
+.se-md-preview h3 { font-size: 1rem; }
+.se-md-preview h4 { font-size: .9rem; }
+
+.se-md-preview p  { margin: .6em 0; }
+
+.se-md-preview a {
+    color: var(--brand);
+    text-decoration: underline;
+}
+
+.se-md-preview code {
+    font-family: var(--font-mono);
+    font-size: .8em;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--cv-keyword);
+}
+
+.se-md-preview pre {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    overflow-x: auto;
+    margin: .8em 0;
+}
+
+.se-md-preview pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: .78rem;
+    line-height: 1.7;
+    color: var(--text-main);
+}
+
+.se-md-preview blockquote {
+    border-left: 3px solid var(--brand);
+    margin: .8em 0;
+    padding: 6px 16px;
+    background: var(--brand-dim);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.se-md-preview ul,
+.se-md-preview ol {
+    margin: .6em 0;
+    padding-left: 1.6em;
+}
+
+.se-md-preview li { margin: .2em 0; }
+
+.se-md-preview hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.2em 0;
+}
+
+.se-md-preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: .8em 0;
+    font-size: .82rem;
+}
+
+.se-md-preview th,
+.se-md-preview td {
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    text-align: left;
+}
+
+.se-md-preview th {
+    background: var(--bg-elevated);
+    font-weight: 600;
+}
+
+.se-md-preview tr:nth-child(even) { background: var(--bg-elevated); }
+
+
+/*---HLJS TOKEN OVERRIDES (for .se-overlay)---*/
+/* Maps highlight.js classes → code-viewer's --cv-* vars */
+
+.se-overlay .hljs-keyword,
+.se-overlay .hljs-selector-tag   { color: var(--cv-keyword); font-weight: 600; }
+
+.se-overlay .hljs-string,
+.se-overlay .hljs-addition        { color: var(--cv-string); }
+
+.se-overlay .hljs-number,
+.se-overlay .hljs-literal         { color: var(--cv-number); }
+
+.se-overlay .hljs-comment,
+.se-overlay .hljs-quote           { color: var(--cv-comment); font-style: italic; }
+
+.se-overlay .hljs-function,
+.se-overlay .hljs-title           { color: var(--cv-function); }
+
+.se-overlay .hljs-built_in,
+.se-overlay .hljs-builtin-name    { color: var(--cv-builtin); }
+
+.se-overlay .hljs-attr,
+.se-overlay .hljs-attribute,
+.se-overlay .hljs-variable        { color: var(--cv-property); }
+
+.se-overlay .hljs-type            { color: var(--cv-builtin); }
+
+.se-overlay .hljs-tag             { color: var(--cv-tag); }
+
+.se-overlay .hljs-operator,
+.se-overlay .hljs-punctuation     { color: var(--cv-punct); }
+
+.se-overlay .hljs-params          { color: var(--cv-param); }
+
+.se-overlay .hljs-section         { color: var(--cv-function); font-weight: 700; }
+
+.se-overlay .hljs-meta            { color: var(--cv-comment); }
+
+.se-overlay .hljs-regexp          { color: var(--cv-string); }
+
+.se-overlay .hljs-name            { color: var(--cv-tag); }
+
+.se-overlay .hljs-deletion        { color: var(--cv-keyword); }
+
+.se-overlay .hljs-subst           { color: var(--cv-property); }
+
+/*---RESPONSIVE---*/
+
+@media (max-width: 640px) {
+    .se-tb-btn { width: 24px; height: 24px; font-size: .68rem; }
+}
