@@ -149,6 +149,19 @@
 .se-tb-btn:disabled      { opacity: 0.3; cursor: not-allowed; }
 .se-tb-btn:disabled:hover{ background: transparent; color: var(--text-muted); }
 
+/* Armed destructive action — first click primes it, second click within the
+   window confirms. Pulses so it reads as "waiting for confirmation". */
+.se-tb-btn.is-armed,
+.se-tb-btn.is-armed:hover {
+    background: #dc3545;
+    color: #fff;
+    animation: se-armed-pulse 1s ease-in-out infinite;
+}
+@keyframes se-armed-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, .5); }
+    50%      { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0); }
+}
+
 .se-toolbar-sep {
     width: 1px;
     height: 20px;
@@ -373,7 +386,9 @@
 .se-md-write .se-ta--md {
     position: absolute;
     top: 0;
-    right: 0;
+    /* Small gap so the textarea's own scrollbar sits clear of the split divider
+       instead of running flush against it. */
+    right: 6px;
     bottom: 0;
     left: 0;
     height: auto;

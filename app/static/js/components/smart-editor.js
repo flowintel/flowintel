@@ -12,6 +12,9 @@
  *   readonly     Boolean
  *   showLineNumbers Boolean  markdown mode only — initial state of the line-number gutter
  *                            in the write pane (toggleable at runtime via the toolbar)
+ *   allowFileImport Boolean  markdown mode only — show the "import from file" toolbar
+ *                            button, which replaces the content with a picked file's text
+ *                            (default: true)
  *
  * Emits:
  *   update:modelValue  (v-model compatible)
@@ -118,6 +121,7 @@ export default {
         maxHeight:   { type: String,  default: '600px' },
         readonly:    { type: Boolean, default: false },
         showLineNumbers: { type: Boolean, default: false },
+        allowFileImport: { type: Boolean, default: true },
     },
 
     emits: ['update:modelValue'],
@@ -186,6 +190,21 @@ export default {
                 @click="toggle_line_numbers">
                 <i class="fas fa-hashtag"></i>
             </button>
+            <template v-if="allowFileImport">
+                <input
+                    type="file"
+                    ref="file_input_ref"
+                    accept=".md,.txt"
+                    style="display: none"
+                    @change="on_file_import">
+                <button
+                    class="se-tb-btn"
+                    type="button"
+                    title="Import from file — replaces the current content"
+                    @click="file_input_ref.click()">
+                    <i class="fas fa-file-import"></i>
+                </button>
+            </template>
             <div class="se-toolbar-sep"></div>
         </template>
 
@@ -202,6 +221,15 @@ export default {
         <button class="se-tb-btn" type="button" title="Redo (Ctrl+Y)"
             :disabled="redo_count === 0" @click="btn_redo">
             <i class="fas fa-rotate-right"></i>
+        </button>
+        <button
+            class="se-tb-btn"
+            :class="{ 'is-armed': clear_armed }"
+            type="button"
+            :disabled="!inner_value"
+            :title="clear_armed ? 'Click again to confirm — clears everything' : 'Clear all text'"
+            @click="clear_content">
+            <i class="fas fa-trash-can"></i>
         </button>
         <button class="se-tb-btn" type="button" :title="is_fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'"
             @click="toggle_fullscreen">
@@ -307,6 +335,9 @@ export default {
         const md_gutter_ref  = ref(null)
         const is_fullscreen  = ref(false)
         const show_line_numbers = ref(props.showLineNumbers)
+        const file_input_ref = ref(null)
+        const clear_armed = ref(false)
+        let _clear_arm_t = null
 
         // ── Undo / redo history ─────────────────────────────────────────
         const _undo = []   // stack of past string values
@@ -640,6 +671,34 @@ export default {
             if (e.key === 'Escape' && is_fullscreen.value) is_fullscreen.value = false
         }
 
+        // ── Import from file — replaces the whole content with the file's text ──
+        function on_file_import(e) {
+            const file = e.target.files[0]
+            e.target.value = ''   // reset so importing the same file again still fires @change
+            if (!file) return
+            if (!/\.(md|txt)$/i.test(file.name)) return
+            const reader = new FileReader()
+            reader.onload = () => {
+                _save_now()
+                inner_value.value = String(reader.result)
+            }
+            reader.readAsText(file)
+        }
+
+        // ── Clear all — arms on first click, clears on the confirming second click ──
+        function clear_content() {
+            if (!clear_armed.value) {
+                clear_armed.value = true
+                clearTimeout(_clear_arm_t)
+                _clear_arm_t = setTimeout(() => { clear_armed.value = false }, 3000)
+                return
+            }
+            clear_armed.value = false
+            clearTimeout(_clear_arm_t)
+            _save_now()
+            inner_value.value = ''
+        }
+
         // ── Markdown toolbar actions ────────────────────────────────────
         function md_action(id) {
             const ta = ta_ref.value
@@ -694,20 +753,20 @@ export default {
         })
 
         onBeforeUnmount(() => {
-            clearTimeout(_hl_t); clearTimeout(_md_t)
+            clearTimeout(_hl_t); clearTimeout(_md_t); clearTimeout(_clear_arm_t)
             document.removeEventListener('keydown', _on_global_keydown)
         })
 
         return {
             inner_value, hljs_ready, highlighted, escaped_code,
-            md_view, rendered_md, is_fullscreen, show_line_numbers,
-            ta_ref, overlay_ref, gutter_ref, md_preview_ref, md_gutter_ref,
+            md_view, rendered_md, is_fullscreen, show_line_numbers, clear_armed,
+            ta_ref, overlay_ref, gutter_ref, md_preview_ref, md_gutter_ref, file_input_ref,
             MD_ACTIONS,
             mode_label, mode_icon, md_view_label,
             line_count, stat_label, stat_title, body_style, code_wrap_style,
             undo_count, redo_count, btn_undo, btn_redo,
             on_input, on_keydown, sync_scroll, md_action, set_md_view, on_md_scroll,
-            toggle_fullscreen, toggle_line_numbers, focus,
+            toggle_fullscreen, toggle_line_numbers, focus, on_file_import, clear_content,
         }
     }
 }
