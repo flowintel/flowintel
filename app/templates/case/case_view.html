@@ -1040,7 +1040,6 @@
 		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 // Note variables resolution
-                const resolved_case_notes = ref('')
                 // Resolved markdown source (not pre-rendered HTML) — fed to <smart_render>,
                 // which does its own marked + mermaid rendering. Variable markers
                 // (⟪@var⦂value⟫) survive as plain text through that rendering the same way
@@ -1052,17 +1051,12 @@
 
                 async function resolveAndSetNotes() {
                     if (cases_info.value && cases_info.value.case && cases_info.value.case.notes) {
-                        const resolved = await FlowintelNoteVariables.resolveNoteVariables(
-                            case_id_for_vars, cases_info.value.case.notes
-                        )
-                        resolved_case_notes.value = resolved
-                        // Also resolve with styling markers, for the rendered view
+                        // Resolve with styling markers, for the rendered view
                         const markedResolved = await FlowintelNoteVariables.resolveNoteVariables(
                             case_id_for_vars, cases_info.value.case.notes, null, true
                         )
                         resolved_case_notes_markdown.value = FlowintelNoteVariables.postProcessVarMarkers(markedResolved)
                     } else {
-                        resolved_case_notes.value = ''
                         resolved_case_notes_markdown.value = ''
                     }
                 }
@@ -1957,7 +1951,6 @@
                     total_pages,
                     go_to_page,
 
-                    resolved_case_notes,
                     resolved_case_notes_markdown,
                     resolve_note_preview,
                     resolved_all_notes,

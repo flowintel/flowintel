@@ -314,13 +314,6 @@ export default {
 			// 	closeOnSelect: false
 			// })
 
-			// When openning a task, initialize mermaid library
-			// const allCollapses = document.getElementById('collapse' + props.task.id)
-			// allCollapses.addEventListener('shown.bs.collapse', event => {
-			// 	props.md.mermaid.run({
-			// 		querySelector: `#${event.target.id} .mermaid`
-			// 	})
-			// })
 			is_mounted = true
 
 		})
@@ -616,8 +609,7 @@ export default {
 
 			<template v-else-if="selected_tab == 'notes'">
 				<tabNote :cases_info="cases_info"
-						 :task="task"
-						 :md="md">
+						 :task="task">
                 </tabNote>
 			</template>
 

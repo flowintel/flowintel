@@ -2,7 +2,7 @@ import { display_toast } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import smart_editor from '/static/js/components/smart-editor.js'
 import smart_render from '/static/js/components/smart-render.js'
-const { ref, nextTick, onMounted, watch, computed } = Vue
+const { ref, onMounted } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
@@ -11,14 +11,12 @@ export default {
 	},
 	props: {
 		cases_info: Object,
-		task: Object,
-		md: Object
+		task: Object
 	},
 	setup(props) {
 		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
 		const note_editor_render = ref([])		// Notes display in mermaid
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
-		const resolved_notes = ref({})		// Cache of resolved note content by note id
 		// Resolved markdown source (not pre-rendered HTML) by note id — fed to
 		// <smart_render>, which does its own marked + mermaid rendering. See
 		// resolve_note_preview() below for why postProcessVarMarkers runs on raw
@@ -36,15 +34,10 @@ export default {
 		// Resolve @variables in a note for rendering
 		async function resolveNoteVars(noteId, noteText) {
 			if (!noteText || !window.FlowintelNoteVariables || !window.FlowintelNoteVariables.hasVariables(noteText)) {
-				resolved_notes.value[noteId] = noteText || ''
 				resolved_notes_markdown.value[noteId] = noteText || ''
 				return
 			}
-			const resolved = await window.FlowintelNoteVariables.resolveNoteVariables(
-				props.task.case_id, noteText, props.task.id
-			)
-			resolved_notes.value[noteId] = resolved
-			// Also resolve with markers for styled rendering
+			// Resolve with markers for styled rendering
 			const markedResolved = await window.FlowintelNoteVariables.resolveNoteVariables(
 				props.task.case_id, noteText, props.task.id, true
 			)
@@ -84,14 +77,6 @@ export default {
 			return rawNote || ''
 		}
 
-		// Get resolved text for a note (falls back to raw text)
-		function getResolvedNote(noteId, rawNote) {
-			if (resolved_notes.value[noteId] !== undefined) {
-				return resolved_notes.value[noteId]
-			}
-			return rawNote || ''
-		}
-
 
 		async function add_notes_task() {
 			// Create a new empty note in the task
@@ -116,7 +101,6 @@ export default {
 
 			if (await res.status == 200) {
 				note_editor_render.value.splice(key, 1)
-				delete resolved_notes.value[note_id]
 				delete resolved_notes_markdown.value[note_id]
 
 				props.task.notes.splice(key, 1)
@@ -201,12 +185,10 @@ export default {
 			await resolveAllNotes()
 		})
 
-		// Debounced preview resolvers per editor key
 		return {
 			note_editor_render,
 			is_exporting,
 			edit_mode,
-			resolved_notes,
 			resolved_notes_markdown,
 			resolve_note_preview,
 
@@ -215,7 +197,6 @@ export default {
 			edit_note,
 			export_notes,
 			modif_note,
-			getResolvedNote,
 			getResolvedNoteMarkdown,
 		}
 	},
