@@ -132,6 +132,7 @@ html[data-json-theme="solarized"] body {
 /*---ROOT---*/
 
 .cv-root {
+    position: relative;
     font-family: var(--font-mono);
     font-size: .8rem;
     border: 1px solid var(--border);
@@ -139,6 +140,37 @@ html[data-json-theme="solarized"] body {
     overflow: hidden;
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
+}
+
+.cv-root--simple {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+/*---MARKDOWN FLOATING TOOLBAR---*/
+
+.cv-md-float-toolbar {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 5;
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    opacity: 0;
+    transition: opacity var(--transition);
+    pointer-events: none;
+}
+
+.cv-root:hover .cv-md-float-toolbar,
+.cv-md-float-toolbar:focus-within {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /*---HEADER---*/

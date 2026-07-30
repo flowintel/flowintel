@@ -15,7 +15,8 @@
  * Features:
  *   - Syntax highlighting via highlight.js (lazy-loaded from /static/js/hljs.min.js)
  *   - Markdown rendering with ```mermaid diagram support (shared with smart-editor.js,
- *     via markdown-render.js) — toggle between rendered view and raw source
+ *     via markdown-render.js) — no header/badge, just a small copy button that fades
+ *     in on hover over the top-right corner
  *   - JSON interactive tree: collapse/expand any object or array
  *   - Integrated search: real-time highlight, prev/next, match counter
  *   - Line numbers (sync-scrolled with code pane)
@@ -215,32 +216,32 @@ export default {
         // Wrap long lines instead of pushing them into horizontal scroll —
         // on by default everywhere; pass :word-wrap="false" to opt out.
         wordWrap: { type: Boolean, default: true },
-        // Minimal header — just Copy + (for markdown) the rendered/source toggle, both
-        // top-left. No title, language badge, search, line count, Tree/wrap controls.
-        // For dense lists of many instances (e.g. one per task) where the full toolbar
-        // is too heavy to repeat everywhere.
+        // Minimal header — just the Copy button, no title, language badge, search,
+        // line count, Tree/wrap controls. Ignored for markdown content, which never
+        // shows a header at all (see cv-md-float-toolbar below). For dense lists of
+        // many instances (e.g. one per task) where the full toolbar is too heavy to
+        // repeat everywhere.
         simple: { type: Boolean, default: false },
     },
 
     template: `
-    <div class="cv-root">
+    <div class="cv-root" :class="{ 'cv-root--simple': simple || effective_lang === 'markdown' }">
 
-        <!-- ── Simple header ──────────────────────────────────────────── -->
-        <div class="cv-header cv-header--simple" v-if="simple">
-            <button
-                v-if="effective_lang === 'markdown'"
-                class="cv-btn cv-btn--icon"
-                :class="{ 'is-active': markdown_mode }"
-                @click.stop.prevent="markdown_mode = !markdown_mode"
-                :title="markdown_mode ? 'Show source' : 'Show rendered'">
-                <i class="fas fa-eye"></i>
-            </button>
+        <!-- ── Markdown: no header, just a floating copy toolbar ───────── -->
+        <div class="cv-md-float-toolbar" v-if="effective_lang === 'markdown'">
             <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
                 <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
             </button>
         </div>
 
-        <!-- ── Header ──────────────────────────────────────────────── -->
+        <!-- ── Simple header (non-markdown) ────────────────────────────── -->
+        <div class="cv-header cv-header--simple" v-else-if="simple">
+            <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
+                <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
+            </button>
+        </div>
+
+        <!-- ── Header (non-markdown) ───────────────────────────────────── -->
         <div class="cv-header" v-else>
             <div class="cv-header-left">
                 <span v-if="title" class="cv-title">
@@ -250,50 +251,38 @@ export default {
             </div>
 
             <div class="cv-header-center">
-                <template v-if="!markdown_mode">
-                    <div class="cv-search-wrap" @click.stop>
-                        <i class="fas fa-search cv-search-icon"></i>
-                        <input
-                            class="cv-search-input"
-                            type="text"
-                            placeholder="Search…"
-                            v-model="search_term"
-                            @click.stop
-                            @keydown.enter.prevent="go_next_match"
-                            @keydown.shift.enter.prevent="go_prev_match"
-                            :class="{ 'cv-search-input--has-val': search_term }"
-                        />
-                        <span class="cv-search-count" v-if="search_term">
-                            <template v-if="total_matches">{{ cur_match + 1 }} / {{ total_matches }}</template>
-                            <template v-else>no match</template>
-                        </span>
-                        <button v-if="search_term" class="cv-search-clear" @click.stop.prevent="search_term = ''; cur_match = 0">
-                            <i class="fas fa-xmark"></i>
-                        </button>
-                    </div>
-                    <div class="cv-search-nav" v-if="search_term && total_matches > 1">
-                        <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_prev_match" title="Previous (Shift+Enter)">
-                            <i class="fas fa-chevron-up"></i>
-                        </button>
-                        <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_next_match" title="Next (Enter)">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                </template>
+                <div class="cv-search-wrap" @click.stop>
+                    <i class="fas fa-search cv-search-icon"></i>
+                    <input
+                        class="cv-search-input"
+                        type="text"
+                        placeholder="Search…"
+                        v-model="search_term"
+                        @click.stop
+                        @keydown.enter.prevent="go_next_match"
+                        @keydown.shift.enter.prevent="go_prev_match"
+                        :class="{ 'cv-search-input--has-val': search_term }"
+                    />
+                    <span class="cv-search-count" v-if="search_term">
+                        <template v-if="total_matches">{{ cur_match + 1 }} / {{ total_matches }}</template>
+                        <template v-else>no match</template>
+                    </span>
+                    <button v-if="search_term" class="cv-search-clear" @click.stop.prevent="search_term = ''; cur_match = 0">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="cv-search-nav" v-if="search_term && total_matches > 1">
+                    <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_prev_match" title="Previous (Shift+Enter)">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_next_match" title="Next (Enter)">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="cv-header-right">
-                <span class="cv-line-count" v-if="!markdown_mode">{{ line_count }} lines</span>
-
-                <button
-                    v-if="effective_lang === 'markdown'"
-                    class="cv-btn cv-btn--sm"
-                    :class="{ 'is-active': markdown_mode }"
-                    @click.stop.prevent="markdown_mode = !markdown_mode"
-                    title="Toggle rendered markdown view">
-                    <i class="fas fa-eye"></i>
-                    <span>Rendered</span>
-                </button>
+                <span class="cv-line-count">{{ line_count }} lines</span>
 
                 <button
                     v-if="effective_lang === 'json' && foldable"
@@ -320,7 +309,7 @@ export default {
                     <i class="fas fa-maximize"></i>
                 </button>
 
-                <button v-if="!markdown_mode" class="cv-btn cv-btn--sm" @click.stop.prevent="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
+                <button class="cv-btn cv-btn--sm" @click.stop.prevent="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
                     <i class="fas fa-arrow-turn-down"></i>
                 </button>
 
