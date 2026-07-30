@@ -231,11 +231,11 @@ export default {
                 v-if="effective_lang === 'markdown'"
                 class="cv-btn cv-btn--icon"
                 :class="{ 'is-active': markdown_mode }"
-                @click.stop="markdown_mode = !markdown_mode"
+                @click.stop.prevent="markdown_mode = !markdown_mode"
                 :title="markdown_mode ? 'Show source' : 'Show rendered'">
                 <i class="fas fa-eye"></i>
             </button>
-            <button class="cv-btn cv-btn--icon" @click.stop="copy_code" title="Copy source">
+            <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
                 <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
             </button>
         </div>
@@ -251,7 +251,7 @@ export default {
 
             <div class="cv-header-center">
                 <template v-if="!markdown_mode">
-                    <div class="cv-search-wrap">
+                    <div class="cv-search-wrap" @click.stop>
                         <i class="fas fa-search cv-search-icon"></i>
                         <input
                             class="cv-search-input"
@@ -267,15 +267,15 @@ export default {
                             <template v-if="total_matches">{{ cur_match + 1 }} / {{ total_matches }}</template>
                             <template v-else>no match</template>
                         </span>
-                        <button v-if="search_term" class="cv-search-clear" @click.stop="search_term = ''; cur_match = 0">
+                        <button v-if="search_term" class="cv-search-clear" @click.stop.prevent="search_term = ''; cur_match = 0">
                             <i class="fas fa-xmark"></i>
                         </button>
                     </div>
                     <div class="cv-search-nav" v-if="search_term && total_matches > 1">
-                        <button class="cv-btn cv-btn--icon" @click.stop="go_prev_match" title="Previous (Shift+Enter)">
+                        <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_prev_match" title="Previous (Shift+Enter)">
                             <i class="fas fa-chevron-up"></i>
                         </button>
-                        <button class="cv-btn cv-btn--icon" @click.stop="go_next_match" title="Next (Enter)">
+                        <button class="cv-btn cv-btn--icon" @click.stop.prevent="go_next_match" title="Next (Enter)">
                             <i class="fas fa-chevron-down"></i>
                         </button>
                     </div>
@@ -289,7 +289,7 @@ export default {
                     v-if="effective_lang === 'markdown'"
                     class="cv-btn cv-btn--sm"
                     :class="{ 'is-active': markdown_mode }"
-                    @click.stop="markdown_mode = !markdown_mode"
+                    @click.stop.prevent="markdown_mode = !markdown_mode"
                     title="Toggle rendered markdown view">
                     <i class="fas fa-eye"></i>
                     <span>Rendered</span>
@@ -299,7 +299,7 @@ export default {
                     v-if="effective_lang === 'json' && foldable"
                     class="cv-btn cv-btn--sm"
                     :class="{ 'is-active': json_mode }"
-                    @click.stop="json_mode = !json_mode"
+                    @click.stop.prevent="json_mode = !json_mode"
                     title="Toggle JSON tree view">
                     <i class="fas fa-diagram-project"></i>
                     <span>Tree</span>
@@ -308,23 +308,23 @@ export default {
                 <button
                     v-if="json_mode"
                     class="cv-btn cv-btn--sm"
-                    @click.stop="collapse_all"
+                    @click.stop.prevent="collapse_all"
                     title="Collapse all">
                     <i class="fas fa-minimize"></i>
                 </button>
                 <button
                     v-if="json_mode"
                     class="cv-btn cv-btn--sm"
-                    @click.stop="expand_all"
+                    @click.stop.prevent="expand_all"
                     title="Expand all">
                     <i class="fas fa-maximize"></i>
                 </button>
 
-                <button v-if="!markdown_mode" class="cv-btn cv-btn--sm" @click.stop="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
+                <button v-if="!markdown_mode" class="cv-btn cv-btn--sm" @click.stop.prevent="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
                     <i class="fas fa-arrow-turn-down"></i>
                 </button>
 
-                <button class="cv-btn cv-btn--sm" @click.stop="copy_code" title="Copy source">
+                <button class="cv-btn cv-btn--sm" @click.stop.prevent="copy_code" title="Copy source">
                     <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
                 </button>
             </div>
@@ -360,7 +360,7 @@ export default {
             ><button
                 v-if="line.type === 'open'"
                 class="cv-fold-btn"
-                @click.stop="toggle_fold(line.open_idx)"
+                @click.stop.prevent="toggle_fold(line.open_idx)"
                 :title="collapsed.has(line.open_idx) ? 'Expand' : 'Collapse'">
                 <i :class="collapsed.has(line.open_idx) ? 'fas fa-chevron-right' : 'fas fa-chevron-down'"></i>
             </button><span
@@ -370,7 +370,7 @@ export default {
                 v-html="inject_marks(line.html, i)"></span><span
                 v-if="line.type === 'open' && collapsed.has(line.open_idx)"
                 class="cv-fold-summary"
-                @click.stop="toggle_fold(line.open_idx)"
+                @click.stop.prevent="toggle_fold(line.open_idx)"
             > {{ line.bracket === '{' ? '{' : '[' }} <span class="cv-fold-count">{{ line.size }} {{ line.size === 1 ? 'item' : 'items' }}</span> {{ line.bracket === '{' ? '}' : ']' }}</span
             ></div></pre>
         </div>
