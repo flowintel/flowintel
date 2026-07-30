@@ -30,6 +30,8 @@
  *   <button type="submit">Save</button>
  */
 
+import { renderMarkdown, runMermaid } from './markdown-render.js'
+
 // ── Module-level singletons ────────────────────────────────────────────────────
 
 const PAIRS   = { '{': '}', '[': ']', '(': ')', '"': '"', "'": "'", '`': '`' }
@@ -46,9 +48,7 @@ function _resolve_lang(lang) {
     return _KNOWN_HLJS.has(mapped) ? mapped : 'text'
 }
 
-let _hljs_p   = null
-let _marked_p = null
-let _purify_p = null
+let _hljs_p = null
 
 function load_hljs() {
     if (window.hljs)  return Promise.resolve(window.hljs)
@@ -61,32 +61,6 @@ function load_hljs() {
         document.head.appendChild(s)
     })
     return _hljs_p
-}
-
-function load_marked() {
-    if (window.marked) return Promise.resolve(window.marked)
-    if (_marked_p) return _marked_p
-    _marked_p = new Promise((res, rej) => {
-        const s = document.createElement('script')
-        s.src   = '/static/js/marked.min.js'
-        s.onload  = () => res(window.marked)
-        s.onerror = rej
-        document.head.appendChild(s)
-    })
-    return _marked_p
-}
-
-function load_purify() {
-    if (window.DOMPurify) return Promise.resolve(window.DOMPurify)
-    if (_purify_p) return _purify_p
-    _purify_p = new Promise((res, rej) => {
-        const s = document.createElement('script')
-        s.src   = '/static/js/purify.min.js'
-        s.onload  = () => res(window.DOMPurify)
-        s.onerror = rej
-        document.head.appendChild(s)
-    })
-    return _purify_p
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -425,39 +399,15 @@ export default {
             }
         }
 
-        // ── marked ──────────────────────────────────────────────────────
-        function _sanitize_html(html) {
-            if (window.DOMPurify) return window.DOMPurify.sanitize(html)
-            // DOMPurify failed to load — fall back to a minimal strip as last resort
-            const tmp = document.createElement('div')
-            tmp.innerHTML = html
-            tmp.querySelectorAll('script, iframe, object, embed, form').forEach(el => el.remove())
-            tmp.querySelectorAll('*').forEach(el => {
-                for (const attr of [...el.attributes]) {
-                    const n = attr.name.toLowerCase()
-                    const v = attr.value
-                    if (n.startsWith('on') ||
-                        ((n === 'href' || n === 'src' || n === 'action') && /^javascript:/i.test(v.trim()))) {
-                        el.removeAttribute(attr.name)
-                    }
-                }
-            })
-            return tmp.innerHTML
-        }
-
-        function render_md() {
-            if (!window.marked) return
-            try { rendered_md.value = _sanitize_html(window.marked.parse(inner_value.value, { breaks: true })) }
-            catch { rendered_md.value = '<p><em>Render error</em></p>' }
+        // ── marked + mermaid (shared with code-viewer.js) ────────────────
+        async function render_md() {
+            rendered_md.value = await renderMarkdown(inner_value.value, { breaks: true })
+            nextTick(() => runMermaid(md_preview_ref.value))
         }
 
         async function set_md_view(view) {
             md_view.value = view
-            if (view !== 'edit') {
-                if (!window.marked) await load_marked()
-                if (!window.DOMPurify) await load_purify()
-                render_md()
-            }
+            if (view !== 'edit') await render_md()
         }
 
         // ── Debounced content watcher ───────────────────────────────────

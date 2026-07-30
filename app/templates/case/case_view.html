@@ -12,6 +12,9 @@
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
 
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
@@ -126,7 +129,7 @@
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
         <div v-show="showDescription">
-            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
+            <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
         </div>
     </div>
     {% endif %}
@@ -897,6 +900,7 @@
         import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
+        import smart_render from '/static/js/components/smart-render.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
@@ -916,7 +920,8 @@
                 timeline_view,
                 timeline_graph,
                 note_from_template,
-                computer_assistate_template
+                computer_assistate_template,
+                smart_render
             },
             setup() {
                 const cases_info = ref(null)
