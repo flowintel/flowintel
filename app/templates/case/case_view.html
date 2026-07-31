@@ -854,7 +854,7 @@
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="(notes, idx) in all_notes">
-                    <div class="all-tasks-notes" v-html="resolved_all_notes[idx] || md.render(notes.text || notes)"></div>
+                    <smart_render class="all-tasks-notes" :code="resolved_all_notes[idx] || notes.text || notes" language="markdown" :simple="true"></smart_render>
                 </template>
             </template>
             
@@ -1082,7 +1082,7 @@
                         })
                         const resolved = await Promise.all(promises)
                         resolved_all_notes.value = resolved.map(r =>
-                            FlowintelNoteVariables.postProcessVarMarkers(md.render(r))
+                            FlowintelNoteVariables.postProcessVarMarkers(r)
                         )
                     } else {
                         resolved_all_notes.value = []
