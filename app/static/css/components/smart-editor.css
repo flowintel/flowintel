@@ -196,6 +196,22 @@
     user-select: none;
 }
 
+/* JSON mode — live valid/invalid indicator */
+.se-json-badge {
+    font-size: .65rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.se-json-badge.is-valid   { background: rgba(40, 167, 69, .12);  color: #28a745; border: 1px solid rgba(40, 167, 69, .35); }
+.se-json-badge.is-invalid { background: rgba(220, 53, 69, .12); color: #dc3545; border: 1px solid rgba(220, 53, 69, .35); }
+
 /*---BODY---*/
 
 .se-body {

@@ -3,8 +3,10 @@
  *
  * Props:
  *   modelValue   String   content (v-model)
- *   mode         String   'text' | 'markdown' | 'code'  (default: 'text')
- *   language     String   initial code language          (default: 'javascript')
+ *   mode         String   'text' | 'markdown' | 'code' | 'json'  (default: 'text')
+ *   language     String   initial code language, 'code' mode only (default: 'javascript') —
+ *                         'json' mode always highlights as JSON and additionally shows a
+ *                         live valid/invalid indicator and a "Format" (pretty-print) button
  *   placeholder  String
  *   name         String   HTML name for form submission (renders hidden input)
  *   minHeight    String   CSS value e.g. '220px'
@@ -204,6 +206,25 @@ export default {
         <!-- Code: language badge (display only) -->
         <span v-if="mode === 'code'" class="se-lang-badge" title="Syntax highlighting language">{{ language }}</span>
 
+        <!-- JSON: live valid/invalid indicator + format button -->
+        <template v-if="mode === 'json'">
+            <span
+                class="se-json-badge"
+                :class="json_check.valid ? 'is-valid' : 'is-invalid'"
+                :title="json_check.valid ? 'Valid JSON' : json_check.error">
+                <i :class="json_check.valid ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'"></i>
+                {{ json_check.valid ? 'Valid' : 'Invalid' }}
+            </span>
+            <button
+                class="se-tb-btn"
+                type="button"
+                :disabled="!json_check.valid || !inner_value.trim()"
+                title="Format — pretty-print the JSON"
+                @click="format_json">
+                <i class="fas fa-broom"></i>
+            </button>
+        </template>
+
         <div class="se-toolbar-spacer"></div>
 
         <!-- Undo / Redo buttons -->
@@ -275,8 +296,8 @@ export default {
             </div>
         </template>
 
-        <!-- CODE ───────────────────────────────────── -->
-        <template v-else>
+        <!-- CODE / JSON ───────────────────────────────── -->
+        <template v-else-if="mode === 'code' || mode === 'json'">
             <div class="se-code-wrap" :style="code_wrap_style">
                 <div class="se-gutter" ref="gutter_ref" title="Line numbers">
                     <span v-for="n in line_count" :key="n" class="se-lnum">{{ n }}</span>
@@ -349,6 +370,7 @@ export default {
             text:     { label: 'Text',     icon: 'fas fa-align-left' },
             markdown: { label: 'Markdown', icon: 'fas fa-brands fa-markdown' },
             code:     { label: 'Code',     icon: 'fas fa-code' },
+            json:     { label: 'JSON',     icon: 'fas fa-file-code' },
         }
         const mode_label = computed(() => MODE_META[props.mode]?.label ?? props.mode)
         const mode_icon  = computed(() => MODE_META[props.mode]?.icon  ?? 'fas fa-file')
@@ -366,15 +388,86 @@ export default {
                 const w = inner_value.value.trim() ? inner_value.value.trim().split(/\s+/).length : 0
                 return `${w}w · ${c}c`
             }
-            if (props.mode === 'code') return `${line_count.value}L · ${c}c`
+            if (props.mode === 'code' || props.mode === 'json') return `${line_count.value}L · ${c}c`
             return `${c}c`
         })
 
         const stat_title = computed(() => {
             if (props.mode === 'text') return 'Word count · character count'
-            if (props.mode === 'code') return 'Line count · character count'
+            if (props.mode === 'code' || props.mode === 'json') return 'Line count · character count'
             return 'Character count'
         })
+
+        // ── JSON mode: live validity check + pretty-print ────────────────
+        const json_check = computed(() => {
+            if (props.mode !== 'json') return { valid: true, error: '' }
+            const text = inner_value.value.trim()
+            if (!text) return { valid: true, error: '' }
+            try {
+                JSON.parse(text)
+                return { valid: true, error: '' }
+            } catch (e) {
+                return { valid: false, error: e.message }
+            }
+        })
+
+        // Re-indents JSON text purely by walking the raw characters — never goes
+        // through JSON.parse/stringify for the output, so values are never rebuilt
+        // (no number-precision loss on huge IDs, no key dedup, no re-escaping of
+        // string content). Only the whitespace BETWEEN tokens is touched; every
+        // character inside a string (including embedded code/\n escapes) is copied
+        // through verbatim.
+        function reindent_json_text(src, unit = '  ') {
+            let out = ''
+            let depth = 0
+            let i = 0
+            const n = src.length
+            const skip_ws = () => { while (i < n && /\s/.test(src[i])) i++ }
+            const newline = () => { out += '\n' + unit.repeat(depth) }
+
+            skip_ws()
+            while (i < n) {
+                const ch = src[i]
+                if (ch === '"') {
+                    out += ch; i++
+                    while (i < n) {
+                        const c = src[i]
+                        out += c
+                        if (c === '\\' && i + 1 < n) { out += src[i + 1]; i += 2; continue }
+                        i++
+                        if (c === '"') break
+                    }
+                } else if (ch === '{' || ch === '[') {
+                    out += ch; i++
+                    skip_ws()
+                    const close = ch === '{' ? '}' : ']'
+                    if (src[i] === close) { out += src[i]; i++ }
+                    else { depth++; newline() }
+                } else if (ch === '}' || ch === ']') {
+                    depth--; newline()
+                    out += ch; i++
+                } else if (ch === ',') {
+                    out += ch; i++
+                    skip_ws(); newline()
+                } else if (ch === ':') {
+                    out += ': '; i++
+                    skip_ws()
+                } else if (/\s/.test(ch)) {
+                    i++
+                } else {
+                    out += ch; i++
+                }
+            }
+            return out
+        }
+
+        function format_json() {
+            if (!json_check.value.valid) return
+            const text = inner_value.value.trim()
+            if (!text) return
+            _save_now()
+            inner_value.value = reindent_json_text(text)
+        }
 
         const min_h = computed(() => parseInt(props.minHeight) || 220)
         const max_h = computed(() => parseInt(props.maxHeight) || 600)
@@ -407,7 +500,7 @@ export default {
             const code = inner_value.value
             if (!code) { highlighted.value = ''; return }
             try {
-                const lang = _resolve_lang(props.language)
+                const lang = props.mode === 'json' ? 'json' : _resolve_lang(props.language)
                 if (lang === 'text' || lang === 'plaintext') {
                     highlighted.value = escaped_code.value
                 } else {
@@ -443,7 +536,7 @@ export default {
         let _hl_t = null, _md_t = null
 
         watch(inner_value, () => {
-            if (props.mode === 'code' && hljs_ready.value) {
+            if ((props.mode === 'code' || props.mode === 'json') && hljs_ready.value) {
                 clearTimeout(_hl_t)
                 _hl_t = setTimeout(refresh_highlight, 80)
             }
@@ -472,8 +565,8 @@ export default {
 
             // Bracket/quote auto-closing is a code-editing convenience — in prose
             // (text/markdown) it misfires constantly on ordinary apostrophes and
-            // quotes, leaving stray closing characters behind. Code mode only.
-            if (props.mode === 'code') {
+            // quotes, leaving stray closing characters behind. Code/JSON mode only.
+            if (props.mode === 'code' || props.mode === 'json') {
                 // ── Auto-close pairs ─────────────────────────────────────
                 if (PAIRS[key] && !e.ctrlKey && !e.metaKey) {
                     e.preventDefault()
@@ -532,7 +625,7 @@ export default {
                 const indent     = val.slice(line_start, s).match(/^(\s+)/)?.[1] ?? ''
                 const prev_ch    = val[s - 1]
                 const next_ch    = val[s]
-                const is_open    = props.mode === 'code' && PAIRS[prev_ch] === next_ch
+                const is_open    = (props.mode === 'code' || props.mode === 'json') && PAIRS[prev_ch] === next_ch
 
                 if (indent || is_open) {
                     e.preventDefault()
@@ -736,7 +829,7 @@ export default {
 
         // ── Lifecycle ───────────────────────────────────────────────────
         onMounted(async () => {
-            if (props.mode === 'code') {
+            if (props.mode === 'code' || props.mode === 'json') {
                 await load_hljs()
                 hljs_ready.value = true
                 refresh_highlight()
@@ -766,6 +859,7 @@ export default {
             MD_ACTIONS,
             mode_label, mode_icon, md_view_label,
             line_count, stat_label, stat_title, body_style, code_wrap_style,
+            json_check, format_json,
             undo_count, redo_count, btn_undo, btn_redo,
             on_input, on_keydown, sync_scroll, md_action, set_md_view, on_md_scroll,
             toggle_fullscreen, toggle_line_numbers, focus, on_file_import, clear_content,
