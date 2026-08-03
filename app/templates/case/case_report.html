@@ -16,7 +16,7 @@
         <a href="/case/{{ case.id }}" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-arrow-left fa-sm me-1"></i>Back
         </a>
-        <h4 class="mb-0">Case report — {{ case.title }}</h4>
+        <h4 class="mb-0">Case report — {{ case.title|vue_escape }}</h4>
     </div>
 
     <div class="card mb-4">

@@ -41,7 +41,7 @@
         <div class="case-title-row">
             <h1 class="case-title">
                 <span class="case-id">{{case.id}}</span>
-                {{case.title}}
+                {{ case.title|vue_escape }}
             </h1>
             <div class="case-badges">
                 <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
@@ -71,7 +71,7 @@
         {% if case.ticket_id %}
         <div class="case-ticket-row">
             <span class="ticket-badge" title="Ticket ID">
-                <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
+                <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
             </span>
         </div>
         {% endif %}
@@ -105,7 +105,7 @@
         <div class="case-meta-item" title="Recurring schedule">
             <i class="fa-solid fa-repeat fa-fw"></i>
             <span class="meta-label">Recurring</span>
-            <span class="meta-value">{{case.recurring_type}}{% if case.recurring_date %} ({{case.recurring_date}}){% endif %}</span>
+            <span class="meta-value">{{ case.recurring_type|vue_escape }}{% if case.recurring_date %} ({{ case.recurring_date|vue_escape }}){% endif %}</span>
         </div>
         {% endif %}
     </div>
@@ -113,7 +113,7 @@
     {% if config.SHOW_GDPR_NOTICE %}
     <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <span>{{ config.GDPR_NOTICE }}</span>
+        <span>{{ config.GDPR_NOTICE|vue_escape }}</span>
     </div>
     {% endif %}
 

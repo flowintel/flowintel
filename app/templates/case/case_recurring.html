@@ -12,7 +12,7 @@
         <div class="modal-body">
             <div class="mb-3 w-50 alert {% if case.recurring_type %}alert-info{% else %}alert-secondary{% endif %}" role="alert">
                 {% if case.recurring_type %}
-                    <strong>Current setting:</strong> {{ case.recurring_type|capitalize }}{% if current_date %}, next occurrence on <strong>{{ current_date }}</strong>{% endif %}
+                    <strong>Current setting:</strong> {{ case.recurring_type|capitalize|vue_escape }}{% if current_date %}, next occurrence on <strong>{{ current_date|vue_escape }}</strong>{% endif %}
                 {% else %}
                     This case is not recurring.
                 {% endif %}
@@ -75,7 +75,7 @@
 
                         <a href="#collapse_{{org.id}}" data-bs-toggle="collapse" role="button" aria-expanded="false" class="list-group-item list-group-item-action" style="background-color: whitesmoke;">
                             <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">{{org.id}}- {{org.name}}</h5>
+                                <h5 class="mb-1">{{ org.id }}- {{ org.name|vue_escape }}</h5>
                             </div>
                         </a>
                     </div>
@@ -92,9 +92,9 @@
                                             <td><input class="form-check-input me-2" type="checkbox" name="check_{{org.id}}_user_{{user.id}}" id="check_{{org.id}}_user_{{user.id}}" @click="check_user({{org}}, {{user}})"></td>
                                         {%endif%}
                                         <td title="Id">{{user.id}}</td>
-                                        <td title="First name">{{user.first_name}}</td>
-                                        <td title="last name">{{user.last_name}}</td>
-                                        <td title="Email">{{user.email}}</td>
+                                        <td title="First name">{{ user.first_name|vue_escape }}</td>
+                                        <td title="last name">{{ user.last_name|vue_escape }}</td>
+                                        <td title="Email">{{ user.email|vue_escape }}</td>
                                     </tr>
                                 {%endfor%}
                             </table>

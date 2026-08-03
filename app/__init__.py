@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 from flask_session import Session
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
+from markupsafe import Markup, escape
 
 from conf.config import config as Config
 import os
@@ -23,6 +24,13 @@ migrate = Migrate()
 session = Session()
 login_manager = LoginManager()
 
+def vue_escape(value):
+    """Render server text safely inside DOM regions later compiled by Vue."""
+    if value is None:
+        return ""
+    escaped = escape(value)
+    return Markup(str(escaped).replace("[[", "[<!---->[").replace("]]", "]<!---->]"))
+
 def create_app():
     app = Flask(__name__)
     config_name = os.environ.get("FLASKENV", "development")
@@ -30,6 +38,7 @@ def create_app():
     app.config.from_object(Config[config_name])
 
     Config[config_name].init_app(app)
+    app.jinja_env.filters["vue_escape"] = vue_escape
     
     if not app.debug and not app.testing:
         logs_folder = os.path.join(os.getcwd(), "logs")
