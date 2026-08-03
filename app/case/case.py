@@ -1196,6 +1196,9 @@ def add_new_link(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "case_id" in request.json:
+                    if not CommonModel.can_view_case_ids(request.json["case_id"], current_user):
+                        flowintel_log("audit", 403, "Add case link: Linked case permission denied", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+                        return {"message": "Linked case permission denied", "toast_class": "warning-subtle"}, 403
                     if CaseModel.add_new_link(request.json, cid, current_user):
                         flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
                         return {"message": "Link added", "toast_class": "success-subtle"}, 200
@@ -2562,11 +2565,22 @@ def resolve_note_variables(cid):
     if not check_user_private_case(case):
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     
-    text = request.json.get("text", "")
-    task_id = request.json.get("task_id", None)
-    mark = request.json.get("mark", False)
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
+    task_id = data.get("task_id", None)
+    mark = data.get("mark", False)
+
+    if task_id:
+        try:
+            task_id = int(task_id)
+        except (TypeError, ValueError):
+            return {"message": "Invalid task_id", "toast_class": "danger-subtle"}, 400
+        task = CommonModel.get_task(task_id)
+        if not task or int(task.case_id) != int(cid):
+            flowintel_log("audit", 403, "Resolve note variables: Task not in case", User=current_user.email, CaseId=cid, TaskId=task_id)
+            return {"message": "Task not in case", "toast_class": "danger-subtle"}, 403
     
-    resolved = resolve_variables(text, case_id=int(cid), task_id=int(task_id) if task_id else None, mark=bool(mark))
+    resolved = resolve_variables(text, case_id=int(cid), task_id=task_id, mark=bool(mark))
     return {"resolved": resolved}, 200
 
 

@@ -167,6 +167,20 @@ def _lookup_entity(model, identifier: str):
     return None
 
 
+def _can_view_case(case: Case) -> bool:
+    """Match the app's case visibility rules for note variable resolution."""
+    if current_user is None or getattr(current_user, 'is_anonymous', True):
+        return False
+    from ..case import common_core as CommonModel
+    return CommonModel.can_view_case(case, current_user)
+
+
+def _can_view_task(task: Task) -> bool:
+    if not task:
+        return False
+    return _can_view_case(Case.query.get(task.case_id))
+
+
 def _resolve_user_property(user: User, parts: list):
     """Resolve properties for the current logged-in user.
 
@@ -223,7 +237,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
             if case_id is None:
                 return None
             case = Case.query.get(case_id)
-            if not case:
+            if not case or not _can_view_case(case):
                 return None
             return _resolve_case_property(case, remaining)
         
@@ -231,7 +245,9 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
             if task_id is None:
                 return None
             task = Task.query.get(task_id)
-            if not task:
+            if not task or not _can_view_task(task):
+                return None
+            if case_id is not None and int(task.case_id) != int(case_id):
                 return None
             return _resolve_task_property(task, remaining)
         
@@ -242,7 +258,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if len(parts) < 3:
             return None
         case = _lookup_entity(Case, parts[1])
-        if not case:
+        if not case or not _can_view_case(case):
             return None
         return _resolve_case_property(case, parts[2:])
     
@@ -251,7 +267,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if len(parts) < 3:
             return None
         task = _lookup_entity(Task, parts[1])
-        if not task:
+        if not task or not _can_view_task(task):
             return None
         return _resolve_task_property(task, parts[2:])
 

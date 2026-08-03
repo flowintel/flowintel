@@ -57,6 +57,23 @@ def get_present_in_case(case_id: int, current_user: User) -> bool:
 
     return present_in_case
 
+def can_view_case(case: Case, current_user: User) -> bool:
+    """Return whether a user can view a case under public/private case rules."""
+    if not case or not current_user:
+        return False
+    if current_user.is_admin() or not case.is_private:
+        return True
+    return get_present_in_case(case.id, current_user)
+
+def can_view_case_ids(case_ids, current_user: User) -> bool:
+    """Return whether a user can view every case in a list of case IDs."""
+    if not isinstance(case_ids, list):
+        return False
+    for case_id in case_ids:
+        if not can_view_case(get_case(case_id), current_user):
+            return False
+    return True
+
 def check_user_in_private_cases(cases: List[Case], current_user: User) -> List[Case]:
     if current_user.is_admin(): # admin have access to all cases
         return cases

@@ -21,6 +21,7 @@ def check_user_private_case(case: Case, request_headers, current_user: User = No
         return False
     return True
 
+
 @case_ns.route('/all')
 @case_ns.doc(description='Get all cases')
 class GetCases(Resource):
@@ -399,6 +400,9 @@ class AddCaseLink(Resource):
             return {"message": "Permission denied"}, 403
         if not request.json or "case_id" not in request.json:
             return {"message": "Need to pass 'case_id'"}, 400
+        if not CommonModel.can_view_case_ids(request.json["case_id"], current_user):
+            flowintel_log("audit", 403, "Add case link: Linked case permission denied", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+            return {"message": "Linked case permission denied"}, 403
         if CaseModel.add_new_link(request.json, cid, current_user):
             flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
             return {"message": "Link added"}, 200
