@@ -135,6 +135,15 @@ export async function renderMarkdown(text, { breaks = true, styleVariables = tru
     if (styleVariables && !window.FlowintelNoteVariables) await loadNoteVariables().catch(() => {})
     try {
         let html = mermaidify(window.marked.parse(text ?? '', { breaks }))
+        // Resolved ⟪@var⦂value⟫ markers (see note_variables.js) must only be turned
+        // into <span> markup AFTER marked.parse() — the value survives marked's raw
+        // HTML passthrough as inert plain text up to this point, and only becomes
+        // markup here, right before DOMPurify gets the final say on it. Callers must
+        // never pre-process these markers themselves before handing text to
+        // renderMarkdown().
+        if (window.FlowintelNoteVariables) {
+            html = window.FlowintelNoteVariables.postProcessVarMarkers(html)
+        }
         if (styleVariables) {
             html = styleVariablesInTextNodes(html)
         }

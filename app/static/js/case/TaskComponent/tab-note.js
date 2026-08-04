@@ -18,9 +18,10 @@ export default {
 		const note_editor_render = ref([])		// Notes display in mermaid
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
 		// Resolved markdown source (not pre-rendered HTML) by note id — fed to
-		// <smart_render>, which does its own marked + mermaid rendering. See
-		// resolve_note_preview() below for why postProcessVarMarkers runs on raw
-		// markdown here instead of after render.
+		// <smart_render>, which does its own marked + mermaid rendering, including
+		// turning the ⟪@var⦂value⟫ markers left by resolveNoteVariables(mark=true)
+		// into styled spans itself, after marked.parse(). Never post-process those
+		// markers here — see renderMarkdown() in markdown-render.js.
 		const resolved_notes_markdown = ref({})
 
 		if (props.task.notes.length) {
@@ -37,22 +38,24 @@ export default {
 				resolved_notes_markdown.value[noteId] = noteText || ''
 				return
 			}
-			// Resolve with markers for styled rendering
-			const markedResolved = await window.FlowintelNoteVariables.resolveNoteVariables(
+			// Resolve with markers embedded in the markdown source; <smart_render>
+			// converts them to styled spans itself, after marked.parse().
+			resolved_notes_markdown.value[noteId] = await window.FlowintelNoteVariables.resolveNoteVariables(
 				props.task.case_id, noteText, props.task.id, true
 			)
-			resolved_notes_markdown.value[noteId] = window.FlowintelNoteVariables.postProcessVarMarkers(markedResolved)
 		}
 
 		// Passed as :resolve-variables to <smart_editor> for every note's editor —
 		// resolves @this.case.title / @this.task.title style references to real values
 		// in the live preview. Shared across all notes since they're all in this same
-		// task/case context.
+		// task/case context. Returns raw markdown with ⟪@var⦂value⟫ markers still
+		// embedded — <smart_editor> renders this through the shared renderMarkdown()
+		// pipeline, which resolves the markers into markup only after marked.parse(),
+		// so a resolved value can never reach the renderer as live HTML.
 		async function resolve_note_preview(text) {
-			const marked = await window.FlowintelNoteVariables.resolveNoteVariables(
+			return await window.FlowintelNoteVariables.resolveNoteVariables(
 				props.task.case_id, text, props.task.id, true
 			)
-			return window.FlowintelNoteVariables.postProcessVarMarkers(marked)
 		}
 
 		// Resolve all notes on mount
