@@ -1041,21 +1041,21 @@
 
                 // Note variables resolution
                 // Resolved markdown source (not pre-rendered HTML) — fed to <smart_render>,
-                // which does its own marked + mermaid rendering. Variable markers
-                // (⟪@var⦂value⟫) survive as plain text through that rendering the same way
-                // they survive markdown-it, so postProcessVarMarkers can run on the raw
-                // markdown here instead of after render.
+                // which does its own marked + mermaid rendering, including turning the
+                // ⟪@var⦂value⟫ markers left by resolveNoteVariables(mark=true) into styled
+                // spans itself, after marked.parse(). Never post-process those markers
+                // here — see renderMarkdown() in markdown-render.js.
                 const resolved_case_notes_markdown = ref('')
                 const resolved_all_notes = ref([])
                 const case_id_for_vars = {{ case.id }}
 
                 async function resolveAndSetNotes() {
                     if (cases_info.value && cases_info.value.case && cases_info.value.case.notes) {
-                        // Resolve with styling markers, for the rendered view
-                        const markedResolved = await FlowintelNoteVariables.resolveNoteVariables(
+                        // Resolve with markers embedded in the markdown source; <smart_render>
+                        // converts them to styled spans itself, after marked.parse().
+                        resolved_case_notes_markdown.value = await FlowintelNoteVariables.resolveNoteVariables(
                             case_id_for_vars, cases_info.value.case.notes, null, true
                         )
-                        resolved_case_notes_markdown.value = FlowintelNoteVariables.postProcessVarMarkers(markedResolved)
                     } else {
                         resolved_case_notes_markdown.value = ''
                     }
@@ -1063,14 +1063,15 @@
 
                 // Passed as :resolve-variables to <smart_editor> for the notes editor —
                 // resolves @this.case.title-style references to real values in its live
-                // preview (mark=true + postProcessVarMarkers so resolved values get the
-                // same "resolved" badge as the rendered view; anything resolution can't
-                // reach falls back to the editor's own "unresolved" badge highlighting).
+                // preview. Returns the raw markdown with ⟪@var⦂value⟫ markers still
+                // embedded — <smart_editor> renders this through the shared
+                // renderMarkdown() pipeline, which resolves the markers into the same
+                // "resolved" badge as the rendered view, only after marked.parse(), so a
+                // resolved value can never reach the renderer as live HTML.
                 async function resolve_note_preview(text) {
-                    const marked = await FlowintelNoteVariables.resolveNoteVariables(
+                    return await FlowintelNoteVariables.resolveNoteVariables(
                         case_id_for_vars, text, null, true
                     )
-                    return FlowintelNoteVariables.postProcessVarMarkers(marked)
                 }
 
                 async function resolveAllTaskNotes() {
@@ -1080,10 +1081,8 @@
                             const taskId = entry.task_id || null
                             return FlowintelNoteVariables.resolveNoteVariables(case_id_for_vars, text, taskId, true)
                         })
-                        const resolved = await Promise.all(promises)
-                        resolved_all_notes.value = resolved.map(r =>
-                            FlowintelNoteVariables.postProcessVarMarkers(r)
-                        )
+                        // Markers stay embedded; <smart_render> resolves them after marked.parse().
+                        resolved_all_notes.value = await Promise.all(promises)
                     } else {
                         resolved_all_notes.value = []
                     }

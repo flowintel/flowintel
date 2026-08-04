@@ -113,14 +113,17 @@
             const case_id_for_vars = {{ case_id }}
 
             // Passed as :resolve-variables to <smart_editor> — resolves @this.case.title
-            // style references to real values in the live preview (mark=true +
-            // postProcessVarMarkers so resolved values get the "resolved" badge; anything
-            // it can't resolve falls back to the editor's own "unresolved" highlighting).
+            // style references to real values in the live preview (mark=true wraps each
+            // resolved value in a ⟪@var⦂value⟫ marker; anything it can't resolve falls
+            // back to the editor's own "unresolved" highlighting). Returns the raw
+            // markdown with markers still embedded — <smart_editor> renders this through
+            // the shared renderMarkdown() pipeline, which turns markers into the
+            // "resolved" badge itself, only after marked.parse(), so a resolved value
+            // (e.g. another case's title) can never reach the renderer as live HTML.
             async function resolve_description_preview(text) {
-                const marked = await FlowintelNoteVariables.resolveNoteVariables(
+                return await FlowintelNoteVariables.resolveNoteVariables(
                     case_id_for_vars, text, null, true
                 )
-                return FlowintelNoteVariables.postProcessVarMarkers(marked)
             }
 
             return {
