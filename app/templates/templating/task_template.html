@@ -4,9 +4,9 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script>
     // Pass permissions to Vue components via window object
     {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
