@@ -470,7 +470,7 @@
                                 <div v-html="md.render(variables_reference)" class="mt-2" style="max-height: 400px; overflow-y: auto;"></div>
                             </details>
                         </div>
-                        <smart_render :code="resolved_case_notes_markdown" language="markdown"></smart_render>
+                        <smart_render :code="resolved_case_notes_markdown" language="markdown" :simple="false" title="Notes"></smart_render>
                     </template>
                 </div>
                 <div v-else>

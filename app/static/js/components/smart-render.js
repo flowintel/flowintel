@@ -11,12 +11,16 @@
  *   maxHeight     String   — CSS value, e.g. '500px' (default: '520px')
  *   foldable      Boolean  — enable JSON fold/unfold tree (default: true for JSON)
  *   showLines     Boolean  — show line numbers (default: true)
+ *   simple        Boolean  — null (default) auto-picks simple mode for markdown
+ *                            content, full header otherwise; pass true/false to
+ *                            force one or the other regardless of language
  *
  * Features:
  *   - Syntax highlighting via highlight.js (lazy-loaded from /static/js/hljs.min.js)
  *   - Markdown rendering with ```mermaid diagram support (shared with smart-editor.js,
- *     via markdown-render.js) — no header/badge, just a small copy button that fades
- *     in on hover over the top-right corner
+ *     via markdown-render.js) — simple mode (default for markdown): no header/badge,
+ *     just a small copy button that fades in on hover; pass :simple="false" for the
+ *     full header (title, badge, search, line count, copy) over the rendered markdown
  *   - JSON interactive tree: collapse/expand any object or array
  *   - Integrated search: real-time highlight, prev/next, match counter
  *   - Line numbers (sync-scrolled with code pane)
@@ -29,6 +33,7 @@
  *   import SmartRender from '/static/js/components/smart-render.js'
  *   <smart_render :code="source" language="json" title="config.json"></smart_render>
  *   <smart_render :code="case.description" language="markdown"></smart_render>
+ *   <smart_render :code="case.notes" language="markdown" :simple="false"></smart_render>
  */
 
 const { ref, computed, watch, onMounted, nextTick } = Vue
@@ -221,21 +226,23 @@ export default {
         // below). No title, language badge, search, line count, Tree/wrap controls.
         // For dense lists of many instances (e.g. one per task) where the full
         // toolbar is too heavy to repeat everywhere.
-        simple: { type: Boolean, default: false },
+        // Default (null/undefined) auto-picks simple mode for markdown content and
+        // full mode otherwise; pass explicit true/false to override that per use site.
+        simple: { type: Boolean, default: null },
     },
 
     template: `
-    <div class="cv-root" :class="{ 'cv-root--simple': simple || effective_lang === 'markdown' }">
+    <div class="cv-root" :class="{ 'cv-root--simple': is_simple }">
 
-        <!-- ── Markdown or simple mode: no header, just a floating copy toolbar,
+        <!-- ── Simple mode: no header, just a floating copy toolbar,
              shown on hover ─────────────────────────────────────────────── -->
-        <div class="cv-md-float-toolbar" v-if="effective_lang === 'markdown' || simple">
+        <div class="cv-md-float-toolbar" v-if="is_simple">
             <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
                 <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
             </button>
         </div>
 
-        <!-- ── Header (non-markdown, non-simple) ───────────────────────── -->
+        <!-- ── Header (non-simple) ──────────────────────────────────────── -->
         <div class="cv-header" v-else>
             <div class="cv-header-left">
                 <span v-if="title" class="cv-title">
@@ -303,7 +310,7 @@ export default {
                     <i class="fas fa-maximize"></i>
                 </button>
 
-                <button class="cv-btn cv-btn--sm" @click.stop.prevent="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
+                <button v-if="!markdown_mode" class="cv-btn cv-btn--sm" @click.stop.prevent="wrap = !wrap" :class="{ 'is-active': wrap }" title="Toggle word wrap">
                     <i class="fas fa-arrow-turn-down"></i>
                 </button>
 
@@ -320,7 +327,7 @@ export default {
             v-if="markdown_mode"
             class="cv-md-body"
             ref="md_preview_ref"
-            v-html="rendered_md"
+            v-html="rendered_md_with_search"
             :style="{ maxHeight: maxHeight }">
         </div>
 
@@ -410,6 +417,14 @@ export default {
 
         const effective_lang = computed(() => detect_language(normalized_code.value, props.language))
 
+        // null/undefined `simple` prop auto-picks simple mode for markdown (the
+        // long-standing default everywhere except an explicit override); true/false
+        // always wins.
+        const is_simple = computed(() => {
+            if (props.simple === null || props.simple === undefined) return effective_lang.value === 'markdown'
+            return props.simple
+        })
+
         const line_count = computed(() => {
             if (!normalized_code.value) return 0
             return normalized_code.value.split('\n').length
@@ -442,8 +457,23 @@ export default {
             }
         })
 
-        // Total matches for current search
-        const total_matches = computed(() => count_matches(normalized_code.value, search_term.value))
+        // Total matches for current search — rendered markdown strips markup
+        // (headings, emphasis, link syntax) so counting must run against the
+        // rendered text, not the raw source, or the header count would lie.
+        const total_matches = computed(() => {
+            const text = markdown_mode.value
+                ? rendered_md.value.replace(/<[^>]+>/g, '')
+                : normalized_code.value
+            return count_matches(text, search_term.value)
+        })
+
+        // Rendered markdown with search matches marked, for the full-header case
+        // (is_simple === false) where the header's search box needs to actually
+        // highlight inside the rendered HTML, same as the code/JSON panes do.
+        const rendered_md_with_search = computed(() => {
+            if (!search_term.value) return rendered_md.value
+            return inject_search_marks(rendered_md.value, search_term.value, null, cur_match.value)
+        })
 
         // Auto-highlighted HTML (extraHighlights only, no interactive search yet)
         const highlighted_with_extras = computed(() => {
@@ -535,7 +565,7 @@ export default {
 
         async function scroll_to_match() {
             await nextTick()
-            const container = body_ref.value || pre_ref.value
+            const container = body_ref.value || pre_ref.value || md_preview_ref.value
             if (!container) return
             const el = container.querySelector(`[data-match="${cur_match.value}"]`)
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -613,10 +643,11 @@ export default {
 
         return {
             hljs_ready, wrap, copied, json_mode, markdown_mode, rendered_md,
+            rendered_md_with_search,
             search_term, cur_match, total_matches,
             collapsed,
             body_ref, gutter_ref, pre_ref, md_preview_ref,
-            effective_lang, line_count,
+            effective_lang, line_count, is_simple,
             highlighted_with_search,
             json_lines, visible_json_lines,
             go_next_match, go_prev_match,
