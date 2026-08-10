@@ -259,8 +259,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def create_task(self, form_dict, cid, current_user):
         """Add a task to the DB"""
-        if "template_select" in form_dict and 0 not in form_dict["template_select"]:
-            task = CommonModel.create_task_from_template(form_dict["template_select"], cid, current_user)
+        template_select = form_dict.get("template_select")
+        template_id = None
+        if template_select:
+            template_id = next((tid for tid in template_select if tid != 0), None) if isinstance(template_select, list) else template_select
+
+        if template_id:
+            task = CommonModel.create_task_from_template(template_id, cid, current_user)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 

@@ -858,6 +858,9 @@ def create_task_from_template(template_id, cid, current_user=None):
     from flask import current_app
     template = Task_Template.query.get(template_id)
     case = get_case(cid)
+    if not template or not case:
+        return None
+
     nb_tasks = 1
     if case.nb_tasks:
         nb_tasks = case.nb_tasks+1
@@ -935,10 +938,10 @@ def create_task_from_template(template_id, cid, current_user=None):
         db.session.commit()
 
     ## Task subtasks
-    for sub in task.subtasks:
+    for sub in template.subtasks:
         subtask = Subtask(
             task_id=task.id,
-            descritpion=sub.description
+            description=sub.description
         )
         db.session.add(subtask)
         db.session.commit()
