@@ -20,6 +20,10 @@ export default {
 		open_closed: Object,
 		md: Object,
 		task_modules: Object,
+		can_drag_reorder: {
+			type: Boolean,
+			default: true
+		},
 	},
 	components: {
 		tabMain,
@@ -345,7 +349,7 @@ export default {
 	},
 	template: `
 	<div style="display: flex;">
-		<div v-if="!task.completed && can_reorder" class="task-drag-handle" title="Drag to reorder">
+		<div v-if="!task.completed && can_reorder && can_drag_reorder" class="task-drag-handle" title="Drag to reorder">
 			<i class="fa-solid fa-grip-vertical"></i>
 		</div>
 		<a href="javascript:void(0)" 

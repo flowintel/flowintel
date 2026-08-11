@@ -961,7 +961,7 @@
                     <div class="d-flex w-100 justify-content-between">
                         <div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')" checked>
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherTitle" @click="sort_by_filter('title')">
                                 <label class="form-check-label" for="radioOtherTitle">Title</label>
                             </div>
                             <div class="form-check">
@@ -989,7 +989,7 @@
                                 <label class="form-check-label" for="radioOtherCurrentAssign">My assignment</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCaseOrder" @click="sort_by_filter('case_order_id')">
+                                <input class="form-check-input" type="radio" name="radioOther" id="radioOtherCaseOrder" @click="sort_by_filter('case_order_id')" checked>
                                 <label class="form-check-label" for="radioOtherCaseOrder">Case order</label>
                             </div>
                         </div>
@@ -997,7 +997,7 @@
                         <div>
                             Change order
                             <div class="form-check form-switch" style="margin-left: 35%;">
-                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)">
+                                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault" @click="change_switch_check(true)" :checked="asc_desc">
                             </div>
                         </div>
                     </div>
@@ -1112,6 +1112,7 @@
                                         :key_loop="key"
                                         :open_closed="open_closed"
                                         :md="md"
+                                        :can_drag_reorder="can_drag_reorder"
                                         :task_modules="task_modules">
                             </case_tasks>
                         </div>
@@ -1231,10 +1232,10 @@
                 const is_exporting = ref(false)
                 let loc_tasks_list = []
 
-                let current_filter = ""
+                const current_filter = ref("case_order_id")
                 const search_query = ref('')
                 let searchTimer = null
-                let asc_desc = true
+                const asc_desc = ref(false)
                 let or_and_taxo = true
                 let or_and_galaxies = true
 
@@ -1812,7 +1813,7 @@
                 }
 
                 function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
-                    if (change) asc_desc = !asc_desc
+                    if (change) asc_desc.value = !asc_desc.value
                     if (changeOperator) or_and_taxo = !or_and_taxo
                     if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
 
@@ -1822,7 +1823,7 @@
 
                 async function fetch_sorted_tasks() {
                     let loc_status = `status=${!is_open_cases.value}`
-                    let loc_filter = `&filter=${current_filter}`
+                    let loc_filter = `&filter=${current_filter.value}`
                     let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
                     let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
 
@@ -1846,7 +1847,7 @@
 
                     total_tasks.value = loc.total
 
-                    if(asc_desc)
+                    if(asc_desc.value)
                         cases_info.value.tasks = loc.tasks.reverse()
                     else
                         cases_info.value.tasks = loc.tasks
@@ -1855,7 +1856,7 @@
                 }
 
                 function sort_by_filter(filter){
-                    current_filter = filter
+                    current_filter.value = filter
                     current_page.value = 1
                     fetch_sorted_tasks()
                 }
@@ -2450,7 +2451,15 @@
                         animation: 150,
                         handle: '.task-drag-handle',
                         ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
+                        onMove: function() {
+                            return can_drag_reorder.value
+                        },
                         onEnd: async function(evt) {
+                            if (!can_drag_reorder.value) {
+                                create_message("Tasks can only be reordered in open case-order view without filters", "warning-subtle", false)
+                                await fetch_sorted_tasks()
+                                return
+                            }
                             let task
                             for(let i in cases_info.value.tasks){
                                 if (cases_info.value.tasks[i].id == evt.item.id.split("-")[1]){
@@ -2458,9 +2467,13 @@
                                     break
                                 }
                             }
+                            if(!task){
+                                await fetch_sorted_tasks()
+                                return
+                            }
                             if(!task.completed){
                                 if(evt.newIndex != evt.oldIndex){
-                                    const dataToSend = {"new-index": evt.newIndex}
+                                    const dataToSend = {"new-index": ((current_page.value - 1) * per_page) + evt.newIndex}
 
                                     // Send via fetch to backend
                                     const res = await fetch('/case/'+cases_info.value.case.id+'/change_order/'+evt.item.id.split("-")[1], {
@@ -2470,38 +2483,13 @@
                                     })
                                     if(await res.status == 200){
                                         cases_info.value.case.last_modif = Date.now()
-                                        // let task = cases_info.value.tasks.find(t => t.id === evt.item.id.split("-")[1]);
-                                        
-                                        // Sort tasks by case_order_id ascending
-                                        let tasks = cases_info.value.tasks
-
-                                        // Find the task whose case_order_id matches new-index + 1
-                                        const newIndex = evt.newIndex
-                                        const target_task = tasks.find(t => t.case_order_id === newIndex + 1);
-
-                                        const moving_task = task;
-
-                                        // Find target index in the sorted array
-                                        const target_index = tasks.indexOf(target_task);
-
-                                        // Remove moving_task from array
-                                        const movingIndex = tasks.indexOf(moving_task);
-                                        if (movingIndex !== -1) {
-                                        tasks.splice(movingIndex, 1);
-                                        }
-
-                                        // Insert moving_task before target_index
-                                        tasks.splice(target_index, 0, moving_task);
-
-                                        // Reassign case_order_id starting at 1
-                                        tasks.forEach((t, i) => {
-                                            t.case_order_id = i + 1;
-                                        });
                                     }
+                                    await fetch_sorted_tasks()
                                     display_toast(res)
                                 }
                             }else{
                                 create_message("Finished tasks cannot be moved", "warning-subtle",false)
+                                await fetch_sorted_tasks()
                             }
                         }
                     };
@@ -2532,6 +2520,13 @@
                         selected_clusters.value.length > 0 ||
                         selected_custom_tags.value.length > 0
                     )
+                })
+
+                const can_drag_reorder = computed(() => {
+                    return is_open_cases.value &&
+                        current_filter.value === 'case_order_id' &&
+                        !asc_desc.value &&
+                        !has_active_filters.value
                 })
 
                 function go_to_page(page) {
@@ -2595,6 +2590,8 @@
                     message_list,
                     dayjs,
                     has_active_filters,
+                    can_drag_reorder,
+                    asc_desc,
                     main_tab,
                     subtab_note,
                     subtab_timeline,

@@ -209,6 +209,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 loc_open += 1
         return loc_open
 
+    def normalize_open_task_order(self, case):
+        """Keep open task order dense and deterministic."""
+        tasks = Task.query.filter_by(case_id=case.id, completed=False)\
+            .order_by(Task.case_order_id.asc(), Task.id.asc()).all()
+
+        changed = False
+        for i, task in enumerate(tasks, start=1):
+            if task.case_order_id != i:
+                task.case_order_id = i
+                changed = True
+
+        if changed:
+            db.session.commit()
+
+        return tasks
+
     def complete_task(self, tid, current_user):
         """Complete task by is id"""
         task = CommonModel.get_task(tid)
@@ -791,6 +807,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False, title_search=None, page=1, per_page=10):
         """Sort all tasks by completed and depending of taxonomies and galaxies"""
 
+        if not completed:
+            self.normalize_open_task_order(case)
 
         if tags or taxonomies or galaxies or clusters or custom_tags:
             tasks = self.build_task_query(case.id, completed, tags, taxonomies, galaxies, clusters, custom_tags)
@@ -848,39 +866,30 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def change_order(self, case, task, request_json, current_user=None):
         """Change the order of tasks"""
-        # Get tasks ordered by case_order_id
-        tasks_list = [t for t in case.tasks if not t.completed]
-        tasks = sorted(tasks_list, key=lambda t: t.case_order_id)
-        target_task = None
-        for t in tasks:
-            if t.case_order_id == int(request_json["new-index"])+1:
-                target_task = t
-                break
+        if task.completed:
+            return False
 
-        if target_task:
+        try:
+            new_index = int(request_json["new-index"])
+        except (KeyError, TypeError, ValueError):
+            return False
 
-            moving_task = task
+        tasks = self.normalize_open_task_order(case)
+        if task not in tasks or new_index < 0 or new_index >= len(tasks):
+            return False
 
-            # Find index where to insert
-            target_index = tasks.index(target_task)
+        tasks.remove(task)
+        tasks.insert(new_index, task)
 
-            # Remove the moving task from the list
-            tasks.remove(moving_task)
+        for i, loc_task in enumerate(tasks, start=1):
+            loc_task.case_order_id = i
 
-            # Insert the task before the target
-            tasks.insert(target_index, moving_task)
-
-            # Reassign order IDs
-            for i, loc_task in enumerate(tasks, start=1):
-                loc_task.case_order_id = i
-
-            db.session.commit()
-            if current_user:
-                self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' reordered")
-            else:
-                CommonModel.update_last_modif(case.id)
-            return True
-        return False
+        db.session.commit()
+        if current_user:
+            self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' reordered")
+        else:
+            CommonModel.update_last_modif(case.id)
+        return True
 
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
         user = User.query.get(user_id)
