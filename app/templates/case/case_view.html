@@ -273,7 +273,10 @@
                 <i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i>
                 <i class="misp-icon misp-icon-misp misp-simple me-1"></i>
                 <span class="section-title fs-6">MISP</span>
-                <span class="badge text-bg-secondary ms-1" v-if="nb_misp_total > 0">[[nb_misp_total]]</span>
+                <span class="badge text-bg-secondary ms-1" v-if="nb_misp_total > 0" title="MISP objects and attributes">[[nb_misp_total]]</span>
+                <span class="badge rounded-pill bg-warning text-dark ms-1" v-if="misp_automation_conflicts_count > 0" title="Pending MISP collisions">
+                    <i class="fa-solid fa-triangle-exclamation fa-xs me-1"></i>[[misp_automation_conflicts_count]]
+                </span>
             </button>
         </li>
         <li class="nav-item">
@@ -744,10 +747,9 @@
                         </button>
                     </li>
                     <li class="nav-item">
-                        <button :class="['nav-link', {active: subtab_misp === 'automation'}]" id="subtab-misp-automation" @click="active_subtab_misp('automation')">
-                            <i class="fa-solid fa-calendar-days fa-sm me-1"></i><span class="section-title">Automation</span>
-                            <span v-if="misp_automation_enabled" class="badge rounded-pill bg-success ms-1 align-text-bottom" title="Automation is enabled for at least one MISP connector">On</span>
-                            <span v-if="misp_automation_conflicts_count > 0" class="badge rounded-pill bg-warning text-dark ms-1 align-text-bottom" title="Pending automation collisions">[[ misp_automation_conflicts_count ]]</span>
+                        <button :class="['nav-link', {active: subtab_misp === 'collision'}]" id="subtab-misp-collision" @click="active_subtab_misp('collision')">
+                            <i class="fa-solid fa-triangle-exclamation fa-sm me-1"></i><span class="section-title">Collision</span>
+                            <span v-if="misp_automation_conflicts_count > 0" class="badge rounded-pill bg-warning text-dark ms-1 align-text-bottom" title="Pending collisions">[[ misp_automation_conflicts_count ]]</span>
                         </button>
                     </li>
                     <li class="nav-item">
@@ -774,9 +776,9 @@
                         @note_change="on_connector_note_change">
                     </casemispconnectors>
                 </template>
-                <template v-else-if="subtab_misp === 'automation'">
+                <template v-else-if="subtab_misp === 'collision'">
                     <casemispconnectors
-                        mode="automation"
+                        mode="collision"
                         :case_task_connectors_list="misp_case_connectors_list"
                         :case_misp_objects_list="case_misp_objects_list"
                         :modules="modules"
@@ -784,6 +786,7 @@
                         :object_id="cases_info.case.id"
                         :cases_info="cases_info"
                         @case_connectors="(msg) => fetch_case_connectors()"
+                        @modif_misp_objects="(msg) => { fetch_case_misp_objects(); fetch_sorted_tasks(); }"
                         @automation_change="fetch_misp_automation_status">
                     </casemispconnectors>
                 </template>

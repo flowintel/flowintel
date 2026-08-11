@@ -221,12 +221,11 @@ def is_instance_visible_to_user(instance, user):
 
 def can_user_manage_instance(instance, user):
     """Return True if a user can edit/delete the connector instance."""
-    if user.is_admin():
-        return True
-    
     scope = get_instance_sharing_scope(instance)
     if scope == "org":
         return user.is_org_admin() and user.is_misp_editor() and instance.shared_org_id == user.org_id
+    if user.is_admin():
+        return True
     if scope == "global":
         return user.is_admin()
     return bool(get_user_instance_both(user_id=user.id, instance_id=instance.id))
@@ -825,6 +824,14 @@ def get_misp_sync_schedules(case_id, case_connector_instance_id):
     for direction in sorted(MISP_SYNC_DIRECTIONS):
         by_direction.setdefault(direction, sanitize_misp_sync_schedule(default_misp_sync_schedule(case_id, case_connector_instance_id, direction)))
     return by_direction
+
+
+def has_enabled_misp_sync_automation(case_id, case_connector_instance_id):
+    return Case_Misp_Sync_Schedule.query.filter_by(
+        case_id=int(case_id),
+        case_connector_instance_id=int(case_connector_instance_id),
+        enabled=True
+    ).first() is not None
 
 
 def normalize_misp_sync_schedule_payload(data):

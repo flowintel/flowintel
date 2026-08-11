@@ -1828,6 +1828,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         modules, _ = get_modules_list()
         module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
         direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+        automation_log_message = self.misp_sync_automation_log_message(payload)
 
         remote_change_result = self._misp_send_remote_change_guard(
             loc_case,
@@ -1888,13 +1889,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if "message" in result:
                 # Write error log
                 try:
+                    log_message = result["message"]
+                    if automation_log_message:
+                        log_message = f"{automation_log_message}: {log_message}"
                     sync_log = Connector_Sync_Log(
                         case_id=case["id"],
                         case_connector_instance_id=case_instance_id,
                         direction=direction,
                         timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
                         status="error",
-                        message=result["message"],
+                        message=log_message,
                         objects_synced=0,
                         objects_failed=0,
                         details=None
@@ -1926,7 +1930,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 direction=direction,
                 timestamp=sync_finished_at,
                 status=status,
-                message=None,
+                message=automation_log_message,
                 objects_synced=synced,
                 objects_failed=failed,
                 details=details
@@ -1950,7 +1954,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Run enabled MISP send schedules that are configured for case changes."""
         case = CommonModel.get_case(cid)
         if not case:
-            return {"ran": 0, "failed": 0}
+            return {"ran": 0, "failed": 0, "connectors": [], "failed_connectors": []}
 
         schedules = Case_Misp_Sync_Schedule.query.filter_by(
             case_id=int(cid),
@@ -1960,10 +1964,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         ).all()
         ran = 0
         failed = 0
+        connectors = []
+        failed_connectors = []
         for schedule in schedules:
+            case_connector = CommonModel.get_case_connectors_by_id(schedule.case_connector_instance_id)
+            connector_instance = CommonModel.get_instance(case_connector.instance_id) if case_connector else None
+            connector_name = connector_instance.name if connector_instance else f"#{schedule.case_connector_instance_id}"
             user = User.query.get(schedule.created_by_id) if schedule.created_by_id else fallback_user
             if not user:
                 failed += 1
+                failed_connectors.append(connector_name)
                 flowintel_log("warning", 400, "MISP on-change sync skipped: no schedule owner", CaseId=cid, ScheduleId=schedule.id)
                 continue
 
@@ -1971,11 +1981,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             module_name = schedule.module_name or "misp_object_event"
             payload["module"] = module_name
             payload["case_task_instance_id"] = schedule.case_connector_instance_id
+            payload["automation_trigger"] = "case_change"
 
             try:
                 res = self.call_module_case(module_name, schedule.case_connector_instance_id, case, user, payload=payload)
                 if res:
                     failed += 1
+                    failed_connectors.append(connector_name)
                     flowintel_log(
                         "warning",
                         400,
@@ -1987,8 +1999,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     )
                 else:
                     ran += 1
+                    connectors.append(connector_name)
             except Exception as e:
                 failed += 1
+                failed_connectors.append(connector_name)
                 flowintel_log(
                     "error",
                     500,
@@ -1998,7 +2012,41 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     ConnectorInstanceId=schedule.case_connector_instance_id,
                     ScheduleId=schedule.id
                 )
-        return {"ran": ran, "failed": failed}
+        return {
+            "ran": ran,
+            "failed": failed,
+            "connectors": connectors,
+            "failed_connectors": failed_connectors
+        }
+
+    def misp_sync_automation_log_message(self, payload):
+        if not isinstance(payload, dict):
+            return None
+        trigger = payload.get("automation_trigger")
+        if trigger == "case_change":
+            return "Auto sync: case change"
+        if trigger == "scheduled":
+            return "Auto sync: scheduled"
+        if trigger:
+            return f"Auto sync: {str(trigger).replace('_', ' ')}"
+        return None
+
+    def with_misp_automation_message(self, response, sync_result):
+        response = dict(response or {})
+        sync_result = sync_result or {}
+        connector_names = list(dict.fromkeys(sync_result.get("connectors") or []))
+        failed_connector_names = list(dict.fromkeys(sync_result.get("failed_connectors") or []))
+        details = []
+        if connector_names:
+            details.append("MISP automation synchronized via " + ", ".join(connector_names))
+        if failed_connector_names:
+            details.append("MISP automation failed via " + ", ".join(failed_connector_names))
+        if details:
+            response["message"] = f"{response.get('message', 'Updated')}. " + ". ".join(details)
+            response["not_hide"] = True
+            if failed_connector_names and not connector_names:
+                response["toast_class"] = "warning-subtle"
+        return response
 
     ###############
     # MISP Object #

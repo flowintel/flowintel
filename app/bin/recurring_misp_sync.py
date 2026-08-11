@@ -45,6 +45,7 @@ def run_due_misp_sync_schedules():
             module_name = schedule.module_name or ("misp_object_event" if schedule.direction == "send" else "receive_misp_object")
             payload["module"] = module_name
             payload["case_task_instance_id"] = schedule.case_connector_instance_id
+            payload["automation_trigger"] = "scheduled"
 
             try:
                 result = CaseModel.call_module_case(

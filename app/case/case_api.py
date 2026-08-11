@@ -835,7 +835,10 @@ class GetMispSyncAutomation(Resource):
         case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers)
         if error:
             return error
-        if CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid):
+        if (
+            ConnectorModel.has_enabled_misp_sync_automation(case.id, case_instance.id)
+            and CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid)
+        ):
             try:
                 CaseModel.ensure_misp_send_conflict(case_instance.id, case, current_user)
             except Exception:
@@ -1224,8 +1227,8 @@ class ModifNoteCase(Resource):
                         if "object-template" in request.json:
                             if "attributes" in request.json:
                                 CaseModel.create_misp_object(cid, request.json, current_user)
-                                CaseModel.trigger_misp_send_on_change(cid, current_user)
-                                return {"message": "Object created"}, 200
+                                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                return CaseModel.with_misp_automation_message({"message": "Object created"}, sync_result), 200
                             return {"message": "Need to pass 'attributes'"}, 400
                         return {"message": "Need to pass 'object-template'"}, 400
                     return {"message": "Please give data"}, 400
@@ -1242,8 +1245,8 @@ class ModifNoteCase(Resource):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if CaseModel.delete_object(cid, oid, current_user):
-                        CaseModel.trigger_misp_send_on_change(cid, current_user)
-                        return {"message": "Object deleted"}, 200
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        return CaseModel.with_misp_automation_message({"message": "Object deleted"}, sync_result), 200
                     return {"message": "Object not found in this case"}, 404
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
@@ -1262,8 +1265,8 @@ class ModifNoteCase(Resource):
                         if "object-template" in request.json:
                             if "attributes" in request.json:
                                 if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
-                                    CaseModel.trigger_misp_send_on_change(cid, current_user)
-                                    return {"message": "Receive"}, 200
+                                    sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                    return CaseModel.with_misp_automation_message({"message": "Attribute added"}, sync_result), 200
                                 return {"message": "Object not found in this case"}, 404
                             return {"message": "Need to pass 'attributes'"}, 400
                         return {"message": "Need to pass 'object-template'"}, 400
@@ -1285,7 +1288,8 @@ class ModifNoteCase(Resource):
                         if "value" in request.json and "type" in request.json:
                             result, status = CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
                             if status == 200:
-                                CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                result = CaseModel.with_misp_automation_message(result, sync_result)
                             return result, status
                         if "type" not in request.json:
                             return {"message": "Need to pass 'type'"}, 400
@@ -1305,7 +1309,8 @@ class ModifNoteCase(Resource):
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     result, status = CaseModel.delete_attribute(cid, oid, aid, current_user)
                     if status == 200:
-                        CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        result = CaseModel.with_misp_automation_message(result, sync_result)
                     return result, status
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
@@ -1365,9 +1370,9 @@ class ModifNoteCase(Resource):
                 return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
 
             attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
-            CaseModel.trigger_misp_send_on_change(cid, current_user)
+            sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
             flowintel_log("audit", 201, "Standalone MISP attribute created", User=current_user.email, CaseId=cid, AttributeId=attribute.id)
-            return {"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, 201
+            return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, sync_result), 201
 
 
     @case_ns.route('/<cid>/misp_attribute/<aid>/edit_misp_attribute', methods=['POST'])
@@ -1401,7 +1406,8 @@ class ModifNoteCase(Resource):
 
             result, status = CaseModel.edit_standalone_attr(cid, aid, request.json, current_user)
             if status == 200:
-                CaseModel.trigger_misp_send_on_change(cid, current_user)
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
                 flowintel_log("audit", 200, "Standalone MISP attribute edited", User=current_user.email, CaseId=cid, AttributeId=aid)
             return result, status
 
@@ -1421,7 +1427,8 @@ class ModifNoteCase(Resource):
 
             result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
             if status == 200:
-                CaseModel.trigger_misp_send_on_change(cid, current_user)
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
                 flowintel_log("audit", 200, "Standalone MISP attribute deleted", User=current_user.email, CaseId=cid, AttributeId=aid)
             return result, status
 

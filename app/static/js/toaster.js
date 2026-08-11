@@ -87,10 +87,11 @@ export async function display_toast(res, not_hide=false) {
 		for(let index in loc["message"]){
 			const toastClass = Array.isArray(loc["toast_class"]) ? loc["toast_class"][index] : loc["toast_class"]
 			const icon = Array.isArray(loc["icon"]) ? loc["icon"][index] : loc["icon"]
-			await create_message(loc["message"][index], toastClass, not_hide, icon)
+			const keepVisible = Array.isArray(loc["not_hide"]) ? loc["not_hide"][index] : (not_hide || !!loc["not_hide"])
+			await create_message(loc["message"][index], toastClass, keepVisible, icon)
 		}
 	}
 	else{
-		await create_message(loc["message"] || loc, loc["toast_class"] || "danger-subtle", not_hide, loc["icon"])
+		await create_message(loc["message"] || loc, loc["toast_class"] || "danger-subtle", not_hide || !!loc["not_hide"], loc["icon"])
 	}
 }

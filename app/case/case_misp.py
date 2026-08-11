@@ -126,9 +126,9 @@ def create_misp_object(cid):
             if "object-template" in request.json:
                 if "attributes" in request.json:
                     CaseModel.create_misp_object(cid, request.json, current_user)
-                    CaseModel.trigger_misp_send_on_change(cid, current_user)
+                    sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                     flowintel_log("audit", 200, "MISP object created", User=current_user.email, CaseId=cid, ObjectTemplate=request.json["object-template"])
-                    return {"message": "Object created", "toast_class": "success-subtle"}, 200
+                    return CaseModel.with_misp_automation_message({"message": "Object created", "toast_class": "success-subtle"}, sync_result), 200
                 return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
             return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
         flowintel_log("audit", 403, "Create MISP object: Action not allowed", User=current_user.email, CaseId=cid)
@@ -144,9 +144,9 @@ def delete_object(cid, oid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if CaseModel.delete_object(cid, oid, current_user):
-                CaseModel.trigger_misp_send_on_change(cid, current_user)
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                 flowintel_log("audit", 200, "MISP object deleted", User=current_user.email, CaseId=cid, ObjectId=oid)
-                return {"message": "Object deleted", "toast_class": "success-subtle"}, 200
+                return CaseModel.with_misp_automation_message({"message": "Object deleted", "toast_class": "success-subtle"}, sync_result), 200
             return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
         flowintel_log("audit", 403, "Delete MISP object: Action not allowed", User=current_user.email, CaseId=cid, ObjectId=oid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
@@ -163,9 +163,9 @@ def add_attributes(cid, oid):
             if "object-template" in request.json:
                 if "attributes" in request.json:
                     if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
-                        CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                         flowintel_log("audit", 200, "Attributes added to MISP object", User=current_user.email, CaseId=cid, ObjectId=oid)
-                        return {"message": "Receive", "toast_class": "success-subtle"}, 200
+                        return CaseModel.with_misp_automation_message({"message": "Attribute added", "toast_class": "success-subtle"}, sync_result), 200
                     return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
                 return {"message": "Need to pass 'attributes'", "toast_class": "warning-subtle"}, 400
             return {"message": "Need to pass 'object-template'", "toast_class": "warning-subtle"}, 400
@@ -185,7 +185,8 @@ def edit_attr(cid, oid, aid):
                     flowintel_log("audit", 200, "Edit attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
                     result, status = CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
                     if status == 200:
-                        CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        result = CaseModel.with_misp_automation_message(result, sync_result)
                     return result, status
                 return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
             return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
@@ -203,7 +204,8 @@ def delete_attribute(cid, oid, aid):
             flowintel_log("audit", 200, "Delete attribute of MISP object", User=current_user.email, CaseId=cid, ObjectId=oid, AttributeId=aid)
             result, status = CaseModel.delete_attribute(cid, oid, aid, current_user)
             if status == 200:
-                CaseModel.trigger_misp_send_on_change(cid, current_user)
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
             return result, status
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -333,8 +335,8 @@ def create_misp_attribute(cid):
     if not data.get("type"):
         return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
     attr = CaseModel.create_standalone_attribute(cid, data, current_user)
-    CaseModel.trigger_misp_send_on_change(cid, current_user)
-    return {"message": "Attribute created", "toast_class": "success-subtle", "attribute": attr.to_json()}, 201
+    sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+    return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attr.to_json()}, sync_result), 201
 
 
 @case_blueprint.route("/<int:cid>/misp_attribute/<int:aid>/edit_misp_attribute", methods=['POST'])
@@ -350,7 +352,8 @@ def edit_misp_attribute(cid, aid):
         return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
     result, status = CaseModel.edit_standalone_attr(cid, aid, data, current_user)
     if status == 200:
-        CaseModel.trigger_misp_send_on_change(cid, current_user)
+        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+        result = CaseModel.with_misp_automation_message(result, sync_result)
     return result, status
 
 
@@ -364,7 +367,8 @@ def delete_misp_attribute(cid, aid):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
     result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
     if status == 200:
-        CaseModel.trigger_misp_send_on_change(cid, current_user)
+        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+        result = CaseModel.with_misp_automation_message(result, sync_result)
     return result, status
 
 
@@ -737,7 +741,10 @@ def get_sync_automation(cid, ciid):
     if error:
         return error
 
-    if CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid):
+    if (
+        ConnectorModel.has_enabled_misp_sync_automation(case.id, case_instance.id)
+        and CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid)
+    ):
         try:
             CaseModel.ensure_misp_send_conflict(case_instance.id, case, current_user)
         except Exception:
