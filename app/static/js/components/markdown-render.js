@@ -97,7 +97,7 @@ function sanitizeHtml(html) {
 
 // marked renders a ```mermaid fence as <pre><code class="language-mermaid"> (HTML
 // escaped). Swap that for the bare <pre class="mermaid"> markup mermaid.js itself
-// expects — same shape the app's markdown-it plugin produces elsewhere.
+// expects.
 function mermaidify(html) {
     return html.replace(
         /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>\n?/g,
@@ -177,4 +177,13 @@ export async function runMermaid(container) {
     if (!mermaid) return
     ensureMermaidInitialized(mermaid)
     try { await mermaid.run({ nodes }) } catch {}
+}
+
+if (typeof window !== 'undefined') {
+    window.FlowintelMarkdown = {
+        renderMarkdown,
+        runMermaid,
+        loadNoteVariables,
+        sanitizeHtml
+    }
 }

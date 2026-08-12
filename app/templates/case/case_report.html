@@ -2,11 +2,11 @@
 
 {% block head %}
 {{ super() }}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/html2pdf.bundle.min.js') }}"></script>
 <style>
 #report-rendered { white-space: normal !important; }
 #report-rendered li > p { margin: 0; }
+#report-rendered .mermaid { margin: .8em 0; background: transparent; }
 </style>
 {% endblock %}
 
@@ -153,6 +153,7 @@
 <script type="module">
     import { message_list } from '/static/js/toaster.js'
     import { REPORT_TEMPLATE_UUID } from '/static/js/case/MispSyncPanel.js'
+    import { renderMarkdown, runMermaid } from '/static/js/components/markdown-render.js'
     const { createApp } = Vue
     createApp({
         delimiters: ['[[', ']]'],
@@ -163,7 +164,6 @@
 
     // Vue has now re-rendered #main-container — attach listeners to the fresh DOM
     const CASE_ID = {{ case.id }};
-    const md = window.markdownit({ html: true })
 
     let rawMarkdown = ''
     let rawSignature = ''
@@ -206,6 +206,12 @@
         if (!banner) return;
         banner.className = "alert py-2 px-3 mb-2 d-none";
         banner.textContent = "";
+    }
+
+    async function render_report_preview(markdown) {
+        const rendered = document.getElementById("report-rendered");
+        rendered.innerHTML = await renderMarkdown(markdown, { breaks: true });
+        await runMermaid(rendered);
     }
 
     document.getElementById("btn-generate").addEventListener("click", async function () {
@@ -286,7 +292,7 @@
             }
 
             // Render HTML by default
-            document.getElementById("report-rendered").innerHTML = md.render(rawMarkdown);
+            await render_report_preview(rawMarkdown);
             document.getElementById("report-raw").textContent = rawMarkdown;
             document.getElementById("report-rendered").classList.remove("d-none");
             document.getElementById("report-raw").classList.add("d-none");

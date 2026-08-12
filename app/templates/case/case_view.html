@@ -5,10 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
 
@@ -467,7 +465,7 @@
                             <p class="mb-1">Variables are shown as raw syntax in edit mode and resolved to actual values in render mode.</p>
                             <details>
                                 <summary>Full reference</summary>
-                                <div v-html="md.render(variables_reference)" class="mt-2" style="max-height: 400px; overflow-y: auto;"></div>
+                                <smart_render :code="variables_reference" language="markdown" :simple="true" class="mt-2" style="max-height: 400px; overflow-y: auto;"></smart_render>
                             </details>
                         </div>
                         <smart_render :code="resolved_case_notes_markdown" language="markdown" :simple="false" title="Notes"></smart_render>
@@ -806,7 +804,6 @@
                                         :task="task" 
                                         :key_loop="key"
                                         :open_closed="open_closed"
-                                        :md="md"
                                         :all_connectors_list="all_connectors_list"
                                         :task_modules="task_modules">
                             </case_tasks>
@@ -1035,9 +1032,6 @@
                 const note_editor_render = ref("")
 
                 const edit_mode = ref(false)
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 // Note variables resolution
                 // Resolved markdown source (not pre-rendered HTML) — fed to <smart_render>,
@@ -1426,7 +1420,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'hedgedoc'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
@@ -1436,7 +1429,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'computer-assistate'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
@@ -1446,7 +1438,6 @@
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1482,7 +1473,6 @@
                         }
                         await fetch_all_notes()
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1918,7 +1908,6 @@
                     cluster_list,
                     custom_tags,
                     open_closed,
-                    md,
                     all_notes,
                     note_editor_render,
                     edit_mode,

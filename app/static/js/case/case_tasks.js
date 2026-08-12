@@ -20,7 +20,6 @@ export default {
 		task: Object,
 		key_loop: Number,
 		open_closed: Object,
-		md: Object,
 		all_connectors_list: Object,
 		task_modules: Object,
 	},
@@ -230,10 +229,6 @@ export default {
 					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
-				await nextTick()
-				props.md.mermaid.run({
-					querySelector: `#collapse${props.task.id} .mermaid`
-				})
 			} else if (tab_name == 'files') {
 				selected_tab.value = 'files'
 				if (!document.getElementById("tab-task-files-" + props.task.id).classList.contains("active")) {
