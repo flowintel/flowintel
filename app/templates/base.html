@@ -12,6 +12,7 @@
             <script src="{{ url_for('static',filename='js/vendor/jquery-ui.min.js') }}"></script>
             <script src="{{ url_for('static',filename='js/vendor/select2.min.js') }}"></script>
             <script src="{{ url_for('static',filename='js/vendor/vue.global.js') }}"></script>
+            <script src="{{ url_for('static',filename='js/purify.min.js') }}"></script>
             
             <script src="{{ url_for('static',filename='js/vendor/dayjs/dayjs.min.js') }}"></script>
             <script src="{{ url_for('static',filename='js/vendor/dayjs/dayjs-utc.js') }}"></script>
@@ -128,6 +129,45 @@
                         return result.match(/^<(pre|div)(\s+[^>]*)?\bclass=(["'])[^"']*\bmermaid\b[^"']*\3[^>]*>/)
                     }
 
+                    function _stripUnsafeHtml(html){
+                        const tmp = document.createElement('div')
+                        tmp.innerHTML = html
+                        tmp.querySelectorAll('script, iframe, object, embed, form').forEach(el => el.remove())
+                        tmp.querySelectorAll('*').forEach(el => {
+                            for(const attr of [...el.attributes]){
+                                const n = attr.name.toLowerCase()
+                                const v = attr.value
+                                if(n.startsWith('on') ||
+                                    ((n === 'href' || n === 'src' || n === 'action') && /^javascript:/i.test(v.trim()))){
+                                    el.removeAttribute(attr.name)
+                                }
+                            }
+                        })
+                        return tmp.innerHTML
+                    }
+
+                    function _sanitizeHtml(html){
+                        if(!html) return html
+                        if(window.DOMPurify) return window.DOMPurify.sanitize(html)
+                        return _stripUnsafeHtml(html)
+                    }
+
+                    function _secureRenderMethod(inst, methodName){
+                        const currentMethod = inst[methodName]
+                        if(!currentMethod || currentMethod.__xss_safe) return
+
+                        const secureMethod = function(){
+                            return _sanitizeHtml(currentMethod.apply(this, arguments))
+                        }
+                        secureMethod.__xss_safe = true
+                        inst[methodName] = secureMethod
+                    }
+
+                    function _secureRender(inst){
+                        _secureRenderMethod(inst, 'render')
+                        _secureRenderMethod(inst, 'renderInline')
+                    }
+
                     // Wrap the fence renderer rule so mermaid content is always escaped.
                     // Calls the original rule first (to preserve side-effects like
                     // mermaid.run() scheduling), then rebuilds the output with safe content.
@@ -159,6 +199,7 @@
 
                         // Secure the default fence rule
                         _secureFenceRule(inst)
+                        _secureRender(inst)
                         if(!_mermaidEnabled()) _ensureMermaidApi(inst)
 
                         // Wrap .use() so that when a plugin replaces the fence rule,
@@ -171,6 +212,7 @@
                             }
                             const result = origUse.apply(this, arguments)
                             _secureFenceRule(inst)
+                            _secureRender(inst)
                             if(!_mermaidEnabled()) _ensureMermaidApi(inst)
                             return result
                         }
@@ -178,6 +220,7 @@
                         return inst
                     }
 
+                    window.FlowintelSanitizeHtml = _sanitizeHtml
                     window.__markdownit_xss_protected = true
                 }catch(e){}
             })();

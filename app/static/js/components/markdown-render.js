@@ -62,8 +62,18 @@ function loadMermaid() {
 let _mermaid_initialized = false
 function ensureMermaidInitialized(mermaid) {
     if (_mermaid_initialized) return
-    try { mermaid.initialize({ startOnLoad: false, theme: 'default' }) } catch {}
+    try {
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            securityLevel: 'strict'
+        })
+    } catch {}
     _mermaid_initialized = true
+}
+
+function mermaidEnabled() {
+    return window.ENABLE_MERMAID !== false
 }
 
 function sanitizeHtml(html) {
@@ -160,6 +170,7 @@ export async function renderMarkdown(text, { breaks = true, styleVariables = tru
 // smart-editor.css / smart-render.css.
 export async function runMermaid(container) {
     if (!container) return
+    if (!mermaidEnabled()) return
     const nodes = container.querySelectorAll('.mermaid')
     if (!nodes.length) return
     const mermaid = await loadMermaid()
