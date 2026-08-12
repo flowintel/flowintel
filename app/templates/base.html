@@ -83,19 +83,6 @@
             </div>
         {% endif %}
 
-        {% block script %}
-        <script type="module">
-            // Empty vue used for toast to declar vue is used in the rest of the project
-            const {createApp} = Vue
-            createApp({
-                delimiters: ['[[', ']]'],
-                setup() {}
-            }).mount('#main-container')
-        </script>
-        {% endblock %}
-
-        <script src="{{ url_for('static',filename='js/sidebar.js') }}"></script>
-
         <script>
             // Wraps the markdownit() factory so that every instance automatically
             // escapes HTML inside mermaid fence output, regardless of fence syntax
@@ -133,6 +120,14 @@
                             .replace(/'/g, '&#39;')
                     }
 
+                    function _hasMermaidInfo(token){
+                        return (token.info || '').trim().toLowerCase() === 'mermaid'
+                    }
+
+                    function _matchMermaidWrapper(result){
+                        return result.match(/^<(pre|div)(\s+[^>]*)?\bclass=(["'])[^"']*\bmermaid\b[^"']*\3[^>]*>/)
+                    }
+
                     // Wrap the fence renderer rule so mermaid content is always escaped.
                     // Calls the original rule first (to preserve side-effects like
                     // mermaid.run() scheduling), then rebuilds the output with safe content.
@@ -145,12 +140,11 @@
                             // Call original rule for side-effects (mermaid scheduling, etc.)
                             const result = currentRule.call(this, tokens, idx, options, env, self)
 
-                            if(token.info && token.info.trim().toLowerCase() === 'mermaid'){
+                            const mermaidWrapper = _matchMermaidWrapper(result)
+                            if(_hasMermaidInfo(token) || mermaidWrapper){
                                 const escaped = _escapeHtml(token.content)
-                                // Detect wrapper tag from plugin output (pre or div)
-                                const m = result.match(/^<(pre|div)(\s+[^>]*)?>/)
-                                if(m){
-                                    return '<' + m[1] + (m[2]||'') + '>' + escaped + '</' + m[1] + '>'
+                                if(mermaidWrapper){
+                                    return mermaidWrapper[0] + escaped + '</' + mermaidWrapper[1] + '>'
                                 }
                                 return '<pre class="mermaid">' + escaped + '</pre>'
                             }
@@ -188,6 +182,19 @@
                 }catch(e){}
             })();
         </script>
+
+        {% block script %}
+        <script type="module">
+            // Empty vue used for toast to declar vue is used in the rest of the project
+            const {createApp} = Vue
+            createApp({
+                delimiters: ['[[', ']]'],
+                setup() {}
+            }).mount('#main-container')
+        </script>
+        {% endblock %}
+
+        <script src="{{ url_for('static',filename='js/sidebar.js') }}"></script>
         
         <script>
             $( document ).ready(function() {
