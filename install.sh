@@ -4,37 +4,21 @@
 VENV_DIR="env"
 
 if apt -v &> /dev/null ; then
-    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey
-    # install pandoc from git 
-    # pandoc dependencies
-    sudo apt install -y texlive texlive-xetex texlive-fonts-extra
-    wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
-    sudo dpkg -i pandoc*.deb
-    rm pandoc*
+    sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey \
+        libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
 elif dnf --version &> /dev/null ; then
     #RockyLinux
     sudo dnf install -y epel-release
     sudo crb enable
-    sudo dnf in -y pandoc python3 git screen libolm librsvg2 wget valkey
+    sudo dnf in -y python3 git screen libolm librsvg2 wget valkey pango dejavu-sans-fonts
 fi
-
-# Install a template for the export of notes in pdf
-
-mkdir -p ~/.pandoc/templates
-wget -q https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel.tar.gz 
-tar -xf Eisvogel.tar.gz
-cp Eisvogel-*/eisvogel.latex ~/.pandoc/templates
-rm -r Eisvogel.tar.gz Eisvogel-*
-
 
 # install node and mmdc command
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 source $NVM_DIR/nvm.sh
 nvm install node 20.19.2
-# needed for docx export
-npm install --prefix $HOME mermaid-filter
-# needed for PDF export
+# needed for Mermaid exports
 npm install --prefix $HOME @mermaid-js/mermaid-cli
 echo "export NVM_DIR=\"$NVM_DIR\"" >> ~/.bashrc
 echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"  # This loads nvm' >> ~/.bashrc

@@ -1,11 +1,15 @@
 import os, re
+import json
+import logging
 import shutil
 import datetime
 import subprocess
+from pathlib import Path
 from typing import List
+from urllib.parse import unquote, urlparse
 import uuid
 
-from flask import send_file, current_app
+from flask import send_file, current_app, has_app_context
 from .. import db
 from ..db_class.db import *
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
@@ -16,16 +20,465 @@ from ..custom_tags import custom_tags_core as CustomModel
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
-PANDOC_MARKDOWN_FORMAT = (
-    "markdown"
-    "-raw_tex"
-    "-raw_html"
-    "-raw_attribute"
-    "-tex_math_dollars"
-    "-tex_math_single_backslash"
-    "-tex_math_double_backslash"
-    "-latex_macros"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+APP_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_EXPORT_TEMPLATE_DIR = APP_ROOT / "export_templates"
+DEFAULT_PDF_EXPORT_TEMPLATE = DEFAULT_EXPORT_TEMPLATE_DIR / "note_pdf.html"
+DEFAULT_DOCX_STYLE_TEMPLATE = DEFAULT_EXPORT_TEMPLATE_DIR / "note_docx_styles.json"
+EXPORT_RENDERER_LOGGERS = ("MARKDOWN", "weasyprint", "weasyprint.progress", "fontTools", "fontTools.subset")
+MERMAID_FENCE_RE = re.compile(
+    r"(?P<prefix>^|\n)(?P<fence>`{3,}|~{3,})[ \t]*mermaid[^\n]*\n"
+    r"(?P<code>.*?)(?:\n(?P=fence)[ \t]*(?=\n|$))",
+    re.IGNORECASE | re.DOTALL,
 )
+
+BLOCKED_PDF_RESOURCE = (
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1" '
+    b'viewBox="0 0 1 1"></svg>'
+)
+
+
+class ExportRenderError(Exception):
+    """Raised when an export renderer cannot produce the requested output."""
+
+
+def _export_process_env():
+    process_env = os.environ.copy()
+    node_bin = os.path.join(os.path.expanduser("~"), "node_modules", ".bin")
+    process_env["PATH"] = node_bin + os.pathsep + process_env.get("PATH", "")
+    return process_env
+
+
+def _find_mmdc(process_env):
+    mmdc = shutil.which("mmdc", path=process_env.get("PATH"))
+    if mmdc:
+        return mmdc
+
+    local_mmdc = os.path.join(os.path.expanduser("~"), "node_modules", ".bin", "mmdc")
+    if os.path.isfile(local_mmdc) and os.access(local_mmdc, os.X_OK):
+        return local_mmdc
+
+    return None
+
+
+def _render_mermaid_diagram(code: str, export_id: str, index: int, image_format: str, assets_dir: str) -> str:
+    process_env = _export_process_env()
+    mmdc = _find_mmdc(process_env)
+    if not mmdc:
+        raise ExportRenderError("Mermaid export requires the mmdc command from @mermaid-js/mermaid-cli")
+
+    input_path = os.path.join(assets_dir, f"{export_id}_{index}.mmd")
+    output_path = os.path.join(assets_dir, f"{export_id}_{index}.{image_format}")
+    with open(input_path, "w", encoding="utf-8") as write_file:
+        write_file.write(code.strip() + "\n")
+
+    command = [mmdc, "-i", input_path, "-o", output_path]
+    if image_format == "png":
+        command.extend(["-b", "transparent"])
+
+    process = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=process_env,
+        text=True,
+    )
+    if process.returncode != 0 or not os.path.isfile(output_path):
+        error = (process.stderr or process.stdout or "unknown Mermaid rendering error").strip()
+        raise ExportRenderError(f"Mermaid rendering failed: {error}")
+
+    return output_path
+
+
+def _replace_mermaid_blocks(note: str, assets_dir: str, export_id: str, image_format: str) -> str:
+    os.makedirs(assets_dir, exist_ok=True)
+    index = 0
+
+    def replacer(match):
+        nonlocal index
+        index += 1
+        image_path = _render_mermaid_diagram(match.group("code"), export_id, index, image_format, assets_dir)
+        return f"{match.group('prefix')}![Mermaid diagram]({image_path})"
+
+    return MERMAID_FENCE_RE.sub(replacer, note or "")
+
+
+def _markdown_to_html(note: str) -> str:
+    _quiet_export_renderer_logs()
+    try:
+        import markdown
+    except ImportError as exc:
+        raise ExportRenderError("The Markdown Python package is required for note exports") from exc
+
+    return markdown.markdown(
+        note or "",
+        extensions=["extra", "sane_lists", "toc"],
+        output_format="html5",
+    )
+
+
+def _export_config_value(config_key: str, default=None):
+    if has_app_context():
+        value = current_app.config.get(config_key)
+        if value is not None:
+            return value
+    return os.environ.get(config_key, default)
+
+
+def _resolve_export_template_path(value, base_dir: Path = PROJECT_ROOT):
+    if not value:
+        return None
+
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute():
+        path = base_dir / path
+    return path
+
+
+def _configured_export_template_path(config_key: str, default_path: Path = None):
+    configured = _export_config_value(config_key)
+    if configured:
+        return _resolve_export_template_path(configured)
+    return default_path
+
+
+def _read_export_template(path: Path, description: str) -> str:
+    if not path or not path.is_file():
+        raise ExportRenderError(f"{description} template not found: {path}")
+
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ExportRenderError(f"Could not read {description} template: {path}") from exc
+
+
+def _replace_export_template_value(template: str, key: str, value: str) -> str:
+    pattern = r"{{\s*" + re.escape(key) + r"\s*}}"
+    return re.sub(pattern, lambda _match: value, template)
+
+
+def _render_pdf_export_template(template: str, html_body: str) -> str:
+    if not re.search(r"{{\s*(content|body|html_body)\s*}}", template):
+        raise ExportRenderError("PDF export template must include a {{ content }} placeholder")
+
+    app_name = _export_config_value("APP_NAME", "Flowintel") or "Flowintel"
+    generated_at = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
+
+    for key in ("content", "body", "html_body"):
+        template = _replace_export_template_value(template, key, html_body)
+    template = _replace_export_template_value(template, "app_name", str(app_name))
+    template = _replace_export_template_value(template, "generated_at", generated_at)
+    return template
+
+
+def _pdf_export_template_path() -> Path:
+    return _configured_export_template_path("NOTE_EXPORT_PDF_TEMPLATE", DEFAULT_PDF_EXPORT_TEMPLATE)
+
+
+def _docx_style_template_path() -> Path:
+    return _configured_export_template_path("NOTE_EXPORT_DOCX_STYLE_TEMPLATE", DEFAULT_DOCX_STYLE_TEMPLATE)
+
+
+def _build_export_html(html_body: str, template_path: Path = None) -> str:
+    template_path = template_path or _pdf_export_template_path()
+    template = _read_export_template(template_path, "PDF export")
+    return _render_pdf_export_template(template, html_body)
+
+
+def _quiet_export_renderer_logs():
+    for logger_name in EXPORT_RENDERER_LOGGERS:
+        logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+
+def _quiet_pdf_renderer_logs():
+    _quiet_export_renderer_logs()
+
+
+def _blocked_pdf_resource():
+    return {"string": BLOCKED_PDF_RESOURCE, "mime_type": "image/svg+xml"}
+
+
+def _path_is_in_export_roots(path: str) -> bool:
+    if not path:
+        return False
+
+    template_roots = [DEFAULT_EXPORT_TEMPLATE_DIR]
+    try:
+        template_roots.append(_pdf_export_template_path().parent)
+    except (ExportRenderError, OSError, AttributeError):
+        pass
+
+    safe_roots = [
+        os.path.realpath(root)
+        for root in (os.getcwd(), TEMP_FOLDER, UPLOAD_FOLDER, *template_roots)
+        if root
+    ]
+    real_path = os.path.realpath(path)
+    return any(real_path == root or real_path.startswith(root + os.sep) for root in safe_roots)
+
+
+def _pdf_url_fetcher(url, *args, **kwargs):
+    parsed = urlparse(url)
+    fetch_url = url
+    if parsed.scheme in ("http", "https", "ftp"):
+        return _blocked_pdf_resource()
+    if parsed.scheme == "data":
+        from weasyprint import default_url_fetcher
+        return default_url_fetcher(url, *args, **kwargs)
+    if parsed.scheme == "file":
+        path = unquote(parsed.path)
+    elif parsed.scheme:
+        return _blocked_pdf_resource()
+    else:
+        path = os.path.abspath(unquote(url))
+        fetch_url = Path(path).as_uri()
+
+    if not _path_is_in_export_roots(path):
+        return _blocked_pdf_resource()
+
+    from weasyprint import default_url_fetcher
+    return default_url_fetcher(fetch_url, *args, **kwargs)
+
+
+def _export_pdf_with_weasyprint(html_body: str, temp_export: str):
+    _quiet_export_renderer_logs()
+    try:
+        from weasyprint import HTML
+    except ImportError as exc:
+        raise ExportRenderError("WeasyPrint is required for PDF exports") from exc
+
+    template_path = _pdf_export_template_path()
+    full_html = _build_export_html(html_body, template_path=template_path)
+    HTML(string=full_html, base_url=str(template_path.parent), url_fetcher=_pdf_url_fetcher).write_pdf(temp_export)
+
+
+def _load_docx_export_options():
+    template_path = _docx_style_template_path()
+    if not template_path or not template_path.is_file():
+        raise ExportRenderError(f"DOCX style template not found: {template_path}")
+
+    try:
+        with template_path.open(encoding="utf-8") as template_file:
+            options = json.load(template_file)
+    except json.JSONDecodeError as exc:
+        raise ExportRenderError(f"DOCX style template is not valid JSON: {template_path}") from exc
+    except OSError as exc:
+        raise ExportRenderError(f"Could not read DOCX style template: {template_path}") from exc
+
+    if not isinstance(options, dict):
+        raise ExportRenderError("DOCX style template must contain a JSON object")
+    return options, template_path.parent
+
+
+def _docx_option(options: dict, *keys, default=None):
+    value = options
+    for key in keys:
+        if not isinstance(value, dict) or key not in value:
+            return default
+        value = value[key]
+    return value
+
+
+def _docx_document_template_path(options: dict, style_template_dir: Path):
+    configured = _export_config_value("NOTE_EXPORT_DOCX_TEMPLATE")
+    raw_path = configured or options.get("document_template")
+    if not raw_path:
+        return None
+
+    base_dir = PROJECT_ROOT if configured else style_template_dir
+    path = _resolve_export_template_path(raw_path, base_dir=base_dir)
+    if not path or not path.is_file():
+        raise ExportRenderError(f"DOCX document template not found: {path}")
+    return path
+
+
+def _resolve_docx_image_path(src: str):
+    if not src:
+        return None
+
+    parsed = urlparse(src)
+    if parsed.scheme == "file":
+        image_path = unquote(parsed.path)
+    elif parsed.scheme:
+        return None
+    else:
+        image_path = src
+        if not os.path.isabs(image_path):
+            image_path = os.path.abspath(image_path)
+
+    if not os.path.isfile(image_path) or not _path_is_in_export_roots(image_path):
+        return None
+    return image_path
+
+
+def _append_docx_image(paragraph, src: str, options: dict):
+    image_path = _resolve_docx_image_path(src)
+    if not image_path:
+        paragraph.add_run(f"[Image: {src}]")
+        return
+
+    try:
+        from docx.shared import Inches
+        width_inches = float(_docx_option(options, "image", "width_inches", default=6))
+        paragraph.add_run().add_picture(image_path, width=Inches(width_inches))
+    except Exception:
+        paragraph.add_run(f"[Image: {src}]")
+
+
+def _append_docx_inline(paragraph, node, options: dict, bold: bool = False, italic: bool = False, code: bool = False):
+    from bs4 import NavigableString, Tag
+
+    if isinstance(node, NavigableString):
+        text = str(node)
+        if text:
+            run = paragraph.add_run(text)
+            run.bold = bold
+            run.italic = italic
+            if code:
+                run.font.name = _docx_option(options, "fonts", "code", default="Courier New")
+        return
+
+    if not isinstance(node, Tag):
+        return
+
+    name = node.name.lower()
+    if name == "br":
+        paragraph.add_run("\n")
+        return
+    if name == "img":
+        _append_docx_image(paragraph, node.get("src", ""), options)
+        return
+
+    next_bold = bold or name in ("strong", "b")
+    next_italic = italic or name in ("em", "i")
+    next_code = code or name == "code"
+    link_href = node.get("href") if name == "a" else None
+
+    before_len = len(paragraph.text)
+    for child in node.children:
+        if isinstance(child, Tag) and child.name.lower() in ("ul", "ol"):
+            continue
+        _append_docx_inline(paragraph, child, options, next_bold, next_italic, next_code)
+
+    if link_href and link_href != paragraph.text[before_len:]:
+        paragraph.add_run(f" ({link_href})")
+
+
+def _docx_list_style(ordered: bool, level: int, options: dict) -> str:
+    styles = _docx_option(options, "styles", default={})
+    base = styles.get("list_number", "List Number") if ordered else styles.get("list_bullet", "List Bullet")
+    if level <= 0:
+        return base
+    if level == 1:
+        return styles.get("list_number_level_2" if ordered else "list_bullet_level_2", f"{base} 2")
+    return styles.get("list_number_level_3" if ordered else "list_bullet_level_3", f"{base} 3")
+
+
+def _add_docx_list(document, list_node, ordered: bool, options: dict, level: int = 0):
+    from bs4 import Tag
+    from docx.shared import Inches
+
+    for item in list_node.find_all("li", recursive=False):
+        try:
+            paragraph = document.add_paragraph(style=_docx_list_style(ordered, level, options))
+        except KeyError:
+            paragraph = document.add_paragraph()
+        paragraph.paragraph_format.left_indent = Inches(0.25 * level)
+        _append_docx_inline(paragraph, item, options)
+
+        for nested in item.find_all(["ul", "ol"], recursive=False):
+            if isinstance(nested, Tag):
+                _add_docx_list(document, nested, nested.name.lower() == "ol", options, level + 1)
+
+
+def _add_docx_table(document, table_node, options: dict):
+    rows = table_node.find_all("tr")
+    if not rows:
+        return
+
+    max_cols = max((len(row.find_all(["th", "td"], recursive=False)) for row in rows), default=0)
+    if max_cols <= 0:
+        return
+
+    table = document.add_table(rows=len(rows), cols=max_cols)
+    try:
+        table.style = _docx_option(options, "styles", "table", default="Table Grid")
+    except KeyError:
+        pass
+
+    for row_index, row in enumerate(rows):
+        cells = row.find_all(["th", "td"], recursive=False)
+        for col_index, cell in enumerate(cells[:max_cols]):
+            table.cell(row_index, col_index).text = cell.get_text(" ", strip=True)
+
+
+def _add_docx_block(document, node, options: dict):
+    from bs4 import NavigableString, Tag
+
+    if isinstance(node, NavigableString):
+        text = str(node).strip()
+        if text:
+            document.add_paragraph(text)
+        return
+
+    if not isinstance(node, Tag):
+        return
+
+    name = node.name.lower()
+    if name in ("h1", "h2", "h3", "h4", "h5", "h6"):
+        level = min(int(name[1]), 4)
+        paragraph = document.add_heading(level=level)
+        _append_docx_inline(paragraph, node, options)
+    elif name == "p":
+        paragraph = document.add_paragraph()
+        _append_docx_inline(paragraph, node, options)
+    elif name == "ul":
+        _add_docx_list(document, node, ordered=False, options=options)
+    elif name == "ol":
+        _add_docx_list(document, node, ordered=True, options=options)
+    elif name == "pre":
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(node.get_text())
+        run.font.name = _docx_option(
+            options,
+            "fonts",
+            "pre",
+            default=_docx_option(options, "fonts", "code", default="Courier New"),
+        )
+    elif name == "table":
+        _add_docx_table(document, node, options)
+    elif name == "blockquote":
+        paragraph = document.add_paragraph()
+        try:
+            paragraph.style = _docx_option(options, "styles", "quote", default="Quote")
+        except KeyError:
+            pass
+        _append_docx_inline(paragraph, node, options)
+    elif name == "hr":
+        document.add_paragraph(_docx_option(options, "horizontal_rule", "text", default="_" * 60))
+    elif name == "img":
+        paragraph = document.add_paragraph()
+        _append_docx_image(paragraph, node.get("src", ""), options)
+    else:
+        for child in node.children:
+            _add_docx_block(document, child, options)
+
+
+def _export_docx_from_html(html_body: str, temp_export: str):
+    try:
+        from bs4 import BeautifulSoup
+        from docx import Document
+    except ImportError as exc:
+        raise ExportRenderError("beautifulsoup4 and python-docx are required for DOCX exports") from exc
+
+    options, style_template_dir = _load_docx_export_options()
+    document_template_path = _docx_document_template_path(options, style_template_dir)
+
+    soup = BeautifulSoup(html_body, "html.parser")
+    document = Document(str(document_template_path)) if document_template_path else Document()
+    for child in soup.contents:
+        _add_docx_block(document, child, options)
+    document.save(temp_export)
 
 
 def _format_logs_as_markdown(case, log_entries, title="History"):
@@ -657,7 +1110,7 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
         return {"message": "Invalid export format", "toast_class": "warning-subtle"}, 400
 
     if not os.path.isdir(TEMP_FOLDER):
-        os.mkdir(TEMP_FOLDER)
+        os.makedirs(TEMP_FOLDER, exist_ok=True)
 
     if not download_filename:
         download_filename = f"export_note_{case_task_id}.{type_req}"
@@ -665,48 +1118,37 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
         if not download_filename.endswith(f".{type_req}"):
             download_filename = f"{download_filename}.{type_req}"
     export_id = uuid.uuid4().hex
-    temp_md = os.path.join(TEMP_FOLDER, f"{export_id}.md")
     temp_export = os.path.join(TEMP_FOLDER, f"{export_id}.{type_req}")
-
-    with open(temp_md, "w", encoding="utf-8") as write_file:
-        write_file.write(note or "")
+    assets_dir = os.path.join(TEMP_FOLDER, f"{export_id}_assets")
 
     mermaid_enabled = current_app.config.get("ENABLE_MERMAID_EXPORT", True)
-    use_mermaid_filter = allow_mermaid and mermaid_enabled
-
-    if type_req == "pdf":
-        command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "--pdf-engine=xelatex", \
-                   "--pdf-engine-opt=-no-shell-escape", \
-                   "-V", "colorlinks=true", \
-                   "-V", "linkcolor=blue", \
-                   "-V", "urlcolor=red", \
-                   "-V", "tocolor=gray",\
-                   "--number-sections", "--toc", \
-                   "--template", "eisvogel",\
-                   "-o", temp_export]
-        if use_mermaid_filter:
-            command.append("--filter=pandoc-mermaid")
-    elif type_req == "docx":
-        command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "-o", temp_export]
-        if use_mermaid_filter:
-            command.append("--filter=mermaid-filter")
-    process_env = os.environ.copy()
-    if type_req == "pdf":
-        process_env["openin_any"] = "p"
-        process_env["openout_any"] = "p"
-    process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=process_env)
+    render_mermaid = allow_mermaid and mermaid_enabled and MERMAID_FENCE_RE.search(note or "") is not None
 
     try:
-        shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
-    except OSError:
-        pass
+        export_note = note or ""
+        if render_mermaid:
+            image_format = "svg" if type_req == "pdf" else "png"
+            export_note = _replace_mermaid_blocks(export_note, assets_dir, export_id, image_format)
 
-    try:
-        os.remove(temp_md)
-    except OSError:
-        pass
+        html_body = _markdown_to_html(export_note)
+        if type_req == "pdf":
+            _export_pdf_with_weasyprint(html_body, temp_export)
+        else:
+            _export_docx_from_html(html_body, temp_export)
+    except ExportRenderError as exc:
+        current_app.logger.warning("Note export failed: %s", exc)
+        try:
+            os.remove(temp_export)
+        except OSError:
+            pass
+        return {"message": "Error during export process", "toast_class": "danger-subtle"}
+    finally:
+        try:
+            shutil.rmtree(assets_dir)
+        except OSError:
+            pass
 
-    if process.returncode != 0 or not os.path.isfile(temp_export):
+    if not os.path.isfile(temp_export):
         try:
             os.remove(temp_export)
         except OSError:

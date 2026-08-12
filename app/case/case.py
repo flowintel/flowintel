@@ -2022,7 +2022,8 @@ def export_notes_template(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         if "type" in request.args:
             if "content" in request.json:
-                res = CommonModel.export_notes_core(case_task_id=cid, type_req=request.args.get("type"), note=request.json["content"])
+                note = resolve_variables(request.json["content"], case_id=case.id)
+                res = CommonModel.export_notes_core(case_task_id=cid, type_req=request.args.get("type"), note=note)
                 try:
                     CommonModel.delete_temp_folder()
                 except OSError:

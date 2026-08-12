@@ -1,0 +1,23 @@
+{
+  "document_template": "",
+  "fonts": {
+    "code": "Courier New",
+    "pre": "Courier New"
+  },
+  "styles": {
+    "table": "Table Grid",
+    "quote": "Quote",
+    "list_bullet": "List Bullet",
+    "list_bullet_level_2": "List Bullet 2",
+    "list_bullet_level_3": "List Bullet 3",
+    "list_number": "List Number",
+    "list_number_level_2": "List Number 2",
+    "list_number_level_3": "List Number 3"
+  },
+  "image": {
+    "width_inches": 6
+  },
+  "horizontal_rule": {
+    "text": "____________________________________________________________"
+  }
+}

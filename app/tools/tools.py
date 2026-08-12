@@ -663,6 +663,18 @@ def system_settings():
         # Mermaid
         'enable_mermaid': current_app.config.get('ENABLE_MERMAID', True),
         'enable_mermaid_export': current_app.config.get('ENABLE_MERMAID_EXPORT', True),
+        'note_export_pdf_template': current_app.config.get(
+            'NOTE_EXPORT_PDF_TEMPLATE',
+            os.getenv('NOTE_EXPORT_PDF_TEMPLATE', 'app/export_templates/note_pdf.html'),
+        ),
+        'note_export_docx_style_template': current_app.config.get(
+            'NOTE_EXPORT_DOCX_STYLE_TEMPLATE',
+            os.getenv('NOTE_EXPORT_DOCX_STYLE_TEMPLATE', 'app/export_templates/note_docx_styles.json'),
+        ),
+        'note_export_docx_template': current_app.config.get(
+            'NOTE_EXPORT_DOCX_TEMPLATE',
+            os.getenv('NOTE_EXPORT_DOCX_TEMPLATE', ''),
+        ),
 
         # Logging & theming
         'log_file': getattr(config_class, 'LOG_FILE', None),
@@ -769,6 +781,9 @@ def system_settings_save():
         'WELCOME_TEXT_BOTTOM': 'str',
         'WELCOME_LOGO': 'str',
         'GDPR_NOTICE': 'str',
+        'NOTE_EXPORT_PDF_TEMPLATE': 'str',
+        'NOTE_EXPORT_DOCX_STYLE_TEMPLATE': 'str',
+        'NOTE_EXPORT_DOCX_TEMPLATE': 'str',
         'MISP_ADD_LOCAL_TAGS_ALL_EVENTS': 'list',
     }
 
@@ -803,7 +818,10 @@ def system_settings_save():
     new_content, count = pattern.subn(lambda m: m.group(1) + py_value + (m.group(3) or ''), content, count=1)
 
     if count == 0:
-        return jsonify({"error": f"Could not find {key} in config.py"}), 400
+        marker = '\n\n# =============================================================================\n# DEVELOPMENT CONFIGURATION'
+        if marker not in content:
+            return jsonify({"error": f"Could not find {key} in config.py"}), 400
+        new_content = content.replace(marker, f"\n    {key} = {py_value}{marker}", 1)
 
     config_path.write_text(new_content)
 

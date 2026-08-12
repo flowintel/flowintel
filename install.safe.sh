@@ -42,15 +42,6 @@ fi
 VENV_DIR="env"
 NODE_VERSION="${NODE_VERSION:-20.19.2}"
 NVM_VERSION="v0.40.3"
-PANDOC_RELEASE="3.7"
-PANDOC_VERSION="3.7-1"
-# Get arch safely
-if command -v dpkg >/dev/null 2>&1; then
-  ARCH="$(dpkg --print-architecture)"
-else
-  ARCH="$(uname -m)"
-fi
-PANDOC_DEB_URL="https://github.com/jgm/pandoc/releases/download/${PANDOC_RELEASE}/pandoc-${PANDOC_VERSION}-${ARCH}.deb"
 
 # require_cmd: check command exists
 require_cmd(){ command -v "$1" >/dev/null 2>&1 || err "Required command '$1' not found. Please install it and re-run."; }
@@ -75,26 +66,13 @@ fi
 if [ "$PKG_MGR" = "apt" ]; then
   info "Updating apt cache and installing system packages..."
   sudo apt-get update -y
-  sudo apt-get install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey texlive texlive-xetex texlive-fonts-extra
+  sudo apt-get install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey \
+    libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
 elif [ "$PKG_MGR" = "dnf" ]; then
   info "Installing system packages via dnf..."
   sudo dnf install -y epel-release || warn "epel-release may already be installed"
   sudo crb enable || warn "crb may already be enabled"
-  sudo dnf --refresh -y install pandoc python3 git screen libolm librsvg2 wget valkey || warn "dnf install reported warnings"
-fi
-
-# pandoc
-if [ "$PKG_MGR" = "apt" ]; then
-  if ! command -v pandoc >/dev/null 2>&1; then
-    info "Get pandoc ${PANDOC_VERSION}"
-    tmp="$(mktemp)"
-    curl -fsSL -o "$tmp" "$PANDOC_DEB_URL" || { rm -f "$tmp"; err "Failed to download pandoc"; }
-    info "Install pandoc (.deb)"
-    sudo dpkg -i "$tmp" || sudo apt-get install -f -y
-    rm -f "$tmp"
-  else
-    info "pandoc already installed; skipping"
-  fi
+  sudo dnf --refresh -y install python3 git screen libolm librsvg2 wget valkey pango dejavu-sans-fonts || warn "dnf install reported warnings"
 fi
 
 # nvm + node
@@ -128,10 +106,10 @@ else
 fi
 
 export PATH="$HOME/node_modules/.bin:$PATH"
-info "Installing mermaid tools locally (mermaid-filter and mermaid-cli)"
+info "Installing Mermaid CLI locally"
 # use npm only if available
 if command -v npm >/dev/null 2>&1; then
-  npm install --no-audit --no-fund --prefix "$HOME" mermaid-filter @mermaid-js/mermaid-cli || warn "npm install had warnings"
+  npm install --no-audit --no-fund --prefix "$HOME" @mermaid-js/mermaid-cli || warn "npm install had warnings"
 else
   warn "npm not available; skipping mermaid installs"
 fi

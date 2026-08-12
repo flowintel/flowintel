@@ -39,7 +39,10 @@ anyio==4.13.0
     #   asyncer
     #   dspy
     #   httpx
+    #   mcp
     #   openai
+    #   sse-starlette
+    #   starlette
 anyrun-sdk==1.14.12
     # via misp-modules
 asyncer==0.0.8
@@ -59,12 +62,15 @@ backscatter==0.2.4
     # via misp-modules
 beautifulsoup4==4.14.3
     # via
+    #   -r requirements.in
     #   markdownify
     #   misp-modules
 blinker==1.9.0
     # via flask
 blockchain==1.4.4
     # via misp-modules
+brotli==1.2.0
+    # via fonttools
 cachelib==0.13.0
     # via flask-session
 cachetools==5.5.2
@@ -85,6 +91,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   python-olm
+    #   weasyprint
 charset-normalizer==3.4.7
     # via requests
 clamd==1.0.2
@@ -97,6 +104,7 @@ click==8.1.8
     #   greynoise
     #   litellm
     #   typer
+    #   uvicorn
 click-default-group==1.2.4
     # via greynoise
 click-repl==0.3.0
@@ -121,6 +129,8 @@ cryptography==46.0.7
     # via
     #   msal
     #   pyjwt
+cssselect2==0.9.0
+    # via weasyprint
 cycler==0.12.1
     # via matplotlib
 deprecated==1.3.1
@@ -145,6 +155,8 @@ email-validator==2.3.0
     # via -r requirements.in
 enum-compat==0.0.3
     # via blockchain
+fastmcp==1.0
+    # via flowintel-mcp
 fastuuid==0.14.0
     # via litellm
 filelock==3.25.2
@@ -174,11 +186,12 @@ flask-sqlalchemy==3.1.1
     #   flask-migrate
 flask-wtf==1.2.2
     # via -r requirements.in
-
 flowintel-mcp @ git+https://github.com/flowintel/flowintel-mcp@4de28c57fe44eca15d4eba0cd2b020ae43b182ab
     # via -r requirements.in
-fonttools==4.62.1
-    # via matplotlib
+fonttools[woff]==4.62.1
+    # via
+    #   matplotlib
+    #   weasyprint
 frozenlist==1.8.0
     # via
     #   aiohttp
@@ -204,6 +217,7 @@ h11==0.16.0
     # via
     #   httpcore
     #   matrix-nio
+    #   uvicorn
 h2==4.3.0
     # via matrix-nio
 hf-xet==1.4.3
@@ -217,10 +231,15 @@ httplib2==0.31.2
 httpx==0.28.1
     # via
     #   domaintools-api
+    #   fastmcp
+    #   flowintel-mcp
     #   huggingface-hub
     #   litellm
+    #   mcp
     #   openai
     #   vulners
+httpx-sse==0.4.3
+    # via mcp
 huggingface-hub==1.13.0
     # via tokenizers
 hyperframe==6.1.0
@@ -262,6 +281,7 @@ jsonschema==4.26.0
     #   flask-restx
     #   litellm
     #   matrix-nio
+    #   mcp
     #   pymispgalaxies
 jsonschema-specifications==2025.9.1
     # via jsonschema
@@ -269,10 +289,14 @@ kiwisolver==1.5.0
     # via matplotlib
 litellm==1.82.6
     # via dspy
+lxml==6.1.1
+    # via python-docx
 maclookup==1.0.3
     # via misp-modules
 mako==1.3.10
     # via alembic
+markdown==3.10.3
+    # via -r requirements.in
 markdownify==1.2.2
     # via misp-modules
 markupsafe==3.0.3
@@ -290,6 +314,8 @@ mattermostdriver==7.3.2
     # via misp-modules
 maxminddb==3.1.1
     # via geoip2
+mcp==1.29.0
+    # via fastmcp
 misp-modules[minimal]==3.0.7
     # via -r requirements.in
 more-itertools==11.0.2
@@ -326,18 +352,18 @@ packaging==26.0
     #   huggingface-hub
     #   matplotlib
     #   pytest
-pandoc-mermaid-filter @ git+https://github.com/DavidCruciani/pandoc-mermaid-filter@435e1c8e5a7834648b18470bcb795e8eac802465
-    # via -r requirements.in
-pandocfilters==1.5.1
-    # via pandoc-mermaid-filter
 passivetotal==2.5.9
     # via misp-modules
 peewee==3.19.0
     # via matrix-nio
 pillow==12.2.0
-    # via matplotlib
+    # via
+    #   matplotlib
+    #   weasyprint
 platformdirs==4.9.6
-    # via requests-cache
+    # via
+    #   fastmcp-slim
+    #   requests-cache
 pluggy==1.6.0
     # via pytest
 prompt-toolkit==3.0.52
@@ -364,11 +390,21 @@ pydantic==2.13.0
     # via
     #   anyrun-sdk
     #   dspy
+    #   fastmcp
     #   litellm
+    #   mcp
     #   openai
+    #   pydantic-settings
     #   vulners
 pydantic-core==2.46.0
     # via pydantic
+pydantic-settings==2.15.0
+    # via
+    #   fastmcp
+    #   fastmcp-slim
+    #   mcp
+pydyf==0.12.1
+    # via weasyprint
 pyeti-python3==1.1
     # via misp-modules
 pyeupi==1.3.0
@@ -385,6 +421,7 @@ pyipasnhistory==2.1.5
     # via misp-modules
 pyjwt[crypto]==2.12.1
     # via
+    #   mcp
     #   msal
     #   pyjwt
 pymisp==2.5.33.1
@@ -399,6 +436,8 @@ pyparsing==3.3.2
     #   matplotlib
 pypdns==2.3.2
     # via misp-modules
+pyphen==0.17.2
+    # via weasyprint
 pypssl==2.2
     # via misp-modules
 pysafebrowsing==0.1.4
@@ -415,12 +454,18 @@ python-dateutil==2.9.0.post0
     #   passivetotal
     #   pymisp
     #   pypssl
+python-docx==1.2.0
+    # via -r requirements.in
 python-dotenv==1.2.2
     # via
     #   -r requirements.in
+    #   fastmcp
     #   litellm
+    #   pydantic-settings
 python-gnupg==0.5.6
     # via -r requirements.in
+python-multipart==0.0.32
+    # via mcp
 python-olm==3.2.16
     # via matrix-nio
 python-socks[asyncio]==2.8.1
@@ -428,6 +473,7 @@ python-socks[asyncio]==2.8.1
 pyyaml==6.0.3
     # via
     #   domaintools-api
+    #   fastmcp
     #   huggingface-hub
 pyzipper==0.3.6
     # via jbxapi
@@ -506,12 +552,24 @@ sqlalchemy==2.0.49
     #   -r requirements.in
     #   alembic
     #   flask-sqlalchemy
+sse-starlette==3.4.8
+    # via mcp
+starlette==1.6.0
+    # via
+    #   mcp
+    #   sse-starlette
 tabulate==0.10.0
     # via backscatter
 tenacity==9.1.4
     # via dspy
 tiktoken==0.12.0
     # via litellm
+tinycss2==1.5.1
+    # via
+    #   cssselect2
+    #   weasyprint
+tinyhtml5==2.1.0
+    # via weasyprint
 tldextract==5.3.1
     # via passivetotal
 tokenizers==0.23.1
@@ -530,6 +588,7 @@ typeguard==4.4.3
 typer==0.23.1
     # via
     #   domaintools-api
+    #   fastmcp
     #   huggingface-hub
 typing-extensions==4.15.0
     # via
@@ -540,15 +599,21 @@ typing-extensions==4.15.0
     #   beautifulsoup4
     #   cattrs
     #   huggingface-hub
+    #   mcp
     #   openai
     #   pydantic
     #   pydantic-core
+    #   python-docx
     #   referencing
     #   sqlalchemy
+    #   starlette
     #   typeguard
     #   typing-inspection
 typing-inspection==0.4.2
-    # via pydantic
+    # via
+    #   mcp
+    #   pydantic
+    #   pydantic-settings
 unpaddedbase64==2.1.0
     # via matrix-nio
 url-normalize==2.2.1
@@ -562,6 +627,8 @@ urllib3==2.6.3
     #   crowdstrike-falconpy
     #   requests
     #   requests-cache
+uvicorn==0.52.1
+    # via mcp
 vt-graph-api==2.2.0
     # via misp-modules
 vt-py==0.22.0
@@ -570,6 +637,13 @@ vulners==3.1.8
     # via misp-modules
 wcwidth==0.6.0
     # via prompt-toolkit
+weasyprint==69.0
+    # via -r requirements.in
+webencodings==0.5.1
+    # via
+    #   cssselect2
+    #   tinycss2
+    #   tinyhtml5
 websockets==16.0
     # via mattermostdriver
 werkzeug==3.1.8
@@ -592,6 +666,8 @@ yarl==1.23.0
     # via aiohttp
 zipp==3.23.1
     # via importlib-metadata
+zopfli==0.4.3
+    # via fonttools
 
 # The following packages are considered to be unsafe in a requirements file:
 setuptools==82.0.1

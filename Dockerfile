@@ -6,19 +6,8 @@ RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 
 RUN apt update && apt install -y \
     sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip
-
-# Pandoc dependencies
-RUN apt install -y texlive texlive-xetex texlive-fonts-extra
-
-# Install pandoc from GitHub
-RUN <<EOF
-TMP=$(mktemp -d)
-cd $TMP
-wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
-dpkg -i pandoc*.deb
-rm -rf $TMP
-EOF
+    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip \
+    libpango-1.0-0 libharfbuzz0b libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
 
 # Create a dedicated user and group
 RUN groupadd -r flowintel && useradd -m -g flowintel flowintel
@@ -43,22 +32,11 @@ RUN chown -R flowintel:flowintel /home/flowintel/app
 # Switch to the non-root user
 USER flowintel
 
-# Install pandoc Eisvogel template
-RUN <<EOF
-mkdir -p ~/.pandoc/templates
-cd ~/.pandoc/templates
-wget -q https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel.tar.gz
-tar -xf Eisvogel.tar.gz
-cp Eisvogel-*/eisvogel.latex ~/.pandoc/templates
-rm -r Eisvogel.tar.gz Eisvogel-*
-EOF
-
-# Install Node + Mermaid tools
+# Install Node + Mermaid CLI
 RUN <<EOF
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 . ~/.profile
 nvm install node 20
-npm install --prefix $HOME mermaid-filter
 npm install --prefix $HOME @mermaid-js/mermaid-cli
 echo "export NVM_DIR=\"$NVM_DIR\"" >> ~/.bashrc
 echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> ~/.bashrc

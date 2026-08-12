@@ -471,7 +471,28 @@
                                 <td class="fw-bold">Enable Mermaid in exports <small class="fw-normal text-muted">(ENABLE_MERMAID_EXPORT)</small></td>
                                 <td>
                                     {{ bool_edit('enable_mermaid_export') }}
-                                    <small class="text-muted ms-1" v-if="!editing.enable_mermaid_export">Use Mermaid filters for PDF/DOCX exports</small>
+                                    <small class="text-muted ms-1" v-if="!editing.enable_mermaid_export">Render Mermaid diagrams in PDF/DOCX exports</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">PDF export template <small class="fw-normal text-muted">(NOTE_EXPORT_PDF_TEMPLATE)</small></td>
+                                <td>
+                                    {{ str_edit('note_export_pdf_template') }}
+                                    <small class="text-muted ms-1" v-if="!editing.note_export_pdf_template">WeasyPrint HTML file with a <code>{{ '{{ content }}' }}</code> placeholder</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">DOCX style template <small class="fw-normal text-muted">(NOTE_EXPORT_DOCX_STYLE_TEMPLATE)</small></td>
+                                <td>
+                                    {{ str_edit('note_export_docx_style_template') }}
+                                    <small class="text-muted ms-1" v-if="!editing.note_export_docx_style_template">JSON style options for DOCX conversion</small>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">DOCX document template <small class="fw-normal text-muted">(NOTE_EXPORT_DOCX_TEMPLATE)</small></td>
+                                <td>
+                                    {{ str_edit('note_export_docx_template', code=true, empty_text='Default Word document') }}
+                                    <small class="text-muted ms-1" v-if="!editing.note_export_docx_template">Optional .docx file used as the base document</small>
                                 </td>
                             </tr>
                         </tbody>
@@ -775,6 +796,9 @@
                 enable_chatbot: false,
                 enable_mermaid: false,
                 enable_mermaid_export: false,
+                note_export_pdf_template: false,
+                note_export_docx_style_template: false,
+                note_export_docx_template: false,
                 misp_export_files: false,
                 show_gdpr_notice: false,
                 log_file: false,
@@ -801,6 +825,9 @@
                 enable_chatbot: {{ system_info.enable_chatbot | tojson }},
                 enable_mermaid: {{ system_info.enable_mermaid | tojson }},
                 enable_mermaid_export: {{ system_info.enable_mermaid_export | tojson }},
+                note_export_pdf_template: {{ (system_info.note_export_pdf_template or '') | tojson }},
+                note_export_docx_style_template: {{ (system_info.note_export_docx_style_template or '') | tojson }},
+                note_export_docx_template: {{ (system_info.note_export_docx_template or '') | tojson }},
                 misp_export_files: {{ system_info.misp_export_files | tojson }},
                 show_gdpr_notice: {{ system_info.show_gdpr_notice | tojson }},
                 log_file: {{ (system_info.log_file or '') | tojson }},

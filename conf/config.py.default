@@ -171,8 +171,16 @@ class Config:
     ENABLE_MERMAID = os.getenv('ENABLE_MERMAID', 'true').lower() == 'true'
 
     # Enable Mermaid rendering during server-side note exports (PDF/DOCX).
-    # Set to false to disable Mermaid Pandoc filters entirely.
+    # Set to false to keep Mermaid blocks as plain markdown/code in exported files.
     ENABLE_MERMAID_EXPORT = os.getenv('ENABLE_MERMAID_EXPORT', 'true').lower() == 'true'
+
+    # Note export templates. Relative paths are resolved from the Flowintel
+    # project root. PDF templates are WeasyPrint HTML files. DOCX style templates
+    # are JSON files, and DOCX document templates are optional .docx files used
+    # as the base Word document.
+    NOTE_EXPORT_PDF_TEMPLATE = os.getenv('NOTE_EXPORT_PDF_TEMPLATE', 'app/export_templates/note_pdf.html')
+    NOTE_EXPORT_DOCX_STYLE_TEMPLATE = os.getenv('NOTE_EXPORT_DOCX_STYLE_TEMPLATE', 'app/export_templates/note_docx_styles.json')
+    NOTE_EXPORT_DOCX_TEMPLATE = os.getenv('NOTE_EXPORT_DOCX_TEMPLATE', '')
 
     # =============================================================================
     # ENTRA ID

@@ -559,6 +559,8 @@ Once a template is linked, a second tab labelled **Content** becomes available. 
 
 To export the rendered note, use the **Export** dropdown and choose **PDF** or **DOCX**. Flowintel compiles the current content with the filled-in parameter values and downloads the file.
 
+Administrators can customize the export layout by replacing the note export templates. The bundled defaults live in `app/export_templates/`: `note_pdf.html` is the WeasyPrint HTML template for PDFs, and `note_docx_styles.json` controls DOCX style mapping. Set `NOTE_EXPORT_PDF_TEMPLATE`, `NOTE_EXPORT_DOCX_STYLE_TEMPLATE` or `NOTE_EXPORT_DOCX_TEMPLATE` in the system settings or in `conf/config.py` to point Flowintel at custom files.
+
 If you want to start over with a different template, click **Remove** to unlink the current template from the case. This returns you to the template selection dropdown.
 
 ### Case notes based on a HedgeDoc 

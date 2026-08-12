@@ -85,144 +85,29 @@
         {% endif %}
 
         <script>
-            // Wraps the markdownit() factory so that every instance automatically
-            // escapes HTML inside mermaid fence output, regardless of fence syntax
-            // (```, ~~~, ````, etc.) and regardless of which mermaid plugin is used.
             (function(){
-                if(!window.markdownit || window.__markdownit_xss_protected) return
-                try{
-                    const origFactory = window.markdownit
-                    const noopMermaid = {
-                        init: async function(){},
-                        run: async function(){},
-                        initialize: function(){},
-                        loadPreferences: function(){ return {} }
-                    }
-
-                    function _mermaidEnabled(){
-                        return window.ENABLE_MERMAID !== false
-                    }
-
-                    function _isMermaidPlugin(plugin){
-                        return !!(window.mermaidMarkdown && plugin === window.mermaidMarkdown.default)
-                    }
-
-                    function _ensureMermaidApi(inst){
-                        if(!inst.mermaid) inst.mermaid = noopMermaid
-                    }
-
-                    function _escapeHtml(str){
-                        if(!str) return str
-                        return str
-                            .replace(/&/g, '&amp;')
-                            .replace(/</g, '&lt;')
-                            .replace(/>/g, '&gt;')
-                            .replace(/"/g, '&quot;')
-                            .replace(/'/g, '&#39;')
-                    }
-
-                    function _hasMermaidInfo(token){
-                        return (token.info || '').trim().toLowerCase() === 'mermaid'
-                    }
-
-                    function _matchMermaidWrapper(result){
-                        return result.match(/^<(pre|div)(\s+[^>]*)?\bclass=(["'])[^"']*\bmermaid\b[^"']*\3[^>]*>/)
-                    }
-
-                    function _stripUnsafeHtml(html){
-                        const tmp = document.createElement('div')
-                        tmp.innerHTML = html
-                        tmp.querySelectorAll('script, iframe, object, embed, form').forEach(el => el.remove())
-                        tmp.querySelectorAll('*').forEach(el => {
-                            for(const attr of [...el.attributes]){
-                                const n = attr.name.toLowerCase()
-                                const v = attr.value
-                                if(n.startsWith('on') ||
-                                    ((n === 'href' || n === 'src' || n === 'action') && /^javascript:/i.test(v.trim()))){
-                                    el.removeAttribute(attr.name)
-                                }
+                function _stripUnsafeHtml(html){
+                    const tmp = document.createElement('div')
+                    tmp.innerHTML = html
+                    tmp.querySelectorAll('script, iframe, object, embed, form').forEach(el => el.remove())
+                    tmp.querySelectorAll('*').forEach(el => {
+                        for(const attr of [...el.attributes]){
+                            const n = attr.name.toLowerCase()
+                            const v = attr.value
+                            if(n.startsWith('on') ||
+                                ((n === 'href' || n === 'src' || n === 'action') && /^javascript:/i.test(v.trim()))){
+                                el.removeAttribute(attr.name)
                             }
-                        })
-                        return tmp.innerHTML
-                    }
-
-                    function _sanitizeHtml(html){
-                        if(!html) return html
-                        if(window.DOMPurify) return window.DOMPurify.sanitize(html)
-                        return _stripUnsafeHtml(html)
-                    }
-
-                    function _secureRenderMethod(inst, methodName){
-                        const currentMethod = inst[methodName]
-                        if(!currentMethod || currentMethod.__xss_safe) return
-
-                        const secureMethod = function(){
-                            return _sanitizeHtml(currentMethod.apply(this, arguments))
                         }
-                        secureMethod.__xss_safe = true
-                        inst[methodName] = secureMethod
-                    }
+                    })
+                    return tmp.innerHTML
+                }
 
-                    function _secureRender(inst){
-                        _secureRenderMethod(inst, 'render')
-                        _secureRenderMethod(inst, 'renderInline')
-                    }
-
-                    // Wrap the fence renderer rule so mermaid content is always escaped.
-                    // Calls the original rule first (to preserve side-effects like
-                    // mermaid.run() scheduling), then rebuilds the output with safe content.
-                    function _secureFenceRule(inst){
-                        const currentRule = inst.renderer.rules.fence
-                        if(!currentRule || currentRule.__xss_safe) return
-
-                        const secureRule = function(tokens, idx, options, env, self){
-                            const token = tokens[idx]
-                            // Call original rule for side-effects (mermaid scheduling, etc.)
-                            const result = currentRule.call(this, tokens, idx, options, env, self)
-
-                            const mermaidWrapper = _matchMermaidWrapper(result)
-                            if(_hasMermaidInfo(token) || mermaidWrapper){
-                                const escaped = _escapeHtml(token.content)
-                                if(mermaidWrapper){
-                                    return mermaidWrapper[0] + escaped + '</' + mermaidWrapper[1] + '>'
-                                }
-                                return '<pre class="mermaid">' + escaped + '</pre>'
-                            }
-                            return result
-                        }
-                        secureRule.__xss_safe = true
-                        inst.renderer.rules.fence = secureRule
-                    }
-
-                    window.markdownit = function(){
-                        const inst = origFactory.apply(this, arguments)
-
-                        // Secure the default fence rule
-                        _secureFenceRule(inst)
-                        _secureRender(inst)
-                        if(!_mermaidEnabled()) _ensureMermaidApi(inst)
-
-                        // Wrap .use() so that when a plugin replaces the fence rule,
-                        // the new rule is automatically wrapped too.
-                        const origUse = inst.use.bind(inst)
-                        inst.use = function(){
-                            if(!_mermaidEnabled() && _isMermaidPlugin(arguments[0])){
-                                _ensureMermaidApi(inst)
-                                return inst
-                            }
-                            const result = origUse.apply(this, arguments)
-                            _secureFenceRule(inst)
-                            _secureRender(inst)
-                            if(!_mermaidEnabled()) _ensureMermaidApi(inst)
-                            return result
-                        }
-
-                        return inst
-                    }
-
-                    window.FlowintelSanitizeHtml = _sanitizeHtml
-                    window.__markdownit_xss_protected = true
-                }catch(e){}
+                window.FlowintelSanitizeHtml = function(html){
+                    if(!html) return html
+                    if(window.DOMPurify) return window.DOMPurify.sanitize(html)
+                    return _stripUnsafeHtml(html)
+                }
             })();
         </script>
 

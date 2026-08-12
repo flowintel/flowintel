@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page {
+      size: A4;
+      margin: 2cm 2.2cm;
+      @bottom-left {
+        content: "{{ app_name }} - Exported Notes";
+        color: #94a3b8;
+        font-size: 9pt;
+      }
+      @bottom-right {
+        content: "Page " counter(page) " / " counter(pages);
+        color: #94a3b8;
+        font-size: 9pt;
+      }
+    }
+    body {
+      color: #1e293b;
+      font-family: "DejaVu Sans", Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.65;
+    }
+    h1 {
+      border-bottom: 3px solid #2563eb;
+      color: #0f172a;
+      font-size: 20pt;
+      line-height: 1.2;
+      margin-top: 0;
+      padding-bottom: .3em;
+    }
+    h2 {
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e3a5f;
+      font-size: 14pt;
+      line-height: 1.25;
+      margin-top: 1.6em;
+      padding-bottom: .2em;
+    }
+    h3, h4, h5, h6 {
+      color: #334155;
+      line-height: 1.25;
+      margin-bottom: .3em;
+      margin-top: 1.2em;
+    }
+    h3 { font-size: 11.5pt; }
+    h4, h5, h6 { font-size: 10.5pt; }
+    table {
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      margin: .8em 0;
+      width: 100%;
+    }
+    th {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      font-weight: 600;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    td {
+      border: 1px solid #e2e8f0;
+      padding: 5px 10px;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    code {
+      background: #f1f5f9;
+      border-radius: 4px;
+      color: #334155;
+      font-family: "DejaVu Sans Mono", Consolas, monospace;
+      font-size: .88em;
+      padding: 1px 5px;
+    }
+    pre {
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-size: .82em;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      padding: .7em 1em;
+      white-space: pre-wrap;
+    }
+    pre code {
+      background: transparent;
+      border-radius: 0;
+      padding: 0;
+    }
+    blockquote {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+      border-radius: 0 6px 6px 0;
+      color: #1e3a5f;
+      margin: .8em 0;
+      padding: .4em 1em;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 1.4em 0;
+    }
+    a { color: #2563eb; }
+    ul, ol { padding-left: 1.4em; }
+    ul li, ol li { margin-bottom: .2em; }
+    img {
+      display: block;
+      height: auto;
+      margin: .8em auto;
+      max-width: 100%;
+    }
+    .tag, .cluster, .badge {
+      border-radius: 4px;
+      display: inline-block;
+      font-size: .82em;
+      font-weight: 600;
+      line-height: 1.2;
+      margin: 0 2px 2px 0;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .cluster {
+      background: #eff6ff;
+      border: 1px solid #2563eb;
+      color: #1d4ed8;
+    }
+    .badge-primary, .bg-primary, .text-bg-primary {
+      background: #2563eb22;
+      border: 1px solid currentColor;
+      color: #2563eb;
+    }
+    .badge-secondary, .bg-secondary, .text-bg-secondary {
+      background: #64748b22;
+      border: 1px solid currentColor;
+      color: #64748b;
+    }
+    .badge-success, .bg-success, .text-bg-success {
+      background: #16a34a22;
+      border: 1px solid currentColor;
+      color: #16a34a;
+    }
+    .badge-danger, .bg-danger, .text-bg-danger {
+      background: #dc262622;
+      border: 1px solid currentColor;
+      color: #dc2626;
+    }
+    .badge-warning, .bg-warning, .text-bg-warning {
+      background: #d9770622;
+      border: 1px solid currentColor;
+      color: #d97706;
+    }
+    .badge-info, .bg-info, .text-bg-info {
+      background: #0891b222;
+      border: 1px solid currentColor;
+      color: #0891b2;
+    }
+    .badge-dark, .bg-dark, .text-bg-dark {
+      background: #33415522;
+      border: 1px solid currentColor;
+      color: #334155;
+    }
+  </style>
+</head>
+<body>
+{{ content }}
+</body>
+</html>

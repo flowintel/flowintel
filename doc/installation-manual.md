@@ -874,6 +874,9 @@ The table below covers all settings from `template.env` (`.env`):
 | `MISP_EVENT_THREAT_LEVEL` | Default MISP threat level | `4` |
 | `MISP_EVENT_ANALYSIS` | Default MISP analysis status | `0` |
 | `MISP_ADD_LOCAL_TAGS_ALL_EVENTS` | Local tags applied to MISP events | `curation:source="flowintel"` |
+| `NOTE_EXPORT_PDF_TEMPLATE` | WeasyPrint HTML template for note PDF exports | `app/export_templates/note_pdf.html` |
+| `NOTE_EXPORT_DOCX_STYLE_TEMPLATE` | JSON style mapping for note DOCX exports | `app/export_templates/note_docx_styles.json` |
+| `NOTE_EXPORT_DOCX_TEMPLATE` | Optional base `.docx` document for note DOCX exports | Empty string |
 | `REPOSITORY_BASE_PATH` | Base path for template repositories | `modules/repositories` |
 | `GPG_HOME` | GPG home/keyring directory for report signing | `/home/user/.gnupg` or empty |
 | `GPG_KEY_ID` | GPG signing key identifier | Key ID, fingerprint, or empty |
@@ -2603,7 +2606,7 @@ This section describes how to completely remove Flowintel and all associated ser
 
 ## Development mode uninstall
 
-A development installation does not create systemd services, NGINX configuration, or a PostgreSQL database. The install script does install system packages (Valkey, pandoc, etc.) via apt, but only Valkey runs as a persistent daemon that needs to be explicitly stopped and removed.
+A development installation does not create systemd services, NGINX configuration, or a PostgreSQL database. The install script does install system packages (Valkey, WeasyPrint support libraries, etc.) via apt, but only Valkey runs as a persistent daemon that needs to be explicitly stopped and removed.
 
 1. Stop the running application. If you started it with `bash launch.sh -l`, press **Ctrl+C** in the terminal. If it is running in a `screen` session, kill the screens:
 
