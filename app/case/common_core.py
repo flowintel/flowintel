@@ -16,6 +16,7 @@ from ..custom_tags import custom_tags_core as CustomModel
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
+PANDOC_MARKDOWN_FORMAT = "markdown-raw_tex-raw_html"
 
 
 def _format_logs_as_markdown(case, log_entries, title="History"):
@@ -627,61 +628,6 @@ def delete_temp_folder():
     shutil.rmtree(TEMP_FOLDER)
 
 
-def smart_escape_for_markdown_to_latex(text: str) -> str:
-    # Only escape characters that break LaTeX via Pandoc
-    escape_map = {
-        '\\': r'\\',
-        '{': r'\{',
-        '}': r'\}',
-        '$': r'\$',
-        '&': r'\&',
-        '_': r'\_',
-        '%': r'\%',
-        '^': r'\^{}',
-        '~': r'\~{}',
-    }
-
-    def escape_text(t):
-        pattern = re.compile('|'.join(re.escape(k) for k in escape_map))
-        return pattern.sub(lambda m: escape_map[m.group()], t)
-
-    # Regex patterns for fenced and inline code
-    code_block_pattern = re.compile(r'```.*?```', re.DOTALL)
-    inline_code_pattern = re.compile(r'`[^`\n]+`')
-
-    # Temporarily replace code with placeholders
-    all_code = []
-    def placeholder(match):
-        all_code.append(match.group())
-        return f"§§CODE{len(all_code)}§§"
-
-    temp = code_block_pattern.sub(placeholder, text)
-    temp = inline_code_pattern.sub(placeholder, temp)
-
-    # Escape only outside code
-    escaped = escape_text(temp)
-
-    # Restore code blocks
-    def restore(match):
-        index = int(match.group(1)) - 1
-        return all_code[index]
-
-    result = re.sub(r'§§CODE(\d+)§§', restore, escaped)
-    return result
-
-def convert_inline_code_to_verb(text: str) -> str:
-    # Find all inline code spans: `like this`
-    def replace_inline_code(match):
-        content = match.group(0)[1:-1]  # Remove the backticks
-        # If it starts with a LaTeX command, wrap it in \verb
-        if content.strip().startswith("\\"):
-            return r"\verb|" + content + r"|"
-        else:
-            return f"`{content}`"
-
-    inline_code_pattern = re.compile(r'`[^`\n]+`')
-    return inline_code_pattern.sub(replace_inline_code, text)
-
 def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int = None, allow_mermaid: bool = True):
     """Export notes into a format like pdf or docx"""
     from ..utils.note_variables import resolve_variables
@@ -698,6 +644,9 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
     return export_notes_core(case_task_id, type_req, note, allow_mermaid=allow_mermaid)
 
 def export_notes_core(case_task_id: int, type_req: str, note: str, download_filename: str = None, allow_mermaid: bool = True):
+    if type_req not in ("pdf", "docx"):
+        return {"message": "Invalid export format", "toast_class": "warning-subtle"}, 400
+
     if not os.path.isdir(TEMP_FOLDER):
         os.mkdir(TEMP_FOLDER)
 
@@ -706,19 +655,18 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
     else:
         if not download_filename.endswith(f".{type_req}"):
             download_filename = f"{download_filename}.{type_req}"
-    temp_md = os.path.join(TEMP_FOLDER, "index.md")
-    temp_export = os.path.join(TEMP_FOLDER, f"output.{type_req}")
+    export_id = uuid.uuid4().hex
+    temp_md = os.path.join(TEMP_FOLDER, f"{export_id}.md")
+    temp_export = os.path.join(TEMP_FOLDER, f"{export_id}.{type_req}")
 
-    loc_note = smart_escape_for_markdown_to_latex(note)
-    loc_note = convert_inline_code_to_verb(loc_note)
-    with open(temp_md, "w")as write_file:
-        write_file.write(loc_note)
+    with open(temp_md, "w", encoding="utf-8") as write_file:
+        write_file.write(note or "")
 
     mermaid_enabled = current_app.config.get("ENABLE_MERMAID_EXPORT", True)
     use_mermaid_filter = allow_mermaid and mermaid_enabled
 
     if type_req == "pdf":
-        command = ["pandoc", temp_md, "--pdf-engine=xelatex", \
+        command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "--pdf-engine=xelatex", \
                    "-V", "colorlinks=true", \
                    "-V", "linkcolor=blue", \
                    "-V", "urlcolor=red", \
@@ -728,20 +676,27 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
                    "-o", temp_export]
         if use_mermaid_filter:
             command.append("--filter=pandoc-mermaid")
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
     elif type_req == "docx":
-        command = ["pandoc", temp_md, "-o", temp_export]
+        command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "-o", temp_export]
         if use_mermaid_filter:
             command.append("--filter=mermaid-filter")
-        process = subprocess.Popen(command, stdout=subprocess.PIPE)
-    process.wait()
+    process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
     except OSError:
         pass
 
-    if not os.path.isfile(temp_export):
+    try:
+        os.remove(temp_md)
+    except OSError:
+        pass
+
+    if process.returncode != 0 or not os.path.isfile(temp_export):
+        try:
+            os.remove(temp_export)
+        except OSError:
+            pass
         return {"message": "Error during export process", "toast_class": "danger-subtle"}
     
     return send_file(temp_export, as_attachment=True, download_name=download_filename)
