@@ -16,7 +16,16 @@ from ..custom_tags import custom_tags_core as CustomModel
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
 HISTORY_DIR = os.environ.get("HISTORY_DIR", "history")
-PANDOC_MARKDOWN_FORMAT = "markdown-raw_tex-raw_html"
+PANDOC_MARKDOWN_FORMAT = (
+    "markdown"
+    "-raw_tex"
+    "-raw_html"
+    "-raw_attribute"
+    "-tex_math_dollars"
+    "-tex_math_single_backslash"
+    "-tex_math_double_backslash"
+    "-latex_macros"
+)
 
 
 def _format_logs_as_markdown(case, log_entries, title="History"):
@@ -667,6 +676,7 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
 
     if type_req == "pdf":
         command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "--pdf-engine=xelatex", \
+                   "--pdf-engine-opt=-no-shell-escape", \
                    "-V", "colorlinks=true", \
                    "-V", "linkcolor=blue", \
                    "-V", "urlcolor=red", \
@@ -680,7 +690,11 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
         command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "-o", temp_export]
         if use_mermaid_filter:
             command.append("--filter=mermaid-filter")
-    process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process_env = os.environ.copy()
+    if type_req == "pdf":
+        process_env["openin_any"] = "p"
+        process_env["openout_any"] = "p"
+    process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=process_env)
 
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
