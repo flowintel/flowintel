@@ -105,12 +105,7 @@ export default {
 
 			if (await res.status == 200) {
 				touchTaskAndCaseLastModif(task, props.cases_info)
-				// Tear down the editor bound to this slot and drop the slot's state.
-				// note_preview_html and _previewResolvers are keyed by array index, so
-				// reset them wholesale; the deep watcher on note_editor_render will
-				// repopulate the preview for surviving notes.
-				try { editor_list[key] && editor_list[key].destroy() } catch (e) {}
-				editor_list.splice(key, 1)
+
 				note_editor_render.value.splice(key, 1)
 				delete resolved_notes_markdown.value[note_id]
 

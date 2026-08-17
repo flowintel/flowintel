@@ -391,6 +391,7 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -743,6 +744,8 @@
                 return {
                     message_list,
                     dayjs,
+                    getTextColor,
+                    mapIcon,
 
                     is_open_cases,
                     current_filter,

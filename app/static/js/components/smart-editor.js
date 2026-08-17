@@ -307,8 +307,7 @@ export default {
                         class="se-overlay"
                         ref="overlay_ref"
                         aria-hidden="true"
-                        v-html="highlighted || escaped_code">
-                    </pre>
+                        v-html="highlighted || escaped_code"></pre>
                     <textarea
                         ref="ta_ref"
                         class="se-ta se-ta--code"
