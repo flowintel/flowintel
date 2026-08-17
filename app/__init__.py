@@ -116,6 +116,7 @@ def create_app():
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
     from .alerts import alerts_blueprint
+    from .alerting import alerting_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -130,6 +131,7 @@ def create_app():
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
+    app.register_blueprint(alerting_blueprint, url_prefix="/alerting")
 
     if app.config.get("ENABLE_CHATBOT", False):
         # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)

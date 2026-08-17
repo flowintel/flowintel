@@ -34,11 +34,11 @@
 		</a>
 	</li>
 	<li class="nav-item">
-		<a class="nav-link" href="/alerts">
-			<i class="fas fa-fw fa-bell"></i>
-			<span>Alerts</span>
-			<span id="alert-badge" class="badge bg-danger ms-1" style="display:none;">0</span>
-			<i class="fa-solid fa-circle-question ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Alerts are triggered automatically when a new case is created. Each case creation sends a notification and optionally fires a webhook." style="font-size:0.75rem; opacity:0.6;"></i>
+		<a class="nav-link" href="/alerting">
+			<i class="fas fa-fw fa-triangle-exclamation"></i>
+			<span>Alert triage</span>
+			<span id="alerting-badge" class="badge bg-danger ms-1" style="display:none;">0</span>
+			<i class="fa-solid fa-circle-question ms-1" data-bs-toggle="tooltip" data-bs-placement="right" title="Review external alerts from SIEM, AIL, Wazuh, and other connector sources." style="font-size:0.75rem; opacity:0.6;"></i>
 		</a>
 	</li>
 	<li class="nav-item">
@@ -241,11 +241,10 @@
 		}
 	})
 
-	// Fetch unread alert count
-	fetch('/alerts/api/alerts/unread')
+	fetch('/alerting/api/unread')
 		.then(r => r.json())
 		.then(data => {
-			const badge = document.getElementById('alert-badge');
+			const badge = document.getElementById('alerting-badge');
 			if (data.count > 0) {
 				badge.textContent = data.count > 99 ? '99+' : data.count;
 				badge.style.display = 'inline-block';

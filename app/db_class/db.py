@@ -667,6 +667,107 @@ class Alert(db.Model):
             "review_status": "case_created" if self.case_id else "pending",
         }
 
+
+class ExternalAlert(db.Model):
+    __tablename__ = "external_alert"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
+    case_id = db.Column(db.Integer, index=True)
+    message = db.Column(db.String, index=True)
+    status = db.Column(db.String(30), index=True, default="new")
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    is_read = db.Column(db.Boolean, index=True, default=False)
+    title = db.Column(db.String(255), index=True)
+    description = db.Column(db.Text, nullable=True)
+    severity = db.Column(db.String(20), index=True, default="info")
+    confidence = db.Column(db.Float, nullable=True)
+    category = db.Column(db.String(80), index=True)
+    tlp = db.Column(db.String(20), index=True)
+    source = db.Column(db.String(120), index=True)
+    source_ref = db.Column(db.String(255), index=True)
+    source_url = db.Column(db.String, nullable=True)
+    connector_instance_id = db.Column(db.Integer, index=True)
+    owner_user_id = db.Column(db.Integer, index=True)
+    owner_org_id = db.Column(db.Integer, index=True)
+    review_status = db.Column(db.String(30), index=True, default="new")
+    review_comment = db.Column(db.Text, nullable=True)
+    reviewed_by_id = db.Column(db.Integer, index=True)
+    reviewed_at = db.Column(db.DateTime, index=True)
+    event_time = db.Column(db.DateTime, index=True)
+    last_seen = db.Column(db.DateTime, index=True)
+    occurrence_count = db.Column(db.Integer, default=1)
+    deduplication_key = db.Column(db.String(255), index=True)
+    raw_payload = db.Column(db.JSON, nullable=True)
+    observables = db.Column(db.JSON, nullable=True)
+    assets = db.Column(db.JSON, nullable=True)
+    external_references = db.Column(db.JSON, nullable=True)
+    mitre_attack = db.Column(db.JSON, nullable=True)
+    recommended_actions = db.Column(db.JSON, nullable=True)
+    tags = db.Column(db.JSON, nullable=True)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "uuid": self.uuid,
+            "case_id": self.case_id,
+            "message": self.message,
+            "status": self.status,
+            "creation_date": self.creation_date.isoformat() if self.creation_date else None,
+            "is_read": self.is_read,
+            "webhook_url": None,
+            "webhook_status": None,
+            "alert_type": "external",
+            "title": self.title or self.message,
+            "description": self.description,
+            "severity": self.severity or "info",
+            "confidence": self.confidence,
+            "category": self.category,
+            "tlp": self.tlp,
+            "source": self.source,
+            "source_ref": self.source_ref,
+            "source_url": self.source_url,
+            "connector_instance_id": self.connector_instance_id,
+            "owner_user_id": self.owner_user_id,
+            "owner_org_id": self.owner_org_id,
+            "review_status": self.review_status or ("case_created" if self.case_id else "new"),
+            "review_comment": self.review_comment,
+            "reviewed_by_id": self.reviewed_by_id,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+            "event_time": self.event_time.isoformat() if self.event_time else None,
+            "last_seen": self.last_seen.isoformat() if self.last_seen else None,
+            "occurrence_count": self.occurrence_count or 1,
+            "deduplication_key": self.deduplication_key,
+            "raw_payload": self.raw_payload or {},
+            "observables": self.observables or [],
+            "assets": self.assets or [],
+            "external_references": self.external_references or [],
+            "mitre_attack": self.mitre_attack or [],
+            "recommended_actions": self.recommended_actions or [],
+            "tags": self.tags or [],
+        }
+
+
+class ExternalAlertAction(db.Model):
+    __tablename__ = "external_alert_action"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    alert_id = db.Column(db.Integer, index=True, nullable=False)
+    action = db.Column(db.String(40), index=True, nullable=False)
+    user_id = db.Column(db.Integer, index=True)
+    comment = db.Column(db.Text, nullable=True)
+    details = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "alert_id": self.alert_id,
+            "action": self.action,
+            "user_id": self.user_id,
+            "comment": self.comment,
+            "details": self.details or {},
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

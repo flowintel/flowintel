@@ -1,0 +1,700 @@
+{% extends "base.html" %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/alerting.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid alert-console">
+    <div class="alert-console-header d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h5 class="mb-1"><i class="fa-solid fa-triangle-exclamation me-2"></i>Alert triage</h5>
+            <div class="text-muted small">[[ filteredAlerts.length ]] visible / [[ alerts.length ]] loaded</div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="badge text-bg-warning" v-if="newCount">[[ newCount ]] new</span>
+            <span class="badge text-bg-danger" v-if="criticalCount">[[ criticalCount ]] critical</span>
+            <button class="btn btn-sm btn-outline-secondary" @click="loadAlerts(true)" title="Refresh alerts">
+                <i class="fa-solid fa-rotate"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="alert-toolbar d-flex flex-wrap align-items-center gap-2 mb-3">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Review status">
+            <button type="button" class="btn" :class="filters.status === 'active' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'active'">
+                <i class="fa-solid fa-inbox me-1"></i>Active
+            </button>
+            <button type="button" class="btn" :class="filters.status === 'new' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'new'">
+                <i class="fa-solid fa-circle-exclamation me-1"></i>New
+            </button>
+            <button type="button" class="btn" :class="filters.status === 'reviewing' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'reviewing'">
+                <i class="fa-solid fa-eye me-1"></i>Reviewing
+            </button>
+            <button type="button" class="btn" :class="filters.status === 'case_created' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'case_created'">
+                <i class="fa-solid fa-folder-plus me-1"></i>Cases
+            </button>
+            <button type="button" class="btn" :class="filters.status === 'closed' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'closed'">
+                <i class="fa-solid fa-box-archive me-1"></i>Closed
+            </button>
+            <button type="button" class="btn" :class="filters.status === 'all' ? 'btn-primary' : 'btn-outline-primary'" @click="filters.status = 'all'">
+                <i class="fa-solid fa-layer-group me-1"></i>All
+            </button>
+        </div>
+
+        <select class="form-select form-select-sm" style="width: 150px;" v-model="filters.severity" aria-label="Severity">
+            <option value="all">Severity</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="info">Info</option>
+        </select>
+
+        <select class="form-select form-select-sm" style="width: 160px;" v-model="filters.type" aria-label="Alert type">
+            <option value="all">External alerts</option>
+        </select>
+
+        <div class="input-group input-group-sm" style="max-width: 360px;">
+            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+            <input class="form-control" v-model.trim="filters.query" type="search" placeholder="Search title, source, ref, asset, observable">
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-5">
+            <div class="review-panel">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                    <strong>Queue</strong>
+                    <button class="btn btn-sm btn-outline-secondary" @click="markAllRead" :disabled="unreadCount === 0" title="Mark visible alerts as read">
+                        <i class="fa-solid fa-check-double"></i>
+                    </button>
+                </div>
+                <div class="alert-list">
+                    <div v-if="filteredAlerts.length === 0" class="text-center text-muted py-5 px-3">
+                        <i class="fa-solid fa-bell-slash fa-2x mb-3"></i>
+                        <div>No matching alerts</div>
+                    </div>
+                    <button v-for="a in filteredAlerts" :key="a.id" type="button"
+                            class="list-group-item list-group-item-action alert-row text-start"
+                            :class="['severity-' + severity(a), {active: selected && selected.id === a.id, unread: !a.is_read}]"
+                            @click="selectAlert(a)">
+                        <div class="d-flex justify-content-between gap-2">
+                            <div class="alert-title">[[ displayTitle(a) ]]</div>
+                            <span class="badge flex-shrink-0" :class="severityBadgeClass(a)">[[ severity(a) ]]</span>
+                        </div>
+                        <div class="alert-meta mt-1">
+                            <i class="fa-solid fa-plug me-1"></i>[[ a.source || a.connector_instance_name || 'Flowintel' ]]
+                            <span v-if="a.source_ref"> / [[ a.source_ref ]]</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            <span class="alert-chip"><i class="fa-solid fa-clipboard-check"></i>[[ reviewLabel(a) ]]</span>
+                            <span class="alert-chip" v-if="a.category"><i class="fa-solid fa-shapes"></i>[[ a.category ]]</span>
+                            <span class="alert-chip" v-if="a.occurrence_count > 1"><i class="fa-solid fa-repeat"></i>[[ a.occurrence_count ]]</span>
+                            <span class="alert-chip" v-if="a.observables && a.observables.length"><i class="fa-solid fa-magnifying-glass-location"></i>[[ a.observables.length ]] attrs</span>
+                            <span class="alert-chip" v-if="a.assets && a.assets.length"><i class="fa-solid fa-cube"></i>[[ a.assets.length ]] objects</span>
+                        </div>
+                        <div class="alert-meta mt-2" v-if="lastAction(a)">
+                            <i class="fa-solid fa-user-check me-1"></i>[[ lastActionSummary(a) ]]
+                        </div>
+                        <div class="alert-meta mt-2">[[ relativeDate(a.event_time || a.creation_date) ]]</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="review-panel p-3" v-if="selected">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="badge" :class="severityBadgeClass(selected)">[[ severity(selected) ]]</span>
+                            <span class="badge" :class="reviewBadgeClass(selected)">[[ reviewLabel(selected) ]]</span>
+                            <span class="badge text-bg-info">external</span>
+                        </div>
+                        <h4 class="mb-1">[[ displayTitle(selected) ]]</h4>
+                        <div class="text-muted small">
+                            [[ selected.source || selected.connector_instance_name || 'Flowintel' ]]
+                            <span v-if="selected.source_ref"> / [[ selected.source_ref ]]</span>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-start gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @click="clearSelection" title="Close details">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <a v-if="selected.case_id" :href="`/case/${selected.case_id}`" class="btn btn-sm btn-primary">
+                            <i class="fa-solid fa-folder-open me-1"></i>Open case
+                        </a>
+                        <button v-else class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#create-case-modal" @click="prepareCaseForm">
+                            <i class="fa-solid fa-folder-plus me-1"></i>Create case
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('reviewing')" :disabled="selected.review_status === 'reviewing'">
+                            <i class="fa-solid fa-eye me-1"></i>Review
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" @click="setReviewStatus('false_positive')" :disabled="selected.review_status === 'false_positive'">
+                            <i class="fa-solid fa-check me-1"></i>False positive
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('dismissed')" :disabled="selected.review_status === 'dismissed'">
+                            <i class="fa-solid fa-box-archive me-1"></i>Dismiss
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-3 detail-section">
+                    <div class="col-sm-6 col-lg-4" v-for="meta in selectedMeta" :key="meta.label">
+                        <div class="detail-label">[[ meta.label ]]</div>
+                        <div class="detail-value">[[ meta.value ]]</div>
+                    </div>
+                </div>
+
+                <div class="detail-section" v-if="activityEntries.length">
+                    <div class="detail-label mb-2">Activity</div>
+                    <div class="activity-list">
+                        <div class="activity-item" v-for="entry in activityEntries" :key="entry.id || `${entry.action}-${entry.created_at}`">
+                            <div class="d-flex flex-wrap justify-content-between gap-2">
+                                <strong>[[ actionLabel(entry) ]]</strong>
+                                <span class="text-muted small">[[ formatDate(entry.created_at) ]]</span>
+                            </div>
+                            <div class="text-muted small">
+                                <i class="fa-solid fa-user me-1"></i>[[ actionUser(entry) ]]
+                            </div>
+                            <div class="activity-comment mt-2" v-if="entry.comment">[[ entry.comment ]]</div>
+                            <div class="text-muted small mt-1" v-if="entry.details && entry.details.case_id">
+                                <i class="fa-solid fa-folder-open me-1"></i>Case #[[ entry.details.case_id ]]
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="detail-section" v-if="selected.description || selected.message">
+                    <div class="detail-label mb-2">Summary</div>
+                    <div style="white-space: pre-wrap; word-break: break-word;">[[ selected.description || selected.message ]]</div>
+                </div>
+
+                <div class="detail-section" v-if="selected.assets && selected.assets.length">
+                    <div class="detail-label mb-2">MISP objects</div>
+                    <div class="border rounded mb-2" v-for="(item, idx) in selected.assets" :key="'asset-' + idx">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 px-2 py-2 bg-light border-bottom">
+                            <strong>[[ item.name || 'object' ]]</strong>
+                            <span class="text-muted small" v-if="item.uuid">[[ item.uuid ]]</span>
+                        </div>
+                        <table class="table table-sm evidence-table mb-0" v-if="item.attributes && item.attributes.length">
+                            <thead>
+                                <tr>
+                                    <th style="width: 24%;">Relation</th>
+                                    <th style="width: 22%;">Type</th>
+                                    <th>Value</th>
+                                    <th style="width: 14%;">IDS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(attr, attrIdx) in item.attributes" :key="'asset-' + idx + '-attr-' + attrIdx">
+                                    <td>[[ attr.object_relation || '-' ]]</td>
+                                    <td>[[ attr.type || '-' ]]</td>
+                                    <td>[[ attr.value || objectSummary(attr) ]]</td>
+                                    <td>[[ attr.ids_flag ? 'yes' : 'no' ]]</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="text-muted small px-2 py-2" v-else>No object attributes</div>
+                    </div>
+                </div>
+
+                <div class="detail-section" v-if="selected.observables && selected.observables.length">
+                    <div class="detail-label mb-2">MISP attributes</div>
+                    <table class="table table-sm evidence-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 28%;">Type</th>
+                                <th>Value</th>
+                                <th style="width: 22%;">Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(item, idx) in selected.observables" :key="'observable-' + idx">
+                                <td>[[ item.type || item.kind || 'observable' ]]</td>
+                                <td>[[ item.value || objectSummary(item) ]]</td>
+                                <td>[[ item.role || item.direction || '' ]]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="detail-section" v-if="selected.mitre_attack && selected.mitre_attack.length">
+                    <div class="detail-label mb-2">MITRE ATT&CK</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="alert-chip" v-for="(item, idx) in selected.mitre_attack" :key="'mitre-' + idx">
+                            [[ item.technique_id || item.id || objectSummary(item) ]]
+                            <span v-if="item.technique"> / [[ item.technique ]]</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="detail-section" v-if="selected.external_references && selected.external_references.length">
+                    <div class="detail-label mb-2">References</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a v-for="(item, idx) in selected.external_references" :key="'ref-' + idx"
+                           class="btn btn-sm btn-outline-secondary"
+                           :href="externalReferenceUrl(item) || '#'"
+                           target="_blank"
+                           rel="noreferrer"
+                           :class="{disabled: !externalReferenceUrl(item)}">
+                            <i class="fa-solid fa-up-right-from-square me-1"></i>[[ item.label || item.type || 'Reference' ]]
+                        </a>
+                    </div>
+                </div>
+
+                <details class="detail-section">
+                    <summary class="detail-label" style="cursor: pointer;">Raw payload</summary>
+                    <pre class="raw-json mt-2">[[ rawSelected ]]</pre>
+                </details>
+            </div>
+            <div class="review-panel p-5 text-center text-muted" v-else>
+                <i class="fa-solid fa-bell-slash fa-2x mb-3"></i>
+                <div>Select an alert</div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_admin() %}
+    <div class="row g-3 mt-1">
+        <div class="col-lg-6">
+            <div class="config-panel p-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="fa-solid fa-code me-2"></i>MISP event ingest format</h6>
+                    <a class="btn btn-sm btn-outline-secondary" href="/api/#/alerts/post_alerts_ingest" target="_blank" rel="noreferrer">
+                        <i class="fa-solid fa-book me-1"></i>API
+                    </a>
+                </div>
+                <pre class="schema-json mb-0">[[ schemaJson ]]</pre>
+            </div>
+        </div>
+
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="create-case-modal" tabindex="-1" aria-labelledby="create-case-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form @submit.prevent="createCaseFromSelected">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="create-case-modal-title"><i class="fa-solid fa-folder-plus me-2"></i>Create case</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Case template</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input class="form-control" type="search" v-model.trim="templateSearch" placeholder="Search templates">
+                            <button class="btn btn-outline-secondary" type="button" @click="templateSearch = ''" :disabled="!templateSearch" title="Clear search">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                        <select class="form-select" v-model="caseForm.template_id">
+                            <option value="">Empty case</option>
+                            <option v-for="template in filteredCaseTemplates" :key="template.id" :value="String(template.id)">
+                                [[ template.title ]]
+                            </option>
+                        </select>
+                        <div class="form-text" v-if="templateSearch && filteredCaseTemplates.length === 0">No matching templates</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" v-model.trim="caseForm.title" required maxlength="220">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ticket ID</label>
+                        <input class="form-control" v-model.trim="caseForm.ticket_id" maxlength="255">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reviewer summary</label>
+                        <textarea class="form-control" v-model="caseForm.description" rows="5"></textarea>
+                    </div>
+                    <div class="d-flex flex-wrap gap-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="case-private" v-model="caseForm.is_private">
+                            <label class="form-check-label" for="case-private">Private case</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="case-privileged" v-model="caseForm.privileged_case">
+                            <label class="form-check-label" for="case-privileged">Privileged case</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-xmark me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary" :disabled="sending || !selected">
+                        <i class="fa-solid fa-folder-plus me-1"></i>Create
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+const initialAlerts = {{ alerts|tojson|safe }};
+const schemaExample = {{ alert_schema_example|tojson|safe }};
+const initialCaseTemplates = {{ case_templates|tojson|safe }};
+
+const { createApp, ref, computed, onMounted } = Vue;
+import {message_list, display_toast} from '/static/js/toaster.js';
+
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedAlertId = parseInt(urlParams.get('alert_id'), 10);
+        const alerts = ref(initialAlerts || []);
+        const selectedId = ref(Number.isNaN(requestedAlertId) ? null : requestedAlertId);
+        const filters = ref({status: 'active', severity: 'all', type: 'all', query: ''});
+        const sending = ref(false);
+        const csrfToken = document.getElementById('csrf_token')?.value || '';
+        const caseTemplates = ref(initialCaseTemplates || []);
+        const templateSearch = ref('');
+        const caseForm = ref({template_id: '', title: '', ticket_id: '', description: '', is_private: false, privileged_case: false});
+
+        const schemaJson = computed(() => JSON.stringify(schemaExample, null, 2));
+        const selected = computed(() => alerts.value.find(a => a.id === selectedId.value) || null);
+        const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
+        const newCount = computed(() => alerts.value.filter(a => statusOf(a) === 'new').length);
+        const criticalCount = computed(() => alerts.value.filter(a => severity(a) === 'critical' && ['new', 'reviewing'].includes(statusOf(a))).length);
+
+        const filteredAlerts = computed(() => {
+            const query = filters.value.query.toLowerCase();
+            return alerts.value.filter(a => {
+                const status = statusOf(a);
+                if (filters.value.status === 'active' && !['new', 'reviewing'].includes(status)) return false;
+                if (filters.value.status === 'closed' && !['false_positive', 'dismissed'].includes(status)) return false;
+                if (!['active', 'closed', 'all'].includes(filters.value.status) && status !== filters.value.status) return false;
+                if (filters.value.severity !== 'all' && severity(a) !== filters.value.severity) return false;
+                if (filters.value.type !== 'all' && (a.alert_type || 'case_notification') !== filters.value.type) return false;
+                if (!query) return true;
+                return searchableText(a).includes(query);
+            });
+        });
+
+        const filteredCaseTemplates = computed(() => {
+            const query = templateSearch.value.toLowerCase();
+            if (!query) return caseTemplates.value;
+            return caseTemplates.value.filter(template => (template.title || '').toLowerCase().includes(query));
+        });
+
+        const activityEntries = computed(() => {
+            if (!selected.value) return [];
+            return activityList(selected.value);
+        });
+
+        const selectedMeta = computed(() => {
+            if (!selected.value) return [];
+            const a = selected.value;
+            const items = [
+                {label: 'Source', value: a.source || a.connector_instance_name || 'Flowintel'},
+                {label: 'Reference', value: a.source_ref || '-'},
+                {label: 'Category', value: a.category || '-'},
+                {label: 'TLP', value: a.tlp ? a.tlp.toUpperCase() : '-'},
+                {label: 'Confidence', value: a.confidence == null ? '-' : `${Math.round(a.confidence * 100)}%`},
+                {label: 'Owner', value: ownerDisplay(a)},
+                {label: 'Occurrences', value: String(a.occurrence_count || 1)},
+                {label: 'Event time', value: formatDate(a.event_time)},
+                {label: 'Received', value: formatDate(a.creation_date)},
+                {label: 'Connector', value: a.connector_instance_name || '-'}
+            ];
+            if (a.webhook_status) items.push({label: 'Webhook HTTP', value: String(a.webhook_status)});
+            return items;
+        });
+
+        const rawSelected = computed(() => {
+            if (!selected.value) return '';
+            return JSON.stringify(selected.value.raw_payload || selected.value, null, 2);
+        });
+
+        function searchableText(a) {
+            return [
+                displayTitle(a), a.description, a.message, a.source, a.source_ref, a.category,
+                a.owner_user_name, a.owner_org_name, a.reviewed_by_name,
+                JSON.stringify(a.action_history || []), JSON.stringify(a.observables || []),
+                JSON.stringify(a.assets || []), JSON.stringify(a.tags || [])
+            ].join(' ').toLowerCase();
+        }
+
+        function statusOf(a) {
+            return a.review_status || (a.case_id ? 'case_created' : 'new');
+        }
+
+        function reviewLabel(a) {
+            const labels = {
+                new: 'New',
+                reviewing: 'Reviewing',
+                case_created: 'Case created',
+                false_positive: 'False positive',
+                dismissed: 'Dismissed'
+            };
+            return labels[statusOf(a)] || statusOf(a);
+        }
+
+        function reviewBadgeClass(a) {
+            const status = statusOf(a);
+            if (status === 'new') return 'text-bg-warning';
+            if (status === 'reviewing') return 'text-bg-primary';
+            if (status === 'case_created') return 'text-bg-success';
+            if (status === 'false_positive') return 'text-bg-secondary';
+            return 'text-bg-dark';
+        }
+
+        function ownerDisplay(a) {
+            return a.owner_user_name || a.owner_org_name || '-';
+        }
+
+        function activityList(a) {
+            const entries = Array.isArray(a.action_history) ? [...a.action_history] : [];
+            if (!entries.length && a.reviewed_by_id) {
+                entries.push({
+                    action: statusOf(a),
+                    action_label: reviewLabel(a),
+                    user_id: a.reviewed_by_id,
+                    user_name: a.reviewed_by_name,
+                    user_email: a.reviewed_by_email,
+                    comment: a.review_comment,
+                    created_at: a.reviewed_at,
+                    details: {legacy: true}
+                });
+            }
+            return entries.sort((left, right) => {
+                const rightTime = right.created_at ? (dayjs(right.created_at).valueOf() || 0) : 0;
+                const leftTime = left.created_at ? (dayjs(left.created_at).valueOf() || 0) : 0;
+                return rightTime - leftTime;
+            });
+        }
+
+        function actionLabel(entry) {
+            if (!entry) return '';
+            if (entry.action_label) return entry.action_label;
+            if (!entry.action) return 'Updated';
+            return entry.action.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+        }
+
+        function actionUser(entry) {
+            if (!entry) return '';
+            if (entry.user_name) return entry.user_name;
+            if (entry.user_email) return entry.user_email;
+            if (entry.user_id) return `User #${entry.user_id}`;
+            return 'System';
+        }
+
+        function lastAction(a) {
+            const entries = activityList(a);
+            return entries.length ? entries[0] : null;
+        }
+
+        function lastActionSummary(a) {
+            const entry = lastAction(a);
+            if (!entry) return '';
+            return `${actionLabel(entry)} by ${actionUser(entry)}`;
+        }
+
+        function severity(a) {
+            return (a.severity || 'info').toLowerCase();
+        }
+
+        function severityBadgeClass(a) {
+            const sev = severity(a);
+            if (sev === 'critical') return 'text-bg-danger';
+            if (sev === 'high') return 'text-bg-warning';
+            if (sev === 'medium') return 'text-bg-info';
+            if (sev === 'low') return 'text-bg-success';
+            return 'text-bg-secondary';
+        }
+
+        function displayTitle(a) {
+            return a.title || a.case_title || a.message || `Alert ${a.id}`;
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            try { return dayjs(value).format('YYYY-MM-DD HH:mm'); }
+            catch (e) { return value; }
+        }
+
+        function relativeDate(value) {
+            if (!value) return '';
+            try { return dayjs(value).fromNow(); }
+            catch (e) { return value; }
+        }
+
+        function objectSummary(item) {
+            if (item == null) return '';
+            if (typeof item !== 'object') return String(item);
+            const preferred = ['value', 'type', 'object_relation', 'name', 'ip', 'hostname', 'user', 'url', 'command', 'process', 'technique', 'technique_id'];
+            const bits = [];
+            preferred.forEach(key => {
+                if (item[key] != null && item[key] !== '') bits.push(`${key}: ${item[key]}`);
+            });
+            if (bits.length) return bits.join(' / ');
+            return JSON.stringify(item);
+        }
+
+        function externalReferenceUrl(item) {
+            const value = item && (item.url || item.href);
+            if (!value || typeof value !== 'string') return '';
+            try {
+                const parsed = new URL(value);
+                if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+                return parsed.href;
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function refreshSidebarBadge(count) {
+            const badge = document.getElementById('alerting-badge');
+            if (!badge) return;
+            badge.textContent = count > 99 ? '99+' : count;
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+
+        function replaceAlert(nextAlert) {
+            const idx = alerts.value.findIndex(a => a.id === nextAlert.id);
+            if (idx >= 0) alerts.value[idx] = Object.assign({}, alerts.value[idx], nextAlert);
+        }
+
+        async function loadAlerts(keepSelection = false) {
+            try {
+                const resp = await fetch('/alerting/api?limit=200');
+                if (resp.ok) {
+                    const loaded = await resp.json();
+                    alerts.value = loaded;
+                    if (selectedId.value && !alerts.value.some(a => a.id === selectedId.value)) {
+                        selectedId.value = null;
+                    }
+                    refreshSidebarBadge(unreadCount.value);
+                }
+            } catch (e) { }
+        }
+
+        async function markRead(a) {
+            if (!a || a.is_read) return;
+            try {
+                await fetch(`/alerting/api/${a.id}/read`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    keepalive: true
+                });
+                a.is_read = true;
+                refreshSidebarBadge(unreadCount.value);
+            } catch (e) { }
+        }
+
+        function selectAlert(a) {
+            selectedId.value = a.id;
+            markRead(a);
+        }
+
+        function clearSelection() {
+            selectedId.value = null;
+        }
+
+        async function markAllRead() {
+            if (unreadCount.value === 0) return;
+            try {
+                const resp = await fetch('/alerting/api/read_all', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+                if (resp.ok) {
+                    alerts.value.forEach(a => { a.is_read = true; });
+                    refreshSidebarBadge(0);
+                }
+            } catch (e) { }
+        }
+
+        async function setReviewStatus(reviewStatus) {
+            if (!selected.value) return;
+            sending.value = true;
+            try {
+                const resp = await fetch(`/alerting/api/${selected.value.id}/review`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({review_status: reviewStatus})
+                });
+                const data = await resp.json();
+                if (resp.ok && data.alert) {
+                    replaceAlert(data.alert);
+                    if (['case_created', 'false_positive', 'dismissed'].includes(reviewStatus)) {
+                        clearSelection();
+                    }
+                    await display_toast({message: data.message, toast_class: 'success-subtle'});
+                } else {
+                    await display_toast({message: data.message || 'Could not update alert', toast_class: 'danger-subtle'});
+                }
+            } catch (e) {
+                await display_toast({message: String(e), toast_class: 'danger-subtle'});
+            } finally {
+                sending.value = false;
+            }
+        }
+
+        function prepareCaseForm() {
+            if (!selected.value) return;
+            caseForm.value = {
+                template_id: caseTemplates.value.length ? String(caseTemplates.value[0].id) : '',
+                title: `[${selected.value.source || 'Alert'}] ${displayTitle(selected.value)}`.slice(0, 220),
+                ticket_id: selected.value.source_ref || '',
+                description: selected.value.description || selected.value.message || '',
+                is_private: false,
+                privileged_case: false
+            };
+            templateSearch.value = '';
+        }
+
+        async function createCaseFromSelected() {
+            if (!selected.value) return;
+            sending.value = true;
+            try {
+                const resp = await fetch(`/alerting/api/${selected.value.id}/case`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify(caseForm.value)
+                });
+                const data = await resp.json();
+                if (resp.ok && data.alert) {
+                    replaceAlert(data.alert);
+                    clearSelection();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('create-case-modal'));
+                    if (modal) modal.hide();
+                    await display_toast({message: data.message, toast_class: 'success-subtle'});
+                } else {
+                    await display_toast({message: data.message || 'Could not create case', toast_class: 'danger-subtle'});
+                }
+            } catch (e) {
+                await display_toast({message: String(e), toast_class: 'danger-subtle'});
+            } finally {
+                sending.value = false;
+            }
+        }
+
+        onMounted(() => {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+            refreshSidebarBadge(unreadCount.value);
+            if (selected.value) markRead(selected.value);
+        });
+
+        return {
+            message_list, alerts, selected, filters, sending, caseForm, caseTemplates, templateSearch,
+            schemaJson, filteredAlerts, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected, unreadCount, newCount, criticalCount,
+            severity, severityBadgeClass, reviewLabel, reviewBadgeClass, displayTitle, objectSummary,
+            ownerDisplay, activityList, actionLabel, actionUser, lastAction, lastActionSummary, externalReferenceUrl,
+            formatDate, relativeDate, loadAlerts, selectAlert, clearSelection, markRead, markAllRead,
+            setReviewStatus, prepareCaseForm, createCaseFromSelected
+        };
+    }
+}).mount('#main-container');
+</script>
+{% endblock %}
