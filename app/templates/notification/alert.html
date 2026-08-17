@@ -1,0 +1,376 @@
+{% macro styles() %}
+<style>
+    .notification-tabs .btn {
+        min-width: 124px;
+    }
+</style>
+{% endmacro %}
+
+{% macro header_badges() %}
+<span v-if="active_tab === 'case-alerts'" class="badge bg-secondary ms-2">
+    [[ caseAlerts.length ]] case/webhook
+</span>
+{% endmacro %}
+
+{% macro tab_buttons() %}
+<div class="col-auto">
+    <div class="btn-group btn-group-sm notification-tabs" role="group" aria-label="Notification pages">
+        <button type="button" class="btn" :class="active_tab === 'notifications' ? 'btn-primary' : 'btn-outline-secondary'" @click="set_active_tab('notifications')">
+            <i class="fa-solid fa-inbox me-1"></i>Inbox
+        </button>
+        <button type="button" class="btn" :class="active_tab === 'case-alerts' ? 'btn-primary' : 'btn-outline-secondary'" @click="set_active_tab('case-alerts')">
+            <i class="fa-solid fa-plug me-1"></i>Case/webhook
+            <span v-if="caseAlertUnreadCount" class="badge text-bg-danger ms-1">[[ caseAlertUnreadCount ]]</span>
+        </button>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro header_actions() %}
+<template v-if="active_tab === 'case-alerts'">
+    <div class="col-auto">
+        <button class="btn btn-sm btn-outline-success" @click="markAllCaseAlertsRead" :disabled="caseAlertUnreadCount === 0">
+            <i class="fa-solid fa-check-double me-1"></i>Mark all as read
+        </button>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-sm btn-outline-danger" @click="deleteReadCaseAlerts" :disabled="caseAlertReadCount === 0">
+            <i class="fa-solid fa-trash me-1"></i>Remove read alerts
+        </button>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-outline-secondary btn-sm" @click="loadCaseAlerts" title="Refresh case alerts">
+            <i class="fa-solid fa-rotate"></i>
+        </button>
+    </div>
+</template>
+{% endmacro %}
+
+{% macro panels() %}
+<div v-show="active_tab === 'case-alerts'">
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Recent case alerts</h5>
+            <span class="badge bg-primary">[[ caseAlertUnreadCount ]] unread</span>
+        </div>
+        <div class="card-body p-0">
+            <div v-if="caseAlerts.length === 0" class="text-center text-muted py-5">
+                <i class="fa-solid fa-bell-slash fa-3x mb-3"></i>
+                <p>No case alerts yet. Alerts will appear here when new cases are created.</p>
+            </div>
+            <template v-else>
+                <div v-for="a in caseAlerts" :key="a.id" class="alert-item" :class="{unread: !a.is_read}" @click="markCaseAlertRead(a)">
+                    <div style="min-width: 90px;">
+                        <span class="badge" :class="caseAlertStatusBadgeClass(a)">[[ caseAlertStatusLabel(a) ]]</span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <strong>[[ a.case_title ]]</strong>
+                        <div class="text-muted small">[[ a.message ]]</div>
+                        <div class="text-muted" style="font-size: 0.8rem;">[[ formatDate(a.creation_date) ]]</div>
+                    </div>
+                    <div class="text-end" style="min-width: 120px;">
+                        <a v-if="a.case_id" :href="`/case/${a.case_id}`" class="btn btn-sm btn-outline-primary" @click.stop>
+                            <i class="fa-solid fa-folder-open me-1"></i>View case
+                        </a>
+                        <div v-if="a.webhook_status" class="small text-muted">HTTP [[ a.webhook_status ]]</div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    {% if current_user.is_admin() %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Webhook configuration</h5>
+                </div>
+                <div class="card-body">
+                    <form @submit.prevent="saveWebhook">
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="case-create-alert-enabled" v-model="caseAlertCfg.CASE_CREATE_ALERT_ENABLED">
+                            <label class="form-check-label" for="case-create-alert-enabled">Create in-app alert when a case is created</label>
+                        </div>
+                        <div class="mb-3 form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="webhook-enabled" v-model="caseAlertCfg.WEBHOOK_ENABLED">
+                            <label class="form-check-label" for="webhook-enabled">Enable webhook</label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Webhook URL</label>
+                            <input type="url" class="form-control" id="webhook-url" v-model="caseAlertCfg.WEBHOOK_URL" placeholder="https://example.com/webhook">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Secret (HMAC-SHA256 signature)</label>
+                            <input type="text" class="form-control" id="webhook-secret" v-model="caseAlertCfg.WEBHOOK_SECRET" placeholder="Optional secret">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" :disabled="sending"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="testWebhook"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card config-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-envelope me-2"></i>Email IMAP</h5>
+                </div>
+                <div class="card-body">
+                    <form @submit.prevent="saveImap">
+                        <div class="mb-3">
+                            <label class="form-label">IMAP Server</label>
+                            <input type="text" class="form-control" id="imap-server" v-model="caseAlertCfg.IMAP_SERVER" placeholder="imap.gmail.com">
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Port</label>
+                                <input type="number" class="form-control" id="imap-port" v-model.number="caseAlertCfg.IMAP_PORT">
+                            </div>
+                            <div class="col-6 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="imap-ssl" v-model="caseAlertCfg.IMAP_USE_SSL">
+                                    <label class="form-check-label" for="imap-ssl">SSL</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <input type="text" class="form-control" id="imap-user" v-model="caseAlertCfg.IMAP_USER">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control" id="imap-password" v-model="caseAlertCfg.IMAP_PASSWORD">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" :disabled="sending"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                            <button type="button" class="btn btn-outline-secondary" @click="testImap"><i class="fa-solid fa-paper-plane me-1"></i>Test</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fa-solid fa-list me-2"></i>Webhook logs</h5>
+            <button class="btn btn-sm btn-outline-secondary" @click="loadCaseAlertLogs"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+        </div>
+        <div class="card-body">
+            <div v-if="caseAlertLogs.length === 0" class="text-muted p-3">No logs yet</div>
+            <div v-else>
+                <div class="log-entry" v-for="(l, idx) in caseAlertLogs" :key="idx">[[ l ]]</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro initial_data() %}
+const initialCaseAlerts = {{ case_alerts|tojson|safe }};
+const initialCaseAlertLogs = {{ alert_logs|tojson|safe }};
+const initialCaseAlertCfg = {
+    CASE_CREATE_ALERT_ENABLED: {{ cfg.CASE_CREATE_ALERT_ENABLED|default(true)|tojson }},
+    WEBHOOK_ENABLED: {{ cfg.WEBHOOK_ENABLED|default(false)|tojson }},
+    WEBHOOK_URL: {{ cfg.WEBHOOK_URL|default('')|tojson }},
+    WEBHOOK_SECRET: {{ cfg.WEBHOOK_SECRET|default('')|tojson }},
+    IMAP_SERVER: {{ cfg.IMAP_SERVER|default('')|tojson }},
+    IMAP_PORT: {{ cfg.IMAP_PORT|default(993)|tojson }},
+    IMAP_USE_SSL: {{ cfg.IMAP_USE_SSL|default(true)|tojson }},
+    IMAP_USER: {{ cfg.IMAP_USER|default('')|tojson }},
+    IMAP_PASSWORD: {{ cfg.IMAP_PASSWORD|default('')|tojson }}
+};
+const canManageAlertConfig = {{ current_user.is_admin()|tojson }};
+{% endmacro %}
+
+{% macro setup_state() %}
+const caseAlerts = ref(initialCaseAlerts || [])
+const caseAlertLogs = ref(initialCaseAlertLogs || [])
+const caseAlertCfg = ref(Object.assign({}, initialCaseAlertCfg))
+const sending = ref(false)
+const csrfToken = document.getElementById('csrf_token')?.value || ''
+
+const caseAlertUnreadCount = computed(() => caseAlerts.value.filter(a => !a.is_read).length)
+const caseAlertReadCount = computed(() => caseAlerts.value.filter(a => a.is_read).length)
+{% endmacro %}
+
+{% macro methods() %}
+function formatDate(value) {
+    if (!value) return '-'
+    try { return dayjs(value).format('YYYY-MM-DD HH:mm') }
+    catch (e) { return value }
+}
+
+function caseAlertStatusLabel(a) {
+    const status = a.status || 'pending'
+    if (status === 'sent') return 'Sent'
+    if (status === 'failed') return 'Failed'
+    if (status === 'error') return 'Error'
+    if (status === 'disabled') return 'Disabled'
+    return 'Pending'
+}
+
+function caseAlertStatusBadgeClass(a) {
+    const status = a.status || 'pending'
+    if (status === 'sent') return 'bg-success'
+    if (status === 'failed' || status === 'error') return 'bg-danger'
+    if (status === 'disabled') return 'bg-secondary'
+    return 'bg-warning text-dark'
+}
+
+async function loadCaseAlerts() {
+    try {
+        const resp = await fetch('/alerts/api/alerts')
+        if (resp.ok) {
+            caseAlerts.value = await resp.json()
+        }
+    } catch (e) { }
+}
+
+async function loadCaseAlertLogs() {
+    if (!canManageAlertConfig) return
+    try {
+        const resp = await fetch('/alerts/logs')
+        if (resp.ok) {
+            const data = await resp.json()
+            caseAlertLogs.value = data.logs || []
+        }
+    } catch (e) { }
+}
+
+async function markCaseAlertRead(a) {
+    if (!a || a.is_read) return
+    try {
+        await fetch(`/alerts/api/alerts/${a.id}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            keepalive: true
+        })
+        a.is_read = true
+    } catch (e) { }
+}
+
+async function markAllCaseAlertsRead() {
+    if (caseAlertUnreadCount.value === 0) return
+    try {
+        const resp = await fetch('/alerts/api/alerts/read_all', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+        })
+        if (resp.ok) {
+            caseAlerts.value.forEach(a => { a.is_read = true })
+        }
+    } catch (e) { }
+}
+
+async function deleteReadCaseAlerts() {
+    if (caseAlertReadCount.value === 0) return
+    try {
+        const resp = await fetch('/alerts/api/alerts/delete_read', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+        })
+        if (resp.ok) {
+            caseAlerts.value = caseAlerts.value.filter(a => !a.is_read)
+        }
+    } catch (e) { }
+}
+
+async function saveCaseAlertConfig(data) {
+    if (!canManageAlertConfig) return
+    sending.value = true
+    try {
+        const resp = await fetch('/alerts/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify(data)
+        })
+        let result = {}
+        try { result = await resp.json() } catch (e) { }
+        await display_toast({
+            message: result.status === 'ok' ? 'Configuration saved' : 'Error: ' + (result.message || 'unknown'),
+            toast_class: resp.ok && result.status === 'ok' ? 'success-subtle' : 'danger-subtle'
+        })
+    } catch (e) {
+        await display_toast({message: 'Error: ' + e, toast_class: 'danger-subtle'})
+    } finally {
+        sending.value = false
+    }
+}
+
+function saveWebhook() {
+    return saveCaseAlertConfig({
+        CASE_CREATE_ALERT_ENABLED: !!caseAlertCfg.value.CASE_CREATE_ALERT_ENABLED,
+        WEBHOOK_ENABLED: !!caseAlertCfg.value.WEBHOOK_ENABLED,
+        WEBHOOK_URL: caseAlertCfg.value.WEBHOOK_URL,
+        WEBHOOK_SECRET: caseAlertCfg.value.WEBHOOK_SECRET
+    })
+}
+
+function saveImap() {
+    return saveCaseAlertConfig({
+        IMAP_SERVER: caseAlertCfg.value.IMAP_SERVER,
+        IMAP_PORT: parseInt(caseAlertCfg.value.IMAP_PORT) || 993,
+        IMAP_USE_SSL: !!caseAlertCfg.value.IMAP_USE_SSL,
+        IMAP_USER: caseAlertCfg.value.IMAP_USER,
+        IMAP_PASSWORD: caseAlertCfg.value.IMAP_PASSWORD
+    })
+}
+
+async function testWebhook() {
+    try {
+        const resp = await fetch('/alerts/test/webhook', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } })
+        const result = await resp.json()
+        await display_toast({
+            message: 'Webhook test: ' + JSON.stringify(result),
+            toast_class: resp.ok && result.status !== 'error' ? 'success-subtle' : 'danger-subtle'
+        })
+    } catch (e) {
+        await display_toast({message: 'Error: ' + e, toast_class: 'danger-subtle'})
+    }
+}
+
+async function testImap() {
+    try {
+        const resp = await fetch('/alerts/test/imap', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } })
+        const result = await resp.json()
+        await display_toast({
+            message: 'IMAP test: ' + JSON.stringify(result),
+            toast_class: resp.ok && result.status !== 'error' ? 'success-subtle' : 'danger-subtle'
+        })
+    } catch (e) {
+        await display_toast({message: 'Error: ' + e, toast_class: 'danger-subtle'})
+    }
+}
+{% endmacro %}
+
+{% macro mounted_actions() %}
+loadCaseAlerts()
+if (canManageAlertConfig) loadCaseAlertLogs()
+{% endmacro %}
+
+{% macro return_bindings() %}
+caseAlerts,
+caseAlertLogs,
+caseAlertCfg,
+caseAlertUnreadCount,
+caseAlertReadCount,
+caseAlertStatusLabel,
+caseAlertStatusBadgeClass,
+loadCaseAlerts,
+loadCaseAlertLogs,
+markCaseAlertRead,
+markAllCaseAlertsRead,
+deleteReadCaseAlerts,
+saveWebhook,
+saveImap,
+testWebhook,
+testImap,
+sending,
+canManageAlertConfig,
+formatDate
+{% endmacro %}

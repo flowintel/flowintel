@@ -611,6 +611,9 @@ class Notification(db.Model):
     for_deadline = db.Column(db.DateTime, index=True)
     read_date = db.Column(db.DateTime, index=True)
     html_icon = db.Column(db.String(60), index=True)
+    category = db.Column(db.String(40), index=True, default="general")
+    notification_type = db.Column(db.String(40), index=True, default="info")
+    target_url = db.Column(db.String, nullable=True)
 
     def to_json(self):
         json_dict = {
@@ -620,6 +623,9 @@ class Notification(db.Model):
             "user_id": self.user_id,
             "case_id": self.case_id,
             "html_icon": self.html_icon,
+            "category": self.category or "general",
+            "notification_type": self.notification_type or "info",
+            "target_url": self.target_url,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
         }
         if self.read_date:
@@ -651,10 +657,16 @@ class Alert(db.Model):
             "case_id": self.case_id,
             "message": self.message,
             "status": self.status,
-            "creation_date": self.creation_date.isoformat(),
+            "creation_date": self.creation_date.isoformat() if self.creation_date else None,
             "is_read": self.is_read,
             "webhook_url": self.webhook_url,
             "webhook_status": self.webhook_status,
+            "alert_type": "case_notification",
+            "title": self.message,
+            "severity": "info",
+            "review_status": "case_created" if self.case_id else "pending",
+        }
+
         }
 
 

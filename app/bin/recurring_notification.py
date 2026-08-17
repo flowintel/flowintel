@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from dateutil import relativedelta
@@ -23,8 +23,10 @@ def create_notification(case, message, html_icon):
             is_read=False,
             user_id=r_n.user_id,
             case_id=str(case.id),
-            creation_date=datetime.now(tz=datetime.timezone.utc),
-            html_icon=html_icon
+            creation_date=datetime.now(tz=timezone.utc),
+            html_icon=html_icon,
+            category="deadline",
+            notification_type="reminder"
         )
         session.add(notif)
         session.commit()

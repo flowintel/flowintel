@@ -189,7 +189,7 @@ def misp_module_loading_status(sid):
 
     for s in SessionModel.sessions:
         if s.uuid == sid:
-            return jsonify(s.status)
+            return jsonify(s.status())
     return {"message": "Session Not found", 'toast_class': "danger-subtle"}, 404
 
 
@@ -237,4 +237,3 @@ def misp_modules_delete_history(huuid):
     if MispModuleModel.delete_history(huuid, current_user):
         return {"message": "History deleted", "toast_class": "success-subtle"}, 200
     return {"message": "Error deleting History", "toast_class": "warning-subtle"}, 400
-

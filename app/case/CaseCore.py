@@ -2172,10 +2172,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     else:
                         last_seen = self.parse_date(val)
 
-                if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
+                if "ids_flag" in attribute and attribute["ids_flag"] and (attribute["ids_flag"] == 'true' or attribute["ids_flag"] is True):
                     ids_flag = True
 
-                if "disable_correlation" in attribute and attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
+                if "disable_correlation" in attribute and attribute["disable_correlation"] and (attribute["disable_correlation"] == 'true' or attribute["disable_correlation"] is True):
                     disable_correlation = True
 
                 attr = Misp_Attribute(

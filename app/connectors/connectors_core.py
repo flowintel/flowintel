@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Case, Case_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
+from ..db_class.db import Case, Case_Connector_Instance, Case_Org, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -10,6 +10,7 @@ MISP_SYNC_DIRECTIONS = {"send", "receive"}
 MISP_SYNC_INTERVALS = {"manual", "daily", "weekly", "monthly"}
 MISP_SYNC_CONFLICT_STRATEGIES = {"ask", "prefer_flowintel", "prefer_misp"}
 MISP_SYNC_RESOLUTIONS = {"prefer_flowintel", "prefer_misp", "skip"}
+MISP_SYNC_COLLISION_ICON = "fa-solid fa-code-compare"
 
 
 def as_utc_datetime(value):
@@ -1047,6 +1048,83 @@ def clear_pending_misp_event_sync_conflict(case_id, case_connector_instance_id, 
     return True
 
 
+def _misp_sync_conflict_detail_count(conflict):
+    return len((conflict.local_snapshot or {}).get("details") or [])
+
+
+def _misp_sync_conflict_recipients(case, connector_instance):
+    from ..case import common_core as CommonModel
+
+    case_org_ids = {
+        case_org.org_id
+        for case_org in Case_Org.query.filter_by(case_id=case.id).all()
+        if case_org.org_id is not None
+    }
+    if case.owner_org_id:
+        case_org_ids.add(case.owner_org_id)
+
+    role_ids = [
+        role.id
+        for role in Role.query.filter((Role.admin == True) | (Role.misp_editor == True)).all()
+    ]
+    role_users = User.query.filter(User.role_id.in_(role_ids)).all() if role_ids else []
+    org_users = User.query.filter(User.org_id.in_(case_org_ids)).all() if case_org_ids else []
+
+    recipients = {}
+    for user in role_users + org_users:
+        if not user or user.read_only():
+            continue
+        if not (user.is_admin() or user.is_misp_editor()):
+            continue
+        if not (user.is_admin() or CommonModel.get_present_in_case(case.id, user)):
+            continue
+        if connector_instance and not CommonModel.can_use_case_connector(connector_instance, user, case.id):
+            continue
+        recipients[user.id] = user
+    return list(recipients.values())
+
+
+def notify_misp_sync_conflict_created(conflict):
+    try:
+        from ..notification import notification_core as NotifModel
+
+        case = Case.query.get(conflict.case_id)
+        case_connector = Case_Connector_Instance.query.get(conflict.case_connector_instance_id)
+        connector_instance = Connector_Instance.query.get(case_connector.instance_id) if case_connector else None
+        if not case:
+            return False
+
+        recipients = _misp_sync_conflict_recipients(case, connector_instance)
+        if not recipients:
+            return False
+
+        connector_name = connector_instance.name if connector_instance else "MISP connector"
+        detail_count = _misp_sync_conflict_detail_count(conflict)
+        direction_label = "send" if conflict.direction == "send" else "receive"
+        message = f"MISP sync collision detected for case '{case.id}-{case.title}' on '{connector_name}' ({direction_label})."
+        if detail_count:
+            detail_label = "field" if detail_count == 1 else "fields"
+            message = f"{message} {detail_count} conflicting {detail_label} need review."
+
+        return NotifModel.create_notification_for_users(
+            message=message,
+            users=recipients,
+            html_icon=MISP_SYNC_COLLISION_ICON,
+            case_id=case.id,
+            category="misp_sync",
+            notification_type="collision",
+            target_url=f"/case/{case.id}"
+        )
+    except Exception:
+        db.session.rollback()
+        try:
+            from flask import current_app
+            current_app.logger.exception("Failed to create MISP sync collision notification")
+        except Exception:
+            pass
+        return False
+
+
 def upsert_misp_event_sync_conflict(case_id, case_connector_instance_id, direction, local_ref, remote_metadata, base_snapshot, local_snapshot):
     """Create a pending event-level MISP sync conflict, or reuse the existing one."""
     remote_metadata = remote_metadata or {}
@@ -1082,6 +1160,7 @@ def upsert_misp_event_sync_conflict(case_id, case_connector_instance_id, directi
     )
     db.session.add(conflict)
     db.session.commit()
+    notify_misp_sync_conflict_created(conflict)
     return conflict, True
 
 
