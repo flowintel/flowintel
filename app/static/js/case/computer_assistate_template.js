@@ -1,7 +1,11 @@
 import {display_toast, create_message} from '../toaster.js'
+import smart_render from '/static/js/components/smart-render.js'
 const { ref, onMounted, onUnmounted } = Vue
 export default {
     delimiters: ['[[', ']]'],
+	components: {
+		smart_render
+	},
 	props: {
 		cases_info: Object
 	},
@@ -10,8 +14,6 @@ export default {
 		const model_input = ref("")
 		const models = ref([])
 		const prompt_input = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
 		const latest_model = ref("")
 		const latest_prompt = ref("")
 		const is_loading = ref(false)
@@ -171,7 +173,6 @@ export default {
 		})
 
 		return {
-			md,
 			computer_assistate_report,
 			model_input,
 			models,
@@ -238,7 +239,7 @@ export default {
 					<div v-if="markdown_view">
 						<pre class="description">[[computer_assistate_report]]</pre>
 					</div>
-					<div v-else v-html="md.render(computer_assistate_report)"></div>
+					<smart_render v-else :code="computer_assistate_report" language="markdown" :simple="true"></smart_render>
 				</div>
 			</div>
 		</div>

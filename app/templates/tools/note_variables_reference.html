@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 {{ super() }}
 {% endblock %}
 
@@ -14,7 +14,9 @@
 <div class="case-core-style">
     <h4 class="mb-3"><i class="fa-solid fa-code me-2"></i>Flowintel variable syntax</h4>
     <div id="vars-ref">
-        <div class="markdown-render-result" v-html="md.render(reference)"></div>
+        <div class="markdown-render-result">
+            <smart_render :code="reference" language="markdown" :simple="true"></smart_render>
+        </div>
     </div>
 </div>
 
@@ -23,12 +25,15 @@
 {% block script %}
 <script type="module">
     const { createApp, ref } = Vue
+    import smart_render from '/static/js/components/smart-render.js'
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_render
+        },
         setup() {
-            const md = window.markdownit()
             const reference = {{ reference|tojson|safe }}
-            return { md, reference }
+            return { reference }
         }
     }).mount('#main-container')
 </script>

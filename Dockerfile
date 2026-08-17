@@ -34,7 +34,7 @@ COPY conf/config.py.default conf/config.py
 COPY template.env .env
 
 RUN RAND=$(tr -cd "[:alnum:]" < /dev/urandom | head -c 20) && sed "s/SECRET_KEY_ENV_VAR_NOT_SET/$RAND/" conf/config.py | sponge conf/config.py
-RUN sed "s/FLASK_URL *= *'.*'/FLASK_URL = '0.0.0.0'/" conf/config.py | sponge conf/config.py
+RUN sed "s/FLOWINTEL_APP_HOST *= *'.*'/FLOWINTEL_APP_HOST = '0.0.0.0'/" conf/config.py | sponge conf/config.py
 
 
 # Set proper ownership

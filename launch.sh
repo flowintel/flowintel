@@ -41,8 +41,8 @@ if [ ! -f "$CONFIG_MODULE_FILE" ]; then
 fi
 
 # Get app URL and port from config
-APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
-APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
+FLOWINTEL_APP_HOST=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_HOST)")
+FLOWINTEL_APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_PORT)")
 
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
@@ -165,7 +165,7 @@ function production {
 
     setup_launch_cleanup
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT --access-logfile -
 }
 
 function init_db {
@@ -222,7 +222,7 @@ function launch_docker {
 
     setup_launch_cleanup
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT --access-logfile -
 }
 
 function init_db_docker {
@@ -245,7 +245,7 @@ function test_data_community {
         exit 1
     fi
     prepare_app_run
-    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_community {
@@ -255,17 +255,17 @@ function delete_test_data_community {
         exit 1
     fi
     prepare_app_run
-    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function test_data_cases {
     prepare_app_run
-    python3 tests/testdata/init_community_cases.py create --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_cases.py create --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_cases {
     prepare_app_run
-    python3 tests/testdata/init_community_cases.py delete --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_cases.py delete --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 if [ "$1" ]; then

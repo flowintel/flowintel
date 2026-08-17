@@ -5,7 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
 <title>Cases - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -306,7 +307,7 @@
                                         </template>
                                     </button>
                                 </div>
-                                <pre v-if="expandedCases[case_loc.id]" class="case-description" v-html="md.render(case_loc.description)"></pre>
+                                <smart_render v-if="expandedCases[case_loc.id]" :code="case_loc.description" language="markdown"></smart_render>
                             </template>
                             <template v-else>
                                 <i style="color:#888">No description</i>
@@ -318,10 +319,7 @@
                                 <div :class="{'collapsed-overflow': !expandedTags[case_loc.id]}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                                     <template v-for="item in visibleTags(case_loc)">
                                         <template v-if="item.type === 'custom'">
-                                            <div class="tag" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
-                                                <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:5px"></i>
-                                                [[ item.data.name ]]
-                                            </div>
+                                            <tag_badge :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon"></tag_badge>
                                         </template>
                                         <template v-else-if="item.type === 'tag'">
                                             <div class="tag" :title="item.data.description" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
@@ -331,12 +329,7 @@
                                             </div>
                                         </template>
                                         <template v-else>
-                                            <div :title="'Description:\n' + item.data.description + '\n\nMetadata:\n' + item.data.meta">
-                                                <span class="cluster">
-                                                    <span v-html="mapIcon(item.data.icon)"></span>
-                                                    [[ item.data.tag ]]
-                                                </span>
-                                            </div>
+                                            <tag_badge :label="item.data.tag" :icon-name="item.data.icon" :title="'Description:\n' + item.data.description + '\n\nMetadata:\n' + item.data.meta"></tag_badge>
                                         </template>
                                     </template>
                                 </div>
@@ -396,10 +389,15 @@
     <script type="module">
         const { createApp, ref, onMounted, computed, nextTick} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
-        import {getTextColor, mapIcon} from '/static/js/utils.js'
-        
+        import smart_render from '/static/js/components/smart-render.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
+
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                smart_render,
+                tag_badge
+            },
             setup() {
                 const case_list = ref([])
                 const status_info = ref(null)
@@ -426,7 +424,6 @@
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
-                const md = window.markdownit()
 
                 const has_active_filters = computed(() => {
                     return (
@@ -746,13 +743,10 @@
                 return {
                     message_list,
                     dayjs,
-                    getTextColor,
-                    mapIcon,
 
                     is_open_cases,
                     current_filter,
 
-                    md,
                     case_list,
                     has_active_filters,
                     status_info,

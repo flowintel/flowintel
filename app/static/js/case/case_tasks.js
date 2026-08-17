@@ -5,6 +5,8 @@ import tabFile from './TaskComponent/tab-file.js'
 import tabExternalRef from './TaskComponent/tab-external-ref.js'
 import tabMispObjects from './TaskComponent/tab-misp-objects.js'
 import tabInfo from './TaskComponent/tab-info.js'
+import caseconnectors from './CaseConnectors.js'
+import smart_render from '/static/js/components/smart-render.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
@@ -18,7 +20,7 @@ export default {
 		task: Object,
 		key_loop: Number,
 		open_closed: Object,
-		md: Object,
+		all_connectors_list: Object,
 		task_modules: Object,
 		can_drag_reorder: {
 			type: Boolean,
@@ -31,7 +33,9 @@ export default {
 		tabFile,
 		tabExternalRef,
 		tabMispObjects,
-		tabInfo
+		tabInfo,
+		caseconnectors,
+		smart_render
 	},
 	setup(props) {
 		// Variables part
@@ -187,10 +191,6 @@ export default {
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
-				await nextTick()
-				props.md.mermaid.run({
-					querySelector: `#collapse${props.task.id} .mermaid`
-				})
 			} else if (tab_name == 'files') {
 				selected_tab.value = 'files'
 				if (!document.getElementById("tab-task-files-" + props.task.id).classList.contains("active")) {
@@ -383,7 +383,7 @@ export default {
 			<div class="d-flex w-100 justify-content-between mt-1">
 				<template v-if="task.description">
 					<template v-if="task.description.length > 300">
-						<div class="position-relative">
+						<div class="position-relative w-100">
 							<button
 								type="button"
 								class="btn btn-outline-primary btn-sm float-end me-2"
@@ -394,11 +394,11 @@ export default {
 							</button>
 
 							<!-- Show either truncated or full text -->
-							<pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
+							<smart_render :code="expandedTasks[task.id] ? task.description : truncateText(task.description)" language="markdown"></smart_render>
 						</div>
 					</template>
 					<template v-else>
-						<pre v-html="md.render(task.description)" class="description"></pre>
+						<smart_render :code="task.description" language="markdown" class="w-100"></smart_render>
 					</template>
 				</template>
 				<template v-else>
@@ -585,8 +585,7 @@ export default {
 
 			<template v-else-if="selected_tab == 'notes'">
 				<tabNote :cases_info="cases_info"
-					 :task="task"
-					 :md="md">
+					 :task="task">
 				</tabNote>
 			</template>
 

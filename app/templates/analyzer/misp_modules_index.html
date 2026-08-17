@@ -5,10 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
-<script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -113,19 +111,31 @@
             
             <div v-if="main_tab == 'case'">
                 <h6>Select note</h6>
-                <div class="card card-body" v-html="resolved_case_notes_html"></div>
+                <div class="card card-body">
+                    <smart_render :code="resolved_case_notes_markdown" language="markdown" :simple="true"></smart_render>
+                </div>
             </div>
             <div v-else-if="main_tab == 'all'">
                 <h6>Select note</h6>
                 <template v-for="(notes, idx) in all_notes">
-                    <div class="all-tasks-notes" v-html="resolved_all_notes_html[idx] || md.render(notes.text)"></div>
+                    <smart_render
+                        class="all-tasks-notes"
+                        :code="resolved_all_notes_markdown[idx] || notes.text || ''"
+                        language="markdown"
+                        :simple="true">
+                    </smart_render>
                 </template>
             </div>
             <div v-else-if="main_tab == 'task'">
                 <h6>Select note</h6>
                 <h1 title="task's title"><u>[[task_selected.title]]</u></h1>
                 <template v-for="note, key in task_selected.notes">
-                    <div class="all-tasks-notes" v-html="resolved_task_notes_html[key] || md.render(note.note)"></div>
+                    <smart_render
+                        class="all-tasks-notes"
+                        :code="resolved_task_notes_markdown[key] || note.note || ''"
+                        language="markdown"
+                        :simple="true">
+                    </smart_render>
                 </template>
             </div>
             <div v-else-if="main_tab == 'misp-object'">
@@ -450,21 +460,24 @@
         const { createApp, ref, computed, watch, onMounted, nextTick } = Vue
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
+        import smart_render from '/static/js/components/smart-render.js'
+        import { loadNoteVariables } from '/static/js/components/markdown-render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                misp_modules
+                misp_modules,
+                smart_render
             },
             setup() {
                 const result_search = ref([])
                 const result_search_task = ref([])
                 const case_selected = ref()
                 const task_selected = ref()
-                const resolved_case_notes_html = ref('')
-                const resolved_all_notes_html = ref([])
-                const resolved_task_notes_html = ref([])
+                const resolved_case_notes_markdown = ref('')
+                const resolved_all_notes_markdown = ref([])
+                const resolved_task_notes_markdown = ref([])
                 const main_tab = ref()
                 const all_notes = ref()
                 const case_misp_objects = ref([])
@@ -483,9 +496,6 @@
                 const attr_active_tab_type = ref('')
 
                 let editor = ""
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
 
                 const search_query = ref('')
@@ -610,6 +620,16 @@
                     return group ? group.attrs.length : 0
                 }
 
+                async function resolve_note_markdown(text, task_id = null){
+                    const source = text || ''
+                    try {
+                        const note_vars = await loadNoteVariables()
+                        return await note_vars.resolveNoteVariables(case_selected.value.id, source, task_id, true)
+                    } catch(e) {
+                        return source
+                    }
+                }
+
                 async function fetchSearchCase(text){
                     result_search.value = []
                     if(text){
@@ -642,24 +662,10 @@
                     let loc = await res.json()
                     all_notes.value = loc["notes"]
 
-                    // Pre-render notes with variable resolution (if available)
-                    if (window.FlowintelNoteVariables) {
-                        try {
-                            resolved_case_notes_html.value = await window.FlowintelNoteVariables.renderNoteWithVars(md, case_selected.value.id, case_selected.value.notes, null)
-                        } catch (e) {
-                            resolved_case_notes_html.value = md.render(case_selected.value.notes || '')
-                        }
-
-                        resolved_all_notes_html.value = await Promise.all((all_notes.value || []).map(entry =>
-                            window.FlowintelNoteVariables.renderNoteWithVars(md, case_selected.value.id, entry.text || '', entry.task_id)
-                                .catch(() => md.render(entry.text || ''))
-                        ))
-                        try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
-                    } else {
-                        resolved_case_notes_html.value = md.render(case_selected.value.notes || '')
-                        resolved_all_notes_html.value = (all_notes.value || []).map(entry => md.render(entry.text || ''))
-                        try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
-                    }
+                    resolved_case_notes_markdown.value = await resolve_note_markdown(case_selected.value.notes, null)
+                    resolved_all_notes_markdown.value = await Promise.all((all_notes.value || []).map(entry =>
+                        resolve_note_markdown(entry.text || '', entry.task_id)
+                    ))
 
                     const res_task = await fetch("/case/"+case_selected.value.id+"/sort_tasks?per_page=0")
                     let loc_task = await res_task.json()
@@ -680,25 +686,15 @@
                         width: '100%'
                     })
 
-                    $('#task_select').on('change.select2', function (e) {
+                    $('#task_select').off('change.flowintelNotes').on('change.flowintelNotes', async function (e) {
                         let loc = $(this).select2('data').map(item => item.id);
                         task_selected.value = result_search_task.value[loc]
-                        // Render task notes for the selected task
-                        if (task_selected.value && window.FlowintelNoteVariables) {
-                            try {
-                                resolved_task_notes_html.value = task_selected.value.notes.map(note =>
-                                    window.FlowintelNoteVariables.renderNoteWithVars(md, case_selected.value.id, note.note || '', task_selected.value.id)
-                                )
-                                // resolved_task_notes_html will be array of Promises; wait and replace
-                                Promise.all(resolved_task_notes_html.value).then(async (vals) => {
-                                    resolved_task_notes_html.value = vals
-                                    try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
-                                })
-                            } catch (e) {
-                                resolved_task_notes_html.value = task_selected.value.notes.map(n => md.render(n.note || ''))
-                            }
-                        } else if (task_selected.value) {
-                            resolved_task_notes_html.value = task_selected.value.notes.map(n => md.render(n.note || ''))
+                        if (task_selected.value) {
+                            resolved_task_notes_markdown.value = await Promise.all(task_selected.value.notes.map(note =>
+                                resolve_note_markdown(note.note || '', task_selected.value.id)
+                            ))
+                        } else {
+                            resolved_task_notes_markdown.value = []
                         }
                     })
 
@@ -734,8 +730,6 @@
                             tab_el.classList.remove("active")
                         }
                     }
-                    await nextTick()
-                    md.mermaid.init()
                 }
 
                 async function fetch_case_misp_object(case_id){
@@ -889,7 +883,6 @@
                     case_selected,
                     task_selected,
                     all_notes,
-                    md,
                     case_misp_objects,
                     case_misp_attributes,
                     can_use_misp_object_tab,
@@ -915,9 +908,9 @@
                     attr_count_for,
                     auto_copy,
                     highlighted_values,
-                    resolved_case_notes_html,
-                    resolved_all_notes_html,
-                    resolved_task_notes_html,
+                    resolved_case_notes_markdown,
+                    resolved_all_notes_markdown,
+                    resolved_task_notes_markdown,
                     onInputCase,
                     select_case,
                     active_tab,

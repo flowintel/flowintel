@@ -148,6 +148,34 @@ function postProcessVarMarkers(html) {
         '<span class="note-var-resolved" title="$1">$2</span>')
 }
 
+function stripUnsafeHtml(html) {
+    const tmp = document.createElement('div')
+    tmp.innerHTML = html
+    tmp.querySelectorAll('script, iframe, object, embed, form').forEach(el => el.remove())
+    tmp.querySelectorAll('*').forEach(el => {
+        for (const attr of [...el.attributes]) {
+            const n = attr.name.toLowerCase()
+            const v = attr.value
+            if (n.startsWith('on') ||
+                ((n === 'href' || n === 'src' || n === 'action') && /^javascript:/i.test(v.trim()))) {
+                el.removeAttribute(attr.name)
+            }
+        }
+    })
+    return tmp.innerHTML
+}
+
+function sanitizeHtml(html) {
+    if (!html) return html
+    if (window.FlowintelSanitizeHtml) return window.FlowintelSanitizeHtml(html)
+    if (window.DOMPurify) return window.DOMPurify.sanitize(html)
+    return stripUnsafeHtml(html)
+}
+
+function renderMarkdownSafe(md, text) {
+    return sanitizeHtml(md.render(text || ''))
+}
+
 /**
  * Render markdown text with variables resolved and styled.
  * Full pipeline: resolve vars (with markers) → md.render() → post-process markers.
@@ -161,8 +189,8 @@ function postProcessVarMarkers(html) {
 async function renderNoteWithVars(md, caseId, text, taskId = null) {
     if (!text) return ''
     const resolved = await resolveNoteVariables(caseId, text, taskId, true)
-    const html = md.render(resolved)
-    return postProcessVarMarkers(html)
+    const html = renderMarkdownSafe(md, resolved)
+    return sanitizeHtml(postProcessVarMarkers(html))
 }
 
 /**
@@ -190,7 +218,7 @@ function createPreviewResolver(md, caseId, delay = 500, onAfterUpdate = null) {
     async function update(text, taskId, targetRef) {
         lastText = text
         // Immediately render raw markdown
-        const rawHtml = md.render(text || '')
+        const rawHtml = renderMarkdownSafe(md, text)
         targetRef.value = rawHtml
         if (onAfterUpdate) onAfterUpdate()
 
@@ -209,8 +237,8 @@ function createPreviewResolver(md, caseId, delay = 500, onAfterUpdate = null) {
                 const resolved = await resolveNoteVariables(caseId, text, taskId, true)
                 // Double-check text is still current after async call
                 if (text !== lastText) return
-                const html = md.render(resolved)
-                targetRef.value = postProcessVarMarkers(html)
+                const html = renderMarkdownSafe(md, resolved)
+                targetRef.value = sanitizeHtml(postProcessVarMarkers(html))
                 if (onAfterUpdate) onAfterUpdate()
             } catch (e) {
                 console.warn('Preview variable resolution failed:', e)
@@ -230,6 +258,8 @@ if (typeof window !== 'undefined') {
         clearVariableCache,
         styleUnresolvedVariables,
         postProcessVarMarkers,
+        sanitizeHtml,
+        renderMarkdownSafe,
         renderNoteWithVars,
         createPreviewResolver
     }

@@ -5,8 +5,8 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 <title>Edit case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -83,10 +83,8 @@
             </div>
             <div class="row">
                 <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
-                <div style="display: flex">
-                    <div class="note-editor" id="editor"></div>
-                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                    <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
+                <div class="mb-3">
+                    <smart_editor v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px" :resolve-variables="resolve_description_preview"></smart_editor>
                 </div>
             </div>
             <div class="d-flex gap-2" style="margin-top: 10px;">
@@ -100,37 +98,38 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted} = Vue
+    const { createApp, ref } = Vue
     import {message_list} from '/static/js/toaster.js'
-    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-    
+    import smart_editor from '/static/js/components/smart-editor.js'
+
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_editor
+        },
         setup() {
-            let editor
-            const md = window.markdownit()
-            const description_content = `{{description | safe}}`
+            const description_content = {{ (description or '') | tojson }}
             const note_editor_render = ref(description_content)
-            
-            onMounted(() => {
-                const targetElement = document.getElementById('editor')
-                if(targetElement && targetElement.innerHTML === ""){
-                    editor = new EditorView({
-                        doc: description_content,
-                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
-                }
-            })
+            const case_id_for_vars = {{ case_id }}
+
+            // Passed as :resolve-variables to <smart_editor> — resolves @this.case.title
+            // style references to real values in the live preview (mark=true wraps each
+            // resolved value in a ⟪@var⦂value⟫ marker; anything it can't resolve falls
+            // back to the editor's own "unresolved" highlighting). Returns the raw
+            // markdown with markers still embedded — <smart_editor> renders this through
+            // the shared renderMarkdown() pipeline, which turns markers into the
+            // "resolved" badge itself, only after marked.parse(), so a resolved value
+            // (e.g. another case's title) can never reach the renderer as live HTML.
+            async function resolve_description_preview(text) {
+                return await FlowintelNoteVariables.resolveNoteVariables(
+                    case_id_for_vars, text, null, true
+                )
+            }
 
             return {
                 message_list,
                 note_editor_render,
-                md
+                resolve_description_preview
             }
         }
     }).mount('#main-container')

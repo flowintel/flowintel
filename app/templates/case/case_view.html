@@ -5,12 +5,14 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
@@ -41,7 +43,7 @@
         <div class="case-title-row">
             <h1 class="case-title">
                 <span class="case-id">{{case.id}}</span>
-                {{case.title}}
+                {{ case.title|vue_escape }}
             </h1>
             <div class="case-badges">
                 <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
@@ -71,7 +73,7 @@
         <div class="case-ticket-row">
             {% if case.ticket_id %}
             <span class="ticket-badge" title="Ticket ID">
-                <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
+                <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
             </span>
             {% endif %}
         </div>
@@ -108,7 +110,7 @@
         <div class="case-meta-item" title="Recurring schedule">
             <i class="fa-solid fa-repeat fa-fw"></i>
             <span class="meta-label">Recurring</span>
-            <span class="meta-value">{{case.recurring_type}}{% if case.recurring_date %} ({{case.recurring_date}}){% endif %}</span>
+            <span class="meta-value">{{ case.recurring_type|vue_escape }}{% if case.recurring_date %} ({{ case.recurring_date|vue_escape }}){% endif %}</span>
         </div>
         {% endif %}
     </div>
@@ -116,7 +118,7 @@
     {% if config.SHOW_GDPR_NOTICE %}
     <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <span>{{ config.GDPR_NOTICE }}</span>
+        <span>{{ config.GDPR_NOTICE|vue_escape }}</span>
     </div>
     {% endif %}
 
@@ -128,8 +130,8 @@
                 :aria-expanded="showDescription">
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
-        <div v-show="showDescription">
-            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
+        <div v-if="showDescription">
+            <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
         </div>
     </div>
     {% endif %}
@@ -639,18 +641,15 @@
 
 
             <template v-if="subtab_note == 'case'">
-                <div class="d-flex" v-if="cases_info.case.notes">
+                <div v-if="cases_info.case.notes">
                     <template v-if="edit_mode">
-                        <div style="margin-right: -10px;">
+                        <div class="mb-2">
                             <button class="btn btn-primary" @click="save_note_case()">Save</button>
                         </div>
-                        <div class="container-fluid" style="display: flex; width:90%">
-                            <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="edit_preview_html"></div>
-                        </div>
+                        <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                     </template>
                     <template v-else>
-                        <div>
+                        <div class="d-flex gap-2 align-items-start mb-2">
                             <button class="btn btn-primary" @click="edit_note()">
                                 <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
                             </button>
@@ -679,7 +678,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <button class="btn btn-outline-secondary mb-2" @click="show_variables_help = !show_variables_help" title="Note variables reference">
+                            <button class="btn btn-outline-secondary" @click="show_variables_help = !show_variables_help" title="Note variables reference">
                                 <small><i class="fa-solid fa-at fa-fw"></i></small> Variables
                             </button>
                         </div>
@@ -690,20 +689,17 @@
                             <p class="mb-1">Variables are shown as raw syntax in edit mode and resolved to actual values in render mode.</p>
                             <details>
                                 <summary>Full reference</summary>
-                                <div v-html="md.render(variables_reference)" class="mt-2" style="max-height: 400px; overflow-y: auto;"></div>
+                                <smart_render :code="variables_reference" language="markdown" :simple="true" class="mt-2" style="max-height: 400px; overflow-y: auto;"></smart_render>
                             </details>
                         </div>
-                        <div v-html="resolved_case_notes_html" class="markdown-render-result container-fluid"></div>
+                        <smart_render :code="resolved_case_notes_markdown" language="markdown" :simple="false" title="Notes"></smart_render>
                     </template>
                 </div>
-                <div v-else class="d-flex">
-                    <div style="margin-right: -10px;">
-                        <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
+                <div v-else>
+                    <div class="mb-2">
+                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
                     </div>
-                    <div class="container-fluid" style="display: flex; width:90%">
-                        <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="edit_preview_html"></div>
-                    </div>
+                    <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                 </div>
             </template>
             <template v-else-if="subtab_note == 'template'">
@@ -1111,7 +1107,6 @@
                                         :task="task" 
                                         :key_loop="key"
                                         :open_closed="open_closed"
-                                        :md="md"
                                         :can_drag_reorder="can_drag_reorder"
                                         :task_modules="task_modules">
                             </case_tasks>
@@ -1159,7 +1154,7 @@
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="(notes, idx) in all_notes">
-                    <div class="all-tasks-notes" v-html="resolved_all_notes[idx] || md.render(notes.text || notes)"></div>
+                    <smart_render class="all-tasks-notes" :code="resolved_all_notes[idx] || notes.text || notes" language="markdown" :simple="true"></smart_render>
                 </template>
             </template>
             
@@ -1202,10 +1197,11 @@
         import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
+        import smart_render from '/static/js/components/smart-render.js'
+        import smart_editor from '/static/js/components/smart-editor.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
-        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-        
+
         createApp({
             delimiters: ['[[', ']]'],
             components: {
@@ -1223,7 +1219,9 @@
                 timeline_view,
                 timeline_graph,
                 note_from_template,
-                computer_assistate_template
+                computer_assistate_template,
+                smart_render,
+                smart_editor
             },
             setup() {
                 const cases_info = ref(null)
@@ -1560,55 +1558,43 @@
 
                 const open_closed = ref({})
                 const all_notes = ref("")
-                let editor
                 const note_editor_render = ref("")
-                const edit_preview_html = ref("")
 
                 const edit_mode = ref(false)
 
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
-
-                // Debounced preview resolver for live editing (uses the same md instance)
-                const _previewResolver = FlowintelNoteVariables.createPreviewResolver(
-                    md,
-                    {{ case.id }},
-                    500,
-                    async () => {
-                        await nextTick()
-                        try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
-                    }
-                )
-
-                // Re-run mermaid on live-preview updates (editing mode)
-                watch(note_editor_render, (newVal) => {
-                    // Update the preview with debounced variable resolution
-                    _previewResolver.update(newVal, null, edit_preview_html)
-                })
-
                 // Note variables resolution
-                const resolved_case_notes = ref('')
-                const resolved_case_notes_html = ref('')
+                // Resolved markdown source (not pre-rendered HTML) — fed to <smart_render>,
+                // which does its own marked + mermaid rendering, including turning the
+                // ⟪@var⦂value⟫ markers left by resolveNoteVariables(mark=true) into styled
+                // spans itself, after marked.parse(). Never post-process those markers
+                // here — see renderMarkdown() in markdown-render.js.
+                const resolved_case_notes_markdown = ref('')
                 const resolved_all_notes = ref([])
                 const case_id_for_vars = {{ case.id }}
 
                 async function resolveAndSetNotes() {
                     if (cases_info.value && cases_info.value.case && cases_info.value.case.notes) {
-                        const resolved = await FlowintelNoteVariables.resolveNoteVariables(
-                            case_id_for_vars, cases_info.value.case.notes
-                        )
-                        resolved_case_notes.value = resolved
-                        // Also render with styling markers
-                        const markedResolved = await FlowintelNoteVariables.resolveNoteVariables(
+                        // Resolve with markers embedded in the markdown source; <smart_render>
+                        // converts them to styled spans itself, after marked.parse().
+                        resolved_case_notes_markdown.value = await FlowintelNoteVariables.resolveNoteVariables(
                             case_id_for_vars, cases_info.value.case.notes, null, true
                         )
-                        resolved_case_notes_html.value = FlowintelNoteVariables.postProcessVarMarkers(
-                            md.render(markedResolved)
-                        )
                     } else {
-                        resolved_case_notes.value = ''
-                        resolved_case_notes_html.value = ''
+                        resolved_case_notes_markdown.value = ''
                     }
+                }
+
+                // Passed as :resolve-variables to <smart_editor> for the notes editor —
+                // resolves @this.case.title-style references to real values in its live
+                // preview. Returns the raw markdown with ⟪@var⦂value⟫ markers still
+                // embedded — <smart_editor> renders this through the shared
+                // renderMarkdown() pipeline, which resolves the markers into the same
+                // "resolved" badge as the rendered view, only after marked.parse(), so a
+                // resolved value can never reach the renderer as live HTML.
+                async function resolve_note_preview(text) {
+                    return await FlowintelNoteVariables.resolveNoteVariables(
+                        case_id_for_vars, text, null, true
+                    )
                 }
 
                 async function resolveAllTaskNotes() {
@@ -1618,10 +1604,8 @@
                             const taskId = entry.task_id || null
                             return FlowintelNoteVariables.resolveNoteVariables(case_id_for_vars, text, taskId, true)
                         })
-                        const resolved = await Promise.all(promises)
-                        resolved_all_notes.value = resolved.map(r =>
-                            FlowintelNoteVariables.postProcessVarMarkers(md.render(r))
-                        )
+                        // Markers stay embedded; <smart_render> resolves them after marked.parse().
+                        resolved_all_notes.value = await Promise.all(promises)
                     } else {
                         resolved_all_notes.value = []
                     }
@@ -1958,45 +1942,6 @@
                     }
                 }
 
-                async function prepare_editor(default_text){
-                    const targetElement = document.getElementById('editor')
-                    if(targetElement && targetElement.innerHTML === ""){
-                        const variableCompletionExtensions = (() => {
-                            if (!window.FlowintelVarComplete || typeof window.FlowintelVarComplete.extension !== 'function') {
-                                return []
-                            }
-                            try {
-                                const ext = window.FlowintelVarComplete.extension()
-                                if (!ext) return []
-                                return Array.isArray(ext) ? ext : [ext]
-                            } catch (e) {
-                                console.warn('Failed to initialize variable completion extension:', e)
-                                return []
-                            }
-                        })()
-
-                        // Keep CodeMirror enabled for editing with guarded variable completion.
-                        editor = new EditorView({
-                            doc: default_text,
-                            extensions: [basicSetup, languages.markdown(), ...variableCompletionExtensions, EditorView.updateListener.of((v) => {
-                                if (v.docChanged) {
-                                    note_editor_render.value = editor.state.doc.toString()
-                                }
-                            })],
-                            parent: targetElement
-                        })
-                    }
-                    await nextTick()
-                    try { await md.mermaid.init() } catch(e) {}
-                }
-
-                function get_case_note_editor_text(){
-                    if (editor && editor.state && editor.state.doc) {
-                        return editor.state.doc.toString()
-                    }
-                    return note_editor_render.value || ''
-                }
-
                 async function fetch_all_notes(){
                     const res = await fetch("/case/"+cases_info.value.case.id+"/all_notes")
                     let loc = await res.json()
@@ -2033,9 +1978,9 @@
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'notes'){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }else{
-                            prepare_editor(cases_info.value.case.notes)
+                            note_editor_render.value = cases_info.value.case.notes ?? ''
                         }
                     }else{
                         // Dynamic connector tab
@@ -2059,9 +2004,9 @@
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }else{
-                            prepare_editor(cases_info.value.case.notes)
+                            note_editor_render.value = cases_info.value.case.notes ?? ''
                         }
                     }else if(tab_name == 'template'){
                         subtab_note.value = tab_name
@@ -2072,7 +2017,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'hedgedoc'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
@@ -2082,7 +2026,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'computer-assistate'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
@@ -2092,7 +2035,6 @@
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -2133,7 +2075,6 @@
                         }
                         await fetch_all_notes()
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -2223,7 +2164,7 @@
                 }
 
                 async function save_note_case(){
-                    let notes_loc = get_case_note_editor_text()
+                    let notes_loc = note_editor_render.value ?? ''
                     if(notes_loc.trim().length == 0){
                         notes_loc = notes_loc.trim()
                     }
@@ -2240,12 +2181,9 @@
                         cases_info.value.case.notes = notes_loc
                         FlowintelNoteVariables.clearVariableCache()
                         await resolveAndSetNotes()
-                        await nextTick()
-                        
                         if(!notes_loc){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                     await display_toast(res_msg)
                 }
@@ -2253,11 +2191,7 @@
                 async function edit_note(){
                     // Edit the note of the task
                     edit_mode.value = true
-                    await nextTick()
-                    
-                    note_editor_render.value = cases_info.value.case.notes
-                    prepare_editor(cases_info.value.case.notes)
-                    
+                    note_editor_render.value = cases_info.value.case.notes ?? ''
                 }
 
                 function initialize_select2(){
@@ -2297,7 +2231,7 @@
 
                 async function autosave_case_note(){
                     if (edit_mode.value){
-                        let notes_loc = get_case_note_editor_text()
+                        let notes_loc = note_editor_render.value ?? ''
                         if(notes_loc.trim().length == 0){
                             notes_loc = notes_loc.trim()
                         }
@@ -2625,7 +2559,6 @@
                     cluster_list,
                     custom_tags,
                     open_closed,
-                    md,
                     all_notes,
                     note_editor_render,
                     edit_mode,
@@ -2658,14 +2591,13 @@
                     total_pages,
                     go_to_page,
 
-                    resolved_case_notes,
-                    resolved_case_notes_html,
+                    resolved_case_notes_markdown,
+                    resolve_note_preview,
                     resolved_all_notes,
                     show_variables_help,
                     showDescription,
                     showWorkflow,
                     variables_reference,
-                    edit_preview_html,
 
                     connector_types_in_case,
                     loaded_module_components,

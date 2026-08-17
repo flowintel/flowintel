@@ -865,6 +865,14 @@ def add_new_link(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "case_id" in request.json:
+                    linked_case_ids = request.json["case_id"]
+                    if isinstance(linked_case_ids, list):
+                        for linked_case_id in linked_case_ids:
+                            if not CommonModel.get_case(linked_case_id):
+                                return {"message": "A Case doesn't exist", "toast_class": "danger-subtle"}, 404
+                    if not CommonModel.can_view_case_ids(linked_case_ids, current_user):
+                        flowintel_log("audit", 403, "Add case link: Linked case permission denied", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+                        return {"message": "Linked case permission denied", "toast_class": "warning-subtle"}, 403
                     if CaseModel.add_new_link(request.json, cid, current_user):
                         flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
                         return {"message": "Link added", "toast_class": "success-subtle"}, 200

@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -110,13 +110,15 @@
                                         </button>
 
                                         <!-- Show either truncated or full text -->
-                                        <div>
-                                            <pre class="description" v-html="md.render(expandedTasks[task.id] ? task.description : truncateText(task.description))"></pre>
-                                        </div>
+                                        <smart_render
+                                            :code="expandedTasks[task.id] ? task.description : truncateText(task.description)"
+                                            language="markdown"
+                                            :simple="true">
+                                        </smart_render>
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <pre v-html="md.render(task.description)" class="description"></pre>
+                                    <smart_render :code="task.description" language="markdown" :simple="true" class="w-100"></smart_render>
                                 </template>
                             </template>
                             <template v-else>
@@ -229,11 +231,13 @@
         import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import smart_render from '/static/js/components/smart-render.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
-                my_assignment_filter
+                my_assignment_filter,
+                smart_render
             },
             setup() {
                 const tasks_list = ref(null)
@@ -245,7 +249,6 @@
                 const filter_ref = ref(null)
 
                 const expandedTasks = ref({})
-                const md = window.markdownit()
 
                 function getDeadlineInfo(deadline) {
                     const now = dayjs.utc()
@@ -375,7 +378,6 @@
                     truncateText,
                     mapIcon,
                     expandedTasks,
-                    md,
                     visiblePages,
                     getDeadlineInfo,
                     scrollToTasks

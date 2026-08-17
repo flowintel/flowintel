@@ -576,6 +576,21 @@
             }catch(e){
                 return []
             }
+        },
+        // Find the "@..." token immediately before `pos` in `docText`, if any.
+        // Returns { text, from } or null. Same detection CM6 uses internally.
+        getTokenBefore: getTokenBefore,
+        // Given the current token text and a picked suggestion item, compute the
+        // string that should replace the token (from tok.from to the cursor).
+        // Leaf properties (e.g. "title") need the existing "@this.case." prefix
+        // re-prepended; path items (e.g. "@case.") are already a full replacement.
+        computeInsertText: function(tokenText, picked){
+            let insertText = picked.insert
+            if (isLeafProperty(picked)) {
+                const prefixMatch = tokenText.match(/^(.*\.)/)
+                if (prefixMatch) insertText = prefixMatch[1] + picked.insert
+            }
+            return insertText
         }
     }
 

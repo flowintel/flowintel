@@ -5,8 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 <title>Create case - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -119,11 +119,9 @@
             </div>
         </div>
         <div class="row">
-            <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
-            <div style="display: flex">
-                <div class="note-editor" id="editor"></div>
-                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
+            <span class="mb-2" style="cursor: text;" @click="description_editor?.focus()"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
+            <div class="mb-3">
+                <smart_editor ref="description_editor" v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px"></smart_editor>
             </div>
         </div>
 
@@ -240,10 +238,13 @@
 <script type="module">
     const { createApp, onMounted, ref} = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
-    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+    import smart_editor from '/static/js/components/smart-editor.js'
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_editor
+        },
         setup() {
             const taxonomies = ref([])
             const tags_list = ref([])
@@ -255,9 +256,8 @@
             
             const custom_tags = ref([])
 
-            const md = window.markdownit()
             const note_editor_render = ref("")
-            let editor = null
+            const description_editor = ref(null)
 
 
             let to_hide = true
@@ -346,19 +346,6 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster()
                 })
-
-                const targetElement = document.getElementById('editor')
-                if(targetElement && targetElement.innerHTML === ""){
-                    editor = new EditorView({
-                        doc: "\n\n",
-                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
-                }
             })
 
             return {
@@ -369,8 +356,8 @@
                 tags_list,
                 cluster_list,
                 custom_tags,
-                md,
                 note_editor_render,
+                description_editor,
                 hide_case_creation
             }
         }
