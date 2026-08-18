@@ -149,6 +149,9 @@ class EditUser(Resource):
             if api_user.is_pure_org_admin():
                 if user_to_edit.org_id != api_user.org_id:
                     return {"message": "OrgAdmin can only edit users from their own organisation"}, 403
+
+                if user_to_edit.is_admin():
+                    return {"message": "OrgAdmin cannot edit Admin users"}, 403
                 
                 if 'org' in request.json and int(request.json['org']) != api_user.org_id:
                     return {"message": "OrgAdmin cannot move users to different organisation"}, 403
