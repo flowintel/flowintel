@@ -7,6 +7,7 @@ import uuid
 import requests
 
 from datetime import datetime
+from functools import wraps
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 
 from app.db_class.db import Case, User, db, Note
@@ -37,6 +38,35 @@ def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
     if case.is_private and not present_in_case and not current_user.is_admin():
         return False
     return True
+
+
+def task_case_bound_required(view_func):
+    @wraps(view_func)
+    def decorated_view(*args, **kwargs):
+        cid = kwargs.get("cid")
+        tid = kwargs.get("tid")
+
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+        task = CommonModel.get_task(tid)
+        if not task or task.case_id != case.id:
+            task_case_id = task.case_id if task else None
+            flowintel_log(
+                "audit",
+                403,
+                "Task route denied: task does not belong to requested case",
+                User=current_user.email,
+                CaseId=cid,
+                TaskId=tid,
+                TaskCaseId=task_case_id,
+            )
+            return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+
+        return view_func(*args, **kwargs)
+
+    return decorated_view
 
 
 @task_blueprint.route("/<cid>/create_task", methods=['GET', 'POST'])
@@ -73,6 +103,7 @@ def create_task(cid):
 @task_blueprint.route("/<cid>/edit_task/<tid>", methods=['GET','POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_task(cid, tid):
     """Edit the task"""
     if CommonModel.get_case(cid):
@@ -135,6 +166,7 @@ def complete_task(tid):
 @task_blueprint.route("/<cid>/delete_task/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_task(cid, tid):
     """Delete the task"""
     if CommonModel.get_case(cid):
@@ -158,6 +190,7 @@ def delete_task(cid, tid):
 @task_blueprint.route("/<cid>/modif_note/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def modif_note(cid, tid):
     """Modify note of the task"""
     if CommonModel.get_case(cid):
@@ -185,6 +218,7 @@ def modif_note(cid, tid):
 @task_blueprint.route("/<cid>/create_note/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
@@ -209,6 +243,7 @@ def create_note(cid, tid):
 @task_blueprint.route("/<cid>/delete_note/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
@@ -233,6 +268,7 @@ def delete_note(cid, tid):
 
 @task_blueprint.route("/<cid>/get_note/<tid>", methods=['GET'])
 @login_required
+@task_case_bound_required
 def get_note(cid, tid):
     """Get note of a task in text format"""
     case = CommonModel.get_case(cid)
@@ -245,6 +281,8 @@ def get_note(cid, tid):
         if task:
             if "note_id" in request.args:
                 task_note = CommonModel.get_task_note(request.args.get("note_id"))
+                if not task_note or task_note.task_id != task.id:
+                    return {"message": "Note not found", "toast_class": "danger-subtle"}, 404
                 return {"note": task_note.note}, 200
             return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
@@ -254,6 +292,7 @@ def get_note(cid, tid):
 @task_blueprint.route("/<cid>/take_task/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def take_task(cid, tid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):
@@ -276,6 +315,7 @@ def take_task(cid, tid):
 @task_blueprint.route("/<cid>/assign_users/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def assign_user(cid, tid):
     """Assign a list of users to the task"""
     if CommonModel.get_case(cid):
@@ -309,6 +349,7 @@ def assign_user(cid, tid):
 @task_blueprint.route("/<cid>/remove_assignment/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def remove_assign_task(cid, tid):
     """Remove current user assignment to the task"""
     if CommonModel.get_case(cid):
@@ -326,6 +367,7 @@ def remove_assign_task(cid, tid):
 @task_blueprint.route("/<cid>/remove_assigned_user/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def remove_assigned_user(cid, tid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):
@@ -353,6 +395,7 @@ def remove_assigned_user(cid, tid):
 @task_blueprint.route("/<cid>/change_task_status/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_task_status(cid, tid):
     """Change the status of the task"""
     if CommonModel.get_case(cid):
@@ -468,6 +511,7 @@ def convert_file_to_note(tid, fid):
 @task_blueprint.route("/<cid>/add_files/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def add_files(cid, tid):
     """Add files to a task"""
     if CommonModel.get_case(cid):
@@ -503,6 +547,7 @@ def add_files(cid, tid):
 @task_blueprint.route("/<cid>/get_files/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def get_files(cid, tid):
     """Get files of a task"""
     case = CommonModel.get_case(cid)
@@ -581,6 +626,7 @@ def sort_tasks(cid):
 @task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def notify_user(cid, tid):
     """Notify a user about a task"""
     if CommonModel.get_case(cid):
@@ -602,6 +648,7 @@ def notify_user(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/export_notes", methods=['GET'])
 @login_required
+@task_case_bound_required
 def export_notes(cid, tid):
     """Export note of a task"""
     case = CommonModel.get_case(cid)
@@ -615,6 +662,9 @@ def export_notes(cid, tid):
                 if "note_id" in request.args:
                     type_req = request.args.get("type")
                     note_id = request.args.get("note_id")
+                    task_note = CommonModel.get_task_note(note_id)
+                    if not task_note or task_note.task_id != int(tid):
+                        return {"message": "Note not found", 'toast_class': "danger-subtle"}, 404
                     res = CommonModel.export_notes(case_task=False, case_task_id=tid, type_req=type_req, note_id=note_id)
                     CommonModel.delete_temp_folder()
                     if isinstance(res, dict):
@@ -682,6 +732,7 @@ def get_galaxies_task(tid):
 @task_blueprint.route("/<cid>/change_order/<tid>", methods=["GET",'POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_order(cid, tid):
     """Change the order of tasks"""
     case = CommonModel.get_case(cid)
@@ -710,6 +761,7 @@ def get_task_modules():
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
 @misp_editor_required
+@task_case_bound_required
 def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
@@ -754,6 +806,7 @@ def get_custom_tags_task(tid):
 @task_blueprint.route("/<cid>/task/<tid>/create_url_tool", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_url_tool(cid,tid):
     """Create a new Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -777,6 +830,7 @@ def create_url_tool(cid,tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_url_tool(cid, tid, utid):
     """Edit a Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -799,6 +853,7 @@ def edit_url_tool(cid, tid, utid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_url_tool(cid, tid, utid):
     """Delete a Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -823,6 +878,7 @@ def delete_url_tool(cid, tid, utid):
 @task_blueprint.route("/<cid>/task/<tid>/create_external_reference", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_external_reference(cid, tid):
     """Create a new External Reference"""
     task = CommonModel.get_task(tid)
@@ -846,6 +902,7 @@ def create_external_reference(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_external_reference/<erid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_external_reference(cid, tid, erid):
     """Edit an External Reference"""
     task = CommonModel.get_task(tid)
@@ -868,6 +925,7 @@ def edit_external_reference(cid, tid, erid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_external_reference/<erid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_external_reference(cid, tid, erid):
     """Delete an External Reference"""
     task = CommonModel.get_task(tid)
@@ -943,6 +1001,7 @@ def _probe_external_url(url):
 @task_blueprint.route("/<cid>/task/<tid>/convert_external_reference_to_note/<erid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def convert_external_reference_to_note(cid, tid, erid):
     """Convert an external reference URL to a task note"""
     task = CommonModel.get_task(tid)
@@ -1022,6 +1081,7 @@ def convert_external_reference_to_note(cid, tid, erid):
 
 @task_blueprint.route("/<cid>/task/<tid>/get_misp_object_links", methods=['GET'])
 @login_required
+@task_case_bound_required
 def get_misp_object_links(cid, tid):
     """Get all MISP objects linked to a task"""
     task = CommonModel.get_task(tid)
@@ -1039,6 +1099,7 @@ def get_misp_object_links(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/link_misp_object", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def link_misp_object(cid, tid):
     """Link a MISP object (from the current case) to a task"""
     task = CommonModel.get_task(tid)
@@ -1059,6 +1120,7 @@ def link_misp_object(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/unlink_misp_object/<oid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def unlink_misp_object(cid, tid, oid):
     """Remove the link between a MISP object and a task"""
     task = CommonModel.get_task(tid)
@@ -1075,6 +1137,7 @@ def unlink_misp_object(cid, tid, oid):
 
 @task_blueprint.route("/<cid>/task/<tid>/get_misp_attribute_links", methods=['GET'])
 @login_required
+@task_case_bound_required
 def get_misp_attribute_links(cid, tid):
     """Get all standalone MISP attributes linked to a task"""
     task = CommonModel.get_task(tid)
@@ -1092,6 +1155,7 @@ def get_misp_attribute_links(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/link_misp_attribute", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def link_misp_attribute(cid, tid):
     """Link a standalone MISP attribute (from the current case) to a task"""
     task = CommonModel.get_task(tid)
@@ -1112,6 +1176,7 @@ def link_misp_attribute(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/unlink_misp_attribute/<aid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def unlink_misp_attribute(cid, tid, aid):
     """Remove the link between a standalone MISP attribute and a task"""
     task = CommonModel.get_task(tid)
@@ -1133,6 +1198,7 @@ def unlink_misp_attribute(cid, tid, aid):
 @task_blueprint.route("/<cid>/task/<tid>/create_subtask", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_subtask(cid,tid):
     """Create a new subtask"""
     task = CommonModel.get_task(tid)
@@ -1156,6 +1222,7 @@ def create_subtask(cid,tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_subtask/<sid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_subtask(cid, tid, sid):
     """Edit a subtask"""
     task = CommonModel.get_task(tid)
@@ -1178,6 +1245,7 @@ def edit_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/complete_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def complete_subtask(cid, tid, sid):
     """Complete a subtask"""
     task = CommonModel.get_task(tid)
@@ -1202,6 +1270,7 @@ def complete_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_subtask(cid, tid, sid):
     """Delete a subtask"""
     task = CommonModel.get_task(tid)
@@ -1223,6 +1292,7 @@ def delete_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/change_order_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_order_subtask(cid, tid, sid):
     """Change the order of tasks"""
     if CommonModel.get_case(cid):
@@ -1234,6 +1304,8 @@ def change_order_subtask(cid, tid, sid):
                     return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 subtask = TaskModel.get_subtask(sid)
                 if subtask:
+                    if subtask.task_id != task.id:
+                        return {"message": "Subtask Not found", 'toast_class': "danger-subtle"}, 404
                     up_down = None
                     if "up_down" in request.args:
                         up_down = request.args.get("up_down")
