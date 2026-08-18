@@ -244,13 +244,15 @@
                         let titleEl = document.createElement('span')
                         titleEl.classList.add('fc-event-title')
                         titleEl.style.cssText = 'flex: 1; font-size: 0.88rem; margin-left: 4px;'
-                        titleEl.innerHTML = arg.event.title
+                        titleEl.textContent = arg.event.title || ''
 
                         let downloadEl = document.createElement('a')
-                        downloadEl.innerHTML = '<i class="fa-solid fa-download"></i>'
                         downloadEl.classList.add('fc-event-download')
                         downloadEl.style.cssText = 'margin-left: 8px; color: inherit; cursor: pointer; flex-shrink: 0;'
                         downloadEl.title = 'Download ICS'
+                        let downloadIcon = document.createElement('i')
+                        downloadIcon.classList.add('fa-solid', 'fa-download')
+                        downloadEl.appendChild(downloadIcon)
 
                         if (arg.event.extendedProps && arg.event.extendedProps.toJson) {
                             if (arg.event.extendedProps.toJson.case_id) {
@@ -491,5 +493,4 @@
 </script>
 
 {% endblock %}
-
 
