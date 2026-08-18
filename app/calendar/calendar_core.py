@@ -1,9 +1,34 @@
 from ..db_class.db import Case, Task, Task_User, Case_Org
 
 from datetime import datetime
+from sqlalchemy import or_
 
 
-def get_task_month_core(date_month, flag_dead_creation, user):
+def _tasks_visible_to_user_query(user):
+    query = Task.query.join(Case, Case.id == Task.case_id)
+
+    if user.is_admin():
+        return query
+
+    return (
+        query
+        .outerjoin(Task_User, Task_User.task_id == Task.id)
+        .outerjoin(Case_Org, Case_Org.case_id == Case.id)
+        .filter(or_(
+            Task_User.user_id == user.id,
+            Case_Org.org_id == user.org_id,
+        ))
+        .distinct()
+    )
+
+
+def _tasks_assigned_to_user_query(user):
+    return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
+        Task_User.user_id == user.id
+    )
+
+
+def get_task_month_core(date_month, flag_dead_creation, user, assigned_only=False):
     # Convert "YYYY-MM" string into first day of month
     start = datetime.strptime(date_month, "%Y-%m")
     # Compute first day of next month
@@ -12,15 +37,15 @@ def get_task_month_core(date_month, flag_dead_creation, user):
     else:
         end = start.replace(month=start.month+1, day=1)
 
+    query = _tasks_assigned_to_user_query(user) if assigned_only else _tasks_visible_to_user_query(user)
+
     if flag_dead_creation == 'true':
-        return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
-                Task_User.user_id == user.id,
+        return query.filter(
                 Task.deadline >= start,
                 Task.deadline < end
             ).all()
     else:
-        return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
-                Task_User.user_id == user.id,
+        return query.filter(
                 Task.creation_date >= start,
                 Task.creation_date < end
             ).all()
@@ -59,9 +84,7 @@ def get_all_cases_for_user(user):
 
 def get_all_tasks_for_user(user):
     """Get all tasks for a user (for calendar feed)"""
-    return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
-        Task_User.user_id == user.id
-    ).all()
+    return _tasks_visible_to_user_query(user).all()
 
 
 ####################

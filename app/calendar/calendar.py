@@ -25,11 +25,17 @@ def get_task_month():
     """Calendar info"""
     date_month = request.args.get("date")
     flag_dead_creation = request.args.get("dead_creation")
+    assigned_only = request.args.get("assigned_only", "false").lower() == "true"
     if not date_month or not flag_dead_creation:
         return {"message": "Missing date or dead_creation parameter"}, 400
 
     try:
-        tasks_month = CalendarModel.get_task_month_core(date_month, flag_dead_creation, current_user)
+        tasks_month = CalendarModel.get_task_month_core(
+            date_month,
+            flag_dead_creation,
+            current_user,
+            assigned_only=assigned_only,
+        )
     except ValueError:
         return {"message": "Invalid date format"}, 400
 

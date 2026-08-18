@@ -53,6 +53,12 @@
                         Task
                     </label>
                 </div>
+                <div class="form-check ms-3">
+                    <input class="form-check-input" type="checkbox" value="" id="checkbox-task-assigned" @change="selection_assigned_tasks">
+                    <label class="form-check-label" for="checkbox-task-assigned">
+                        Assigned to me
+                    </label>
+                </div>
             </div>
 
             <div>
@@ -96,6 +102,7 @@
             let is_case_selected = true
             let is_task_selected = true
             let flag_dead_creation = true
+            let show_only_assigned_tasks = false
             let modal_task = null
 
             var calendar
@@ -104,7 +111,7 @@
             async function fetch_task_calendar(current_month, flag_dead_creation_loc=true) {
                 tasks.value = null
                 const res = await fetch(
-                    'get_task_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc
+                    'get_task_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc + "&assigned_only=" + show_only_assigned_tasks
                 )
                 let loc = await res.json()
                 tasks.value = loc["tasks"]
@@ -163,6 +170,15 @@
             function closeModal(){ modal_task.hide() }
 
             function date_parser(date, flag_day=false){
+                if (typeof date === 'string') {
+                    const match = date.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/)
+                    if (match) {
+                        return flag_day && match[3]
+                            ? [match[1], match[2], match[3]].join('-')
+                            : [match[1], match[2]].join('-')
+                    }
+                }
+
                 var d = new Date(date),
                     month = '' + (d.getMonth() + 1),
                     year = d.getFullYear();
@@ -184,6 +200,14 @@
                 calendar.removeAllEvents();
                 if (is_case) is_case_selected = !is_case_selected
                 if (is_task) is_task_selected = !is_task_selected
+
+                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+            }
+
+            function selection_assigned_tasks(event){
+                show_only_assigned_tasks = event.target.checked
+                calendar.removeAllEvents();
 
                 if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
                 if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
@@ -485,7 +509,8 @@
 
             return {
                 message_list,
-                openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task, downloadCalendarFeed
+                openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task,
+                selection_assigned_tasks, downloadCalendarFeed
             }
         }
     }).mount('#main-container')
@@ -493,4 +518,3 @@
 </script>
 
 {% endblock %}
-
