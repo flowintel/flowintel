@@ -5,6 +5,10 @@ import uuid
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
+# TEXT in postgres ~1GB max
+# TEXT in mariadb ~64kB max
+# To enhance portability, we use the LONGTEXT variant on mariaDB whenever a TEXT is declared in Postgres
+# when the text might be longer than 64kB
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from app.extensions import db, login_manager
@@ -174,10 +178,10 @@ class Case(db.Model):
     time_required = db.Column(db.String(64))
     is_private = db.Column(db.Boolean, default=False, index=True)
     privileged_case = db.Column(db.Boolean, default=False, index=True)
-    ticket_id = db.Column(db.String(36))
+    ticket_id = db.Column(db.String(128))
     is_updated_from_misp = db.Column(db.Boolean, default=False)
-    computer_assistate_report = db.Column(db.Text)
-    computer_assistate_model = db.Column(db.String(36), nullable=True)
+    computer_assistate_report = db.Column(db.Text().with_variant(LONGTEXT(), "mysql", "mariadb"))
+    computer_assistate_model = db.Column(db.String(64), nullable=True)
     computer_assistate_prompt = db.Column(db.Text, nullable=True)
 
     def to_json(self):
@@ -446,7 +450,7 @@ class Rulezet_Rule(db.Model):
     remote_id = db.Column(db.String(36), index=True)
     title = db.Column(db.String(255), nullable=True)
     description = db.Column(db.Text, nullable=True)
-    format = db.Column(db.String(128), nullable=True)
+    format = db.Column(db.String(32), nullable=True)
     content = db.Column(db.Text, nullable=True)
     version = db.Column(db.String(64), nullable=True)
     date_added = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
@@ -469,7 +473,7 @@ class Rulezet_Rule(db.Model):
 class Task_External_Reference(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
-    url = db.Column(db.String(255), index=True)
+    url = db.Column(db.String(8192), index=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):
@@ -606,7 +610,7 @@ class Case_Org(db.Model):
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    message = db.Column(db.Text, index=True)
+    message = db.Column(db.Text, index=False)
     is_read = db.Column(db.Boolean, default=False)
     user_id = db.Column(db.Integer, index=True)
     case_id = db.Column(db.Integer, index=True)
@@ -641,11 +645,11 @@ class Notification(db.Model):
 class Alert(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer, index=True)
-    message = db.Column(db.Text, index=True)
+    message = db.Column(db.Text, index=False)
     status = db.Column(db.String(30), default="pending")
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
-    webhook_url = db.Column(db.String(255), nullable=True)
+    webhook_url = db.Column(db.String(8192), nullable=True)
     webhook_status = db.Column(db.Integer, nullable=True)
 
     def to_json(self):
@@ -920,7 +924,7 @@ class Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
     name = db.Column(db.Text)
-    color = db.Column(db.String(64))
+    color = db.Column(db.String(16))
     exclude = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text)
     taxonomy_id = db.Column(db.Integer, db.ForeignKey('taxonomy.id', ondelete="CASCADE"))
@@ -966,7 +970,7 @@ class Galaxy(db.Model):
     uuid = db.Column(db.String(36), index=True)
     version = db.Column(db.Integer, index=True)
     description = db.Column(db.Text)
-    icon = db.Column(db.String(64))
+    icon = db.Column(db.String(16))
     type = db.Column(db.String(64))
     exclude = db.Column(db.Boolean, default=False)
     clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
@@ -992,7 +996,7 @@ class Cluster(db.Model):
     description = db.Column(db.Text)
     meta = db.Column(db.Text().with_variant(LONGTEXT(), "mysql", "mariadb"))
     exclude = db.Column(db.Boolean, default=False)
-    tag = db.Column(db.Text)
+    tag = db.Column(db.String(255))
     galaxy_id = db.Column(db.Integer, db.ForeignKey('galaxy.id', ondelete="CASCADE"))
 
     def to_json(self):
@@ -1233,7 +1237,7 @@ class Misp_Module(db.Model):
 class Misp_Module_Result(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, unique=True)
-    modules_list = db.Column(db.String(255))
+    modules_list = db.Column(db.Text)
     query_enter = db.Column(db.Text)
     input_query = db.Column(db.Text)
     result=db.Column(db.Text)
@@ -1276,7 +1280,7 @@ class Misp_Module_Config(db.Model):
     module_id = db.Column(db.Integer, index=True)
     config_id = db.Column(db.Integer, index=True)
     user_id = db.Column(db.Integer, index=True)
-    value = db.Column(db.String(36), index=True)
+    value = db.Column(db.String(255), index=True)
 
 
 
@@ -1285,7 +1289,7 @@ class Custom_Tags(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(64), index=True, unique=True)
     color = db.Column(db.String(20), index=True)
-    icon = db.Column(db.String(255), index=True, nullable=True)
+    icon = db.Column(db.String(64), index=True, nullable=True)
     is_active = db.Column(db.Boolean, default=True)
 
     def to_json(self):
