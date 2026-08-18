@@ -232,3 +232,31 @@
 	}
 }
 
+
+.calendar-filter-bar {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.35rem rgba(0, 0, 0, 0.08);
+        gap: 1rem;
+    }
+
+    .calendar-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .calendar-filter-label {
+        color: #6c757d;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    .calendar-filter-bar .btn {
+        align-items: center;
+        display: inline-flex;
+        gap: 0.35rem;
+        white-space: nowrap;
+    }
