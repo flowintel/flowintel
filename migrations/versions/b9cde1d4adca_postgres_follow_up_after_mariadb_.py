@@ -1,5 +1,5 @@
 """postgres follow-up after mariadb compatibility model changes
-The first MariaDB install must be stambed on this migration file as of v3.4.0
+The first MariaDB install must be stamped on this migration file as of v3.4.0
 !!! As soon as MariaDB database is initialised and stamped to head with this current migration file
 it must NOT be downgraded by construction because previous versions were incompatible with MariaDB
 due to the VARCHAR() or db.String() with no length !!!
@@ -264,7 +264,7 @@ def upgrade():
         batch_op.alter_column(
             "icon",
             existing_type=sa.VARCHAR(),
-            type_=sa.String(length=16),
+            type_=sa.String(length=64),
             existing_nullable=True,
         )
 
@@ -741,7 +741,7 @@ def downgrade():
         )
         batch_op.alter_column(
             "icon",
-            existing_type=sa.String(length=16),
+            existing_type=sa.String(length=64),
             type_=sa.VARCHAR(),
             existing_nullable=True,
         )

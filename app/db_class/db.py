@@ -970,7 +970,7 @@ class Galaxy(db.Model):
     uuid = db.Column(db.String(36), index=True)
     version = db.Column(db.Integer, index=True)
     description = db.Column(db.Text)
-    icon = db.Column(db.String(16))
+    icon = db.Column(db.String(64))
     type = db.Column(db.String(64))
     exclude = db.Column(db.Boolean, default=False)
     clusters = db.relationship('Cluster', backref='galaxy', lazy='dynamic', cascade=CASCADE_DELETE_ORPHAN)
