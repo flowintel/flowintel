@@ -767,7 +767,6 @@ def system_settings_save():
         'TASK_REJECTED': 'int',
         'MISP_EVENT_THREAT_LEVEL': 'int',
         'MISP_EVENT_ANALYSIS': 'int',
-        'LOG_FILE': 'str',
         'AUDIT_LOG_PREFIX': 'str',
         'MAIN_LOGO': 'str',
         'TOPRIGHT_LOGO': 'str',

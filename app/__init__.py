@@ -11,9 +11,11 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 
 from conf.config import config as Config
+from .utils.log_paths import resolve_log_file_path, validate_log_file_name
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 import redis
 
@@ -36,18 +38,17 @@ def create_app():
     config_name = os.environ.get("FLASKENV", "development")
 
     app.config.from_object(Config[config_name])
+    app.config['LOG_FILE'] = validate_log_file_name(app.config.get('LOG_FILE', 'record.log'))
 
     Config[config_name].init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
     
     if not app.debug and not app.testing:
-        logs_folder = os.path.join(os.getcwd(), "logs")
-        if not os.path.isdir(logs_folder):
-            os.mkdir(logs_folder)
+        logs_folder = Path.cwd() / "logs"
+        logs_folder.mkdir(exist_ok=True)
         
-        log_file = app.config.get('LOG_FILE', 'record.log')
         file_handler = RotatingFileHandler(
-            f"{logs_folder}/{log_file}", 
+            resolve_log_file_path(app.config['LOG_FILE'], logs_folder),
             mode='a', 
             maxBytes=10*1024*1024,
             backupCount=5

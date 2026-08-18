@@ -8,6 +8,7 @@ import uuid
 from flask import send_file, current_app
 from .. import db
 from ..db_class.db import *
+from ..utils.log_paths import resolve_log_file_path
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from sqlalchemy import desc, func, or_, and_
 from ..utils import utils
@@ -557,7 +558,7 @@ def get_audit_logs(case_id):
     import re
     
     try:
-        log_file_path = os.path.join('logs', current_app.config.get('LOG_FILE', 'record.log'))
+        log_file_path = resolve_log_file_path(current_app.config.get('LOG_FILE', 'record.log'))
         
         if not os.path.exists(log_file_path):
             return []

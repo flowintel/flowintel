@@ -98,6 +98,7 @@ class Config:
     # AUDIT LOGGING
     # =============================================================================
     # All user actions are logged to logs/record.log with the AUDIT prefix.
+    # LOG_FILE must be a file name only; paths, traversal, and absolute paths are rejected.
     AUDIT_LOG_PREFIX = os.getenv('AUDIT_LOG_PREFIX', 'AUDIT')
     LOG_FILE = os.getenv('LOG_FILE', 'record.log')
     

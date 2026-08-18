@@ -312,8 +312,8 @@
                     <table class="table table-sm table-borderless mb-0">
                         <tbody>
                             <tr>
-                                <td class="fw-bold" style="width: 40%;">Log file <small class="fw-normal text-muted">(LOG_FILE)</small></td>
-                                <td>{{ str_edit('log_file', code=true, empty_text='Not configured') }}</td>
+                                <td class="fw-bold" style="width: 40%;"><small class="text-danger fw-bold">CLI</small> Log file <small class="fw-normal text-muted">(LOG_FILE)</small></td>
+                                <td><code>{{ system_info.log_file or 'Not configured' }}</code></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Audit log prefix <small class="fw-normal text-muted">(AUDIT_LOG_PREFIX)</small></td>
@@ -777,7 +777,6 @@
                 enable_mermaid_export: false,
                 misp_export_files: false,
                 show_gdpr_notice: false,
-                log_file: false,
                 audit_log_prefix: false,
                 main_logo: false,
                 topright_logo: false,
@@ -803,7 +802,6 @@
                 enable_mermaid_export: {{ system_info.enable_mermaid_export | tojson }},
                 misp_export_files: {{ system_info.misp_export_files | tojson }},
                 show_gdpr_notice: {{ system_info.show_gdpr_notice | tojson }},
-                log_file: {{ (system_info.log_file or '') | tojson }},
                 audit_log_prefix: {{ (system_info.audit_log_prefix or '') | tojson }},
                 main_logo: {{ (system_info.main_logo or '') | tojson }},
                 topright_logo: {{ (system_info.topright_logo or '') | tojson }},

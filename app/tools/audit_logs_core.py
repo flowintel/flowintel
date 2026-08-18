@@ -12,6 +12,7 @@ from flask import current_app
 
 from ..case.common_core import HISTORY_DIR
 from ..db_class.db import Case, Login_Event, User, DATETIME_FORMAT_FULL
+from ..utils.log_paths import resolve_log_file_path
 from ..utils.logger import flowintel_log
 
 
@@ -48,11 +49,11 @@ def _safe_path(base, entry):
 
 def safe_log_path():
     """Resolve the configured log file under logs/, rejecting traversal."""
-    log_name = current_app.config.get("LOG_FILE", "record.log")
-    candidate = _safe_path("logs", log_name)
-    if candidate is None:
+    try:
+        candidate = resolve_log_file_path(current_app.config.get("LOG_FILE", "record.log"))
+    except ValueError:
         flowintel_log("audit", 403, "Audit logs: log path outside logs/ rejected",
-                      LogFile=str(log_name))
+                      LogFile=str(current_app.config.get("LOG_FILE", "record.log")))
         return None
     return candidate if candidate.is_file() else None
 
