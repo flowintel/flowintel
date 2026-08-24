@@ -233,12 +233,16 @@ def admin_edit_user_core(form_dict, id):
     user.nickname=form_dict["nickname"] or None
     user.email=form_dict["email"]
     user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
-    if "password" in form_dict and form_dict["password"] and user.auth_provider == 'local':
+    password_changed = "password" in form_dict and form_dict["password"] and user.auth_provider == 'local'
+    if password_changed:
         user.password=form_dict["password"]
     user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
     db.session.commit()
+
+    if password_changed:
+        _invalidate_user_sessions(user.id)
 
     if flag:
         delete_default_org(prev_user_org_id)
@@ -504,5 +508,4 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
-
 

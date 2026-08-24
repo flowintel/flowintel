@@ -36,10 +36,15 @@ def edit_user_core(form_dict, id, is_sso=False):
     if not is_sso:
         user.email=form_dict["email"]
     user.matrix_id=matrix_id
-    if "password" in form_dict and form_dict["password"]:
+    password_changed = "password" in form_dict and form_dict["password"]
+    if password_changed:
         user.password=form_dict["password"]
 
     db.session.commit()
+
+    if password_changed:
+        from ..admin.admin_core import _invalidate_user_sessions
+        _invalidate_user_sessions(user.id)
 
 def change_api_key(current_user: User) -> str:
     """Change the api key of the user"""
