@@ -180,7 +180,8 @@ def login():
         
         email = (form.email.data or '').strip().lower()
         try:
-            Email(email)
+            form.email.data = email
+            Email()(form, form.email)
         except ValidationError:
             flash('Invalid email or password.', 'error')
             flowintel_log("audit", 401, "Failed login attempt - Invalid email format", Email=email)
@@ -217,7 +218,7 @@ def login():
                 session['failed_login_email'] = email  # Store for pre-filling
                 show_reset_link = True
                 
-                logger.warning(f"Failed login attempt for email: {email} from IP: {get_client_ip()}")
+                logger.warning("Failed login attempt for email: %r from IP: %s", email, get_client_ip())
     
     return render_template('account/login.html', form=form, show_reset_link=show_reset_link)
 
@@ -414,4 +415,3 @@ def logout():
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
-
