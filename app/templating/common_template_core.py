@@ -4,7 +4,7 @@ from ..db_class.db import (
     Case_Template, Case_Template_Custom_Tags, Role, Task_Template, Note_Template, Subtask_Template,
     Case_Template_Tags, Case_Template_Galaxy_Tags, Task_Template_Custom_Tags, Task_Template_Galaxy, 
     Task_Template_Tags, Task_Template_Galaxy_Tags, Case_Task_Template, Case_Template_Connector_Instance,
-    Tags, Cluster, Galaxy, Custom_Tags
+    Tags, Cluster, Galaxy, Custom_Tags, Connector_Instance
 )
 from .. import db
 from sqlalchemy import func
@@ -204,6 +204,12 @@ def get_case_template_connector_instances(ctid):
 
 def add_connector_instances_to_case_template(ctid, connector_instances) -> bool:
     """Add connector instance to case template"""
+    for connector_instance in connector_instances:
+        if "id" not in connector_instance or not Connector_Instance.query.get(connector_instance["id"]):
+            return False
+        if "identifier" not in connector_instance:
+            return False
+
     for connector_instance in connector_instances:
         c = Case_Template_Connector_Instance(
             case_template_id=ctid,

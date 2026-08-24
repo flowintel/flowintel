@@ -1377,10 +1377,11 @@ class Case_Template_Connector_Instance(db.Model):
     identifier = db.Column(db.String)
 
     def to_json(self):
+        instance = Connector_Instance.query.get(self.connector_instance_id)
         return {
             "id": self.id, 
             "case_template_id": self.case_template_id,
-            "instance": Connector_Instance.query.filter_by(id=self.connector_instance_id).first().to_json(),
+            "instance": instance.to_json() if instance else None,
             "identifier": self.identifier
         }
 

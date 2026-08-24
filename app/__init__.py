@@ -112,6 +112,7 @@ def create_app():
             @_sa_event.listens_for(db.engine, 'connect')
             def _set_sqlite_pragmas(dbapi_conn, _rec):
                 cur = dbapi_conn.cursor()
+                cur.execute('PRAGMA foreign_keys=ON')
                 cur.execute('PRAGMA journal_mode=WAL')
                 cur.execute('PRAGMA busy_timeout=30000')
                 cur.close()

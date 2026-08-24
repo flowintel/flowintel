@@ -951,12 +951,16 @@ def create_task_from_template(template_id, cid, current_user=None):
 
 def get_instance_with_icon(instance_id):
     """Return an instance of a connector with its icon"""
-    loc_instance = get_instance(instance_id).to_json()
-    loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
+    instance = get_instance(instance_id)
+    if not instance:
+        return None
+    loc_instance = instance.to_json()
+    icon_file = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
                                     .join(Connector, Connector.icon_id==Connector_Icon.id)\
                                     .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
                                     .where(Connector_Instance.id==instance_id)\
-                                    .first().uuid
+                                    .first()
+    loc_instance["icon"] = icon_file.uuid if icon_file else None
     return loc_instance
 
 

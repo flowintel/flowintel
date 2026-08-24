@@ -1,7 +1,7 @@
 import datetime
 import os
 from .. import db
-from ..db_class.db import Case, Case_Connector_Instance, Case_Org, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
+from ..db_class.db import Case, Case_Connector_Instance, Case_Org, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 import uuid
 from werkzeug.utils import secure_filename
 
@@ -264,6 +264,9 @@ def instance_has_links(instance_id):
     """Return True if instance is linked to a case or task."""
     case_link = Case_Connector_Instance.query.filter_by(instance_id=instance_id).first()
     if case_link:
+        return True
+    template_link = Case_Template_Connector_Instance.query.filter_by(connector_instance_id=instance_id).first()
+    if template_link:
         return True
     return False
 
@@ -630,6 +633,7 @@ def delete_connector_instance_core(iid):
     for ci in Case_Connector_Instance.query.filter_by(instance_id=iid).all():
         Connector_Sync_Log.query.filter_by(case_connector_instance_id=ci.id).delete()
     Case_Connector_Instance.query.filter_by(instance_id=iid).delete()
+    Case_Template_Connector_Instance.query.filter_by(connector_instance_id=iid).delete()
 
     instance = get_instance(iid)
     db.session.delete(instance)
