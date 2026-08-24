@@ -127,6 +127,7 @@ rebuild := 1
 		full_dev_localinfra_maria_stop \
 		full_dev_localinfra_official_postgres_stop \
 		format_and_lint \
+		test \
 		clean \
 		coverageclean \
 		distclean \
