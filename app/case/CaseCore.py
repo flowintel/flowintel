@@ -1323,7 +1323,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return {"message": "Ollama configuration is missing", "toast_class": "warning-subtle"}, 400
 
         if prompt:
-            message = prompt
+            message = f"{prompt} {json.dumps(return_dict)}"
         else:
             asking_input = "Give me a report using:"
             message = f"{asking_input} {json.dumps(return_dict)}"
