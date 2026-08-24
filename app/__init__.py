@@ -42,6 +42,15 @@ def create_app():
 
     Config[config_name].init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
+
+    @app.after_request
+    def set_security_headers(resp):
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            "form-action 'self'; frame-src 'self'; img-src 'self' data:; "
+            "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
+        )
+        return resp
     
     if not app.debug and not app.testing:
         logs_folder = Path.cwd() / "logs"
