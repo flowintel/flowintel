@@ -239,6 +239,16 @@ def get_hedgedoc_notes(cid):
 @login_required
 def get_note_template(cid):
     """Get note template of a case"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    present_in_case = CommonModel.get_present_in_case(cid, current_user)
+    if not check_user_private_case(case, present_in_case):
+        flowintel_log("audit", 403, "Get case note template: Private case: Permission denied", User=current_user.email, CaseId=cid)
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    if not (present_in_case or current_user.is_admin()):
+        flowintel_log("audit", 403, "Get case note template: Action not allowed", User=current_user.email, CaseId=cid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     case_note_template = CaseModel.get_case_note_template(cid)
     if case_note_template:
         template = CaseModel.get_note_template_model(case_note_template.note_template_id)

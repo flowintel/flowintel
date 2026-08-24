@@ -966,7 +966,13 @@ class AddNoteTemplate(Resource):
 class GetNoteTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
             c = CaseModel.get_case_note_template(cid)
             if c:
                 return c.to_json(), 200
