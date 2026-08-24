@@ -88,18 +88,24 @@ def is_custom_tag_in_use(ctid):
     task_template_count = Task_Template_Custom_Tags.query.filter_by(custom_tag_id=ctid).count()
     return (case_count + task_count + case_template_count + task_template_count) > 0
 
-def get_cases_using_custom_tag(ctid):
+def get_cases_using_custom_tag(ctid, current_user=None):
     """Get all cases using a specific custom tag"""
     from ..db_class.db import Case
+    from ..case import common_core as CommonModel
     cases = Case.query.join(Case_Custom_Tags, Case_Custom_Tags.case_id==Case.id)\
         .filter(Case_Custom_Tags.custom_tag_id==ctid).all()
+    if current_user:
+        cases = [case for case in cases if CommonModel.can_view_case(case, current_user)]
     return [{"id": case.id, "title": case.title, "description": case.description} for case in cases]
 
-def get_tasks_using_custom_tag(ctid):
+def get_tasks_using_custom_tag(ctid, current_user=None):
     """Get all tasks using a specific custom tag"""
     from ..db_class.db import Task
+    from ..case import common_core as CommonModel
     tasks = Task.query.join(Task_Custom_Tags, Task_Custom_Tags.task_id==Task.id)\
         .filter(Task_Custom_Tags.custom_tag_id==ctid).all()
+    if current_user:
+        tasks = [task for task in tasks if CommonModel.can_view_case(CommonModel.get_case(task.case_id), current_user)]
     return [{"id": task.id, "title": task.title, "case_id": task.case_id} for task in tasks]
 
 def get_case_templates_using_custom_tag(ctid):

@@ -60,8 +60,8 @@ def list():
 def get_custom_tag_usage(ctid):
     """Get cases, tasks, and templates using a specific custom tag"""
     if CustomCore.get_custom_tag(ctid):
-        cases = CustomCore.get_cases_using_custom_tag(ctid)
-        tasks = CustomCore.get_tasks_using_custom_tag(ctid)
+        cases = CustomCore.get_cases_using_custom_tag(ctid, current_user)
+        tasks = CustomCore.get_tasks_using_custom_tag(ctid, current_user)
         case_templates = CustomCore.get_case_templates_using_custom_tag(ctid)
         task_templates = CustomCore.get_task_templates_using_custom_tag(ctid)
         return {
@@ -134,4 +134,3 @@ def change_config():
             return {'message': 'Need to pass "custom_tag_color"', 'toast_class': "warning-subtle"}, 400
         return {'message': 'Need to pass "custom_tag_name"', 'toast_class': "warning-subtle"}, 400
     return {'message': 'Need to pass "custom_tag_id"', 'toast_class': "warning-subtle"}, 400
-
