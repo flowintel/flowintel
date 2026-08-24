@@ -114,18 +114,18 @@ rebuild := 1
 		new_migration_postgres \
 		new_migration_maria \
 		full_new_migration \
-		full_new_migration_maria \
 		run_posgtres \
 		run_maria \
-		runfull_postgres \
-		runfull_maria \
+		full_run_postgres \
+		full_run_maria \
 		build_latest_local \
 		dev_localinfra_postgres_run \
 		dev_localinfra_maria_run \
 		dev_localinfra_postgres_stop \
 		dev_localinfra_maria_stop \
-		dev_localinfra_full_postgres_stop \
-		dev_localinfra_full_maria_stop \
+		full_dev_localinfra_postgres_stop \
+		full_dev_localinfra_maria_stop \
+		full_dev_localinfra_official_postgres_stop \
 		format_and_lint \
 		clean \
 		coverageclean \
@@ -191,8 +191,10 @@ new_migration_postgres: dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	echo "Install the application in Local Dev first, with run_postgres or install_postgress"
+	echo "Please remember that we force the rotation of the .env file to automate default runs"
+	echo "Using this facility will override your custom changes as a collateral"
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "Install the application in Dockerised Local Dev Infra first, with run_postgres"
 	read wait_for_me
 	cp -f .env.postgres.custom .env
 	echo "Waiting 5 seconds for database available..."
@@ -210,8 +212,10 @@ new_migration_maria: dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	echo "Install the application in Local Dev first, with run_maria or install_maria"
+	echo "Please remember that we force the rotation of the .env file to automate default runs"
+	echo "Using this facility will override your custom changes as a collateral"
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "Install the application in Dockerised Local Dev Infra first, with run_maria"
 	read wait_for_me
 	cp -f .env.mariadb.custom .env
 	echo "Waiting 5 seconds for database available..."
@@ -232,7 +236,6 @@ full_new_migration:
 	echo "Up to the user to extract the file created inside the container"
 	echo "(until the image is made immutable and the migration folder is mounted)"
 	read wait_for_me
-	cp -f .env.postgres.custom .env
 	echo "Waiting 5 seconds for database available..."
 	sleep 5
 	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
@@ -244,27 +247,6 @@ full_new_migration:
 	# Also, no need for activating the venv as it is already included in the PATH in Docker
 	docker exec -it flowintel bash -i ./migrate.sh --upgrade
 	echo "New migrations applied"
-	rm .env
-
-full_new_migration_maria:
-	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	echo "The application must already be running in full Docker mode"
-	echo "The last migration must have already been applied"
-	echo "Up to the user to extract the file created inside the container"
-	echo "(until the image is made immutable and the migration folder is mounted)"
-	read wait_for_me
-	cp -f .env.mariadb.custom .env
-	echo "Waiting 5 seconds for database available..."
-	sleep 5
-	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
-	# Also, no need for activating the venv as it is already included in the PATH in Docker
-	docker exec -it flowintel bash -i -c "./migrate.sh --migrate"
-	echo "New migration created if new model found"
-	sleep 1
-	# The dockerised deployment owns the FLOWINTEL_APP_ENV definition at runtime
-	# Also, no need for activating the venv as it is already included in the PATH in Docker
-	docker exec -it flowintel bash -i -c "./migrate.sh --upgrade"
-	rm .env
 
 # Install and Run Application
 install_postgres: first_install dev_localinfra_postgres_run
@@ -297,6 +279,11 @@ run_postgres: first_install dev_localinfra_postgres_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_postgres_stop -s >/dev/null' EXIT
+	echo "Install the application in Local Dev first, with run_maria or install_maria"
+	echo "Please remember that we force the rotation of the .env file to automate default runs"
+	echo "Using this facility will override your custom changes as a collateral"
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	read wait_for_me
 	cp -f .env.postgres.custom .env
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
@@ -309,6 +296,11 @@ run_maria: first_install dev_localinfra_maria_run
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
 	trap '$(MAKE) dev_localinfra_maria_stop -s >/dev/null' EXIT
+	echo "Install the application in Local Dev first, with run_maria or install_maria"
+	echo "Please remember that we force the rotation of the .env file to automate default runs"
+	echo "Using this facility will override your custom changes as a collateral"
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	read wait_for_me
 	cp -f .env.mariadb.custom .env
 	# Warning, by design, this will run in development mode even if we have a .env with FLOWINTEL_APP_ENV=production
 	VENV_DIR=".venv" ./launch.sh -l
@@ -317,10 +309,10 @@ run_maria: first_install dev_localinfra_maria_run
 	sleep 1
 	rm .env
 
-runfull_postgres: configure_repo_dev build_latest_local
+full_run_postgres: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
-	trap '$(MAKE) dev_localinfra_full_postgres_stop -s >/dev/null' EXIT
+	trap '$(MAKE) full_dev_localinfra_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.full.postgres.custom docker/.env
 	docker compose -f docker/docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
@@ -328,10 +320,10 @@ runfull_postgres: configure_repo_dev build_latest_local
 	sleep 1
 	rm docker/.env
 
-runfull_maria: configure_repo_dev build_latest_local
+full_run_maria: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
-	trap '$(MAKE) dev_localinfra_full_maria_stop -s >/dev/null' EXIT
+	trap '$(MAKE) full_dev_localinfra_maria_stop -s >/dev/null' EXIT
 	cp -f .env.full.mariadb.custom docker/.env
 	docker compose -f docker/docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
@@ -339,10 +331,10 @@ runfull_maria: configure_repo_dev build_latest_local
 	sleep 1
 	rm docker/.env
 
-runfullofficial_postgres: configure_repo_dev
+full_run_official_postgres: configure_repo_dev
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
-	trap '$(MAKE) dev_localinfra_fullofficial_postgres_stop -s >/dev/null' EXIT
+	trap '$(MAKE) full_dev_localinfra_official_postgres_stop -s >/dev/null' EXIT
 	cp -f .env.full.postgres.custom docker/.env
 	docker compose -f docker/docker-compose.yml up
 	echo "Press Enter to close..."
@@ -378,13 +370,13 @@ dev_localinfra_postgres_stop:
 dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-infra-maria.yml down
 
-dev_localinfra_full_postgres_stop:
+full_dev_localinfra_postgres_stop:
 	docker compose -f docker/docker-compose-local-full-postgres.yml down
 
-dev_localinfra_full_maria_stop:
+full_dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-full-maria.yml down
 
-dev_localinfra_fullofficial_postgres_stop:
+full_dev_localinfra_official_postgres_stop:
 	docker compose -f docker/docker-compose.yml down
 
 ################
@@ -488,21 +480,20 @@ help :
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "new_migration_maria" "/"  "Create a new migration file, MariaDB running as Dockerised Dev Infrastructure"
-	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_postgres" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration_maria" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "full_new_migration" "/"  "Create a new migration file, Fully Dockerised infrastructure must be running (Postgres AND MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_postgres" "/"  "Run Dev App + Dev Infrastructure (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfull_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "runfullofficial_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised based on Official Docker image (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_official_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised based on Official Docker image (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_run" "/"  "Manual Run Dev Infrastructure (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Manual Run Dev Infrastructure (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, Postgres stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_full_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_fullofficial_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, Postgres stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_official_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
 	echo ""
 	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release (TODO)${RESET}"
 	echo ""
@@ -522,7 +513,7 @@ help :
 	echo ""
 	echo -e "${GREEN}${BOLD}💡 Examples:${RESET}"
 	echo "  make configure_repo_dev"
-	echo "  make runfull_postgres"
+	echo "  make full_run_postgres"
 	echo "  make database_init # on first install, after docker-compose has been spawned in DEV only !"
 	echo "  make bump_version version_repo=1.2.3 tag_message=\"Release v1.2.3\""
 	echo ""
@@ -547,6 +538,9 @@ help :
 	echo "}"
 	echo "- It is assumed that the Developer User account is part of groupd docker so that no need for sudo elevation in the scripts."
 	echo "!!! This is assumed as a reasonible assumption ONLY in DEV on a single User system !!! Adapt accordingly to your policy."
+	echo ""
+	echo "Above, we made the distinction in between the run that are fully dockerised with the prefix \"full\""
+	echo "and the run that leverage only the partial dockerised infrastructure (only database infrastructure) with no prefixes"
 	echo ""
 	echo "Fonts:"
 	echo "sudo apt install fonts-firacode fonts-dejavu fonts-noto-color-emoji # Then restart Terminal"
