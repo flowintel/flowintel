@@ -122,7 +122,7 @@ class EditInstance(Resource):
     def post(self, cid, iid):
         if ConnectorModel.get_connector(cid):
             current_user = utils.get_user_from_api(request.headers)
-            instance = ConnectorModel.get_instance(iid)
+            instance = ConnectorModel.get_connector_instance(cid, iid)
             if not instance:
                 return {"message": "Instance not found"}, 404
             if not ConnectorModel.can_user_manage_instance(instance, current_user):
@@ -159,9 +159,9 @@ class DeleteInstanceConnector(Resource):
     method_decorators = [api_required]
     def get(self, cid, iid):
         if ConnectorModel.get_connector(cid):
-            if ConnectorModel.get_instance(iid):
+            instance = ConnectorModel.get_connector_instance(cid, iid)
+            if instance:
                 current_user = utils.get_user_from_api(request.headers)
-                instance = ConnectorModel.get_instance(iid)
                 if not ConnectorModel.can_user_manage_instance(instance, current_user):
                     flowintel_log("audit", 403, "API: Delete connector instance denied", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message": "Permission denied"}, 403

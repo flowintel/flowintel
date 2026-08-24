@@ -136,7 +136,7 @@ def get_instance_cases(cid, iid):
     """Get paginated cases linked to a connector instance"""
     if not ConnectorModel.get_connector(cid):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
-    if not ConnectorModel.get_instance(iid):
+    if not ConnectorModel.get_connector_instance(cid, iid):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     page = request.args.get('page', 1, type=int)
     cases, total, nb_pages, private_count = ConnectorModel.get_cases_for_instance(iid, page=page, current_user=current_user)
@@ -245,7 +245,7 @@ def edit_instance(cid, iid):
     """Edit an instance"""
     if ConnectorModel.get_connector(cid):
         form = EditConnectorInstanceForm()
-        loc_instance = ConnectorModel.get_instance(iid)
+        loc_instance = ConnectorModel.get_connector_instance(cid, iid)
         if not loc_instance or not ConnectorModel.can_user_manage_instance(loc_instance, current_user):
             abort(403)
         _set_instance_sharing_scope_choices(form, current_user)
@@ -324,7 +324,7 @@ def delete_connector(cid):
 def delete_instance(cid, iid):
     """Delete the instance"""
     if ConnectorModel.get_connector(cid):
-        instance = ConnectorModel.get_instance(iid)
+        instance = ConnectorModel.get_connector_instance(cid, iid)
         if instance:
             if not ConnectorModel.can_user_manage_instance(instance, current_user):
                 return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403

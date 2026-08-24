@@ -196,6 +196,11 @@ def get_instance(iid):
     return Connector_Instance.query.get(iid)
 
 
+def get_connector_instance(cid, iid):
+    """Return an instance only when it belongs to the given connector."""
+    return Connector_Instance.query.filter_by(id=iid, connector_id=cid).first()
+
+
 def get_instance_sharing_scope(instance):
     """Return the visibility scope for a connector instance."""
     if getattr(instance, "sharing_scope", None) in {"personal", "org", "global"}:
@@ -572,7 +577,10 @@ def edit_connector_instance_core(iid, form_dict):
         else:
             instance_db.shared_org_id = None
             instance_db.global_api_key = None
-            user_instance = get_user_instance_by_instance(iid)
+            user_instance = User_Connector_Instance.query.filter_by(
+                user_id=user.id,
+                instance_id=iid
+            ).first()
             if not user_instance:
                 user_instance = User_Connector_Instance(
                     user_id=user.id,
