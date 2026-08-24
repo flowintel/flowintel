@@ -226,7 +226,7 @@ def misp_modules_history():
 def misp_modules_history_data():
     """Get all history"""
     page = request.args.get('page', 1, type=int)
-    histories, nb_pages = MispModuleModel.get_history(page)
+    histories, nb_pages = MispModuleModel.get_history(page, current_user)
     return {"history": histories, "nb_pages": nb_pages}
 
 @analyzer_blueprint.route("/misp-modules/delete_history/<huuid>", methods=['GET'])

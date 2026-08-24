@@ -115,9 +115,14 @@ def change_config_core(request_json, current_user: User):
     return True
 
 
-def get_history(page):
+def get_history(page, current_user: User):
     """Return history"""
-    histories = Misp_Module_Result.query.order_by(desc(Misp_Module_Result.id)).paginate(page=page, per_page=20, max_per_page=50)
+    histories = (
+        Misp_Module_Result.query
+        .filter_by(user_id=current_user.id)
+        .order_by(desc(Misp_Module_Result.id))
+        .paginate(page=page, per_page=20, max_per_page=50)
+    )
     return [h.history_json() for h in histories], histories.pages
 
 def get_history_uuid(huuid):
@@ -184,4 +189,3 @@ def manage_notes_selected(request_json, current_user):
             CaseModel.create_standalone_attribute(case_id, misp_attr, current_user)
     
     return case_id
-
