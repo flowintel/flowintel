@@ -484,6 +484,8 @@ def get_tags():
     """Get tags of a taxonomy"""
     taxonomy = request.args.get('taxonomy')
     tags = AdminModel.get_tags(taxonomy)
+    if tags is None:
+        return {"message": "Taxonomy not found", "toast_class": "danger-subtle"}, 404
     tags.sort(key=lambda x: x["name"])
     return {"tags": tags}
 
@@ -560,6 +562,8 @@ def get_tags_galaxy():
     """Get tags of a galaxy"""
     galaxy = request.args.get('galaxy')
     tags = AdminModel.get_tags_galaxy(galaxy)
+    if tags is None:
+        return {"message": "Galaxy not found", "toast_class": "danger-subtle"}, 404
     return {"tags": tags}
 
 
@@ -569,6 +573,8 @@ def get_clusters():
     """Get clusers of a galaxy"""
     galaxy_id = request.args.get('galaxy')
     clusters = AdminModel.get_clusters_galaxy(galaxy_id)
+    if clusters is None:
+        return {"message": "Galaxy not found", "toast_class": "danger-subtle"}, 404
     clusters.sort(key=lambda x: x["name"])
     return jsonify({"clusters": clusters})
 

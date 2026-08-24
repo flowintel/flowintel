@@ -106,7 +106,10 @@ def get_taxonomy_counts(name=None):
     return {"total": total, "enabled": enabled}
 
 def get_tags(taxonomy_id):
-    return [tag.to_json() for tag in Taxonomy.query.get(taxonomy_id).tags]
+    taxonomy = Taxonomy.query.get(taxonomy_id)
+    if not taxonomy:
+        return None
+    return [tag.to_json() for tag in taxonomy.tags]
 
 
 ## Galaxies
@@ -120,7 +123,10 @@ def get_clusters():
     return [cluster.to_json() for cluster in Cluster.query.all()]
 
 def get_clusters_galaxy(galaxy_id):
-    return [cluster.to_json() for cluster in get_galaxy(galaxy_id).clusters]
+    galaxy = get_galaxy(galaxy_id)
+    if not galaxy:
+        return None
+    return [cluster.to_json() for cluster in galaxy.clusters]
 
 def get_nb_page_galaxies(name=None, enabled=None):
     """Return number of pages for galaxies, optionally filtered by name and enabled status."""
@@ -134,7 +140,10 @@ def get_galaxy_counts(name=None):
     return {"total": total, "enabled": enabled}
 
 def get_tags_galaxy(galaxy_id):
-    return [cluster.tag for cluster in get_galaxy(galaxy_id).clusters]
+    galaxy = get_galaxy(galaxy_id)
+    if not galaxy:
+        return None
+    return [cluster.tag for cluster in galaxy.clusters]
 
 def get_tag_cluster(cluster_id):
     return Cluster.query.get(cluster_id).tag
@@ -508,4 +517,3 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
-
