@@ -1411,12 +1411,7 @@
                         if (stored) hidden_tabs.value = JSON.parse(stored)
                     } catch(e) {}
                     try {
-                        const stored = localStorage.getItem(ACTIVE_MODULE_TABS_KEY)
-                        if (stored) {
-                            const tabs = JSON.parse(stored)
-                            active_module_tabs.value = tabs
-                            for (const t of tabs) loadModuleComponent(t)
-                        }
+                        localStorage.removeItem(ACTIVE_MODULE_TABS_KEY)
                     } catch(e) {}
                 }
 
@@ -1432,24 +1427,37 @@
                     } catch(e) {}
                 }
 
-                function add_module_tab(typeName) {
-                    if (active_module_tabs.value.includes(typeName)) return
-                    active_module_tabs.value = [...active_module_tabs.value, typeName]
-                    save_active_module_tabs()
-                    loadModuleComponent(typeName)
-                    active_tab('connector-' + typeName.toLowerCase())
-
-                    // Check if any connector of this type is already linked to the case
-                    const already_linked = connector_types_in_case.value.some(t => t.toUpperCase() === typeName.toUpperCase())
-                    if (!already_linked && can_use_connectors.value) {
-                        // Gather available instances for this type from all_connectors_list
-                        const instances = get_unlinked_connector_instances(typeName)
-                        pending_connector_type.value = typeName
-                        pending_connector_instances.value = instances
-                        pending_selected_instance.value = instances.length ? instances[0] : null
-                        pending_connector_identifier.value = ''
-                        try { window.bootstrap.Modal.getOrCreateInstance(document.getElementById('addModuleConnectorModal')).show() } catch(e) {}
+                function activate_module_tab(typeName, switchToTab = true) {
+                    if (!typeName) return
+                    if (!active_module_tabs.value.includes(typeName)) {
+                        active_module_tabs.value = [...active_module_tabs.value, typeName]
+                        save_active_module_tabs()
+                        loadModuleComponent(typeName)
                     }
+                    if (switchToTab) {
+                        restore_tab('connector-' + typeName.toLowerCase())
+                        active_tab('connector-' + typeName.toLowerCase())
+                    }
+                }
+
+                function add_module_tab(typeName) {
+                    if (!typeName) return
+                    const already_linked = connector_types_in_case.value.some(t => t.toUpperCase() === typeName.toUpperCase())
+                    if (already_linked) {
+                        activate_module_tab(typeName)
+                        return
+                    }
+                    if (!can_use_connectors.value) {
+                        display_toast({ message: 'No connector is linked to this case for this module', toast_class: 'warning-subtle' })
+                        return
+                    }
+
+                    const instances = get_unlinked_connector_instances(typeName)
+                    pending_connector_type.value = typeName
+                    pending_connector_instances.value = instances
+                    pending_selected_instance.value = instances.length ? instances[0] : null
+                    pending_connector_identifier.value = ''
+                    try { window.bootstrap.Modal.getOrCreateInstance(document.getElementById('addModuleConnectorModal')).show() } catch(e) {}
                 }
 
                 async function submit_add_module_connector() {
@@ -1464,6 +1472,7 @@
                         })
                         if (res.status === 200) {
                             await fetch_case_connectors()
+                            activate_module_tab(pending_connector_type.value)
                             try { window.bootstrap.Modal.getInstance(document.getElementById('addModuleConnectorModal'))?.hide() } catch(e) {}
                         }
                         display_toast(res)
@@ -1682,11 +1691,21 @@
                             for (const inst of instances) instanceTypeMap[inst.id] = typeName
                         }
                     }
-                    let changed = false
-                    for (const conn of case_connectors_list.value) {
+                    const linkedTypes = new Set()
+                    for (const conn of case_connectors_list.value || []) {
                         if (!conn.details || conn.details.id === undefined) continue
                         const typeName = instanceTypeMap[conn.details.id]
                         if (!typeName || typeName.toUpperCase() === 'MISP') continue
+                        linkedTypes.add(typeName)
+                    }
+                    let changed = false
+                    const linkedUpper = new Set([...linkedTypes].map(typeName => typeName.toUpperCase()))
+                    const prunedTabs = active_module_tabs.value.filter(typeName => linkedUpper.has(typeName.toUpperCase()))
+                    if (prunedTabs.length !== active_module_tabs.value.length) {
+                        active_module_tabs.value = prunedTabs
+                        changed = true
+                    }
+                    for (const typeName of linkedTypes) {
                         if (!active_module_tabs.value.includes(typeName)) {
                             active_module_tabs.value = [...active_module_tabs.value, typeName]
                             loadModuleComponent(typeName)
