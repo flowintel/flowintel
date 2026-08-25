@@ -9,7 +9,7 @@ from pathlib import Path
 
 from flask import current_app
 
-from app.db_class.db import Case, Login_Event, User
+from app.db_class.db import Case, Login_Event, User, DATETIME_FORMAT_FULL
 
 from ..case.common_core import HISTORY_DIR
 from ..utils.logger import flowintel_log
@@ -78,7 +78,7 @@ def _row_text(row):
 
 def row_matches(row, start_dt, end_dt, user_q, action_q, exclude_q):
     try:
-        row_dt = datetime.strptime(row["timestamp"], "%Y-%m-%d %H:%M")
+        row_dt = datetime.strptime(row["timestamp"], DATETIME_FORMAT_FULL)
     except (ValueError, KeyError, TypeError):
         return False
     if start_dt and row_dt < start_dt:
@@ -163,7 +163,7 @@ def collect_login_rows():
         if not ev.login_date:
             continue
         rows.append({
-            "timestamp": ev.login_date.strftime("%Y-%m-%d %H:%M"),
+            "timestamp": ev.login_date.strftime(DATETIME_FORMAT_FULL),
             "user": user_map.get(ev.user_id, f"user#{ev.user_id}"),
             "action": "Login",
             "case_id": None,
@@ -195,7 +195,7 @@ def collect_audit_rows():
                 user_match = _AUDIT_USER_RE.search(extra)
                 case_match = _AUDIT_CASE_RE.search(extra)
                 rows.append({
-                    "timestamp": ts.strftime("%Y-%m-%d %H:%M"),
+                    "timestamp": ts.strftime(DATETIME_FORMAT_FULL),
                     "severity": int(m.group("sev")),
                     "user": user_match.group(1) if user_match else "",
                     "action": m.group("action").strip(),

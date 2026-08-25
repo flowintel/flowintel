@@ -1,8 +1,11 @@
 import ast
+import ipaddress
 import os
+import socket
 import uuid
 import requests
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
@@ -44,7 +47,8 @@ def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
 @editor_required
 def create_task(cid):
     """View of a case"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         present_in_case = CommonModel.get_present_in_case(cid, current_user)
         if present_in_case or current_user.is_admin():
             form = TaskForm()
@@ -64,8 +68,8 @@ def create_task(cid):
                     else:
                         flash("Error Task Created", "error")
                     return redirect(f"/case/{cid}")
-                return render_template("case/create_task.html", form=form, case_id=cid)
-            return render_template("case/create_task.html", form=form, case_id=cid)
+                return render_template("case/create_task.html", form=form, case_id=cid, case=case)
+            return render_template("case/create_task.html", form=form, case_id=cid, case=case)
         return redirect(f"/case/{cid}")
     return render_template("404.html")
 
@@ -933,6 +937,35 @@ def delete_external_reference(cid, tid, erid):
 
 def _probe_external_url(url):
     """Probe a URL to detect common connection failures before invoking misp-modules."""
+    try:
+        parsed_url = urlparse(url)
+    except ValueError:
+        return "The URL is not valid"
+
+    if parsed_url.scheme not in ["http", "https"]:
+        return "Only http:// and https:// URLs are allowed"
+
+    if not parsed_url.hostname:
+        return "The URL is missing a hostname"
+
+    try:
+        addrinfo = socket.getaddrinfo(parsed_url.hostname, None)
+    except socket.gaierror:
+        return "The host likely doesn't exist (DNS resolution failed)"
+
+    for result in addrinfo:
+        ip = result[4][0]
+        parsed_ip = ipaddress.ip_address(ip)
+        if (
+            parsed_ip.is_private
+            or parsed_ip.is_loopback
+            or parsed_ip.is_link_local
+            or parsed_ip.is_multicast
+            or parsed_ip.is_reserved
+            or parsed_ip.is_unspecified
+        ):
+            return "The URL resolves to a restricted network address"
+
     try:
         requests.head(url, timeout=10, allow_redirects=True)
     except requests.exceptions.ConnectionError as e:

@@ -20,29 +20,29 @@
             <table class="table">
                 <tr>
                     <td style="color:#494950">First name</td>
-                    <td>{{user.first_name}}</td>
+                    <td>{{ user.first_name|vue_escape }}</td>
                     <td></td>
                 </tr>
                 <tr>
                     <td style="color:#494950">Last name</td>
-                    <td>{{user.last_name}}</td>
+                    <td>{{ user.last_name|vue_escape }}</td>
                 </tr>
                 <tr>
                     <td style="color:#494950">Nickname</td>
                     {%if user.nickname %}
-                        <td> {{user.nickname}}</td>
+                        <td> {{ user.nickname|vue_escape }}</td>
                     {%else%}
                         <td><i> Not set</i></td>
                     {%endif%}
                 </tr>
                 <tr>
                     <td style="color:#494950">Email</td>
-                    <td>{{user.email}}</td>
+                    <td>{{ user.email|vue_escape }}</td>
                 </tr>
                 <tr>
                     <td style="color:#494950">Matrix id</td>
                     {%if user.matrix_id%}
-                        <td> {{user.matrix_id}}</td>
+                        <td> {{ user.matrix_id|vue_escape }}</td>
                     {%else%}
                         <td><i> Not set</i></td>
                     {%endif%}
@@ -50,14 +50,14 @@
                 <tr>
                     <td style="color:#494950">Organisation</td>
                     <td>
-                        <a href="/admin/orgs" class="text-decoration-none">{{ org.name }}</a>
+                        <a href="/admin/orgs" class="text-decoration-none">{{ org.name|vue_escape }}</a>
                     </td>
                 </tr>
                 <tr>
                     <td style="color:#494950">Role</td>
                     <td>
                         <a href="/admin/roles" class="text-decoration-none">
-                            {{ role.name }}
+                            {{ role.name|vue_escape }}
                             {% if role.admin %}
                                 <span class="badge bg-danger ms-2">Admin</span>
                             {% elif role.read_only %}

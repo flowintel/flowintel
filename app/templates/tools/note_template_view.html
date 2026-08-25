@@ -5,10 +5,9 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 
 {{ super() }}
 {%endblock%}
@@ -62,14 +61,18 @@
         </div>
         <template v-if="!is_editing">
             <button class="btn btn-primary" @click="edit()">Edit</button>
-            <div class="markdown-render-result" v-html="md.render(note_editor_render)"></div>
+            <div class="markdown-render-result">
+                <smart_render :code="note_editor_render" language="markdown" :simple="true"></smart_render>
+            </div>
         </template>
         <template v-else>
             <button class="btn btn-primary" @click="save()">Save</button>
 
             <div style="display: flex;">
                 <div class="note-editor" id="editor"></div>
-                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
+                <div class="markdown-render">
+                    <smart_render :code="note_editor_render" language="markdown" :simple="true"></smart_render>
+                </div>
             </div>
 
         </template>
@@ -86,18 +89,19 @@
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import smart_render from '/static/js/components/smart-render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                smart_render
+            },
             setup() {
                 const note_template = ref(null)
 
                 let editor
                 const note_editor_render = ref("")
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-                md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 const is_editing = ref(false)
                 const editing_header = ref(false)
@@ -118,7 +122,6 @@
                                 parent: targetElement
                             })
                     }
-                    md.mermaid.init()
                 }
 
                 async function fetchNoteTemplate() {
@@ -136,7 +139,6 @@
                 async function save() {
                     if(note_editor_render.value){
                         is_editing.value = false
-                        md.mermaid.init()
 
                         const res_msg = await fetch(
                             '/tools/note_template/{{note_template.id}}/edit_content',{
@@ -190,7 +192,6 @@
                 
                 onMounted(() => {
                     fetchNoteTemplate()
-                    md.mermaid.init()
                 })
 
                 return {
@@ -198,7 +199,6 @@
                     dayjs,
 
                     note_template,
-                    md,
                     note_editor_render,
                     is_editing,
                     editing_header,

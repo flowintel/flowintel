@@ -8,7 +8,7 @@ import requests
 import conf.config_module as ConfigModule
 
 from app.extensions import db
-from app.db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event
+from app.db_class.db import Case, Task, Task_Misp_Object, Task_Template, Case_Template, File, Case_Link_Case, Task_User, User, Rulezet_Rule, Misp_Object_Instance_Uuid, Case_Timeline_Event, DATETIME_FORMAT_FULL
 
 from ..connectors import connectors_core as ConnectorsModel
 from ..decorators import editor_required, template_editor_required, admin_required, misp_editor_required
@@ -224,13 +224,20 @@ def recurring(cid):
                 if not CaseModel.change_recurring(form_dict, cid, current_user):
                     flash("Recurring empty", "error")
                     return redirect(f"/case/{cid}/recurring")
-                if not form_dict["remove"]:
+                if form_dict["remove"]:
+                    flowintel_log("audit", 200, "Recurring removed for case", User=current_user.email, CaseId=cid)
+                    flash("Recurring removed", "success")
+                else:
                     CaseModel.notify_user_recurring(request.form.to_dict(), cid, orgs_in_case)
-                flowintel_log("audit", 200, "Recurring set for case", User=current_user.email, CaseId=cid, Recurring=str(form_dict))
-                flash("Recurring set", "success")
+                    flowintel_log("audit", 200, "Recurring set for case", User=current_user.email, CaseId=cid, Recurring=str(form_dict))
+                    flash("Recurring set", "success")
                 return redirect(f"/case/{cid}")
-            
-            return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return)
+
+            recurring_modes = {"once": 1, "daily": 2, "weekly": 3, "monthly": 4}
+            current_mode = recurring_modes.get(case.recurring_type)
+            current_date = case.recurring_date.strftime("%Y-%m-%d") if case.recurring_date else None
+
+            return render_template("case/case_recurring.html", form=form, orgs=orgs_to_return, case=case, current_mode=current_mode, current_date=current_date)
         
         flash("Action not allowed", "warning")
         return redirect(f"/case/{cid}")
@@ -1193,6 +1200,14 @@ def add_new_link(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if request.json:
                 if "case_id" in request.json:
+                    linked_case_ids = request.json["case_id"]
+                    if isinstance(linked_case_ids, list):
+                        for linked_case_id in linked_case_ids:
+                            if not CommonModel.get_case(linked_case_id):
+                                return {"message": "A Case doesn't exist", "toast_class": "danger-subtle"}, 404
+                    if not CommonModel.can_view_case_ids(linked_case_ids, current_user):
+                        flowintel_log("audit", 403, "Add case link: Linked case permission denied", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+                        return {"message": "Linked case permission denied", "toast_class": "warning-subtle"}, 403
                     if CaseModel.add_new_link(request.json, cid, current_user):
                         flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
                         return {"message": "Link added", "toast_class": "success-subtle"}, 200
@@ -1288,8 +1303,8 @@ def get_case_misp_object(cid):
                 "attributes": loc_attr_list,
                 "object_id": object.id,
                 "object_uuid": object.template_uuid,
-                "object_creation_date": object.creation_date.strftime('%Y-%m-%d %H:%M'),
-                "object_last_modif": object.last_modif.strftime('%Y-%m-%d %H:%M'),
+                "object_creation_date": object.creation_date.strftime(DATETIME_FORMAT_FULL),
+                "object_last_modif": object.last_modif.strftime(DATETIME_FORMAT_FULL),
                 "synced_instances": synced_instances,
                 # Mark whether this object already has a timeline event
                 "is_imported": True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=object.id).first() else False
@@ -1496,9 +1511,14 @@ def create_timeline_event(cid):
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
+                date_text = (request.json["date_text"] or "").strip()
+                if not date_text:
+                    return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if CaseModel.parse_date(date_text) is None:
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 misp_object_id = request.json.get("misp_object_id")
                 event = CaseModel.create_timeline_event(
-                    cid, request.json["date_text"], request.json["description"],
+                    cid, date_text, request.json["description"],
                     misp_object_id, current_user
                 )
                 return {"message": "Event created", "toast_class": "success-subtle", "event": event.to_json()}, 200
@@ -1515,8 +1535,13 @@ def edit_timeline_event(cid, eid):
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
+                date_text = (request.json["date_text"] or "").strip()
+                if not date_text:
+                    return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if CaseModel.parse_date(date_text) is None:
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 event = CaseModel.edit_timeline_event(
-                    eid, request.json["date_text"], request.json["description"], current_user
+                    eid, date_text, request.json["description"], current_user
                 )
                 if event:
                     return {"message": "Event updated", "toast_class": "success-subtle", "event": event.to_json()}, 200
@@ -1657,7 +1682,7 @@ def get_case_connectors(cid):
                 "identifier": case_connector.identifier,
                 "is_updating_case": case_connector.is_updating_case,
                 "is_misp_connector": is_misp_connector,
-                "last_sync": case_connector.last_sync.strftime('%Y-%m-%d %H:%M') if case_connector.last_sync else None
+                "last_sync": case_connector.last_sync.strftime(DATETIME_FORMAT_FULL) if case_connector.last_sync else None
             })
         return {"case_connectors": instance_list}, 200
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
@@ -2143,6 +2168,16 @@ def case_report_generate(cid):
         return f'<span class="cluster">{label}</span>'
 
     opts = request.json or {}
+
+    report_section_keys = (
+        "include_metadata", "include_title", "include_description",
+        "include_tasks", "include_files", "include_notes",
+        "include_tags", "include_objects", "include_taxonomies",
+        "include_audit", "include_timeline",
+    )
+    if not any(opts.get(k) for k in report_section_keys):
+        return {"message": "Select at least one section to include in the report."}, 400
+
     tasks = case.tasks.all()
 
     try:
@@ -2174,7 +2209,7 @@ def case_report_generate(cid):
 
         lines.append(f"- **Case ID:** {case.id}")
 
-        created = case.creation_date.strftime('%Y-%m-%d %H:%M') if case.creation_date else "—"
+        created = case.creation_date.strftime(DATETIME_FORMAT_FULL) if case.creation_date else "—"
         lines.append(f"- **Date created:** {created}")
 
         owner_org = CommonModel.get_org(case.owner_org_id)
@@ -2202,7 +2237,7 @@ def case_report_generate(cid):
             lines.append("- **Flags:** " + ", ".join(flags))
 
         if case.deadline:
-            lines.append(f"- **Deadline:** {case.deadline.strftime('%Y-%m-%d %H:%M')}")
+            lines.append(f"- **Deadline:** {case.deadline.strftime(DATETIME_FORMAT_FULL)}")
         if case.time_required:
             lines.append(f"- **Time required:** {case.time_required}")
         if case.ticket_id:
@@ -2217,11 +2252,11 @@ def case_report_generate(cid):
         pct = int(done / total * 100) if total > 0 else 0
         lines.append(f"- **Completion:** {done}/{total} tasks ({pct}%)")
 
-        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        now = datetime.datetime.now().strftime(DATETIME_FORMAT_FULL)
         user_label = f"{current_user.first_name} {current_user.last_name} ({current_user.email})"
         lines.append(f"- **Report generated on:** {now} by {user_label}")
 
-        url = f"http://{current_app.config.get('FLASK_URL', '127.0.0.1')}:{current_app.config.get('FLASK_PORT', 7006)}"
+        url = f"http://{current_app.config.get('FLOWINTEL_APP_HOST', '127.0.0.1')}:{current_app.config.get('FLOWINTEL_APP_PORT', 7006)}"
         lines.append(f"- **Instance URL:** {url}")
         lines.append(f"- **Instance version:** {_version}")
 
@@ -2267,7 +2302,7 @@ def case_report_generate(cid):
                     lines.append("- **Owner(s):** —")
 
                 if task.deadline:
-                    lines.append(f"- **Deadline:** {task.deadline.strftime('%Y-%m-%d %H:%M')}")
+                    lines.append(f"- **Deadline:** {task.deadline.strftime(DATETIME_FORMAT_FULL)}")
                 if task.time_required:
                     lines.append(f"- **Time required:** {task.time_required}")
 
@@ -2539,11 +2574,22 @@ def resolve_note_variables(cid):
     if not check_user_private_case(case):
         return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
     
-    text = request.json.get("text", "")
-    task_id = request.json.get("task_id", None)
-    mark = request.json.get("mark", False)
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
+    task_id = data.get("task_id", None)
+    mark = data.get("mark", False)
+
+    if task_id:
+        try:
+            task_id = int(task_id)
+        except (TypeError, ValueError):
+            return {"message": "Invalid task_id", "toast_class": "danger-subtle"}, 400
+        task = CommonModel.get_task(task_id)
+        if not task or int(task.case_id) != int(cid):
+            flowintel_log("audit", 403, "Resolve note variables: Task not in case", User=current_user.email, CaseId=cid, TaskId=task_id)
+            return {"message": "Task not in case", "toast_class": "danger-subtle"}, 403
     
-    resolved = resolve_variables(text, case_id=int(cid), task_id=int(task_id) if task_id else None, mark=bool(mark))
+    resolved = resolve_variables(text, case_id=int(cid), task_id=task_id, mark=bool(mark))
     return {"resolved": resolved}, 200
 
 

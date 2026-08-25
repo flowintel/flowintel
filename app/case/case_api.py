@@ -23,6 +23,7 @@ def check_user_private_case(case: Case, request_headers, current_user: User = No
         return False
     return True
 
+
 @case_ns.route('/all')
 @case_ns.doc(description='Get all cases')
 class GetCases(Resource):
@@ -145,12 +146,11 @@ class EditCase(Resource):
             
             if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if request.json:
-                    if "privileged_case" in request.json:
-                        if request.json["privileged_case"] != case.privileged_case:
-                            from ..decorators import check_privileged_case_permission
-                            error = check_privileged_case_permission(current_user, operation="modification")
-                            if error:
-                                return error
+                    if "privileged_case" in request.json and request.json["privileged_case"] != case.privileged_case:
+                        from ..decorators import check_privileged_case_permission
+                        error = check_privileged_case_permission(current_user, operation="modification")
+                        if error:
+                            return error
                     
                     verif_dict = CaseModelApi.verif_edit_case(request.json, cid)
 
@@ -402,6 +402,14 @@ class AddCaseLink(Resource):
             return {"message": "Permission denied"}, 403
         if not request.json or "case_id" not in request.json:
             return {"message": "Need to pass 'case_id'"}, 400
+        linked_case_ids = request.json["case_id"]
+        if isinstance(linked_case_ids, list):
+            for linked_case_id in linked_case_ids:
+                if not CommonModel.get_case(linked_case_id):
+                    return {"message": "Case doesn't exist"}, 404
+        if not CommonModel.can_view_case_ids(linked_case_ids, current_user):
+            flowintel_log("audit", 403, "Add case link: Linked case permission denied", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
+            return {"message": "Linked case permission denied"}, 403
         if CaseModel.add_new_link(request.json, cid, current_user):
             flowintel_log("audit", 200, "Case link added", User=current_user.email, CaseId=cid, LinkedCaseId=request.json["case_id"])
             return {"message": "Link added"}, 200

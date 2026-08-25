@@ -1,9 +1,6 @@
 #!/bin/bash -i
 set -e
 
-isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
-isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
-
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Directory of the python virtualenv to use; can be overridden by env var
@@ -48,9 +45,10 @@ function get_app_url_port {
     # Get app URL and port from config
     # Refactored as a function in order to make it compatible both when a local venv exists (nondocker) and when it doesnot (docker)
     # This allows to run the test in the local dev environment venv
-    APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
-    APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
+    FLOWINTEL_APP_HOST=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_HOST)")
+    FLOWINTEL_APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_PORT)")
 }
+
 
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
@@ -67,10 +65,16 @@ function prepare_app_run {
 
 function killscript {
     echo "Stopping existing sessions..."
-    if  [ $isscripted_fcm ]; then
+    local isscripted_fcm
+    local isscripted_misp_mod
+
+    isscripted_fcm=$(screen -ls | egrep '[0-9]+\.fcm' | cut -d. -f1 || true)
+    isscripted_misp_mod=$(screen -ls | egrep '[0-9]+\.misp_mod_flowintel' | cut -d. -f1 || true)
+
+    if [ -n "$isscripted_fcm" ]; then
         screen -X -S fcm quit
     fi
-    if  [ $isscripted_misp_mod ]; then
+    if [ -n "$isscripted_misp_mod" ]; then
         screen -X -S misp_mod_flowintel quit
     fi
 }
@@ -133,7 +137,7 @@ function production {
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT --access-logfile -
 }
 
 function init_db {
@@ -178,6 +182,8 @@ function init_db_prod {
     # don't import test data for prod 
     #echo "Create default test cases"
     #python3 app.py -td
+
+    killscript
 }
 
 function reload_db {
@@ -204,7 +210,7 @@ function launch_docker {
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
     gunicorn -w 4 'app:create_app()' \
-        -b "$APP_URL:$APP_PORT" \
+        -b "$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT" \
         --access-logfile - \
         --error-logfile - \
         --capture-output
@@ -240,7 +246,7 @@ function test_data_community {
     fi
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_community {
@@ -251,19 +257,19 @@ function delete_test_data_community {
     fi
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function test_data_cases {
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_cases.py create --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_cases.py create --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_cases {
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_cases.py delete --url "http://$APP_URL:$APP_PORT"
+    python3 tests/testdata/init_community_cases.py delete --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 if [ "$1" ]; then

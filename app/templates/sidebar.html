@@ -45,7 +45,7 @@
 			<i class="fas fa-fw fa-book-bookmark"></i>
 			<span>Templates</span>
 		</a>
-		<div id="collapseTemplateSidebar" class="collapse">
+		<div id="collapseTemplateSidebar" class="collapse" data-bs-parent="#accordionSidebar">
 			<div class="py-2 collapse-inner rounded">
 				<a class="collapse-item" href="/templating/cases"><i class="fa-solid fa-folder-open fa-fw me-2"></i>Cases</a>
 				<a class="collapse-item" href="/templating/tasks"><i class="fa-solid fa-list-check fa-fw me-2"></i>Tasks</a>
@@ -66,7 +66,7 @@
 			<i class="fas fa-fw fa-tags"></i>
 			<span>Context</span>
 		</a>
-		<div id="collapseTagsSidebar" class="collapse">
+		<div id="collapseTagsSidebar" class="collapse" data-bs-parent="#accordionSidebar">
 			<div class="py-2 collapse-inner rounded">
 				<a class="collapse-item" href="/custom_tags/"><i class="fa-solid fa-user-tag fa-fw me-2"></i>Custom tags</a>
 				<a class="collapse-item" href="/admin/taxonomies"><i class="fa-solid fa-tag fa-fw me-2"></i>Taxonomies</a>
@@ -81,7 +81,7 @@
 			<i class="fas fa-fw fa-toolbox"></i>
 			<span>Tools</span>
 		</a>
-		<div id="collapseToolsSidebar" class="collapse">
+		<div id="collapseToolsSidebar" class="collapse" data-bs-parent="#accordionSidebar">
 			<div class="py-2 collapse-inner rounded">
 				<a class="collapse-item" href="/connectors/"><i class="fa-solid fa-link fa-fw me-2"></i>Connectors</a>
 				{% if current_user.is_admin() or current_user.is_importer() or current_user.is_template_editor() %}
@@ -110,7 +110,7 @@
 			<i class="fas fa-fw fa-earth-europe"></i>
 			<span>Community</span>
 		</a>
-		<div id="collapseCommunitySidebar" class="collapse">
+		<div id="collapseCommunitySidebar" class="collapse" data-bs-parent="#accordionSidebar">
 			<div class="py-2 collapse-inner rounded">
 				<a class="collapse-item" href="/admin/orgs"><i class="fa-solid fa-users fa-fw me-3"></i>Orgs</a>
 				<a class="collapse-item" href="/admin/users"><i class="fa-solid fa-user fa-fw me-3"></i>Users</a>
@@ -134,14 +134,14 @@
 		</a>
 	</li>
 
+	{% if config.ENABLE_CHATBOT %}
 	<li class="nav-item">
-		{% if config.ENABLE_CHATBOT %}
 		<a class="nav-link" href="/chatbot/">
 			<i class="fas fa-fw fa-robot"></i>
 			<span>Chatbot</span>
 		</a>
-		{% endif %}
 	</li>
+	{% endif %}
 
 	<!-- Divider -->
 	<hr class="sidebar-divider d-none d-md-block">

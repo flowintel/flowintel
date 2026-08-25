@@ -1,4 +1,5 @@
 import { display_toast } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 
 export default {
 	delimiters: ['[[', ']]'],
@@ -37,9 +38,12 @@ export default {
 
 		async function delete_file(file) {
 			// Delete a file in the case
-			if (!confirm('Are you sure you want to delete "' + file.name + '"?')) {
-				return
-			}
+			const ok = await confirmDelete({
+				title: 'Delete file?',
+				message: 'Are you sure you want to delete this file? This cannot be undone.',
+				detail: file.name
+			})
+			if (!ok) return
 			const res = await fetch('/case/' + props.case_id + '/delete_case_file/' + file.id)
 			if (await res.status == 200) {
 				emit('files_change')

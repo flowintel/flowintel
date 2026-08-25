@@ -1,21 +1,28 @@
 import { display_toast } from '/static/js/toaster.js'
-const { ref, nextTick, onMounted, watch, computed } = Vue
-const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+import { confirmDelete } from '/static/js/confirm.js'
+import smart_editor from '/static/js/components/smart-editor.js'
+import smart_render from '/static/js/components/smart-render.js'
+const { ref, onMounted } = Vue
 export default {
 	delimiters: ['[[', ']]'],
+	components: {
+		smart_editor,
+		smart_render
+	},
 	props: {
 		cases_info: Object,
-		task: Object,
-		md: Object
+		task: Object
 	},
 	setup(props) {
 		const is_exporting = ref(false)		 	// Boolean to display a spinner when exporting
 		const note_editor_render = ref([])		// Notes display in mermaid
-		const note_preview_html = ref({})		// Resolved preview HTML by key
-		let editor_list = []								// Variable for the editor
 		const edit_mode = ref(-1)			// Boolean use when the note is in edit mode
-		const resolved_notes = ref({})		// Cache of resolved note content by note id
-		const resolved_notes_html = ref({})	// Styled HTML for read-only rendering by note id
+		// Resolved markdown source (not pre-rendered HTML) by note id — fed to
+		// <smart_render>, which does its own marked + mermaid rendering, including
+		// turning the ⟪@var⦂value⟫ markers left by resolveNoteVariables(mark=true)
+		// into styled spans itself, after marked.parse(). Never post-process those
+		// markers here — see renderMarkdown() in markdown-render.js.
+		const resolved_notes_markdown = ref({})
 
 		if (props.task.notes.length) {
 			for (let i in props.task.notes) {
@@ -28,20 +35,26 @@ export default {
 		// Resolve @variables in a note for rendering
 		async function resolveNoteVars(noteId, noteText) {
 			if (!noteText || !window.FlowintelNoteVariables || !window.FlowintelNoteVariables.hasVariables(noteText)) {
-				resolved_notes.value[noteId] = noteText || ''
-				resolved_notes_html.value[noteId] = props.md.render(noteText || '')
+				resolved_notes_markdown.value[noteId] = noteText || ''
 				return
 			}
-			const resolved = await window.FlowintelNoteVariables.resolveNoteVariables(
-				props.task.case_id, noteText, props.task.id
-			)
-			resolved_notes.value[noteId] = resolved
-			// Also resolve with markers for styled rendering
-			const markedResolved = await window.FlowintelNoteVariables.resolveNoteVariables(
+			// Resolve with markers embedded in the markdown source; <smart_render>
+			// converts them to styled spans itself, after marked.parse().
+			resolved_notes_markdown.value[noteId] = await window.FlowintelNoteVariables.resolveNoteVariables(
 				props.task.case_id, noteText, props.task.id, true
 			)
-			resolved_notes_html.value[noteId] = window.FlowintelNoteVariables.postProcessVarMarkers(
-				props.md.render(markedResolved)
+		}
+
+		// Passed as :resolve-variables to <smart_editor> for every note's editor —
+		// resolves @this.case.title / @this.task.title style references to real values
+		// in the live preview. Shared across all notes since they're all in this same
+		// task/case context. Returns raw markdown with ⟪@var⦂value⟫ markers still
+		// embedded — <smart_editor> renders this through the shared renderMarkdown()
+		// pipeline, which resolves the markers into markup only after marked.parse(),
+		// so a resolved value can never reach the renderer as live HTML.
+		async function resolve_note_preview(text) {
+			return await window.FlowintelNoteVariables.resolveNoteVariables(
+				props.task.case_id, text, props.task.id, true
 			)
 		}
 
@@ -58,24 +71,11 @@ export default {
 			}
 		}
 
-		// Get styled HTML for a note (falls back to md.render of raw text)
-		function getResolvedNoteHtml(noteId, rawNote) {
-			if (resolved_notes_html.value[noteId] !== undefined) {
-				return resolved_notes_html.value[noteId]
-			}
-			try {
-				return props.md ? props.md.render(rawNote || '') : (rawNote || '')
-			} catch (e) {
-				// If markdown rendering fails (e.g. mermaid/DOM timing issues),
-				// return a safe escaped fallback so the page doesn't break.
-				return (rawNote || '')
-			}
-		}
-
-		// Get resolved text for a note (falls back to raw text)
-		function getResolvedNote(noteId, rawNote) {
-			if (resolved_notes.value[noteId] !== undefined) {
-				return resolved_notes.value[noteId]
+		// Get resolved markdown source for a note (falls back to raw text), fed to
+		// <smart_render> which renders it (marked + mermaid) itself.
+		function getResolvedNoteMarkdown(noteId, rawNote) {
+			if (resolved_notes_markdown.value[noteId] !== undefined) {
+				return resolved_notes_markdown.value[noteId]
 			}
 			return rawNote || ''
 		}
@@ -90,62 +90,26 @@ export default {
 				props.task.notes.push(loc["note"])
 				let key = props.task.notes.length - 1
 				note_editor_render.value[key] = ""
-				await nextTick()
-				const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
-
-				if (targetElement.innerHTML === "") {
-					let editor = new EditorView({
-						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[key] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list.push(editor)
-				}
-				try { await props.md.mermaid.run() } catch(e) {}
 			}
 		}
 
 		async function delete_note(task, note_id, key) {
+			const ok = await confirmDelete({
+				title: 'Delete note?',
+				message: 'Are you sure you want to delete this note? This cannot be undone.'
+			})
+			if (!ok) return
 			// Delete a note of the task
 			const res = await fetch('/case/' + task.case_id + '/delete_note/' + task.id + '?note_id=' + note_id)
 
 			if (await res.status == 200) {
-				// Tear down the editor bound to this slot and drop the slot's state.
-				// note_preview_html and _previewResolvers are keyed by array index, so
-				// reset them wholesale; the deep watcher on note_editor_render will
-				// repopulate the preview for surviving notes.
-				try { editor_list[key] && editor_list[key].destroy() } catch (e) {}
-				editor_list.splice(key, 1)
 				note_editor_render.value.splice(key, 1)
-				note_preview_html.value = {}
-				for (const k in _previewResolvers) delete _previewResolvers[k]
-				delete resolved_notes.value[note_id]
-				delete resolved_notes_html.value[note_id]
+				delete resolved_notes_markdown.value[note_id]
 
 				props.task.notes.splice(key, 1)
 
 				if (!props.task.notes.length) {
-					// The template switches to the v-else "empty" branch which renders
-					// a fresh editor_0_<task.id> element that needs a new EditorView.
 					note_editor_render.value = [""]
-					await nextTick()
-					const targetElement = document.getElementById('editor_0_' + props.task.id)
-					if (targetElement && targetElement.innerHTML === "") {
-						let editor = new EditorView({
-							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-								if (v.docChanged) {
-									note_editor_render.value[0] = editor.state.doc.toString()
-								}
-							})],
-							parent: targetElement
-						})
-						editor_list[0] = editor
-					}
 				}
 			}
 			display_toast(res)
@@ -158,20 +122,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/get_note/' + task.id + '?note_id=' + note_id)
 			let loc = await res.json()
 			task.notes[key].note = loc["note"]
-
-			// Initialize the editor
-			const targetElement = document.getElementById('editor1_' + key + "_" + props.task.id)
-			let editor = new EditorView({
-				doc: task.notes[key].note,
-				extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-					if (v.docChanged) {
-						note_editor_render.value[key] = editor.state.doc.toString()
-					}
-				})],
-				parent: targetElement
-			})
-			editor_list[key] = editor
-			try { await props.md.mermaid.run() } catch(e) {}
+			note_editor_render.value[key] = loc["note"]
 		}
 
 		async function export_notes(task, type, note_id) {
@@ -195,7 +146,7 @@ export default {
 
 		async function modif_note(task, note_id, key) {
 			// Modify notes of the task
-			let notes_loc = editor_list[key].state.doc.toString()
+			let notes_loc = note_editor_render.value[key] ?? ''
 			if (notes_loc.trim().length == 0) {
 				notes_loc = notes_loc.trim()
 			}
@@ -225,25 +176,9 @@ export default {
 				const savedNoteId = note_id == -1 ? loc["note"]["id"] : note_id
 				await resolveNoteVars(savedNoteId, notes_loc)
 
-				await nextTick()
-
 				if (!notes_loc) {
-					const targetElement = document.getElementById('editor_' + key + "_" + props.task.id)
-					if (targetElement.innerHTML === "") {
-						let editor = new EditorView({
-							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-								if (v.docChanged) {
-									note_editor_render.value[key] = editor.state.doc.toString()
-								}
-							})],
-							parent: targetElement
-						})
-						editor_list[key] = editor
-					}
+					note_editor_render.value[key] = "\n\n"
 				}
-				await nextTick()
-				try { await props.md.mermaid.run() } catch(e) {}
 			} else {
 				display_toast(res_msg)
 			}
@@ -251,89 +186,21 @@ export default {
 
 		onMounted(async () => {
 			await resolveAllNotes()
-			if (props.task.notes.length) {
-				for (let i in props.task.notes) {
-					const targetElement = document.getElementById('editor_' + i + '_' + props.task.id)
-					let editor = new EditorView({
-						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[i] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list[i] = editor
-				}
-			} else {
-				const targetElement = document.getElementById('editor_0_' + props.task.id)
-				let editor = new EditorView({
-					doc: "\n\n",
-					extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-						if (v.docChanged) {
-							note_editor_render.value[0] = editor.state.doc.toString()
-						}
-					})],
-					parent: targetElement
-				})
-				editor_list[0] = editor
-				// md.mermaid.run()
-			}
-
-				// After Vue has inserted resolved HTML, run mermaid safely
-				await nextTick()
-				try { await props.md.mermaid.run({ querySelector: '.markdown-render-result .mermaid, .markdown-render .mermaid' }) } catch(e) {}
-			
-			})
-
-		// Debounced preview resolvers per editor key
-		const _previewResolvers = {}
-		function getPreviewResolver(key) {
-			if (!_previewResolvers[key]) {
-				_previewResolvers[key] = window.FlowintelNoteVariables.createPreviewResolver(
-					props.md, props.task.case_id, 500,
-					async () => {
-						await nextTick()
-						try { await props.md.mermaid.run() } catch(e) {}
-					}
-				)
-			}
-			return _previewResolvers[key]
-		}
-
-		// Update preview HTML when editor content changes (called by watcher)
-		function updateEditPreview(key, text) {
-			if (!note_preview_html.value[key]) {
-				note_preview_html.value[key] = props.md.render(text || '')
-			}
-			const resolver = getPreviewResolver(key)
-			const previewRef = { get value() { return note_preview_html.value[key] }, set value(v) { note_preview_html.value[key] = v } }
-			resolver.update(text, props.task.id, previewRef)
-		}
-
-		watch(note_editor_render, (newAllContent) => {
-			// Update preview for all keys (deep watcher passes same ref for old/new)
-			for (let key in newAllContent) {
-				updateEditPreview(key, newAllContent[key])
-			}
-		}, { deep: true })
+		})
 
 		return {
-			// md,
 			note_editor_render,
-			note_preview_html,
 			is_exporting,
 			edit_mode,
-			resolved_notes,
-			resolved_notes_html,
+			resolved_notes_markdown,
+			resolve_note_preview,
 
 			add_notes_task,
 			delete_note,
 			edit_note,
 			export_notes,
 			modif_note,
-			getResolvedNote,
-			getResolvedNoteHtml,
+			getResolvedNoteMarkdown,
 		}
 	},
 	template: `
@@ -369,10 +236,7 @@ export default {
 										<small><i class="fa-solid fa-floppy-disk"></i></small> Save
 									</button>
 								</div>
-								<div style="display: flex;">
-									<div class="note-editor" :id="'editor1_'+key+'_'+task.id"></div>
-									<div class="markdown-render" v-html="note_preview_html[key] || md.render(note_editor_render[key])"></div>
-								</div>
+								<smart_editor v-model="note_editor_render[key]" mode="markdown" :resolve-variables="resolve_note_preview" class="mb-3"></smart_editor>
 							</template>
 							<!-- Render an existing note -->
 							<template v-else>
@@ -409,7 +273,7 @@ export default {
 										</button>
 									</template>
 								</div>
-								<p class="markdown-render-result" v-html="getResolvedNoteHtml(task_note.id, task_note.note)"></p>
+								<smart_render :code="getResolvedNoteMarkdown(task_note.id, task_note.note)" language="markdown" class="mb-3"></smart_render>
 							</template>
 						</template>
 						<!-- Note is empty -->
@@ -428,10 +292,7 @@ export default {
 								</template>
 							</div>
 							<template v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
-								<div style="display: flex;">
-									<div class="note-editor" :id="'editor_'+key+'_'+task.id"></div>
-									<div class="markdown-render" v-html="note_preview_html[key] || md.render(note_editor_render[key])"></div>
-								</div>
+								<smart_editor v-model="note_editor_render[key]" mode="markdown" :resolve-variables="resolve_note_preview" class="mb-3"></smart_editor>
 							</template>
 						</template>
 					</template>
@@ -446,10 +307,7 @@ export default {
 								<small><i class="fa-solid fa-plus fa-fw"></i></small> Create
 							</button>
 						</div>
-						<div style="display: flex;">
-							<div class="note-editor" :id="'editor_0_'+task.id"></div>
-							<div class="markdown-render" v-html="note_preview_html[0] || md.render(note_editor_render[0])"></div>
-						</div>
+						<smart_editor v-model="note_editor_render[0]" mode="markdown" :resolve-variables="resolve_note_preview" class="mb-3"></smart_editor>
 					</template>
 				</div>
 			</div>

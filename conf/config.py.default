@@ -118,14 +118,17 @@ class Config():
     WTF_CSRF_TIME_LIMIT = 8 * 3600
     
     # =============================================================================
-    # FLASK APPLICATION BINDING
+    # FLOWINTEL APP BINDING - Used by both Flask dev server AND Gunicorn appservers
     # =============================================================================
-    # FLASK_URL: IP address Flask binds to
+    # Flask dev server: app.run(host=FLOWINTEL_APP_HOST, port=FLOWINTEL_APP_PORT)
+    # Gunicorn: gunicorn -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT (read via Python one-liner)
+    # Other scripts: current_app.config.get('FLOWINTEL_APP_HOST')
+    # FLOWINTEL_APP_HOST: IP address for binding
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
     #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
-    # FLASK_PORT: Port number Flask listens on (default 7006)
-    FLASK_URL = os.getenv('FLASK_URL', '127.0.0.1')
-    FLASK_PORT = os.getenv('FLASK_PORT', '7006')
+    # FLOWINTEL_APP_PORT: Port number the appserver listens on (default 7006)
+    FLOWINTEL_APP_HOST = '127.0.0.1'
+    FLOWINTEL_APP_PORT = 7006
 
     # =============================================================================
     # MISP MODULES
@@ -258,6 +261,17 @@ class Config():
     # The chatbot also requires a reachable Ollama instance and the OLLAMA_*
     # values in conf/config_module.py before it can answer questions.
     ENABLE_CHATBOT = env_bool('ENABLE_CHATBOT', default=False)
+
+    # =============================================================================
+    # MERMAID
+    # =============================================================================
+    # Enable Mermaid rendering in markdown views and live previews.
+    # Set to false to keep Mermaid blocks as plain markdown/code in the UI.
+    ENABLE_MERMAID = os.getenv('ENABLE_MERMAID', 'true').lower() == 'true'
+
+    # Enable Mermaid rendering during server-side note exports (PDF/DOCX).
+    # Set to false to disable Mermaid Pandoc filters entirely.
+    ENABLE_MERMAID_EXPORT = os.getenv('ENABLE_MERMAID_EXPORT', 'true').lower() == 'true'
 
     # =============================================================================
     # ENTRA ID

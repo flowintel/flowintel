@@ -5,12 +5,14 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variables.js') }}"></script>
+
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
@@ -41,7 +43,7 @@
         <div class="case-title-row">
             <h1 class="case-title">
                 <span class="case-id">{{case.id}}</span>
-                {{case.title}}
+                {{ case.title|vue_escape }}
             </h1>
             <div class="case-badges">
                 <span v-if="cases_info" class="case-visibility-badge" :title="cases_info.case.is_private ? 'Private case - only org members can see' : 'Public case - anyone can view'">
@@ -71,7 +73,7 @@
         {% if case.ticket_id %}
         <div class="case-ticket-row">
             <span class="ticket-badge" title="Ticket ID">
-                <i class="fa-solid fa-ticket"></i> {{case.ticket_id}}
+                <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
             </span>
         </div>
         {% endif %}
@@ -105,7 +107,7 @@
         <div class="case-meta-item" title="Recurring schedule">
             <i class="fa-solid fa-repeat fa-fw"></i>
             <span class="meta-label">Recurring</span>
-            <span class="meta-value">{{case.recurring_type}}{% if case.recurring_date %} ({{case.recurring_date}}){% endif %}</span>
+            <span class="meta-value">{{ case.recurring_type|vue_escape }}{% if case.recurring_date %} ({{ case.recurring_date|vue_escape }}){% endif %}</span>
         </div>
         {% endif %}
     </div>
@@ -113,7 +115,7 @@
     {% if config.SHOW_GDPR_NOTICE %}
     <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
         <i class="fa-solid fa-info-circle me-2"></i>
-        <span>{{ config.GDPR_NOTICE }}</span>
+        <span>{{ config.GDPR_NOTICE|vue_escape }}</span>
     </div>
     {% endif %}
 
@@ -125,8 +127,8 @@
                 :aria-expanded="showDescription">
             <i class="fa-solid fa-chevron-down"></i> Description
         </button>
-        <div v-show="showDescription">
-            <pre class="case-description" v-if="cases_info" v-html="md.render(cases_info.case.description)"></pre>
+        <div v-if="showDescription">
+            <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
         </div>
     </div>
     {% endif %}
@@ -419,18 +421,15 @@
 
 
             <template v-if="subtab_note == 'case'">
-                <div class="d-flex" v-if="cases_info.case.notes">
+                <div v-if="cases_info.case.notes">
                     <template v-if="edit_mode">
-                        <div style="margin-right: -10px;">
+                        <div class="mb-2">
                             <button class="btn btn-primary" @click="save_note_case()">Save</button>
                         </div>
-                        <div class="container-fluid" style="display: flex; width:90%">
-                            <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="edit_preview_html"></div>
-                        </div>
+                        <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                     </template>
                     <template v-else>
-                        <div>
+                        <div class="d-flex gap-2 align-items-start mb-2">
                             <button class="btn btn-primary" @click="edit_note()">
                                 <small><i class="fa-solid fa-pen fa-fw"></i></small> Edit
                             </button>
@@ -455,7 +454,7 @@
                                     </li>
                                 </ul>
                             </div>
-                            <button class="btn btn-outline-secondary mb-2" @click="show_variables_help = !show_variables_help" title="Note variables reference">
+                            <button class="btn btn-outline-secondary" @click="show_variables_help = !show_variables_help" title="Note variables reference">
                                 <small><i class="fa-solid fa-at fa-fw"></i></small> Variables
                             </button>
                         </div>
@@ -466,20 +465,17 @@
                             <p class="mb-1">Variables are shown as raw syntax in edit mode and resolved to actual values in render mode.</p>
                             <details>
                                 <summary>Full reference</summary>
-                                <div v-html="md.render(variables_reference)" class="mt-2" style="max-height: 400px; overflow-y: auto;"></div>
+                                <smart_render :code="variables_reference" language="markdown" :simple="true" class="mt-2" style="max-height: 400px; overflow-y: auto;"></smart_render>
                             </details>
                         </div>
-                        <div v-html="resolved_case_notes_html" class="markdown-render-result container-fluid"></div>
+                        <smart_render :code="resolved_case_notes_markdown" language="markdown" :simple="false" title="Notes"></smart_render>
                     </template>
                 </div>
-                <div v-else class="d-flex">
-                    <div style="margin-right: -10px;">
-                        <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
+                <div v-else>
+                    <div class="mb-2">
+                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
                     </div>
-                    <div class="container-fluid" style="display: flex; width:90%">
-                        <div class="note-editor" id="editor"></div>
-                        <div class="markdown-render" v-html="edit_preview_html"></div>
-                    </div>
+                    <smart_editor v-model="note_editor_render" mode="markdown" :resolve-variables="resolve_note_preview"></smart_editor>
                 </div>
             </template>
             <template v-else-if="subtab_note == 'template'">
@@ -639,7 +635,7 @@
 
         <!-- Search bar -->
         <div class="col input-group w-auto">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalFilter">
+            <button type="button" class="btn btn-sm" :class="has_active_filters ? 'btn-filter-active' : 'btn-outline-primary'" data-bs-toggle="modal" data-bs-target="#modalFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter tasks'">
                 <i class="fa-solid fa-filter fa-sm"></i>
             </button>
             <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search task by title' />
@@ -808,12 +804,22 @@
                                         :task="task" 
                                         :key_loop="key"
                                         :open_closed="open_closed"
-                                        :md="md"
                                         :all_connectors_list="all_connectors_list"
                                         :task_modules="task_modules">
                             </case_tasks>
                         </div>
                     </template>
+                    <div v-if="cases_info.tasks.length === 0" class="text-center text-muted py-4">
+                        <template v-if="(open_closed.open || 0) + (open_closed.closed || 0) === 0">
+                            <i class="fa-solid fa-list-check fa-sm me-1"></i>No task yet
+                            {% if not current_user.read_only() and present_in_case or current_user.is_admin() %}
+                            - add one using the <a href="/case/{{case.id}}/create_task"><i class="fa-solid fa-plus"></i></a> button
+                            {% endif %}
+                        </template>
+                        <template v-else>
+                            <i class="fa-solid fa-filter fa-sm me-1"></i>No tasks matching your filter
+                        </template>
+                    </div>
                 </div>
 
                 <!-- Pagination -->
@@ -845,7 +851,7 @@
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="(notes, idx) in all_notes">
-                    <div class="all-tasks-notes" v-html="resolved_all_notes[idx] || md.render(notes.text || notes)"></div>
+                    <smart_render class="all-tasks-notes" :code="resolved_all_notes[idx] || notes.text || notes" language="markdown" :simple="true"></smart_render>
                 </template>
             </template>
             
@@ -886,10 +892,11 @@
         import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
+        import smart_render from '/static/js/components/smart-render.js'
+        import smart_editor from '/static/js/components/smart-editor.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
-        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-        
+
         createApp({
             delimiters: ['[[', ']]'],
             components: {
@@ -905,7 +912,9 @@
                 timeline_view,
                 timeline_graph,
                 note_from_template,
-                computer_assistate_template
+                computer_assistate_template,
+                smart_render,
+                smart_editor
             },
             setup() {
                 const cases_info = ref(null)
@@ -917,7 +926,7 @@
                 let current_filter = ""
                 const search_query = ref('')
                 let searchTimer = null
-                let asc_desc = true
+                let asc_desc = false
                 let or_and_taxo = true
                 let or_and_galaxies = true
 
@@ -1020,55 +1029,43 @@
 
                 const open_closed = ref({})
                 const all_notes = ref("")
-                let editor
                 const note_editor_render = ref("")
-                const edit_preview_html = ref("")
 
                 const edit_mode = ref(false)
 
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
-
-                // Debounced preview resolver for live editing (uses the same md instance)
-                const _previewResolver = FlowintelNoteVariables.createPreviewResolver(
-                    md,
-                    {{ case.id }},
-                    500,
-                    async () => {
-                        await nextTick()
-                        try { await md.mermaid.run({ querySelector: '.markdown-render .mermaid' }) } catch(e) {}
-                    }
-                )
-
-                // Re-run mermaid on live-preview updates (editing mode)
-                watch(note_editor_render, (newVal) => {
-                    // Update the preview with debounced variable resolution
-                    _previewResolver.update(newVal, null, edit_preview_html)
-                })
-
                 // Note variables resolution
-                const resolved_case_notes = ref('')
-                const resolved_case_notes_html = ref('')
+                // Resolved markdown source (not pre-rendered HTML) — fed to <smart_render>,
+                // which does its own marked + mermaid rendering, including turning the
+                // ⟪@var⦂value⟫ markers left by resolveNoteVariables(mark=true) into styled
+                // spans itself, after marked.parse(). Never post-process those markers
+                // here — see renderMarkdown() in markdown-render.js.
+                const resolved_case_notes_markdown = ref('')
                 const resolved_all_notes = ref([])
                 const case_id_for_vars = {{ case.id }}
 
                 async function resolveAndSetNotes() {
                     if (cases_info.value && cases_info.value.case && cases_info.value.case.notes) {
-                        const resolved = await FlowintelNoteVariables.resolveNoteVariables(
-                            case_id_for_vars, cases_info.value.case.notes
-                        )
-                        resolved_case_notes.value = resolved
-                        // Also render with styling markers
-                        const markedResolved = await FlowintelNoteVariables.resolveNoteVariables(
+                        // Resolve with markers embedded in the markdown source; <smart_render>
+                        // converts them to styled spans itself, after marked.parse().
+                        resolved_case_notes_markdown.value = await FlowintelNoteVariables.resolveNoteVariables(
                             case_id_for_vars, cases_info.value.case.notes, null, true
                         )
-                        resolved_case_notes_html.value = FlowintelNoteVariables.postProcessVarMarkers(
-                            md.render(markedResolved)
-                        )
                     } else {
-                        resolved_case_notes.value = ''
-                        resolved_case_notes_html.value = ''
+                        resolved_case_notes_markdown.value = ''
                     }
+                }
+
+                // Passed as :resolve-variables to <smart_editor> for the notes editor —
+                // resolves @this.case.title-style references to real values in its live
+                // preview. Returns the raw markdown with ⟪@var⦂value⟫ markers still
+                // embedded — <smart_editor> renders this through the shared
+                // renderMarkdown() pipeline, which resolves the markers into the same
+                // "resolved" badge as the rendered view, only after marked.parse(), so a
+                // resolved value can never reach the renderer as live HTML.
+                async function resolve_note_preview(text) {
+                    return await FlowintelNoteVariables.resolveNoteVariables(
+                        case_id_for_vars, text, null, true
+                    )
                 }
 
                 async function resolveAllTaskNotes() {
@@ -1078,10 +1075,8 @@
                             const taskId = entry.task_id || null
                             return FlowintelNoteVariables.resolveNoteVariables(case_id_for_vars, text, taskId, true)
                         })
-                        const resolved = await Promise.all(promises)
-                        resolved_all_notes.value = resolved.map(r =>
-                            FlowintelNoteVariables.postProcessVarMarkers(md.render(r))
-                        )
+                        // Markers stay embedded; <smart_render> resolves them after marked.parse().
+                        resolved_all_notes.value = await Promise.all(promises)
                     } else {
                         resolved_all_notes.value = []
                     }
@@ -1109,6 +1104,18 @@
                         case_connectors_list.value = loc["case_connectors"]
                         // refresh module counts when connectors change
                         await fetch_module_counts()
+                        // refresh MISP-link badge in the header — modules such as misp_event
+                        // may have just attached the case to a MISP event
+                        await refresh_misp_link_status()
+                    }
+                }
+                async function refresh_misp_link_status(){
+                    if(!cases_info.value || !cases_info.value.case) return
+                    const res = await fetch("/case/{{case.id}}/get_case_info")
+                    if(res.status === 200){
+                        const loc = await res.json()
+                        cases_info.value.case.has_misp_event = loc.case.has_misp_event
+                        cases_info.value.case.misp_icon = loc.case.misp_icon
                     }
                 }
                 async function fetch_case_files(){
@@ -1338,23 +1345,6 @@
                     }
                 }
 
-                async function prepare_editor(default_text){
-                    const targetElement = document.getElementById('editor')
-                    if(targetElement && targetElement.innerHTML === ""){
-                        editor = new EditorView({
-                            doc: default_text,
-                            extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                                if (v.docChanged) {
-                                    note_editor_render.value = editor.state.doc.toString()
-                                }
-                            })],
-                            parent: targetElement
-                        })
-                    }
-                    await nextTick()
-                    try { await md.mermaid.init() } catch(e) {}
-                }
-
                 async function fetch_all_notes(){
                     const res = await fetch("/case/"+cases_info.value.case.id+"/all_notes")
                     let loc = await res.json()
@@ -1391,9 +1381,9 @@
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'notes'){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }else{
-                            prepare_editor(cases_info.value.case.notes)
+                            note_editor_render.value = cases_info.value.case.notes ?? ''
                         }
                     }else{
                         // Dynamic connector tab
@@ -1417,9 +1407,9 @@
                         }
                         await nextTick()
                         if(!cases_info.value.case.notes && loc_tab != 'case'){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }else{
-                            prepare_editor(cases_info.value.case.notes)
+                            note_editor_render.value = cases_info.value.case.notes ?? ''
                         }
                     }else if(tab_name == 'template'){
                         subtab_note.value = tab_name
@@ -1430,7 +1420,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'hedgedoc'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-hedgedoc").classList.contains("active") ){
@@ -1440,7 +1429,6 @@
                             document.getElementById("subtab-computer-assistate").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }else if(tab_name == 'computer-assistate'){
                         subtab_note.value = tab_name
                         if ( !document.getElementById("subtab-computer-assistate").classList.contains("active") ){
@@ -1450,7 +1438,6 @@
                             document.getElementById("subtab-hedgedoc").classList.remove("active")
                         }
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1486,7 +1473,6 @@
                         }
                         await fetch_all_notes()
                         await nextTick()
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                 }
 
@@ -1517,21 +1503,44 @@
                     const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        tags_list.value = loc["tags"]
-                        $('#tags_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    tags_list.value = loc["tags"]
+                    await nextTick()
+                    // Drop selected tags that are no longer available in the new taxonomies-filtered list
+                    const valid_tags = new Set()
+                    if (tags_list.value){
+                        for (const k in tags_list.value){
+                            for (const t of tags_list.value[k]) valid_tags.add(t.name)
+                        }
+                    }
+                    selected_tags.value = selected_tags.value.filter(name => valid_tags.has(name))
+                    // Sync the select2 widget so its chips reflect the cleared selection
+                    $('#filter_tags_select').val(selected_tags.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
                 async function fetch_cluster(){
                     const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
                     if(await res.status==400 ){
                         display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        cluster_list.value = loc["clusters"]
-                        $('#clusters_select').trigger('change');
+                        return
                     }
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                    await nextTick()
+                    // Drop selected clusters that are no longer available in the new galaxies-filtered list
+                    const valid_clusters = new Set()
+                    if (cluster_list.value){
+                        for (const k in cluster_list.value){
+                            for (const c of cluster_list.value[k]) valid_clusters.add(c.name)
+                        }
+                    }
+                    selected_clusters.value = selected_clusters.value.filter(name => valid_clusters.has(name))
+                    $('#filter_clusters_select').val(selected_clusters.value).trigger('change.select2')
+                    current_page.value = 1
+                    fetch_sorted_tasks()
                 }
 
                 async function fetch_custom_tags(){
@@ -1553,7 +1562,7 @@
                 }
 
                 async function save_note_case(){
-                    let notes_loc = editor.state.doc.toString()
+                    let notes_loc = note_editor_render.value ?? ''
                     if(notes_loc.trim().length == 0){
                         notes_loc = notes_loc.trim()
                     }
@@ -1570,12 +1579,9 @@
                         cases_info.value.case.notes = notes_loc
                         FlowintelNoteVariables.clearVariableCache()
                         await resolveAndSetNotes()
-                        await nextTick()
-                        
                         if(!notes_loc){
-                            prepare_editor("\n\n")
+                            note_editor_render.value = "\n\n"
                         }
-                        try { await md.mermaid.init() } catch(e) {}
                     }
                     await display_toast(res_msg)
                 }
@@ -1583,11 +1589,7 @@
                 async function edit_note(){
                     // Edit the note of the task
                     edit_mode.value = true
-                    await nextTick()
-                    
-                    note_editor_render.value = cases_info.value.case.notes
-                    prepare_editor(cases_info.value.case.notes)
-                    
+                    note_editor_render.value = cases_info.value.case.notes ?? ''
                 }
 
                 function initialize_select2(){
@@ -1627,7 +1629,7 @@
 
                 async function autosave_case_note(){
                     if (edit_mode.value){
-                        let notes_loc = editor.state.doc.toString()
+                        let notes_loc = note_editor_render.value ?? ''
                         if(notes_loc.trim().length == 0){
                             notes_loc = notes_loc.trim()
                         }
@@ -1762,7 +1764,7 @@
 
                     const options = {
                         animation: 150,
-                        handle: '.list-group-item', // Only drag by header
+                        handle: '.task-drag-handle',
                         ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
                         onEnd: async function(evt) {
                             let task
@@ -1835,6 +1837,17 @@
 
                 const total_pages = computed(() => Math.ceil(total_tasks.value / per_page))
 
+                const has_active_filters = computed(() => {
+                    return (
+                        (search_query.value || '').length > 0 ||
+                        selected_tags.value.length > 0 ||
+                        selected_taxo.value.length > 0 ||
+                        selected_galaxies.value.length > 0 ||
+                        selected_clusters.value.length > 0 ||
+                        selected_custom_tags.value.length > 0
+                    )
+                })
+
                 function go_to_page(page) {
                     if (page < 1 || page > total_pages.value) return
                     current_page.value = page
@@ -1869,6 +1882,7 @@
                     users_in_case,
                     message_list,
                     dayjs,
+                    has_active_filters,
                     main_tab,
                     subtab_note,
                     subtab_timeline,
@@ -1894,7 +1908,6 @@
                     cluster_list,
                     custom_tags,
                     open_closed,
-                    md,
                     all_notes,
                     note_editor_render,
                     edit_mode,
@@ -1926,14 +1939,13 @@
                     total_pages,
                     go_to_page,
 
-                    resolved_case_notes,
-                    resolved_case_notes_html,
+                    resolved_case_notes_markdown,
+                    resolve_note_preview,
                     resolved_all_notes,
                     show_variables_help,
                     showDescription,
                     showWorkflow,
                     variables_reference,
-                    edit_preview_html,
 
                     connector_types_in_case,
                     loaded_module_components,

@@ -5,8 +5,8 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 {{ super() }}
 {%endblock%}
@@ -20,8 +20,8 @@
         <div class="case-core-style" style="min-height: 70px;">
             <div class="row">
                 <div class="mb-3 w-50">
-                    {{form.title.label(class_="col-form-label")}}:
-                    {{form.title(class_="form-control")}}
+                    {{form.title.label(class_="col-form-label")}} <span class="text-danger">*</span>
+                    {{form.title(class_="form-control", required=True)}}
                     {% if form.title.errors %}
                         <div style="color: red;">{{form.title.errors[0] | safe}}</div>
                     {%endif%}
@@ -36,11 +36,8 @@
             </div>
             <div class="row">
                 <span class="mb-2">Description:</span>
-                <div style="display: flex">
-                    <div class="note-editor" id="editor"></div>
-                    <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                    <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
-                </div>
+                <smart_editor v-model="note_editor_render" mode="markdown" name="description_editor" placeholder="Describe the case…" :show-line-numbers="true" max-height="260px"></smart_editor>
+                <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
             </div>
 
             <div class="d-flex gap-2" style="margin-top: 10px;">
@@ -53,37 +50,22 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, onMounted} = Vue
+    const { createApp, ref } = Vue
     import {message_list} from '/static/js/toaster.js'
-    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-    
+    import smart_editor from '/static/js/components/smart-editor.js'
+
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_editor
+        },
         setup() {
-            let editor
-            const md = window.markdownit()
-            const description_content = `{{description | safe}}`
+            const description_content = {{ (description or '') | tojson }}
             const note_editor_render = ref(description_content)
-            
-            onMounted(() => {
-                const targetElement = document.getElementById('editor')
-                if(targetElement && targetElement.innerHTML === ""){
-                    editor = new EditorView({
-                        doc: description_content,
-                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
-                }
-            })
 
             return {
                 message_list,
                 note_editor_render,
-                md
             }
         }
     }).mount('#main-container')

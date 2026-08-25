@@ -1,5 +1,12 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div class="case-core-style" style="border-radius: 0;">
         <div class="row align-items-center">
@@ -12,18 +19,26 @@
 
     <div class="case-core-style">
         <div class="mb-3">
-            <label class="col-form-label">Title:</label>
-            <input v-model="title" class="form-control" placeholder="Title">
+            <label class="col-form-label">Title:<span class="text-danger ms-1">*</span></label>
+            <input v-model="title" class="form-control" placeholder="Title" required>
         </div>
-        
+
         <div class="mb-3">
             <label class="col-form-label">Description:</label>
             <textarea v-model="description" class="form-control" rows="3" placeholder="Description"></textarea>
         </div>
 
+        <div class="mb-3">
+            <label class="col-form-label">Content:<span class="text-danger ms-1">*</span></label>
+            <smart_editor v-model="note_editor_render" mode="markdown" name="content" placeholder="Write the note template content…" :show-line-numbers="true" max-height="320px"></smart_editor>
+        </div>
+
         <div class="d-flex gap-2" style="margin-top: 10px;">
             <a href="{{ url_for('tools.note_template_index') }}" class="btn btn-secondary">Cancel</a>
-            <button class="btn btn-primary" @click="submit_form()">Save</button>
+            <button class="btn btn-primary"
+                    :disabled="!can_submit"
+                    :title="can_submit ? 'Save' : 'Title and content are required'"
+                    @click="submit_form()">Save</button>
         </div>
     </div>
 {% endblock %}
@@ -32,21 +47,37 @@
 {% block script %}
 <script type="module">
     // @ts-nocheck
-    const { createApp, ref } = Vue
+    const { createApp, ref, computed } = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
-    
+    import smart_editor from '/static/js/components/smart-editor.js'
+
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_editor
+        },
         setup() {
-            const title = ref("{{ note_template.title }}")
-            const description = ref("{{ note_template.description or '' }}")
+            const title = ref({{ note_template.title | tojson }})
+            const description = ref({{ (note_template.description or '') | tojson }})
             const note_id = {{ note_template.id }}
+            const initial_content = {{ (note_template.content or '') | tojson }}
+
+            const note_editor_render = ref(initial_content)
+
+            const can_submit = computed(() =>
+                title.value.trim() !== "" && note_editor_render.value.trim() !== ""
+            )
 
             async function submit_form() {
-                const res = await fetch('/tools/note_template/' + note_id + '/edit', {
-                    headers: { 
-                        "X-CSRFToken": $("#csrf_token").val(), 
-                        "Content-Type": "application/json" 
+                if(!can_submit.value){
+                    display_toast({message: 'Title and content are required', toast_class: 'warning-subtle'})
+                    return
+                }
+
+                const meta_res = await fetch('/tools/note_template/' + note_id + '/edit', {
+                    headers: {
+                        "X-CSRFToken": $("#csrf_token").val(),
+                        "Content-Type": "application/json"
                     },
                     method: "POST",
                     body: JSON.stringify({
@@ -55,17 +86,36 @@
                     })
                 })
 
-                if (res.status == 200) {
-                    window.location.href = '/tools/note_template_index'
-                } else {
-                    display_toast(res)
+                if (meta_res.status != 200) {
+                    display_toast(meta_res)
+                    return
                 }
+
+                const content_changed = note_editor_render.value !== initial_content
+                if (content_changed) {
+                    const content_res = await fetch('/tools/note_template/' + note_id + '/edit_content', {
+                        headers: {
+                            "X-CSRFToken": $("#csrf_token").val(),
+                            "Content-Type": "application/json"
+                        },
+                        method: "POST",
+                        body: JSON.stringify({"content": note_editor_render.value})
+                    })
+                    if (content_res.status != 200) {
+                        display_toast(content_res)
+                        return
+                    }
+                }
+
+                window.location.href = '/tools/note_template_index'
             }
 
             return {
                 message_list,
                 title,
                 description,
+                note_editor_render,
+                can_submit,
                 submit_form
             }
         }
