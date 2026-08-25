@@ -1,3 +1,5 @@
+# This repository provides docker-compose files as a convenience for development and testing.
+# For example, they support systematic testing of database schema changes across all supported database backends.
 services:
   valkey:
     container_name: valkey
