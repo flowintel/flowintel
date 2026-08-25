@@ -332,6 +332,17 @@ full_run_maria: configure_repo_dev build_latest_local
 	sleep 1
 	rm docker/.env
 
+full_run_mysql: configure_repo_dev build_latest_local
+	# We stop dev infra on error on a the end - must be in single bash shell
+	set -e
+	trap '$(MAKE) full_dev_localinfra_mysql_stop -s >/dev/null' EXIT
+	cp -f .env.full.mysql.custom docker/.env
+	docker compose -f docker/docker-compose-local-full-mysql.yml up
+	echo "Press Enter to close..."
+	read _
+	sleep 1
+	rm docker/.env
+
 full_run_official_postgres: configure_repo_dev
 	# We stop dev infra on error on a the end - must be in single bash shell
 	set -e
@@ -376,6 +387,9 @@ full_dev_localinfra_postgres_stop:
 
 full_dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-full-maria.yml down
+
+full_dev_localinfra_mysql_stop:
+	docker compose -f docker/docker-compose-local-full-mysql.yml down
 
 full_dev_localinfra_official_postgres_stop:
 	docker compose -f docker/docker-compose.yml down
@@ -486,6 +500,7 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "run_maria" "/"  "Run Dev App + Dockerised Dev Infrastructure (docker-compose with MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_maria" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_mysql" "/"  "Run Dev App + Dev Infrastructure fully Dockerised (docker-compose with MySQL stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_run_official_postgres" "/"  "Run Dev App + Dockerised Dev Infrastructure fully Dockerised based on Official Docker image (docker-compose with Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_run" "/"  "Manual Run Dev Infrastructure (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Manual Run Dev Infrastructure (docker-compose, MariaDB stack)"
@@ -494,6 +509,7 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_mysql_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MySQL stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_official_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
 	echo ""
 	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release (TODO)${RESET}"
