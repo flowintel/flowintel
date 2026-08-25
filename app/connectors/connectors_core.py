@@ -565,33 +565,46 @@ def edit_connector_instance_core(iid, form_dict):
     if instance_db:
         user = User.query.get(form_dict["acting_user_id"])
         sharing_scope = normalize_instance_sharing_scope(form_dict, user)
+        api_key = (form_dict.get("api_key") or "").strip()
+        existing_user_instance = User_Connector_Instance.query.filter_by(
+            user_id=user.id,
+            instance_id=iid
+        ).first()
+        existing_instance_key = instance_db.global_api_key
+        if not existing_instance_key:
+            existing_instance_key = (
+                existing_user_instance.api_key
+                if existing_user_instance and existing_user_instance.api_key
+                else None
+            )
+        if not existing_instance_key:
+            any_user_instance = User_Connector_Instance.query.filter_by(instance_id=iid).first()
+            existing_instance_key = any_user_instance.api_key if any_user_instance else None
+        saved_api_key = api_key or existing_instance_key or ""
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
         instance_db.sharing_scope = sharing_scope
         if sharing_scope == "global":
             instance_db.shared_org_id = None
-            if form_dict["api_key"]:
-                instance_db.global_api_key = form_dict["api_key"]
+            if saved_api_key:
+                instance_db.global_api_key = saved_api_key
         elif sharing_scope == "org":
             instance_db.shared_org_id = user.org_id
-            if form_dict["api_key"]:
-                instance_db.global_api_key = form_dict["api_key"]
+            if saved_api_key:
+                instance_db.global_api_key = saved_api_key
         else:
             instance_db.shared_org_id = None
             instance_db.global_api_key = None
-            user_instance = User_Connector_Instance.query.filter_by(
-                user_id=user.id,
-                instance_id=iid
-            ).first()
+            user_instance = existing_user_instance
             if not user_instance:
                 user_instance = User_Connector_Instance(
                     user_id=user.id,
                     instance_id=iid,
                     api_key=""
                 )
-            if form_dict["api_key"]:
-                user_instance.api_key = form_dict["api_key"]
+            if saved_api_key:
+                user_instance.api_key = saved_api_key
             db.session.add(user_instance)
             db.session.commit()
 
