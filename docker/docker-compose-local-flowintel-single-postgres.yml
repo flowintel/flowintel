@@ -6,10 +6,10 @@ services:
     ports:
       # If Flowintel needs to be reached from exterior (SimpleSaml IdP for example)
       # And not reverse proxy in Dev
-      # - "0.0.0.0:${APP_PORT:-7006}:${APP_PORT:-7006}"
+      # - "0.0.0.0:${FLOWINTEL_APP_PORT:-7006}:${FLOWINTEL_APP_PORT:-7006}"
       # Hardening suggestion:
-      - "127.0.0.1:${APP_PORT:-7006}:${APP_PORT:-7006}"
-      - "[::1]:${APP_PORT:-7006}:${APP_PORT:-7006}"
+      - "127.0.0.1:${FLOWINTEL_APP_PORT:-7006}:${FLOWINTEL_APP_PORT:-7006}"
+      - "[::1]:${FLOWINTEL_APP_PORT:-7006}:${FLOWINTEL_APP_PORT:-7006}"
     # Development hack 1:
     # Overwrites the environment defaults while avoiding that a missing .env file would make config
     # behavior somehow erratic
@@ -41,8 +41,8 @@ services:
       # By default, we use production config because the docker compose owns a database service
       - FLOWINTEL_APP_ENV=${FLOWINTEL_APP_ENV:-production}
       #
-      - FLASK_PORT=${APP_PORT:-7006}
-      - FLASK_URL=${FLASK_URL:-0.0.0.0}
+      - FLOWINTEL_APP_PORT=${FLOWINTEL_APP_PORT:-7006}
+      - FLOWINTEL_APP_HOST=${FLOWINTEL_APP_HOST:-0.0.0.0}
     #
     networks:
       - net

@@ -125,10 +125,11 @@ class Config():
     # Other scripts: current_app.config.get('FLOWINTEL_APP_HOST')
     # FLOWINTEL_APP_HOST: IP address for binding
     #   - Use '127.0.0.1' for local access only (recommended when behind NGINX)
-    #   - Use '0.0.0.0' to allow direct access from other machines (testing only)
+    #   - Use '0.0.0.0' to allow direct access from other machines (testing only
+    #     or specific case of Docker -> overidden with environment variables in the docker compose files)
     # FLOWINTEL_APP_PORT: Port number the appserver listens on (default 7006)
-    FLOWINTEL_APP_HOST = '127.0.0.1'
-    FLOWINTEL_APP_PORT = 7006
+    FLOWINTEL_APP_HOST = os.getenv('FLOWINTEL_APP_HOST', '127.0.0.1')
+    FLOWINTEL_APP_PORT = os.getenv('FLOWINTEL_APP_PORT', '7006')
 
     # =============================================================================
     # MISP MODULES
