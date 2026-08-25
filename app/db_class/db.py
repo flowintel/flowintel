@@ -471,9 +471,25 @@ class Rulezet_Rule(db.Model):
         }
 
 class Task_External_Reference(db.Model):
+    # If we really an index, we do it on smaller set of characters because mysql is limited to 3072Bytes
+    # __table_args__ = (
+    #     # Index 1: Prefix index for MySQL/MariaDB + text_pattern_ops for PostgreSQL
+    #     db.Index(
+    #         'ix_task__external__reference_url',
+    #         'url',
+    #         mysql_length=1024,  # MySQL/MariaDB: prefix B-tree index (first 1024 chars)
+    #         postgresql_ops={'url': 'text_pattern_ops'},  # PostgreSQL: optimize for LIKE 'prefix%'
+    #     ),
+    #     # Index 2: Hash index for PostgreSQL exact-match queries
+    #     db.Index(
+    #         'ix_task__external__reference_url_hash',
+    #         'url',
+    #         postgresql_using='hash',  # PostgreSQL only: hash index for exact matches
+    #     ),
+    # )
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey(FK_TASK_ID, ondelete="CASCADE"))
-    url = db.Column(db.String(8192), index=True)
+    url = db.Column(db.String(8192))
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
 
     def to_json(self):

@@ -133,6 +133,7 @@ def upgrade():
         )
 
     with op.batch_alter_table("task__external__reference", schema=None) as batch_op:
+        batch_op.drop_index("ix_task__external__reference_url")
         batch_op.alter_column(
             "url",
             existing_type=sa.VARCHAR(),
@@ -904,6 +905,11 @@ def downgrade():
             existing_type=sa.String(length=8192),
             type_=sa.VARCHAR(),
             existing_nullable=True,
+        )
+        batch_op.create_index(
+            "ix_task__external__reference_url",
+            ["url"],
+            unique=False,
         )
 
     with op.batch_alter_table("rulezet__rule", schema=None) as batch_op:
