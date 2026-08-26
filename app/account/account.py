@@ -1,28 +1,31 @@
-from .. import db
-from ..db_class.db import User, Role, Login_Event
-from .form import LoginForm, EditUserFrom
+import datetime
+import logging
+import time
+import secrets
+from urllib.parse import urlparse
+
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session, abort
-from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
 from flask_login import (
     current_user,
     login_required,
     login_user,
     logout_user,
 )
-from . import account_core as AccountModel
-from . import entra_core as EntraModel
-from . import keycloak_core as KeycloakModel
+from wtforms.validators import Email, ValidationError
+from itsdangerous import URLSafeTimedSerializer, BadData
+
+from app.extensions import db
+from app.db_class.db import User, Login_Event
 from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
-import datetime
-import logging
-import time
-import secrets
-from urllib.parse import urlparse
-from itsdangerous import URLSafeTimedSerializer, BadData
 
-from wtforms.validators import Email, ValidationError
+from .form import LoginForm, EditUserFrom
+from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
+from . import account_core as AccountModel
+from . import entra_core as EntraModel
+from . import keycloak_core as KeycloakModel
+
 
 logger = logging.getLogger()
 

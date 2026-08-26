@@ -24,6 +24,7 @@ matrix-nio[e2e]
 misp-modules[minimal]
 redis
 psycopg2-binary
+PyMySQL
 msal
 requests
 python-gnupg

@@ -1,8 +1,12 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
-from . import notification_core as NotifModel
+
+from app.db_class.db import User
+
 from ..utils.logger import flowintel_log
-from ..db_class.db import User
+
+from . import notification_core as NotifModel
+
 
 notification_blueprint = Blueprint(
     'notification',

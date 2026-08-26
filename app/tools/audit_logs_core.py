@@ -9,8 +9,9 @@ from pathlib import Path
 
 from flask import current_app
 
+from app.db_class.db import Case, Login_Event, User, DATETIME_FORMAT_FULL
+
 from ..case.common_core import HISTORY_DIR
-from ..db_class.db import Case, Login_Event, User, DATETIME_FORMAT_FULL
 from ..utils.logger import flowintel_log
 
 

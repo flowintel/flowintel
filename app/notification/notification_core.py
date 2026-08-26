@@ -1,7 +1,9 @@
-from .. import db
-from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User, Role
-from sqlalchemy import desc
 import datetime
+
+from sqlalchemy import desc
+
+from app.extensions import db
+from app.db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User, Role
 
 DATE_FORMAT = '%Y-%m-%d'
 

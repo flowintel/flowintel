@@ -1,14 +1,14 @@
 # https://github.com/flowintel/flowintel
 
 # Install variables
-VENV_DIR="env"
+VENV_DIR="${VENV_DIR:-env}"
 
 if apt -v &> /dev/null ; then
     sudo apt install -y python3-venv git screen libolm-dev librsvg2-bin wget valkey
     # install pandoc from git 
     # pandoc dependencies
     sudo apt install -y texlive texlive-xetex texlive-fonts-extra
-    wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
+    wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-"$(dpkg --print-architecture)".deb
     sudo dpkg -i pandoc*.deb
     rm pandoc*
 elif dnf --version &> /dev/null ; then

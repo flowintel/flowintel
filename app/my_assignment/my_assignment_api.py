@@ -1,13 +1,14 @@
 from flask import request
-from . import my_assignment_core as AssignModel
-from ..case.TaskCore import TaskModel
 
 from flask_restx import Namespace, Resource
+
 from ..decorators import api_required
 from ..utils import utils
 
-my_assignment_ns = Namespace("my_assignment", description="Endpoints to manage assignments")
+from . import my_assignment_core as AssignModel
 
+
+my_assignment_ns = Namespace("my_assignment", description="Endpoints to manage assignments")
     
 @my_assignment_ns.route('/user')
 @my_assignment_ns.doc(description='Get all task assignments for a user')

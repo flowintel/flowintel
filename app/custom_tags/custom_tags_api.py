@@ -1,11 +1,13 @@
 from flask import request
-from . import custom_tags_core as CustomModel
-from . import custom_tags_core_api as CustomModelApi
-
 from flask_restx import Namespace, Resource
+
 from ..decorators import api_required, editor_required
 from ..utils import utils
 from ..utils.logger import flowintel_log
+
+from . import custom_tags_core as CustomModel
+from . import custom_tags_core_api as CustomModelApi
+
 
 custom_tags_ns = Namespace("custom_tags", description="Endpoints to manage custom tags")
 

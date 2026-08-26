@@ -20,12 +20,12 @@ function killscript {
 }
 
 function taxo_galaxy_update {
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     python3 app.py -tg
 }
 
 function misp_module_update {
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
 
     screen -dmS "misp_mod_flowintel"
     screen -S "misp_mod_flowintel" -X screen -t "misp_modules_server" bash -c "misp-modules -l 127.0.0.1; read x"
@@ -37,7 +37,7 @@ function misp_module_update {
 }
 
 function launch {
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR="$history_dir/history"
     killscript
     screen -dmS "fcm"
@@ -48,14 +48,14 @@ function launch {
 }
 
 function test {
-    export FLASKENV="testing"
+    export FLOWINTEL_APP_ENV="testing"
     export HISTORY_DIR="$history_dir/history_test"
     pytest
     rm -r "$HISTORY_DIR"
 }
 
 function production {
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR="$history_dir/history"
     killscript
     db_upgrade
@@ -67,7 +67,7 @@ function production {
 }
 
 function init_db {
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR="$history_dir/history"
 
     screen -dmS "misp_mod_flowintel"

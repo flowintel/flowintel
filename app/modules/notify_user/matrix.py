@@ -1,10 +1,11 @@
 import json
 import aiohttp
-import conf.config_module as Config
 from nio import AsyncClient, AsyncClientConfig, SyncResponse
 from nio.responses import LoginError
 import asyncio
 import os
+
+import conf.config_module as Config
 
 
 module_config = {

@@ -2,26 +2,28 @@ import os
 from typing import List
 import uuid
 import datetime
+
 from flask import current_app
-from .. import db
-from ..db_class.db import (
+from flask import request, send_file
+from werkzeug.utils import secure_filename
+
+from sqlalchemy import and_
+
+from app.extensions import db
+from app.db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
     Case_Misp_Object
 )
-from ..utils.utils import create_specific_dir, isUUID
-
-from sqlalchemy import and_
-from flask import request, send_file
-from werkzeug.utils import secure_filename
-from ..notification import notification_core as NotifModel
-
-from . import common_core as CommonModel
-from ..custom_tags import custom_tags_core as CustomModel
 
 from app.utils.utils import get_modules_list
+from ..utils.utils import create_specific_dir, isUUID
+from ..notification import notification_core as NotifModel
+from ..custom_tags import custom_tags_core as CustomModel
 
+
+from . import common_core as CommonModel
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 

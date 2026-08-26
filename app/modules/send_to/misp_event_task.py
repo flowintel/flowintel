@@ -1,8 +1,11 @@
 from pymisp import MISPEvent, MISPObject, PyMISP
 import uuid
+
 from flask import current_app
+
 import conf.config_module as Config
 from .misp_object_event import bump_event_timestamp
+
 
 module_config = {
     "connector": "misp",

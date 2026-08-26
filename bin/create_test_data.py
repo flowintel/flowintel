@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from app import create_app
 from app.db_class.db import User
+
 from app.utils.init_db import create_default_case
+
 
 app = create_app()
 

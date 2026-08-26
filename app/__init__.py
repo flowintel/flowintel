@@ -1,5 +1,7 @@
-from dotenv import load_dotenv
-load_dotenv()
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+import redis
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -10,19 +12,9 @@ from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 
-from conf.config import config as Config
-import os
-import logging
-from logging.handlers import RotatingFileHandler
+from app.extensions import db, csrf, migrate, session, login_manager
 
-import redis
-
-
-db = SQLAlchemy()
-csrf = CSRFProtect()
-migrate = Migrate()
-session = Session()
-login_manager = LoginManager()
+from conf.config import config as Config # This will also parse the .env
 
 def vue_escape(value):
     """Render server text safely inside DOM regions later compiled by Vue."""
@@ -33,11 +25,14 @@ def vue_escape(value):
 
 def create_app():
     app = Flask(__name__)
-    config_name = os.environ.get("FLASKENV", "development")
+    config_name = os.environ.get("FLOWINTEL_APP_ENV", "development").strip().lower()
 
-    app.config.from_object(Config[config_name])
+    if config_name not in Config:
+        raise ValueError(f"Unknown config environment: {config_name}")
 
-    Config[config_name].init_app(app)
+    config_class = Config[config_name]
+    app.config.from_object(config_class)
+    config_class.init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
     
     if not app.debug and not app.testing:

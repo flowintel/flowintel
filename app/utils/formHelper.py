@@ -1,5 +1,6 @@
 from ..case import common_core as CommonModel
 
+
 def prepare_tags(request):
     tag_list = request.form.getlist("tags_select")
     cluster_list = request.form.getlist("clusters_select")

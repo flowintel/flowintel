@@ -5,11 +5,14 @@ import subprocess
 from typing import List
 import uuid
 
-from flask import send_file, current_app
-from .. import db
-from ..db_class.db import *
-from ..utils.utils import get_modules_list, isUUID, create_specific_dir
+from flask import send_file
+
 from sqlalchemy import desc, func, or_
+
+from app.extensions import db
+from app.db_class.db import *
+
+from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from ..utils import utils
 from ..custom_tags import custom_tags_core as CustomModel
 
@@ -556,8 +559,6 @@ def get_audit_logs(case_id):
 
 def download_audit_logs(case):
     """Download audit logs as text file"""
-    from flask import current_app
-    
     try:
         audit_logs = get_audit_logs(case.id)
         if not audit_logs:
@@ -653,6 +654,7 @@ def export_notes(case_task: bool, case_task_id: int, type_req: str, note_id: int
     return export_notes_core(case_task_id, type_req, note, allow_mermaid=allow_mermaid)
 
 def export_notes_core(case_task_id: int, type_req: str, note: str, download_filename: str = None, allow_mermaid: bool = True):
+    from flask import current_app
     if type_req not in ("pdf", "docx"):
         return {"message": "Invalid export format", "toast_class": "warning-subtle"}, 400
 

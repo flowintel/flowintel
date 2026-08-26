@@ -1,5 +1,7 @@
-from .utils import check_tag
 from ..case import common_core as CommonModel
+
+from .utils import check_tag
+
 
 def creation_verification_tags_connectors(data_dict):
     if "tags" in data_dict:

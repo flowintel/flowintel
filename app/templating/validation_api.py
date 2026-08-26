@@ -1,6 +1,7 @@
-from ..db_class.db import Case_Template, Task_Template
+from app.db_class.db import Case_Template, Task_Template
+
+from ..case import common_core as CommonModel
 from ..utils.datadictHelper import edition_verification_tags_connectors, creation_verification_tags_connectors
-from  ..case import common_core as CommonModel
 
 
 def common_creation(data_dict):

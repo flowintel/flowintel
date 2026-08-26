@@ -9,7 +9,7 @@ import pytest
 
 @pytest.fixture(scope="function")
 def app():
-    os.environ.setdefault("FLASKENV", "testing")
+    os.environ.setdefault("FLOWINTEL_APP_ENV", "testing")
     app = create_app()
     app.config.update({
         "TESTING": True,
