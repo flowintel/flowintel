@@ -1,7 +1,9 @@
-from .. import db
-from ..db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User, Role
-from sqlalchemy import desc
 import datetime
+
+from sqlalchemy import desc
+
+from app.extensions import db
+from app.db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_User, Role
 
 DATE_FORMAT = '%Y-%m-%d'
 
@@ -133,7 +135,7 @@ def create_notification_user(message, case_id, user_id, html_icon):
     return notif
 
 
-def create_notification_for_approvers(message, case_id, org_id, html_icon):
+def create_notification_for_approvers(message, case_id, org_id, html_icon, exclude_user_id=None):
     """Create notification for users who can approve tasks (Admin, Case Admin, Queue Admin) in the owner org."""
     org = Org.query.get(org_id)
     if not org:
@@ -151,7 +153,7 @@ def create_notification_for_approvers(message, case_id, org_id, html_icon):
     approver_role_ids = [role.id for role in approver_roles]
     
     for user in org.users:
-        if user.role_id in approver_role_ids:
+        if user.role_id in approver_role_ids and user.id != exclude_user_id:
             notif = Notification(
                 message=message,
                 is_read=False,

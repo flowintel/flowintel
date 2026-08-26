@@ -1,9 +1,6 @@
 #!/bin/bash -i
 set -e
 
-isscripted_fcm=`screen -ls | egrep '[0-9]+.fcm' | cut -d. -f1 || true`
-isscripted_misp_mod=`screen -ls | egrep '[0-9]+.misp_mod_flowintel' | cut -d. -f1 || true`
-
 history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Directory of the python virtualenv to use; can be overridden by env var
@@ -43,9 +40,15 @@ if [ ! -f "$CONFIG_MODULE_FILE" ]; then
     fi
 fi
 
-# Get app URL and port from config
-APP_URL=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_URL)")
-APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLASK_PORT)")
+
+function get_app_url_port {
+    # Get app URL and port from config
+    # Refactored as a function in order to make it compatible both when a local venv exists (nondocker) and when it doesnot (docker)
+    # This allows to run the test in the local dev environment venv
+    FLOWINTEL_APP_HOST=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_HOST)")
+    FLOWINTEL_APP_PORT=$(PYTHONPATH=$SCRIPT_DIR python3 -c "from conf import config; print(config.Config.FLOWINTEL_APP_PORT)")
+}
+
 
 function prepare_app_run {
     # This function is to avoid having problem with the env for test
@@ -62,23 +65,29 @@ function prepare_app_run {
 
 function killscript {
     echo "Stopping existing sessions..."
-    if  [ $isscripted_fcm ]; then
+    local isscripted_fcm
+    local isscripted_misp_mod
+
+    isscripted_fcm=$(screen -ls | egrep '[0-9]+\.fcm' | cut -d. -f1 || true)
+    isscripted_misp_mod=$(screen -ls | egrep '[0-9]+\.misp_mod_flowintel' | cut -d. -f1 || true)
+
+    if [ -n "$isscripted_fcm" ]; then
         screen -X -S fcm quit
     fi
-    if  [ $isscripted_misp_mod ]; then
+    if [ -n "$isscripted_misp_mod" ]; then
         screen -X -S misp_mod_flowintel quit
     fi
 }
 
 function taxo_galaxy_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     python3 app.py -utg
 }
 
 function misp_module_update {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
     sleep 3
     python3 app.py -mm
@@ -87,7 +96,7 @@ function misp_module_update {
 
 function launch {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -106,7 +115,8 @@ function launch {
 }
 
 function test {
-    export FLASKENV="testing"
+    prepare_app_run
+    export FLOWINTEL_APP_ENV="testing"
     export HISTORY_DIR=$history_dir/history_test
     pytest
     rm -r $HISTORY_DIR
@@ -114,7 +124,8 @@ function test {
 
 function production {
     prepare_app_run
-    export FLASKENV="production"
+    get_app_url_port
+    export FLOWINTEL_APP_ENV="production"
     export HISTORY_DIR=$history_dir/history
     killscript
 
@@ -126,48 +137,66 @@ function production {
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT --access-logfile -
 }
 
 function init_db {
     prepare_app_run
-    export FLASKENV="development"
+    export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
+    echo "Create default test cases. Wait for Done..."
     python3 app.py -td
+    echo "Done"
 
     killscript
 }
 
 function init_db_prod {
     prepare_app_run
-    export FLASKENV="production"
+    export FLOWINTEL_APP_ENV="production"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
+    echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
     python3 app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
     python3 app.py -mm
+    echo "Done"
     # don't import test data for prod 
+    #echo "Create default test cases"
     #python3 app.py -td
+
+    killscript
 }
 
 function reload_db {
     prepare_app_run
-    export FLASKENV="${FLASKENV:-development}"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
     export HISTORY_DIR=$history_dir/history
     python3 app.py -r
 }
 
 function launch_docker {
+    get_app_url_port
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     # Start screen sessions with logs
@@ -180,20 +209,33 @@ function launch_docker {
 
     trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
 
-    gunicorn -w 4 'app:create_app()' -b $APP_URL:$APP_PORT --access-logfile -
+    gunicorn -w 4 'app:create_app()' \
+        -b "$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT" \
+        --access-logfile - \
+        --error-logfile - \
+        --capture-output
 }
 
 function init_db_docker {
+    # Run Python unbuffered so we see progress when the app.py inits
     mkdir -p logs
-    export FLASKENV="docker"
+    export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
     screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 
-    python3 app.py -i
-    python3 app.py -tg
-    python3 app.py -mm
-    python3 app.py -td
+    echo "Initialise the db if it not exist. Wait for Done..."
+    python3 -u app.py -i
+    echo "Done"
+    echo "Add taxonomies and galaxies. Wait for Done..."
+    python3 -u app.py -tg
+    echo "Done"
+    echo "Add or update misp-modules. Wait for Done..."
+    python3 -u app.py -mm
+    echo "Done"
+    # don't import test data for prod 
+    #echo "Create default test cases"
+    #python3 app.py -td
 }
 
 function test_data_community {
@@ -203,7 +245,8 @@ function test_data_community {
         exit 1
     fi
     prepare_app_run
-    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    get_app_url_port
+    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_community {
@@ -213,17 +256,20 @@ function delete_test_data_community {
         exit 1
     fi
     prepare_app_run
-    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$APP_URL:$APP_PORT"
+    get_app_url_port
+    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function test_data_cases {
     prepare_app_run
-    python3 tests/testdata/init_community_cases.py create --url "http://$APP_URL:$APP_PORT"
+    get_app_url_port
+    python3 tests/testdata/init_community_cases.py create --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_cases {
     prepare_app_run
-    python3 tests/testdata/init_community_cases.py delete --url "http://$APP_URL:$APP_PORT"
+    get_app_url_port
+    python3 tests/testdata/init_community_cases.py delete --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 if [ "$1" ]; then

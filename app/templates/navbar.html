@@ -96,7 +96,7 @@
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
                     <li>
                         <span class="dropdown-item-text fw-semibold">
-                            {{current_user.first_name}} {{current_user.last_name}}
+                            {{ current_user.first_name|vue_escape }} {{ current_user.last_name|vue_escape }}
                             {% if current_user.is_admin() %}
                                 <span class="badge bg-danger ms-1" title="Admin role"><i class="fa-solid fa-shield-halved"></i></span>
                             {% elif current_user.read_only() %}

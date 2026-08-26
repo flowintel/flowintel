@@ -43,6 +43,7 @@ export default {
                 if (!props.task.misp_object_links) props.task.misp_object_links = []
                 props.task.misp_object_links.push(loc.link)
                 create_message('MISP object linked', 'success-subtle', false, 'fas fa-link')
+                window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_object_id: obj.object_id } }))
             } else {
                 await display_toast(res)
             }
@@ -54,6 +55,7 @@ export default {
                 const idx = props.task.misp_object_links.findIndex(l => l.misp_object_id === obj.id)
                 if (idx > -1) props.task.misp_object_links.splice(idx, 1)
                 create_message('MISP object unlinked', 'success-subtle', false, 'fas fa-unlink')
+                window.dispatchEvent(new CustomEvent('task-misp-link-changed', { detail: { task_id: props.task.id, misp_object_id: obj.id } }))
             } else {
                 await display_toast(res)
             }

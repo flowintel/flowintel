@@ -1,14 +1,14 @@
 from flask import request
-
 from flask_restx import Namespace, Resource
+
 from ..decorators import api_required, admin_required, misp_editor_required
-from . import connectors_core as ConnectorModel
-from . import connectors_core_api as ConnectorModelApi
 from ..utils import utils
 from ..utils.logger import flowintel_log
 
-connectors_ns = Namespace("connectors", description="Endpoints to manage connectors")
+from . import connectors_core as ConnectorModel
+from . import connectors_core_api as ConnectorModelApi
 
+connectors_ns = Namespace("connectors", description="Endpoints to manage connectors")
 
 
 @connectors_ns.route('/all')

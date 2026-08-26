@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
-from .form import AddCustomTagForm
-from ..db_class.db import Task_Template, Case_Template
+
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+
+from .form import AddCustomTagForm
 from . import custom_tags_core as CustomCore
 
 custom_tags_blueprint = Blueprint(
@@ -121,11 +122,15 @@ def change_config():
             if "custom_tag_color" in request.json["result_dict"] and request.json["result_dict"]["custom_tag_color"]:
                 if "custom_tag_icon" not in request.json["result_dict"] or not request.json["result_dict"]["custom_tag_icon"]:
                     request.json["result_dict"]["custom_tag_icon"] = ""
-                    
+
+                existing_tag = CustomCore.get_custom_tag_by_name(request.json["result_dict"]["custom_tag_name"].strip())
+                if existing_tag and str(existing_tag.id) != str(request.json["result_dict"]["custom_tag_id"]):
+                    return {'message': 'A custom tag with this name already exists', 'toast_class': "warning-subtle"}, 409
+
                 res = CustomCore.change_config_core(request.json["result_dict"])
                 if res:
                     flowintel_log("audit", 200, "Custom tag edited", User=current_user.email, CustomTagId=request.json["result_dict"]["custom_tag_id"], CustomTagName=request.json["result_dict"]["custom_tag_name"])
-                    return {'message': 'Config changed', 'toast_class': "success-subtle"}, 200
+                    return {'message': 'Custom tag updated', 'toast_class': "success-subtle"}, 200
                 return {'message': 'Something went wrong', 'toast_class': "danger-subtle"}, 400                    
             return {'message': 'Need to pass "custom_tag_color"', 'toast_class': "warning-subtle"}, 400
         return {'message': 'Need to pass "custom_tag_name"', 'toast_class': "warning-subtle"}, 400

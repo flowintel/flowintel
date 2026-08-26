@@ -1,5 +1,7 @@
-from ..db_class.db import Custom_Tags
 import re
+
+from app.db_class.db import Custom_Tags
+
 from . import custom_tags_core as CustomModel
 
 def verif_add_custom_tag(request_json):

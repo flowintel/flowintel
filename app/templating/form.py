@@ -9,7 +9,7 @@ from wtforms.fields import (
 )
 from wtforms.validators import InputRequired, Length, Optional
 
-from ..db_class.db import Case_Template, Task_Template
+from app.db_class.db import Case_Template, Task_Template
 
 
 class TaskTemplateForm(FlaskForm):
@@ -22,6 +22,8 @@ class TaskTemplateForm(FlaskForm):
     def validate_title(self, field):
         if not field.data and 0 in self.tasks.data:
             raise ValidationError("Need to enter a title or select a template")
+        if not field.data and not self.tasks.data:
+            raise ValidationError("Title is required")
         if field.data and Task_Template.query.filter_by(title=field.data).first():
             raise ValidationError("The title already exist")
     

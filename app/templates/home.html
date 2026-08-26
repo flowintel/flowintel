@@ -5,7 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
 {{ super() }}
 {%endblock%}
@@ -141,7 +141,7 @@
                                                 </template>
                                             </button>
                                         </div>
-                                        <pre v-if="expandedCases[case_loc.id]" class="case-description" v-html="md.render(case_loc.description)"></pre>
+                                        <smart_render v-if="expandedCases[case_loc.id]" :code="case_loc.description" language="markdown" :simple="true"></smart_render>
                                     </template>
                                     <template v-else>
                                         <i style="color:#888">No description</i>
@@ -202,14 +202,15 @@
     const { createApp, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
     import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+    import smart_render from '/static/js/components/smart-render.js'
     createApp({
         delimiters: ['[[', ']]'],
+        components: { smart_render },
         setup() {
             const case_list = ref(null)
             const status_info = ref(null)
             const version = ref(null)
             const home_stats = ref(null)
-            const md = window.markdownit()
             const expandedCases = ref({})
             const expandedTags = ref({})
 
@@ -322,7 +323,6 @@
                 getTextColor,
                 mapIcon,
                 truncateText,
-                md,
 
                 case_list,
                 status_info,

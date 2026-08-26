@@ -2,26 +2,28 @@ import os
 from typing import List
 import uuid
 import datetime
+
 from flask import current_app
-from .. import db
-from ..db_class.db import (
+from flask import request, send_file
+from werkzeug.utils import secure_filename
+
+from sqlalchemy import and_
+
+from app.extensions import db
+from app.db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
     Case_Misp_Object
 )
-from ..utils.utils import create_specific_dir, isUUID
-
-from sqlalchemy import and_
-from flask import request, send_file
-from werkzeug.utils import secure_filename
-from ..notification import notification_core as NotifModel
-
-from . import common_core as CommonModel
-from ..custom_tags import custom_tags_core as CustomModel
 
 from app.utils.utils import get_modules_list
+from ..utils.utils import create_specific_dir, isUUID
+from ..notification import notification_core as NotifModel
+from ..custom_tags import custom_tags_core as CustomModel
 
+
+from . import common_core as CommonModel
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
 
@@ -244,7 +246,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             case.nb_tasks = case.nb_tasks or 0
 
             status_id = 1
-            if case.privileged_case and current_user.is_queuer() and not current_user.is_admin() and not current_user.is_case_admin() and not current_user.is_queue_admin():
+            if case.privileged_case:
                 status_id = current_app.config['TASK_REQUESTED']
 
             task = Task(
@@ -615,38 +617,42 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         case = CommonModel.get_case(task.case_id)
         if case and case.privileged_case:
             if status == current_app.config['TASK_APPROVED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                approval_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                assignee_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been approved by an administrator"
+                approver_msg = f"[Approver] Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' was approved by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=approval_msg,
+                    message=approver_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
-                    html_icon="fa-solid fa-circle-check"
+                    html_icon="fa-solid fa-circle-check",
+                    exclude_user_id=current_user.id
                 )
                 
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=approval_msg,
+                        message=assignee_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-check"
                     )
             
             elif status == current_app.config['TASK_REJECTED'] and old_status_id == current_app.config['TASK_REQUESTED']:
-                rejection_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                assignee_msg = f"Your task '{task.id}-{task.title}' in case '{case.id}-{case.title}' has been rejected by an administrator"
+                approver_msg = f"[Approver] Task '{task.id}-{task.title}' in case '{case.id}-{case.title}' was rejected by an administrator"
                 
                 NotifModel.create_notification_for_approvers(
-                    message=rejection_msg,
+                    message=approver_msg,
                     case_id=task.case_id,
                     org_id=case.owner_org_id,
-                    html_icon="fa-solid fa-circle-xmark"
+                    html_icon="fa-solid fa-circle-xmark",
+                    exclude_user_id=current_user.id
                 )
                 
                 task_users = Task_User.query.filter_by(task_id=task.id).all()
                 for task_user in task_users:
                     NotifModel.create_notification_user(
-                        message=rejection_msg,
+                        message=assignee_msg,
                         case_id=task.case_id,
                         user_id=task_user.user_id,
                         html_icon="fa-solid fa-circle-xmark"
@@ -1010,16 +1016,15 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     ######################
 
     def get_misp_object_links(self, task_id):
-        """Return all Case_Misp_Object records linked to a task."""
+        """Return all Task_Misp_Object link rows for a task.
+
+        Same shape as Task_Misp_Object.to_json() so the payload matches the
+        `misp_object_links` already embedded in Task.to_json() and consumed by
+        the task's MISP-objects tab (misp_object_name, misp_object_template_uuid,
+        misp_object_id, attributes_preview).
+        """
         links = Task_Misp_Object.query.filter_by(task_id=task_id).all()
-        result = []
-        for link in links:
-            obj = Case_Misp_Object.query.get(link.misp_object_id)
-            if obj:
-                d = obj.to_json()
-                d["link_id"] = link.id
-                result.append(d)
-        return result
+        return [link.to_json() for link in links]
 
     def link_misp_object(self, task_id, misp_object_id, current_user):
         """Link a MISP object to a task. Returns the link or None on error."""
@@ -1138,6 +1143,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             instance = CommonModel.get_instance_by_name(connector["name"])
             if not instance:
                 return False
+            if Task_Connector_Instance.query.filter_by(task_id=tid, instance_id=instance.id).first():
+                continue
             loc_identfier = connector.get("identifier", "")
             c = Task_Connector_Instance(
                 task_id=tid,

@@ -1,15 +1,17 @@
 import {display_toast} from '../toaster.js'
+import smart_render from '/static/js/components/smart-render.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
+	components: {
+		smart_render
+	},
 	props: {
 		cases_info: Object,
 		status_info: Object
 	},
 	setup(props) {
 		const hedgedoc_notes = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
 		const is_loading = ref(false)
 
 		async function get_hedgedoc_notes(){
@@ -48,7 +50,6 @@ export default {
 		}
 
 		return {
-			md,
 			hedgedoc_notes,
 			is_loading,
 			get_hedgedoc_notes,
@@ -75,7 +76,9 @@ export default {
 				<div id="hedgedoc_input_error" style="color: brown"></div>
 			</div>
 		</div>
-		<p v-if="hedgedoc_notes" style="background-color: white; border: 1px #515151 solid; padding: 5px;" v-html="md.render(hedgedoc_notes)"></p>
+		<div v-if="hedgedoc_notes" style="background-color: white; border: 1px #515151 solid; padding: 5px;">
+			<smart_render :code="hedgedoc_notes" language="markdown" :simple="true"></smart_render>
+		</div>
 		<p v-else><i>No notes</i></p>
     `
 }

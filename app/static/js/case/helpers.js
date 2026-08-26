@@ -128,9 +128,6 @@ export function getStatusHint(task, statusInfo) {
     if (task.status_id === statusInfo.config.TASK_REQUESTED) {
         return 'This task is awaiting approval. Users with proper permissions can set it to "Approved" to proceed or "Rejected" to decline.';
     }
-    if (task.status_id === statusInfo.config.TASK_APPROVED) {
-        return 'This task has been approved. You can set it to "Created" (planned), "Ongoing" (in progress), or "Request Review" (ready for approval).';
-    }
     if (task.status_id === statusInfo.config.TASK_REQUEST_REVIEW) {
         return 'This task is awaiting review. An approver can review and set it to "Finished", or send it back to "Ongoing" for further work.';
     }

@@ -4,10 +4,9 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
-<script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
-<script src="{{ url_for('static',filename='js/mermaid-markdown.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/Sortable.min.js') }}"></script>
 <script>
     {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
@@ -106,7 +105,7 @@
                 <i class="fa-solid fa-chevron-down"></i> Description
             </button>
             <div class="collapse show" id="collapseDescription">
-                <pre class="case-description" v-html="md.render(case_template.description)"></pre>
+                <smart_render :code="case_template.description" language="markdown" :simple="true"></smart_render>
             </div>
         </div>
     </div>
@@ -191,26 +190,20 @@
             <template v-else-if="selected_tab == 'note'">
                 <div v-if="case_template.notes">
                     <template v-if="edit_mode && {{ 'true' if can_manage_templates else 'false' }}">
-                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                        <div style="display: flex;">
-                            <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                        </div>
+                        <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
+                        <smart_editor v-model="note_editor_render" mode="markdown"></smart_editor>
                     </template>
                     <template v-else>
                         {% if can_manage_templates %}
-                            <button class="btn btn-primary btn-sm" @click="edit_note()">Edit</button>
+                            <button class="btn btn-primary btn-sm mb-2" @click="edit_note()">Edit</button>
                         {% endif %}
-                        <div v-html="md.render(case_template.notes)" class="markdown-render-result container-fluid"></div>
+                        <smart_render :code="case_template.notes" language="markdown"></smart_render>
                     </template>
                 </div>
                 <template v-else>
                     {% if can_manage_templates %}
-                        <button class="btn btn-primary" @click="save_note_case()">Save</button>
-                        <div style="display: flex;">
-                            <div class="note-editor" id="editor"></div>
-                            <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                        </div>
+                        <button class="btn btn-primary mb-2" @click="save_note_case()">Save</button>
+                        <smart_editor v-model="note_editor_render" mode="markdown"></smart_editor>
                     {% else %}
                         <i>No notes</i>
                     {% endif %}
@@ -284,26 +277,25 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import templateconnectors from '/static/js/templating/TemplateConnectors.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
-        const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+        import smart_editor from '/static/js/components/smart-editor.js'
+        import smart_render from '/static/js/components/smart-render.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 task_template,
                 tags_edition,
-                templateconnectors
+                templateconnectors,
+                smart_editor,
+                smart_render
             },
             setup() {
                 const case_template = ref()
                 const tasks_list = ref(null)
                 const selected_tab = ref("main")
 
-                let editor
                 const note_editor_render = ref("")
                 const edit_mode = ref(false)
-
-                const md = window.markdownit()			// Library to Parse and display markdown
-		        md.use(mermaidMarkdown.default)			// Use mermaid library
 
                 const case_template_connectors_list = ref([])
                 const all_connectors_list = ref([])
@@ -375,20 +367,6 @@
                     return false
                 }
 
-                function prepare_editor(){
-                    md.mermaid.init()
-                    const targetElement = document.getElementById('editor')
-                    editor = new EditorView({
-                        doc: case_template.value.notes,
-                        extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
-                }
-
                 async function active_tab(tab_name){
                     if(tab_name == 'main'){
                         selected_tab.value = 'main'
@@ -409,19 +387,10 @@
                             document.getElementById("tab-info").classList.remove("active")
                         }
                         await nextTick()
-                        if(!case_template.value.notes && loc_tab != 'note'){                            
-                            const targetElement = document.getElementById('editor')
-                            editor = new EditorView({
-                                doc: "\n\n",
-                                extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                                    if (v.docChanged) {
-                                        note_editor_render.value = editor.state.doc.toString()
-                                    }
-                                })],
-                                parent: targetElement
-                            })
+                        if(!case_template.value.notes && loc_tab != 'note'){
+                            note_editor_render.value = "\n\n"
                         }else{
-                            prepare_editor()
+                            note_editor_render.value = case_template.value.notes ?? ''
                         }
                     }else if(tab_name == 'connectors'){
                         selected_tab.value = 'connectors'
@@ -443,27 +412,13 @@
                     }
                 }
 
-                async function edit_note(){
+                function edit_note(){
                     edit_mode.value = true
-                    
-                    note_editor_render.value = case_template.value.notes
-                    await nextTick()
-                    // prepare_editor()
-                    md.mermaid.init()
-                    const targetElement = document.getElementById('editor')
-                    editor = new EditorView({
-                        doc: case_template.value.notes,
-                        extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
+                    note_editor_render.value = case_template.value.notes ?? ''
                 }
 
                 async function save_note_case(){
-                    let notes_loc = editor.state.doc.toString()
+                    let notes_loc = note_editor_render.value ?? ''
                     if(notes_loc.trim().length == 0){
                         notes_loc = notes_loc.trim()
                     }
@@ -477,25 +432,9 @@
                     if(await res_msg.status == 200){
                         edit_mode.value = false
                         case_template.value.notes = notes_loc
-                        // notes.value = notes_loc
-                        await nextTick()
-                        
                         if(!notes_loc){
-                            const targetElement = document.getElementById('editor')
-                            if(targetElement.innerHTML === ""){
-                                editor = new EditorView({
-                                    doc: "\n\n",
-                                    extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-                                        if (v.docChanged) {
-                                            note_editor_render.value = editor.state.doc.toString()
-                                        }
-                                    })],
-                                    parent: targetElement
-                                })
-                            }
-                            
+                            note_editor_render.value = "\n\n"
                         }
-                        md.mermaid.init()
                     }
                     await display_toast(res_msg)
                 }
@@ -578,7 +517,6 @@
                     selected_tab,
                     note_editor_render,
                     edit_mode,
-                    md,
 
                     active_tab,
                     delete_case,

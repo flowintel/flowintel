@@ -1,6 +1,8 @@
 import os
+
 from flask import Blueprint
 from flask_restx import Api
+
 
 api_blueprint = Blueprint(
     "api", __name__, url_prefix="/api"
@@ -55,7 +57,3 @@ api.add_namespace(templating_ns, path="/templating")
 api.add_namespace(importer_ns, path="/importer")
 api.add_namespace(case_misp_ns, path="/case_from_misp")
 api.add_namespace(calendar_api, path="/calendar")
-
-
-
-

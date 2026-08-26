@@ -1,9 +1,13 @@
 import {display_toast} from '../toaster.js'
+import smart_render from '/static/js/components/smart-render.js'
 const { ref, onMounted, nextTick } = Vue
 const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
 export default {
     delimiters: ['[[', ']]'],
+    components: {
+        smart_render
+    },
 	props: {
 		cases_info: Object
 	},
@@ -19,8 +23,6 @@ export default {
 
         let editor
         const note_editor_render = ref("")
-		const md = window.markdownit()			// Library to Parse and display markdown
-		md.use(mermaidMarkdown.default)			// Use mermaid library
 
 		async function fetch_note_template(){
             const res = await fetch('/tools/note_template')
@@ -138,7 +140,6 @@ export default {
                             parent: targetElement
                         })
                     }
-                    md.mermaid.init()
                 }
             }else if(tab_name == 'template'){
                 main_tab.value = "template"
@@ -505,12 +506,10 @@ export default {
 
         onMounted(() => {
             fetch_case_note_template()
-            md.mermaid.init()
 
         })
 
 		return {
-			md,
 			is_exporting,
 			note_template_list,
 			selected_note_template,
@@ -633,20 +632,27 @@ export default {
 
                         <template v-if="rendering_tab == 'mixed'">
                             <div class="render-pane">
-                                <div class="render-content" v-html="md.render(mustache_render)"></div>
+                                <div class="render-content">
+                                    <smart_render :code="mustache_render" language="markdown" :simple="true"></smart_render>
+                                </div>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'template'">
                             <div class="render-pane">
                                 <div class="render-content">
-                                    <span v-if="Object.keys(case_note_template).length" v-html="md.render(case_note_template.content)"></span>
-                                    <span v-else v-html="md.render(selected_note_template.content)"></span>
+                                    <smart_render
+                                        :code="Object.keys(case_note_template).length ? case_note_template.content : selected_note_template.content"
+                                        language="markdown"
+                                        :simple="true">
+                                    </smart_render>
                                 </div>
                             </div>
                         </template>
                         <template v-else-if="rendering_tab == 'final'">
                             <div class="render-pane">
-                                <div class="render-content" v-html="md.render(mustache_render)"></div>
+                                <div class="render-content">
+                                    <smart_render :code="mustache_render" language="markdown" :simple="true"></smart_render>
+                                </div>
                             </div>
                         </template>
                     </div>
@@ -664,7 +670,9 @@ export default {
             <button class="btn btn-primary" @click="save_content()">Save</button>
             <div style="display: flex;">
                 <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; width: 50%" id="editor"></div>
-                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%" v-html="md.render(note_editor_render)"></div>
+                <div style="background-color: white; border: 1px rgb(159, 159, 159) solid; padding: 5px; width: 50%">
+                    <smart_render :code="note_editor_render" language="markdown" :simple="true"></smart_render>
+                </div>
             </div>
             <button class="btn btn-primary" @click="save_content()">Save</button>
         </template>

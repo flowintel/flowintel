@@ -1,15 +1,18 @@
 from flask import request, current_app
 
+from flask_restx import Namespace, Resource
+
+from app.extensions import db
 from app.db_class.db import Case, User
-from .. import db
-from . import common_core as CommonModel
-from .TaskCore import TaskModel
-from . import validation_api as CaseModelApi
+
+from ..decorators import api_required, editor_required, misp_editor_required
 from ..utils import utils
 from ..utils.logger import flowintel_log
 
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, misp_editor_required
+from . import common_core as CommonModel
+from .TaskCore import TaskModel
+from . import validation_api as CaseModelApi
+
 
 task_ns = Namespace("task", description="Endpoints to manage tasks")
 

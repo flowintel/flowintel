@@ -346,6 +346,19 @@ legend.analyzer-select-case {
   border-radius: 15px;
 }
 
+.btn-filter-active {
+  background-color: #0a3d91;
+  border-color: #0a3d91;
+  color: #fff;
+}
+
+.btn-filter-active:hover,
+.btn-filter-active:focus {
+  background-color: #082f70;
+  border-color: #082f70;
+  color: #fff;
+}
+
 .case-header-card {
   background-color: #fff;
   border: 1px solid #e9ecef;
@@ -646,6 +659,28 @@ legend.analyzer-select-case {
 .dragging-ghost {
   background-color: #ffeeba !important;
   border: 2px dashed #ff9800;
+}
+
+.task-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  margin-right: 4px;
+  color: #adb5bd;
+  cursor: grab;
+  user-select: none;
+  border-radius: 8px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.task-drag-handle:hover {
+  color: #495057;
+  background-color: #f1f3f5;
+}
+
+.task-drag-handle:active {
+  cursor: grabbing;
 }
 
 .collapse .row .link-style-first:nth-child(2n + 2) {

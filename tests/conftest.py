@@ -9,11 +9,11 @@ import pytest
 
 @pytest.fixture(scope="function")
 def app():
-    os.environ.setdefault("FLASKENV", "testing")
+    os.environ.setdefault("FLOWINTEL_APP_ENV", "testing")
     app = create_app()
     app.config.update({
         "TESTING": True,
-        "SERVER_NAME": f"{app.config.get('FLASK_URL')}:{app.config.get('FLASK_PORT')}",
+        "SERVER_NAME": f"{app.config.get('FLOWINTEL_APP_HOST')}:{app.config.get('FLOWINTEL_APP_PORT')}",
         "LIMIT_USER_VIEW_TO_ORG": True,
         "ENFORCE_PRIVILEGED_CASE": False
     })

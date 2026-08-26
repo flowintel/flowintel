@@ -95,11 +95,13 @@ All variables start with `@` and use dot notation to access properties.
 
 import re
 import datetime
-from ..db_class.db import (
-    Case, Task, Subtask, Note, Status, Org, Case_Org,
-    Case_Misp_Object, Misp_Attribute, Task_User, User
-)
+
 from flask_login import current_user
+
+from app.db_class.db import (
+    Case, Task, Subtask, Note, Status, Org, Case_Org,
+    Case_Misp_Object, Misp_Attribute, Task_User, User, DATETIME_FORMAT_FULL
+)
 
 # Pattern to match @variable references
 # Matches @word.word.word... patterns, including numeric and UUID segments
@@ -167,6 +169,20 @@ def _lookup_entity(model, identifier: str):
     return None
 
 
+def _can_view_case(case: Case) -> bool:
+    """Match the app's case visibility rules for note variable resolution."""
+    if current_user is None or getattr(current_user, 'is_anonymous', True):
+        return False
+    from ..case import common_core as CommonModel
+    return CommonModel.can_view_case(case, current_user)
+
+
+def _can_view_task(task: Task) -> bool:
+    if not task:
+        return False
+    return _can_view_case(Case.query.get(task.case_id))
+
+
 def _resolve_user_property(user: User, parts: list):
     """Resolve properties for the current logged-in user.
 
@@ -207,7 +223,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
     
     # Simple date helpers
     if root == 'now' and len(parts) == 1:
-        return datetime.datetime.now(tz=datetime.timezone.utc).strftime('%Y-%m-%d %H:%M')
+        return datetime.datetime.now(tz=datetime.timezone.utc).strftime(DATETIME_FORMAT_FULL)
     
     if root == 'today' and len(parts) == 1:
         return datetime.datetime.now(tz=datetime.timezone.utc).strftime('%Y-%m-%d')
@@ -223,7 +239,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
             if case_id is None:
                 return None
             case = Case.query.get(case_id)
-            if not case:
+            if not case or not _can_view_case(case):
                 return None
             return _resolve_case_property(case, remaining)
         
@@ -231,7 +247,9 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
             if task_id is None:
                 return None
             task = Task.query.get(task_id)
-            if not task:
+            if not task or not _can_view_task(task):
+                return None
+            if case_id is not None and int(task.case_id) != int(case_id):
                 return None
             return _resolve_task_property(task, remaining)
         
@@ -242,7 +260,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if len(parts) < 3:
             return None
         case = _lookup_entity(Case, parts[1])
-        if not case:
+        if not case or not _can_view_case(case):
             return None
         return _resolve_case_property(case, parts[2:])
     
@@ -251,7 +269,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if len(parts) < 3:
             return None
         task = _lookup_entity(Task, parts[1])
-        if not task:
+        if not task or not _can_view_task(task):
             return None
         return _resolve_task_property(task, parts[2:])
 
@@ -280,10 +298,10 @@ def _resolve_case_property(case: Case, parts: list):
         'uuid': lambda c: c.uuid,
         'id': lambda c: c.id,
         'completed': lambda c: 'Yes' if c.completed else 'No',
-        'creation_date': lambda c: c.creation_date.strftime('%Y-%m-%d %H:%M') if c.creation_date else '',
-        'deadline': lambda c: c.deadline.strftime('%Y-%m-%d %H:%M') if c.deadline else '',
-        'finish_date': lambda c: c.finish_date.strftime('%Y-%m-%d %H:%M') if c.finish_date else '',
-        'last_modif': lambda c: c.last_modif.strftime('%Y-%m-%d %H:%M') if c.last_modif else '',
+        'creation_date': lambda c: c.creation_date.strftime(DATETIME_FORMAT_FULL) if c.creation_date else '',
+        'deadline': lambda c: c.deadline.strftime(DATETIME_FORMAT_FULL) if c.deadline else '',
+        'finish_date': lambda c: c.finish_date.strftime(DATETIME_FORMAT_FULL) if c.finish_date else '',
+        'last_modif': lambda c: c.last_modif.strftime(DATETIME_FORMAT_FULL) if c.last_modif else '',
         'nb_tasks': lambda c: c.nb_tasks or 0,
         'time_required': lambda c: c.time_required or '',
         'ticket_id': lambda c: c.ticket_id or '',
@@ -309,20 +327,20 @@ def _resolve_case_property(case: Case, parts: list):
     
     # Tags
     if prop == 'tags' and len(parts) == 1:
-        from ..db_class.db import Tags, Case_Tags
+        from app.db_class.db import Tags, Case_Tags
         tags = Tags.query.join(Case_Tags, Case_Tags.tag_id == Tags.id).filter_by(case_id=case.id).all()
         return ', '.join(t.name for t in tags) if tags else ''
     
     # Clusters
     if prop == 'clusters' and len(parts) == 1:
-        from ..db_class.db import Cluster, Case_Galaxy_Tags
+        from app.db_class.db import Cluster, Case_Galaxy_Tags
         clusters = Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id == case.id)\
             .where(Cluster.id == Case_Galaxy_Tags.cluster_id).all()
         return ', '.join(c.name for c in clusters) if clusters else ''
     
     # Custom tags
     if prop == 'custom_tags' and len(parts) == 1:
-        from ..db_class.db import Custom_Tags, Case_Custom_Tags
+        from app.db_class.db import Custom_Tags, Case_Custom_Tags
         custom_tags = Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id == Custom_Tags.id)\
             .where(Case_Custom_Tags.case_id == case.id).all()
         return ', '.join(t.name for t in custom_tags) if custom_tags else ''
@@ -389,10 +407,10 @@ def _resolve_task_property(task: Task, parts: list):
         'uuid': lambda t: t.uuid,
         'id': lambda t: t.id,
         'completed': lambda t: 'Yes' if t.completed else 'No',
-        'creation_date': lambda t: t.creation_date.strftime('%Y-%m-%d %H:%M') if t.creation_date else '',
-        'deadline': lambda t: t.deadline.strftime('%Y-%m-%d %H:%M') if t.deadline else '',
-        'finish_date': lambda t: t.finish_date.strftime('%Y-%m-%d %H:%M') if t.finish_date else '',
-        'last_modif': lambda t: t.last_modif.strftime('%Y-%m-%d %H:%M') if t.last_modif else '',
+        'creation_date': lambda t: t.creation_date.strftime(DATETIME_FORMAT_FULL) if t.creation_date else '',
+        'deadline': lambda t: t.deadline.strftime(DATETIME_FORMAT_FULL) if t.deadline else '',
+        'finish_date': lambda t: t.finish_date.strftime(DATETIME_FORMAT_FULL) if t.finish_date else '',
+        'last_modif': lambda t: t.last_modif.strftime(DATETIME_FORMAT_FULL) if t.last_modif else '',
         'case_id': lambda t: t.case_id,
         'nb_notes': lambda t: t.nb_notes or 0,
         'time_required': lambda t: t.time_required or '',
@@ -414,20 +432,20 @@ def _resolve_task_property(task: Task, parts: list):
     
     # Tags
     if prop == 'tags' and len(parts) == 1:
-        from ..db_class.db import Tags, Task_Tags
+        from app.db_class.db import Tags, Task_Tags
         tags = Tags.query.join(Task_Tags, Task_Tags.tag_id == Tags.id).filter_by(task_id=task.id).all()
         return ', '.join(t.name for t in tags) if tags else ''
     
     # Clusters
     if prop == 'clusters' and len(parts) == 1:
-        from ..db_class.db import Cluster, Task_Galaxy_Tags
+        from app.db_class.db import Cluster, Task_Galaxy_Tags
         clusters = Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id == task.id)\
             .where(Cluster.id == Task_Galaxy_Tags.cluster_id).all()
         return ', '.join(c.name for c in clusters) if clusters else ''
     
     # Custom tags
     if prop == 'custom_tags' and len(parts) == 1:
-        from ..db_class.db import Custom_Tags, Task_Custom_Tags
+        from app.db_class.db import Custom_Tags, Task_Custom_Tags
         custom_tags = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id == Custom_Tags.id)\
             .where(Task_Custom_Tags.task_id == task.id).all()
         return ', '.join(t.name for t in custom_tags) if custom_tags else ''
@@ -538,8 +556,8 @@ def _resolve_misp_object_property(obj: Case_Misp_Object, parts: list):
         'name': lambda o: o.name,
         'id': lambda o: o.id,
         'template_uuid': lambda o: o.template_uuid,
-        'creation_date': lambda o: o.creation_date.strftime('%Y-%m-%d %H:%M') if o.creation_date else '',
-        'last_modif': lambda o: o.last_modif.strftime('%Y-%m-%d %H:%M') if o.last_modif else '',
+        'creation_date': lambda o: o.creation_date.strftime(DATETIME_FORMAT_FULL) if o.creation_date else '',
+        'last_modif': lambda o: o.last_modif.strftime(DATETIME_FORMAT_FULL) if o.last_modif else '',
     }
     
     if prop in scalar_props and len(parts) == 1:
@@ -575,8 +593,8 @@ def _resolve_misp_object_property(obj: Case_Misp_Object, parts: list):
                 'object_relation': lambda a: a.object_relation,
                 'comment': lambda a: a.comment or '',
                 'ids_flag': lambda a: 'Yes' if a.ids_flag else 'No',
-                'first_seen': lambda a: a.first_seen.strftime('%Y-%m-%d %H:%M') if a.first_seen else '',
-                'last_seen': lambda a: a.last_seen.strftime('%Y-%m-%d %H:%M') if a.last_seen else '',
+                'first_seen': lambda a: a.first_seen.strftime(DATETIME_FORMAT_FULL) if a.first_seen else '',
+                'last_seen': lambda a: a.last_seen.strftime(DATETIME_FORMAT_FULL) if a.last_seen else '',
                 'id': lambda a: a.id,
             }
             if parts[2] in attr_props:

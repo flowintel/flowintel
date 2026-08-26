@@ -1,11 +1,15 @@
-from ..db_class.db import Status, Subtask, Task, Task_User, User
+from datetime import datetime, timedelta
+
 from sqlalchemy import desc
+
+from app.db_class.db import Status, Subtask, Task, Task_User, User
+
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
-from datetime import datetime, timedelta
 
 # Statuses that should not appear under "Ongoing Tasks"
 _INACTIVE_STATUS_NAMES = ("Rejected", "Unavailable")
+
 
 def get_user(uid):
     return User.query.get(uid)
@@ -17,12 +21,10 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, 
     query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
                       .where(Task_User.user_id==user.id, Task.completed==completed)
     inactive_ids = _inactive_status_ids()
-    if inactive_only:
-        if inactive_ids:
-            query = query.filter(Task.status_id.in_(inactive_ids))
-    elif not completed:
-        if inactive_ids:
-            query = query.filter(Task.status_id.notin_(inactive_ids))
+    if inactive_only and inactive_ids:
+        query = query.filter(Task.status_id.in_(inactive_ids))
+    elif not completed and inactive_ids:
+        query = query.filter(Task.status_id.notin_(inactive_ids))
     if overdue_only:
         query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
     if filter:

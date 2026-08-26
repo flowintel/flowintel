@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 
 export default {
     delimiters: ['[[', ']]'],
@@ -66,6 +67,11 @@ export default {
         }
 
         async function delete_external_reference(task, external_ref_id) {
+            const ok = await confirmDelete({
+                title: 'Delete external reference?',
+                message: 'Are you sure you want to delete this external reference? This cannot be undone.'
+            })
+            if (!ok) return
             const res = await fetch('/case/' + task.case_id + '/task/' + task.id + "/delete_external_reference/" + external_ref_id)
 
             if (res.status == 200) {

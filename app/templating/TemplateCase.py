@@ -1,15 +1,20 @@
-from typing import List, Union
-from ..db_class.db import *
-import uuid
-from .. import db
 import datetime
+from typing import List
+import uuid
+
+from sqlalchemy import and_, desc
+
+from app.extensions import db
+from app.db_class.db import *
+
 from ..case import common_core
 from ..case.CommonAbstract import CommonAbstract
 from ..case.FilteringAbstract import FilteringAbstract
-from sqlalchemy import and_, desc
+from ..custom_tags import custom_tags_core as CustomModel
+
 from . import common_template_core as CommonModel
 from .TaskTemplateCore import TaskModel
-from ..custom_tags import custom_tags_core as CustomModel
+
 
 class TemplateCase(CommonAbstract, FilteringAbstract):
     def get_class(self) -> Case_Template:

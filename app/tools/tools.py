@@ -1,14 +1,3 @@
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
-from flask_login import login_required, current_user
-from . import tools_core as ToolsModel
-from ..admin import admin_core as AdminModel
-from ..utils.note_variables import get_syntax_reference
-from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
-from ..utils.utils import get_modules_list, reload_application
-from ..utils.logger import flowintel_log
-from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
-from ..case.CaseCore import CaseModel, FILE_FOLDER
-import conf.config_module as ConfigModule
 import base64
 import csv
 import io
@@ -21,6 +10,22 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement, tostring
+
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, current_app
+from flask_login import login_required, current_user
+
+from ..admin import admin_core as AdminModel
+from ..utils.note_variables import get_syntax_reference
+from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
+from ..utils.utils import get_modules_list, reload_application
+from ..utils.logger import flowintel_log
+from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
+from ..case.CaseCore import CaseModel, FILE_FOLDER
+
+from . import tools_core as ToolsModel
+
+import conf.config_module as ConfigModule
+
 
 tools_blueprint = Blueprint(
     'tools',
@@ -270,7 +275,7 @@ def reload():
 #########
 # Stats #
 #########
-from ..db_class.db import Case, Case_Org
+from app.db_class.db import Case, Case_Org
 
 @tools_blueprint.route("/stats")
 @login_required
@@ -586,8 +591,8 @@ def search_attr_with_value():
 def system_settings():
     from conf.config import config as app_config
     
-    flaskenv = os.getenv('FLASKENV', 'development')
-    config_class = app_config.get(flaskenv)
+    flowintel_app_env = os.getenv('FLOWINTEL_APP_ENV', 'development')
+    config_class = app_config.get(flowintel_app_env)
     
     db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if db_uri.startswith('postgresql'):
@@ -633,14 +638,15 @@ def system_settings():
         'config_last_modified': config_last_modified,
 
         # Configuration
-        'flaskenv': flaskenv,
+        'flowintel_app_env': flowintel_app_env,
+        'env_name': current_app.config.get('ENV_NAME', ''),
         'secret_key_set': current_app.config.get('SECRET_KEY', '') not in ('', 'SECRET_KEY_ENV_VAR_NOT_SET'),
         'debug': current_app.config.get('DEBUG', False),
         'session_type': current_app.config.get('SESSION_TYPE'),
         'valkey_ip': getattr(config_class, 'VALKEY_IP', '127.0.0.1'),
         'valkey_port': getattr(config_class, 'VALKEY_PORT', '6379'),
-        'flask_url': getattr(config_class, 'FLASK_URL', None),
-        'flask_port': getattr(config_class, 'FLASK_PORT', None),
+        'flowintel_app_host': getattr(config_class, 'FLOWINTEL_APP_HOST', None),
+        'flowintel_app_port': getattr(config_class, 'FLOWINTEL_APP_PORT', None),
         'misp_module': getattr(config_class, 'MISP_MODULE', None),
         'file_upload_max_size': current_app.config.get('FILE_UPLOAD_MAX_SIZE'),
         'behind_proxy': current_app.config.get('BEHIND_PROXY', False),
@@ -659,6 +665,10 @@ def system_settings():
         'ollama_url': getattr(ConfigModule, 'OLLAMA_URL', ''),
         'ollama_model': getattr(ConfigModule, 'OLLAMA_MODEL', ''),
         'ollama_key_set': bool(getattr(ConfigModule, 'OLLAMA_KEY', '')),
+
+        # Mermaid
+        'enable_mermaid': current_app.config.get('ENABLE_MERMAID', True),
+        'enable_mermaid_export': current_app.config.get('ENABLE_MERMAID_EXPORT', True),
 
         # Logging & theming
         'log_file': getattr(config_class, 'LOG_FILE', None),
@@ -772,6 +782,8 @@ def system_settings_save():
         'LIMIT_USER_VIEW_TO_ORG': 'bool',
         'ENFORCE_PRIVILEGED_CASE': 'bool',
         'ENABLE_CHATBOT': 'bool',
+        'ENABLE_MERMAID': 'bool',
+        'ENABLE_MERMAID_EXPORT': 'bool',
         'MISP_EXPORT_FILES': 'bool',
         'SHOW_GDPR_NOTICE': 'bool',
         'TASK_REQUESTED': 'int',
@@ -840,6 +852,18 @@ def system_settings_save():
     flowintel_log("audit", 200, "System setting changed", User=current_user.email, Setting=key, Value=py_value)
 
     return jsonify({"message": "Configuration saved", "backup_created": True})
+
+
+@tools_blueprint.route("/system_settings/active_sessions", methods=["GET"])
+@login_required
+@admin_required
+def system_settings_active_sessions():
+    """List other users currently connected, so a reload can be confirmed knowingly."""
+    sessions = AdminModel.list_active_user_sessions(exclude_user_id=current_user.id)
+    return jsonify({
+        "sessions": sessions,
+        "threshold_minutes": AdminModel.ACTIVE_SESSION_THRESHOLD_MINUTES,
+    })
 
 
 @tools_blueprint.route("/system_settings/reload", methods=["POST"])

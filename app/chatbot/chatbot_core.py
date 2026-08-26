@@ -3,14 +3,18 @@ import logging
 import os
 import threading
 
-from flask_login import current_user
-import dspy
-import litellm
-import conf.config_module as ConfigModule
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+import dspy
+import litellm
+
 from flask import current_app, session
+from flask_login import current_user
+
 from sqlalchemy.orm.exc import DetachedInstanceError
+
+import conf.config_module as ConfigModule
+
 
 # Suppress verbose output from DSPy / LiteLLM / httpx
 litellm.suppress_debug_info = True
@@ -117,8 +121,8 @@ def _ensure_mcp():
         # attributes on the possibly-detached `current_user` object.
         env = {}
         env["FLOWINTEL_URL"] = (
-            f'http://{current_app.config.get("FLASK_URL")}'
-            f':{current_app.config.get("FLASK_PORT")}/api'
+            f'http://{current_app.config.get("FLOWINTEL_APP_HOST")}'
+            f':{current_app.config.get("FLOWINTEL_APP_PORT")}/api'
         )
 
         api_key = None

@@ -5,8 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<script src="{{ url_for('static',filename='js/vendor/markdown-it.min.js') }}"></script>
-<script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 
 <title>Create task - Case #{{ case_id }} - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -21,6 +21,18 @@
 </h5>
 
 <hr class="fading-line-2 mb-4 mt-4">
+
+{% if case and case.privileged_case %}
+<div class="alert alert-warning" role="alert">
+    <i class="fa-solid fa-shield-halved me-2"></i>
+    This case is <strong>privileged</strong>. New tasks are created with status <strong>Requested</strong> and must be approved by an administrator before work can start.
+</div>
+{% else %}
+<div class="alert alert-info" role="alert">
+    <i class="fa-solid fa-circle-info me-2"></i>
+    New tasks will be created with status <strong>Created</strong>.
+</div>
+{% endif %}
 
 <form action="" method="post" class="case-core-style" id="task_form">
     {{ form.hidden_tag() }}
@@ -75,10 +87,8 @@
         </div>
         <div class="row">
             <span class="mb-2"><i class="fa-solid fa-file-lines"></i> <strong>Description:</strong></span>
-            <div style="display: flex">
-                <div class="note-editor" id="editor"></div>
-                <div class="markdown-render" v-html="md.render(note_editor_render)"></div>
-                <textarea id="description" name="description" hidden :value="note_editor_render" type="text"></textarea>
+            <div class="mb-3">
+                <smart_editor v-model="note_editor_render" mode="markdown" name="description" placeholder="Describe the task…" :show-line-numbers="true" max-height="260px" :resolve-variables="resolve_description_preview"></smart_editor>
             </div>
         </div>
         
@@ -181,10 +191,13 @@
 <script type="module">
     const { createApp, onMounted, ref} = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
-    const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
+    import smart_editor from '/static/js/components/smart-editor.js'
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_editor
+        },
         setup() {
             const taxonomies = ref([])
             const tags_list = ref([])
@@ -196,9 +209,20 @@
 
             const custom_tags = ref([])
 
-            const md = window.markdownit()
             const note_editor_render = ref("")
-            let editor = null
+            const case_id_for_vars = {{ case_id }}
+
+            // Passed as :resolve-variables to <smart_editor> — resolves @this.case.title
+            // style references to real values in the live preview. Returns the raw
+            // markdown with ⟪@var⦂value⟫ markers still embedded — <smart_editor> renders
+            // this through the shared renderMarkdown() pipeline, which turns markers
+            // into the "resolved" badge itself, only after marked.parse(), so a
+            // resolved value can never reach the renderer as live HTML.
+            async function resolve_description_preview(text) {
+                return await FlowintelNoteVariables.resolveNoteVariables(
+                    case_id_for_vars, text, null, true
+                )
+            }
 
 
             let to_hide = true
@@ -286,19 +310,6 @@
                     selected_galaxies.value = $(this).select2('data').map(item => item.id);
                     fetch_cluster()
                 })
-
-                const targetElement = document.getElementById('editor')
-                if(targetElement && targetElement.innerHTML === ""){
-                    editor = new EditorView({
-                        doc: "\n\n",
-                        extensions: [basicSetup, languages.markdown(),EditorView.updateListener.of((v) => {
-                            if (v.docChanged) {
-                                note_editor_render.value = editor.state.doc.toString()
-                            }
-                        })],
-                        parent: targetElement
-                    })
-                }
             })
 
             return {
@@ -309,8 +320,8 @@
                 tags_list,
                 cluster_list,
                 custom_tags,
-                md,
                 note_editor_render,
+                resolve_description_preview,
                 hide_task_creation
             }
         }

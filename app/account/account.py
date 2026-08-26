@@ -11,10 +11,10 @@ from flask import (
     flash,
     redirect,
     request,
-    session,
-    url_for,
     render_template,
     send_from_directory,
+    session,
+    url_for,
     )
 from flask_login import (
     current_user,
@@ -32,24 +32,13 @@ from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 from ..notification import notification_core as NotifModel
 
-from .form import LoginForm, EditUserFrom
 from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
 
 from . import account_core as AccountModel
 from . import entra_core as EntraModel
 from . import keycloak_core as KeycloakModel
 from . import simplesaml_core as SimpleSamlModel
-from ..utils.utils import form_to_dict
-from ..utils.logger import flowintel_log
-from ..notification import notification_core as NotifModel
-import datetime
-import logging
-import time
-import secrets
-from urllib.parse import urlparse
-from itsdangerous import URLSafeTimedSerializer, BadData
 
-from wtforms.validators import Email, ValidationError
 
 logger = logging.getLogger()
 

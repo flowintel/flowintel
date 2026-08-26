@@ -4,6 +4,13 @@
 
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
     <div class="case-core-style" style="border-radius: 0">
         <h5 class="mb-0"><i class="fa-solid fa-file-import me-2"></i>Importer</h5>
@@ -86,7 +93,16 @@
 
         {% if can_import_cases or can_import_templates %}
         <div class="p-3">
-            <div class="mb-3">
+            <div class="btn-group btn-group-sm mb-3" role="group">
+                <button type="button" class="btn" :class="inputMethod==='file' ? 'btn-primary' : 'btn-outline-primary'" @click="inputMethod='file'">
+                    <i class="fa-solid fa-file-arrow-up me-1"></i>Upload file
+                </button>
+                <button type="button" class="btn" :class="inputMethod==='paste' ? 'btn-primary' : 'btn-outline-primary'" @click="inputMethod='paste'">
+                    <i class="fa-solid fa-paste me-1"></i>Paste JSON
+                </button>
+            </div>
+
+            <div class="mb-3" v-if="inputMethod==='file'">
                 <div :class="['border rounded p-4 text-center', dragOver? 'border-primary bg-light' : 'border-dashed']"
                      @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop"
                      style="cursor: pointer;">
@@ -96,6 +112,15 @@
                     <button class="btn btn-outline-primary btn-sm" @click.prevent="openFilePicker">Browse files</button>
                     <input id="importer_files" type="file" accept="application/json" multiple class="d-none" @change="onFilesSelected">
                 </div>
+            </div>
+
+            <div class="mb-3" v-else>
+                <smart_editor v-model="pastedJson" mode="json" name="pasted_json"
+                              placeholder="Paste [[ main_tab=='import_case' ? 'case' : 'template' ]] JSON here…"
+                              max-height="320px"></smart_editor>
+                <button class="btn btn-outline-primary btn-sm mt-2" :disabled="!pastedJson.trim()" @click="addPastedJson">
+                    <i class="fa-solid fa-plus me-1"></i>Add to import list
+                </button>
             </div>
 
             <div v-if="files.length" class="mb-3">
@@ -172,16 +197,22 @@
     <script type="module">
         const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
-        
+        import smart_editor from '/static/js/components/smart-editor.js'
+
         const can_import_cases = {{ 'true' if can_import_cases else 'false' }}
         const can_import_templates = {{ 'true' if can_import_templates else 'false' }}
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                smart_editor
+            },
             setup() {
 
                 const default_tab = can_import_cases ? 'import_case' : 'import_template'
                 const main_tab = ref(default_tab)
+                const inputMethod = ref('file')
+                const pastedJson = ref('')
                 const files = ref([])
                 const loading = ref(false)
                 const progress = ref(0)
@@ -214,6 +245,22 @@
                 function clearFiles(){
                     files.value = []
                     importResults.value = []
+                }
+
+                function addPastedJson(){
+                    const text = pastedJson.value.trim()
+                    if(!text) return
+                    try {
+                        JSON.parse(text)
+                    } catch(e) {
+                        display_toast(new Response(JSON.stringify({message: 'Invalid JSON: ' + e.message, toast_class: 'warning-subtle'}), {status: 400}))
+                        return
+                    }
+                    const type_label = main_tab.value === 'import_case' ? 'case' : 'template'
+                    const filename = `pasted-${type_label}-${files.value.length + 1}.json`
+                    const file = new File([text], filename, { type: 'application/json' })
+                    files.value = files.value.concat(file)
+                    pastedJson.value = ''
                 }
 
                 function onDragOver(){ dragOver.value = true }
@@ -271,6 +318,9 @@
                 return {
                     message_list,
                     main_tab,
+                    inputMethod,
+                    pastedJson,
+                    addPastedJson,
                     files,
                     loading,
                     progress,

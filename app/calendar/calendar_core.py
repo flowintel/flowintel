@@ -1,4 +1,4 @@
-from ..db_class.db import Case, Task, Task_User, Case_Org
+from app.db_class.db import Case, Task, Task_User, Case_Org
 
 from datetime import datetime
 

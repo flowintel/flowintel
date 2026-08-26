@@ -1,12 +1,16 @@
 import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
-const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
-const { ref, nextTick } = Vue
+import { confirmDelete } from '/static/js/confirm.js'
+import smart_editor from '/static/js/components/smart-editor.js'
+import smart_render from '/static/js/components/smart-render.js'
+const { ref } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
-		TaskUrlTool
+		TaskUrlTool,
+		smart_editor,
+		smart_render
 	},
 	props: {
 		templates_list: Object,
@@ -28,60 +32,9 @@ export default {
 		}
 
 		const expandedTasks = ref({});
-		const is_mounted = ref(false)
 		const edit_mode = ref(-1)
 		const note_editor_render = ref([])
-		const editor_list = ref({})
-		const md = window.markdownit()
-		md.use(mermaidMarkdown.default)
 		const dayjs = window.dayjs
-
-		Vue.onMounted(async () => {
-			if (props.template.notes.length) {
-				for (let i in props.template.notes) {
-					const targetElement = document.getElementById('editor_' + i + '_' + props.template.id)
-					if (targetElement) {
-						let editor = new EditorView({
-							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-								if (v.docChanged) {
-									note_editor_render.value[i] = editor.state.doc.toString()
-								}
-							})],
-							parent: targetElement
-						})
-						editor_list.value[i] = editor
-					}
-				}
-			} else {
-				const targetElement = document.getElementById('editor_0_' + props.template.id)
-				if (targetElement) {
-					let editor = new EditorView({
-						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[0] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list.value[0] = editor
-				}
-			}
-
-			const allCollapses = document.getElementById('collapse' + props.template.id)
-			if (allCollapses) {
-				allCollapses.addEventListener('shown.bs.collapse', event => {
-					md.mermaid.init()
-				})
-			}
-			is_mounted.value = true
-		})
-		Vue.onUpdated(async () => {
-			// do not initialize mermaid before the page is mounted
-			if (is_mounted.value)
-				md.mermaid.init()
-		})
 
 		// Initialize reactive refs and note data
 		if (props.template.notes && props.template.notes.length) {
@@ -102,25 +55,15 @@ export default {
 				props.template.notes.push(loc["note"])
 				let key = props.template.notes.length - 1
 				note_editor_render.value[key] = ""
-				await nextTick()
-				const targetElement = document.getElementById('editor_' + key + "_" + props.template.id)
-
-				if (targetElement.innerHTML === "") {
-					let editor = new EditorView({
-						doc: "\n\n",
-						extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-							if (v.docChanged) {
-								note_editor_render.value[key] = editor.state.doc.toString()
-							}
-						})],
-						parent: targetElement
-					})
-					editor_list.push(editor)
-				}
 			}
 		}
 
 		async function delete_note(template, note_id, key) {
+			const ok = await confirmDelete({
+				title: 'Delete note?',
+				message: 'Are you sure you want to delete this note? This cannot be undone.'
+			})
+			if (!ok) return
 			// Delete a note of the task
 			const res = await fetch('/templating/task/' + template.id + '/delete_note?note_id=' + note_id)
 
@@ -161,22 +104,11 @@ export default {
 			const res = await fetch('/templating/task/' + template.id + '/get_note?note_id=' + note_id)
 			let loc = await res.json()
 			template.notes[key].note = loc["notes"]
-
-			const targetElement = document.getElementById('editor1_' + key + "_" + props.template.id)
-			let editor = new EditorView({
-				doc: template.notes[key].note,
-				extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-					if (v.docChanged) {
-						note_editor_render.value[key] = editor.state.doc.toString()
-					}
-				})],
-				parent: targetElement
-			})
-			editor_list.value[key] = editor
+			note_editor_render.value[key] = loc["notes"]
 		}
 
 		async function modif_note(template, note_id, key) {
-			let notes_loc = editor_list.value[key] && editor_list.value[key].state.doc.toString()
+			let notes_loc = note_editor_render.value[key] ?? ''
 			if (notes_loc.trim().length == 0) {
 				notes_loc = notes_loc.trim()
 			}
@@ -198,22 +130,9 @@ export default {
 				} else {
 					template.notes[key].note = notes_loc
 				}
-				await nextTick()
 
 				if (!notes_loc) {
-					const targetElement = document.getElementById('editor_' + props.template.id)
-					if (targetElement.innerHTML === "") {
-						editor = new EditorView({
-							doc: "\n\n",
-							extensions: [basicSetup, languages.markdown(), ...(window.FlowintelVarComplete ? [FlowintelVarComplete.extension()] : []), EditorView.updateListener.of((v) => {
-								if (v.docChanged) {
-									note_editor_render.value = editor.state.doc.toString()
-								}
-							})],
-							parent: targetElement
-						})
-						editor_list.value[key] = editor
-					}
+					note_editor_render.value[key] = "\n\n"
 				}
 			} else {
 				display_toast(res_msg)
@@ -234,6 +153,7 @@ export default {
 			let description = $("#create-subtask-" + task.id).val()
 			if (!description) {
 				$("#create-subtask-error-" + task.id).text("Cannot be empty...").css("color", "brown")
+				return
 			}
 
 			const res = await fetch("/templating/task/" + task.id + "/create_subtask", {
@@ -246,8 +166,10 @@ export default {
 				})
 			});
 			if (await res.status == 200) {
-				let loc = res.json()["id"]
-				task.subtasks.push({ "id": loc, "description": description, "task_id": task.id, "completed": false })
+				let loc = await res.json()
+				task.subtasks.push({ "id": loc["id"], "description": description, "task_id": task.id, "completed": false })
+				$("#create-subtask-" + task.id).val("")
+				$("#create_subtask_" + task.id).modal("hide")
 				create_message("Subtask created", "success-subtle")
 			} else {
 				await display_toast(res)
@@ -282,6 +204,11 @@ export default {
 		}
 
 		async function delete_subtask(task, subtask_id) {
+			const ok = await confirmDelete({
+				title: 'Delete subtask?',
+				message: 'Are you sure you want to delete this subtask? This cannot be undone.'
+			})
+			if (!ok) return
 			const res = await fetch('/templating/task/' + task.id + "/delete_subtask/" + subtask_id)
 
 			if (await res.status == 200) {
@@ -306,7 +233,6 @@ export default {
 		return {
 			can_manage_templates,
 			note_editor_render,
-			md,
 			dayjs,
 			getTextColor,
 			mapIcon,
@@ -371,11 +297,11 @@ export default {
 							</button>
 
 							<!-- Show either truncated or full text -->
-							<pre class="description" v-html="md.render(expandedTasks[template.id] ? template.description : truncateText(template.description))"></pre>
+							<smart_render :code="expandedTasks[template.id] ? template.description : truncateText(template.description)" language="markdown" :simple="true"></smart_render>
 						</div>
 					</template>
 					<template v-else>
-						<pre v-html="md.render(template.description)" class="description"></pre>
+						<smart_render :code="template.description" language="markdown" :simple="true" class="w-100"></smart_render>
 					</template>
 				</template>
 				<template v-else>
@@ -591,10 +517,7 @@ export default {
 											Save
 										</button>
 									</div>
-									<div style="display: flex;">
-										<div class="note-editor" :id="'editor1_'+key+'_'+template.id"></div>
-										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
-									</div>
+									<smart_editor v-model="note_editor_render[key]" mode="markdown" class="mb-3"></smart_editor>
 								</template>
 								<template v-else>
 									<template v-if="can_manage_templates">
@@ -606,7 +529,7 @@ export default {
 											<small><i class="fa-solid fa-trash"></i></small> Delete
 										</button>
 									</template>
-									<p class="markdown-render-result" v-html="md.render(template_note.note)"></p>
+									<smart_render :code="template_note.note" language="markdown" class="mb-3"></smart_render>
 								</template>
 							</div>
 							<div v-else>
@@ -620,10 +543,7 @@ export default {
 											<small><i class="fa-solid fa-trash"></i></small> Delete
 										</button>
 									</div>
-									<div style="display: flex;">
-										<div class="note-editor" :id="'editor_'+key+'_'+template.id"></div>
-										<div class="markdown-render" v-html="md.render(note_editor_render[key])"></div>
-									</div>
+									<smart_editor v-model="note_editor_render[key]" mode="markdown" class="mb-3"></smart_editor>
 								</template>
 							</div>
 						</template>
@@ -636,10 +556,7 @@ export default {
 									Create
 								</button>
 							</div>
-							<div style="display: flex;">
-								<div class="note-editor" :id="'editor_0_'+template.id"></div>
-								<div  class="markdown-render" v-html="md.render(note_editor_render[0])"></div>
-							</div>
+							<smart_editor v-model="note_editor_render[0]" mode="markdown" class="mb-3"></smart_editor>
 						</template>
 					</div>
 				</fieldset>
@@ -653,7 +570,7 @@ export default {
 						<template v-for="template_note, key in template.notes">
 							<h5>#[[key+1]]</h5>
 							<div v-if="template_note.note">
-								<p class="markdown-render-result" v-html="md.render(template_note.note)"></p>
+								<smart_render :code="template_note.note" language="markdown" class="mb-3"></smart_render>
 							</div>
 						</template>
 					</div>

@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
+import { confirmDelete } from '/static/js/confirm.js'
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -82,6 +83,11 @@ export default {
 		}
 
 		async function delete_subtask(task, subtask_id) {
+			const ok = await confirmDelete({
+				title: 'Delete subtask?',
+				message: 'Are you sure you want to delete this subtask? This cannot be undone.'
+			})
+			if (!ok) return
 			const res = await fetch('/case/' + task.case_id + '/task/' + task.id + "/delete_subtask/" + subtask_id)
 
 			if (await res.status == 200) {

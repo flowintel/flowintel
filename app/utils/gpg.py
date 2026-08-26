@@ -1,11 +1,11 @@
 import datetime
 import logging
-
 import gnupg
+
 from flask import current_app
 
-log = logging.getLogger(__name__)
 
+log = logging.getLogger(__name__)
 
 def gpg_enabled():
     """Return True if GPG signing is configured."""

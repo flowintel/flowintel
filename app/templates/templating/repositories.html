@@ -1,5 +1,12 @@
 {% extends 'base.html' %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+
+{{ super() }}
+{%endblock%}
+
 {% block content %}
 <div class="case-core-style" style="border-radius: 0">
     <div class="row align-items-center">
@@ -656,7 +663,7 @@
                     Each remote repository must contain a <code>manifest.json</code> file at its root.
                     Flowintel reads this file when you add or refresh a repository.
                 </p>
-                <pre class="rounded p-3 mb-0" style="background:#f6f8fa; font-size:0.85rem; border: 1px solid #dee2e6;">{{ manifest_json | safe }}</pre>
+                <smart_render :code="manifest_json_str" language="json" :simple="true"></smart_render>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -670,10 +677,15 @@
 <script type="module">
     const { createApp, ref, computed, onMounted, reactive } = Vue
     import { message_list } from '/static/js/toaster.js'
+    import smart_render from '/static/js/components/smart-render.js'
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: {
+            smart_render
+        },
         setup() {
+            const manifest_json_str = {{ manifest_json | tojson }}
             const repos       = ref([])
             const loading     = ref(true)
             const saving      = ref(false)
@@ -1146,6 +1158,7 @@
 
             return {
                 message_list,
+                manifest_json_str,
                 repos, filtered, loading, saving,
                 form, editTarget,
                 connectivity, refreshing, expanded,

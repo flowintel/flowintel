@@ -4,11 +4,12 @@ from flask_login import (
     login_required,
 )
 
-from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
-from . import connectors_core as ConnectorModel
 from ..decorators import admin_required, misp_editor_required
 from ..utils.utils import form_to_dict, get_module_type_with_desc
 from ..utils.logger import flowintel_log
+
+from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
+from . import connectors_core as ConnectorModel
 
 connector_blueprint = Blueprint(
     'connector',
