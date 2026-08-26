@@ -14,7 +14,7 @@ __all__ = [
     "Task",
     "Task_External_Reference", "Task_Template", "Task_Template_Url_Tool", "Task_Url_Tool", "Task_User",
     "Subtask",
-    "Task_Misp_Object",
+    "Task_Misp_Object", "Task_Misp_Attribute",
     "Task_Custom_Tags", "Task_Tags", "Task_Template_Custom_Tags", "Task_Template_Tags",
     # Case Classification
     "Taxonomy",
@@ -32,7 +32,8 @@ __all__ = [
     # Workflow
     "ChatConversation", "ChatMessage",
     "File", "Note", "Note_Template", "Note_Template_Model", "Status",
-    "Alert", "Login_Event", "Notification", "Recurring_Notification",
+    "Alert", "Login_Event", "Notification", "Recurring_Notification", 
+    "ExternalAlert", "ExternalAlertAction", "Case_Misp_Sync_Schedule", "Case_Misp_Sync_Conflict",
     # Rulezet
     "Rulezet_Rule",
     # MISP,
