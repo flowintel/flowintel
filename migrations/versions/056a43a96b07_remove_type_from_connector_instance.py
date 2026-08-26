@@ -1,7 +1,7 @@
 """remove_type_from_connector_instance
 
 Revision ID: 056a43a96b07
-Revises: e1a2b3c4d5f6
+Revises: b9cde1d4adca
 Create Date: 2026-05-18 14:53:33.971081
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '056a43a96b07'
-down_revision = 'e1a2b3c4d5f6'
+down_revision = 'b9cde1d4adca'
 branch_labels = None
 depends_on = None
 
