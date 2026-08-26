@@ -602,6 +602,10 @@
                                 </td>
                             </tr>
                             {% if system_info.simplesaml_enabled %}
+                            <tr>
+                                <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Proxy trust <small class="fw-normal text-muted">(SIMPLESAML_TRUST_PROXY_HEADERS)</small></td>
+                                <td><code>{{ system_info.simplesaml_trust_proxy_headers }}</code></td>
+                            </tr>
                            <tr>
                                 <td class="fw-bold"><small class="text-danger fw-bold">CLI</small> Base URL <small class="fw-normal text-muted">(SIMPLESAML_PYTHON3_SAML_PATH)</small></td>
                                 <td><code>{{ system_info.simplesaml_python3_saml_path }}</code></td>

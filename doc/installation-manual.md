@@ -868,6 +868,7 @@ The table below covers all settings from `template.env` (`.env`):
 | `KEYCLOAK_GROUP_QUEUER` | Keycloak group mapped to Queuer | `FlowintelQueuer` |
 | `KEYCLOAK_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
 | `SIMPLESAML_ENABLED` | Enable SimpleSaml SSO | `true` or `false` |
+| `SIMPLESAML_TRUST_PROXY_HEADERS` | Trust the Reverse Proxy rewriting headers in controlled Production environment | `true` or `false` |
 | `SIMPLESAML_PYTHON3_SAML_PATH` | Path to SimpleSaml specific settings | `conf/saml` |
 | `SIMPLESAML_METADATA_FILE` | Name of the SimpleSaml metadata xml file  | `saml2_metadata.xml` |
 | `SIMPLESAML_SYNC_ROLE_ON_LOGIN` | Policy regarding which source takes precedences for role definition (Flowintel or sync on IDP)  | `true` or `false` |

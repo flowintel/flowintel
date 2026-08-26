@@ -209,6 +209,7 @@ class Config:
     # SIMPLESAML PHP
     # =============================================================================
     SIMPLESAML_ENABLED        = os.getenv('SIMPLESAML_ENABLED', 'false').lower() == 'true'
+    SIMPLESAML_TRUST_PROXY_HEADERS = os.getenv('SIMPLESAML_TRUST_PROXY_HEADERS', 'false').lower() == 'true'
     # Standard approach for config for python3-saml
     # Note: in settings for Saml, acs is probably analag to redirect in keycloak
     SIMPLESAML_PYTHON3_SAML_PATH = os.getenv('SIMPLESAML_PYTHON3_SAML_PATH', '/home/flowintel/app/conf/saml')

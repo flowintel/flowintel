@@ -723,6 +723,7 @@ def system_settings():
 
         # SimpleSAML SSO
         'simplesaml_enabled': current_app.config.get('SIMPLESAML_ENABLED', False),
+        'simplesaml_trust_proxy_headers': current_app.config.get('SIMPLESAML_TRUST_PROXY_HEADERS', False),
         'simplesaml_python3_saml_path': current_app.config.get('SIMPLESAML_PYTHON3_SAML_PATH', False),
         'simplesaml_sp_entity_id': current_app.config.get('SIMPLESAML_SP_ENTITY_ID', ''),
         'simplesaml_idp_entity_id': current_app.config.get('SIMPLESAML_IDP_ENTITY_ID', ''),

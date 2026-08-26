@@ -449,7 +449,16 @@ def simplesaml_login():
 
     relay_state = serializer.dumps({'next': next_url})
 
-    auth = SimpleSamlModel._init_saml_auth(request)
+    try:
+        auth = SimpleSamlModel._init_saml_auth(request)
+    except RuntimeError as exc:
+        flash('SAML is misconfigured. Please contact an administrator.', 'error')
+        flowintel_log(
+            "audit", 500, "SimpleSAML misconfiguration",
+            Reason=str(exc), IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+    
     auth_url = auth.login(return_to=relay_state)
     session['AuthNRequestID'] = auth.get_last_request_id()
 
@@ -492,6 +501,15 @@ def simplesaml_callback():
 
     try:
         auth = SimpleSamlModel._init_saml_auth(request)
+    except RuntimeError as exc:
+        flash('SAML is misconfigured. Please contact an administrator.', 'error')
+        flowintel_log(
+            "audit", 500, "SimpleSAML misconfiguration",
+            Reason=str(exc), IP=get_client_ip(),
+        )
+        return redirect(url_for('account.login'))
+    
+    try:
         request_id = session.get('AuthNRequestID')
         auth.process_response(request_id=request_id)
         errors = auth.get_errors()
