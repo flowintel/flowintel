@@ -3,15 +3,18 @@ import json
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
 
-from .form import CaseForm, CaseEditForm, RecurringForm
-from .CaseCore import CaseModel
-from . import common_core as CommonModel
-from .TaskCore import TaskModel
-from ..db_class.db import Case, Task_Template, Case_Template, File
+from app.db_class.db import Case, Task_Template, Case_Template, File
+
 from ..decorators import editor_required, template_editor_required
 from ..utils.utils import form_to_dict
 from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
+
+
+from .form import CaseForm, CaseEditForm, RecurringForm
+from .CaseCore import CaseModel
+from . import common_core as CommonModel
+from .TaskCore import TaskModel
 
 case_blueprint = Blueprint(
     'case',

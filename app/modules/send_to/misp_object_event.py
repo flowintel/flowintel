@@ -1,10 +1,12 @@
-from pymisp import MISPEvent, MISPObject, PyMISP, MISPAttribute
-from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
 import time
 import uuid
-import conf.config_module as Config
 import logging
 import urllib3
+
+from pymisp import MISPEvent, MISPObject, PyMISP
+from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
+
+
 urllib3.disable_warnings()
 
 logger = logging.getLogger(__name__)

@@ -14,20 +14,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app, db
-from app.db_class.db import (
-    Case, Task, Note, Subtask,
-    Case_Template, Task_Template, Note_Template, Subtask_Template,
-    Note_Template_Model, Case_Note_Template_Model,
-    Case_Task_Template,
-    Case_Template_Tags, Task_Template_Tags,
-    Case_Template_Galaxy_Tags, Task_Template_Galaxy_Tags,
-    Case_Template_Custom_Tags, Task_Template_Custom_Tags,
-    Case_Template_Connector_Instance,
-    Task_Template_Url_Tool,
-    Task_User, Case_Org,
-    Notification,
-    File
-)
+from app.db_class.db import *
 
 
 def count_records():

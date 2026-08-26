@@ -1,8 +1,9 @@
 from flask import request, jsonify
+from flask_restx import Namespace, Resource
+
+from ..decorators import api_required, misp_editor_required
 from ..utils.utils import get_user_from_api
 
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, misp_editor_required
 from . import session_class as SessionModel
 from . import misp_modules_core as MispModuleModel
 

@@ -350,6 +350,7 @@ psutil==7.2.2
     # via misp-modules
 psycopg2-binary==2.9.11
     # via -r requirements.in
+PyMySQL>=1.1.0
 publicsuffixlist==1.0.2.20260412
     # via misp-modules
 pycountry==26.2.16

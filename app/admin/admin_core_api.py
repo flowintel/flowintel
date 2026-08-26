@@ -1,4 +1,4 @@
-from ..db_class.db import User, Role, Org
+from app.db_class.db import User, Role, Org
 from ..utils.utils import validate_password_strength
 
 

@@ -1,7 +1,11 @@
-from pymisp import MISPObject
-from ..db_class.db import db, Case_Misp_Object, Misp_Attribute
 import datetime
 from dateutil.parser import parse as parse_date
+
+from pymisp import MISPObject
+
+from app.extensions import db
+from app.db_class.db import Case_Misp_Object, Misp_Attribute
+
 
 def create_misp_object(case_id: int, misp_object: MISPObject):
     """

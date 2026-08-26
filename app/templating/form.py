@@ -9,7 +9,7 @@ from wtforms.fields import (
 )
 from wtforms.validators import InputRequired, Length, Optional
 
-from ..db_class.db import Case_Template, Task_Template
+from app.db_class.db import Case_Template, Task_Template
 
 
 class TaskTemplateForm(FlaskForm):

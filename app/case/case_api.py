@@ -1,16 +1,18 @@
 from flask import request
 
+from flask_restx import Namespace, Resource
+
 from app.db_class.db import Case, User, File, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, DATETIME_FORMAT_FULL, db
+
+from ..utils import utils
+from ..utils.logger import flowintel_log
+from ..decorators import api_required, editor_required, misp_editor_required, template_editor_required
+
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
 from ..connectors import connectors_core as ConnectorModel
-from ..utils import utils
-from ..utils.logger import flowintel_log
-
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, misp_editor_required, template_editor_required
 
 case_ns = Namespace("case", description="Endpoints to manage cases")
 

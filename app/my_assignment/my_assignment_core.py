@@ -1,11 +1,15 @@
-from ..db_class.db import Status, Subtask, Task, Task_User, User
+from datetime import datetime, timedelta
+
 from sqlalchemy import desc
+
+from app.db_class.db import Status, Subtask, Task, Task_User, User
+
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
-from datetime import datetime, timedelta
 
 # Statuses that should not appear under "Ongoing Tasks"
 _INACTIVE_STATUS_NAMES = ("Rejected", "Unavailable")
+
 
 def get_user(uid):
     return User.query.get(uid)

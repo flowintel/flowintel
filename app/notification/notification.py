@@ -1,10 +1,14 @@
 from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
-import conf.config_module as ConfigModule
 from app.alerts import alerts_core as AlertsCore
-from . import notification_core as NotifModel
+
+from app.db_class.db import User
+
 from ..utils.logger import flowintel_log
-from ..db_class.db import User
+
+from . import notification_core as NotifModel
+
+import conf.config_module as ConfigModule
 
 notification_blueprint = Blueprint(
     'notification',

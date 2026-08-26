@@ -3,7 +3,12 @@ import json
 from queue import Queue
 from threading import Thread
 from uuid import uuid4
+
+from app.extensions import db
+from app.db_class.db import Misp_Module_Result, User
+
 from ..utils.utils import query_post_query, query_get_module, get_object
+
 from . import misp_modules_core as MispModuleModel
 from ..notification import notification_core as NotifModel
 from .. import db

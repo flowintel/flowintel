@@ -283,7 +283,7 @@ def test_read_only_get_custom_tag(client):
 
 def test_delete_custom_tag_in_use(client, app):
     """A custom tag attached to a case cannot be deleted"""
-    from app import db
+    from app.extensions import db
     from app.db_class.db import Case_Custom_Tags
 
     assert create_custom_tag(client).status_code == 201

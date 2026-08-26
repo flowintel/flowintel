@@ -2,8 +2,8 @@ from flask import request
 from . import tools_core as ToolModel
 
 from flask_restx import Namespace, Resource
-from ..decorators import api_required, importer_required, template_editor_required, misp_editor_required
 
+from ..decorators import api_required, importer_required, template_editor_required, misp_editor_required
 from ..utils import utils
 from ..utils.logger import flowintel_log
 

@@ -1,9 +1,11 @@
 import datetime
 import os
-from .. import db
-from ..db_class.db import Case, Case_Connector_Instance, Case_Org, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 import uuid
+
 from werkzeug.utils import secure_filename
+
+from app.extensions import db
+from app.db_class.db import Case, Case_Connector_Instance, Case_Org, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 
 ICON_FOLDER = os.path.join(os.getcwd(), "app", "static", "icons")
 MISP_SYNC_DIRECTIONS = {"send", "receive"}

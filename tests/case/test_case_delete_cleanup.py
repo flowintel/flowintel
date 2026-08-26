@@ -71,7 +71,7 @@ def test_delete_case_cleans_up_all_features(client, app):
 
     # ── 5. Insert remaining related rows directly into the DB ─────────────
     with app.app_context():
-        from app import db
+        from app.extensions import db
         from app.db_class.db import (
             Case_Tags,
             Case_Galaxy_Tags,
@@ -124,7 +124,7 @@ def test_delete_case_cleans_up_all_features(client, app):
 
     # ── 7. Verify every related table is now empty for this case ──────────
     with app.app_context():
-        from app import db
+        from app.extensions import db
         from app.db_class.db import (
             Case,
             Task,

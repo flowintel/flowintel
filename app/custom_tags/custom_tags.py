@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
-from .form import AddCustomTagForm
-from ..db_class.db import Task_Template, Case_Template
+
 from ..decorators import editor_required
 from ..utils.utils import form_to_dict
+
+from .form import AddCustomTagForm
 from . import custom_tags_core as CustomCore
 
 custom_tags_blueprint = Blueprint(

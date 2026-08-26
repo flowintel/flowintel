@@ -4,15 +4,18 @@ import os
 from pathlib import Path
 from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISPObject, MISPObjectReference, PyMISP
 import uuid
+
 from flask import current_app
-import conf.config_module as Config
-from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event
 from app.case.CaseCore import FILE_FOLDER
+
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event
+
+import conf.config_module as Config
+
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 logging.getLogger("pymisp").setLevel(logging.WARNING)
-
 
 module_config = {
     "connector": "misp",

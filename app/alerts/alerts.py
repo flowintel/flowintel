@@ -6,6 +6,8 @@ from app.decorators import admin_required
 from app.alerts import alerts_core as AlertsCore
 from . import alerts_blueprint
 
+import conf.config_module as ConfigModule
+
 
 @alerts_blueprint.route("/")
 @login_required

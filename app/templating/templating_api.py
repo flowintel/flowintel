@@ -1,18 +1,18 @@
 from flask import request
+from flask_restx import Namespace, Resource
+
+from ..utils import utils
+from ..case.common_core import get_instance_with_icon
+from ..decorators import api_required, editor_required, template_editor_required
+
+
 from .TemplateCase import TemplateModel
 from .TaskTemplateCore import TaskModel
 from . import validation_api as ApiTemplateModel
 from . import common_template_core as CommonModel
-from ..utils import utils
-from ..case.common_core import get_instance_with_icon
-
-from flask_restx import Namespace, Resource
-from ..decorators import api_required, editor_required, template_editor_required
 
 
 templating_ns = Namespace("templating", description="Endpoints to manage templates")
-
-
 
 @templating_ns.route('/cases')
 @templating_ns.doc(description='Get all case template')

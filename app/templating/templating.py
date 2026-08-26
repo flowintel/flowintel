@@ -3,27 +3,32 @@ import datetime
 import hashlib
 import json
 import os
+
 from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
 from flask_login import login_required, current_user
-from .TemplateCase import TemplateModel
-from . import common_template_core as CommonModel
-from .TaskTemplateCore import TaskModel
-from ..decorators import editor_required, template_editor_required
-from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
-from ..utils.utils import form_to_dict
-from ..utils.formHelper import prepare_tags
-from ..case import common_core as CommonCaseModel
-from ..case.common_core import get_instance_with_icon
-from ..utils.logger import flowintel_log
-from ..db_class.db import (
+
+from app.extensions import db
+from app.db_class.db import (
     Case_Template, Case_Task_Template, Case_Template_Galaxy_Tags, Case_Template_Tags,
     Case_Template_Custom_Tags,
     Cluster, Tags, Task_Template, Task_Template_Galaxy_Tags, Task_Template_Tags,
     Task_Template_Custom_Tags,
     Template_Repository, Template_Repository_Entry,
 )
-from .. import db
+
+from ..case import common_core as CommonCaseModel
+from ..case.common_core import get_instance_with_icon
 from ..custom_tags import custom_tags_core as CustomModel
+from ..decorators import editor_required, template_editor_required
+from ..utils.formHelper import prepare_tags
+from ..utils.logger import flowintel_log
+from ..utils.utils import form_to_dict
+
+from . import common_template_core as CommonModel
+from .form import TaskTemplateForm, CaseTemplateForm, TaskTemplateEditForm, CaseTemplateEditForm
+from .TaskTemplateCore import TaskModel
+from .TemplateCase import TemplateModel
+
 
 templating_blueprint = Blueprint(
     'templating',

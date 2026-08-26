@@ -5,6 +5,8 @@ import uuid
 import datetime
 import json
 from functools import lru_cache
+import sys
+
 from flask_login import current_user
 from flask import send_file, current_app
 import pymisp
@@ -14,31 +16,28 @@ from sqlalchemy import desc, and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from dateutil import relativedelta
 
-from app.utils import misp_object_helper
+from app.extensions import db
+from app.db_class.db import *
 
-from .. import db
-from ..db_class.db import *
+from app.utils import misp_object_helper
 from ..utils.logger import flowintel_log
+from ..utils.note_variables import resolve_variables
+from ..utils.utils import get_modules_list, get_object_templates
+from ..custom_tags import custom_tags_core as CustomModel
+from ..notification import notification_core as NotifModel
+from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
+from ..connectors import connectors_core as ConnectorModel
+
 from .CommonAbstract import CommonAbstract
 from .FilteringAbstract import FilteringAbstract
-from ..utils.note_variables import resolve_variables
 from . import common_core as CommonModel
 from . TaskCore import TaskModel
-from ..utils.utils import get_modules_list, get_object_templates
+
+import conf.config_module as ConfigModule
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
-
-from ..custom_tags import custom_tags_core as CustomModel
-from ..notification import notification_core as NotifModel
-
-from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
-
-from flask import current_app
-
-import conf.config_module as ConfigModule
-import sys
 
 
 @lru_cache(maxsize=1)
