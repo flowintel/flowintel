@@ -4,6 +4,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 sys.path.append(os.getcwd())
 from app import create_app, db
+from app.utils.log_paths import resolve_log_file_path
 from app.utils.init_db import create_user_test
 import pytest
 
@@ -24,7 +25,7 @@ def app():
         os.makedirs(logs_folder, exist_ok=True)
         log_file = app.config.get("LOG_FILE", "record.log")
         file_handler = RotatingFileHandler(
-            os.path.join(logs_folder, log_file),
+            resolve_log_file_path(log_file, logs_folder),
             mode="a",
             maxBytes=10 * 1024 * 1024,
             backupCount=5,

@@ -8,12 +8,14 @@ import uuid
 from flask import current_app
 from app.case.CaseCore import FILE_FOLDER
 
-from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event
 
 import conf.config_module as Config
 
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+logging.getLogger("pymisp").setLevel(logging.WARNING)
 
 module_config = {
     "connector": "misp",
@@ -22,57 +24,57 @@ module_config = {
 }
 
 def common_edit(case_task, attribute):
-    if attribute.object_relation == 'title' and not attribute.value == case_task["title"]:
-        attribute.value = case_task["title"]
-    elif attribute.object_relation == 'description' and not attribute.value == case_task["description"]:
-        attribute.value = case_task["description"]
-    elif attribute.object_relation == 'deadline' and not attribute.value == case_task["deadline"]:
-        attribute.value = case_task["deadline"]
-    elif attribute.object_relation == 'finish-date' and not attribute.value == case_task["finish_date"]:
-        attribute.value = case_task["finish_date"]
-    elif attribute.object_relation == 'status' and not attribute.value == case_task["status"]:
-        attribute.value = case_task["status"]
+    if attribute.object_relation == 'title' and not attribute.value == case_task.get("title"):
+        attribute.value = case_task.get("title")
+    elif attribute.object_relation == 'description' and not attribute.value == case_task.get("description"):
+        attribute.value = case_task.get("description")
+    elif attribute.object_relation == 'deadline' and not attribute.value == case_task.get("deadline"):
+        attribute.value = case_task.get("deadline")
+    elif attribute.object_relation == 'finish-date' and not attribute.value == case_task.get("finish_date"):
+        attribute.value = case_task.get("finish_date")
+    elif attribute.object_relation == 'status' and not attribute.value == case_task.get("status"):
+        attribute.value = case_task.get("status")
     elif attribute.object_relation == 'origin-url' and not attribute.value == Config.ORIGIN_URL:
         attribute.value = Config.ORIGIN_URL
     return attribute
 
 def common_create(case_task, case_uuid, misp_object):
-    title = misp_object.add_attribute('title', value=case_task["title"])
-    for tag in case_task["tags"]:
-        title.add_tag({'name': tag["name"], 'colour': tag["color"]})
+    title = misp_object.add_attribute('title', value=case_task.get("title"))
+    for tag in case_task.get("tags", []):
+        title.add_tag({'name': tag.get("name"), 'colour': tag.get("color")})
     misp_object.add_attribute('case-uuid', value=case_uuid)
-    misp_object.add_attribute('creation-date', value=case_task["creation_date"])
-    misp_object.add_attribute('deadline', value=case_task["deadline"])
-    misp_object.add_attribute('description', value=case_task["description"])
-    misp_object.add_attribute('finish-date', value=case_task["finish_date"])
-    misp_object.add_attribute('status', value=case_task["status"])
+    misp_object.add_attribute('creation-date', value=case_task.get("creation_date"))
+    misp_object.add_attribute('deadline', value=case_task.get("deadline"))
+    misp_object.add_attribute('description', value=case_task.get("description"))
+    misp_object.add_attribute('finish-date', value=case_task.get("finish_date"))
+    misp_object.add_attribute('status', value=case_task.get("status"))
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def create_case(case):
     misp_object = MISPObject("flowintel-case", standalone=False)
-    misp_object = common_create(case, case["uuid"], misp_object)
+    misp_object = common_create(case, case.get("uuid"), misp_object)
     
-    misp_object.add_attribute('case-owner-org-name', value=case["org_name"])
-    misp_object.add_attribute('case-owner-org-uuid', value=case["org_uuid"])
-    misp_object.add_attribute('notes', value=case["notes"])
-    misp_object.add_attribute('recurring-type', value=case["recurring_type"])
+    misp_object.add_attribute('case-owner-org-name', value=case.get("org_name"))
+    misp_object.add_attribute('case-owner-org-uuid', value=case.get("org_uuid"))
+    misp_object.add_attribute('notes', value=case.get("notes"))
+    misp_object.add_attribute('recurring-type', value=case.get("recurring_type"))
     return misp_object
 
 def create_task(task, case_uuid):
     misp_object = MISPObject("flowintel-task", standalone=False)
     misp_object = common_create(task, case_uuid, misp_object)
 
-    misp_object.add_attribute('task-uuid', value=task["uuid"])
+    misp_object.add_attribute('task-uuid', value=task.get("uuid"))
     return misp_object
 
 def create_task_note(note):
     misp_object = MISPObject("flowintel-task-note", standalone=False)
 
-    misp_object.add_attribute('note', value=note["note"])
-    misp_object.add_attribute('task-uuid', value=note["task_uuid"])
-    misp_object.add_attribute('note-uuid', value=note["uuid"])
+    misp_object.add_attribute('note', value=note.get("note"))
+    misp_object.add_attribute('task-uuid', value=note.get("task_uuid"))
+    misp_object.add_attribute('note-uuid', value=note.get("uuid"))
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
@@ -80,28 +82,28 @@ def create_task_note(note):
 def create_task_resource(resource):
     misp_object = MISPObject("flowintel-task-resource", standalone=False)
 
-    misp_object.add_attribute('resource', value=resource["name"])
-    misp_object.add_attribute('task-uuid', value=resource["task_uuid"])
-    misp_object.add_attribute('resource-uuid', value=resource["uuid"])
+    misp_object.add_attribute('resource', value=resource.get("name"))
+    misp_object.add_attribute('task-uuid', value=resource.get("task_uuid"))
+    misp_object.add_attribute('resource-uuid', value=resource.get("uuid"))
     misp_object.add_attribute('origin-url', value=Config.ORIGIN_URL)
     misp_object.add_attribute('flowintel-url', value=Config.ORIGIN_URL)
     return misp_object
 
 def event_report_note(case):
     loc_notes = ""
-    if case["notes"]:
-        loc_notes += f"# (Case) {case['title']}\n ---\n\n{case['notes']}\n ---\n\n"
+    if case.get("notes"):
+        loc_notes += f"# (Case) {case.get('title')}\n ---\n\n{case.get('notes')}\n ---\n\n"
     return loc_notes
 
 def event_report_note_task(case):
     loc_notes = ""
-    for task in case["tasks"]:
-        if task["notes"]:
-            loc_notes += f"## (Task) {task['title']}\n\n"
+    for task in case.get("tasks", []):
+        if task.get("notes"):
+            loc_notes += f"## (Task) {task.get('title')}\n\n"
             cp = 0
-            for note in task["notes"]:
+            for note in task.get("notes", []):
                 cp += 1
-                loc_notes += f"#### #{cp}\n{note['note']}\n ---\n\n"
+                loc_notes += f"#### #{cp}\n{note.get('note')}\n ---\n\n"
     return loc_notes
 
 def create_galaxy_cluster(misp: PyMISP, event, clusters):
@@ -198,10 +200,10 @@ def _collect_files(case):
     """Return a list of (file_dict, origin_type, origin_uuid) tuples."""
     files = []
     for f in case.get("files", []):
-        files.append((f, "case", case["uuid"]))
+        files.append((f, "case", case.get("uuid")))
     for task in case.get("tasks", []):
         for f in task.get("files", []):
-            files.append((f, "task", task["uuid"]))
+            files.append((f, "task", task.get("uuid")))
     return files
 
 
@@ -233,7 +235,7 @@ def _existing_attr_values(event, attr_types, prefix=None):
 def add_case_task_references(misp, event, case):
     """Add 'includes' references from the flowintel-case object to each
     flowintel-task object.  Existing references are skipped."""
-    case_obj = _find_misp_object(event, "case", case["uuid"])
+    case_obj = _find_misp_object(event, "case", case.get("uuid"))
     if not case_obj or not getattr(case_obj, "id", None):
         logger.debug("MISP export: case object not found, skipping task references")
         return
@@ -250,7 +252,7 @@ def add_case_task_references(misp, event, case):
     for task in case.get("tasks", []):
         for obj in task_objects:
             for attr in obj.attributes:
-                if attr.object_relation == "task-uuid" and attr.value == task["uuid"]:
+                if attr.object_relation == "task-uuid" and attr.value == task.get("uuid"):
                     if obj.uuid in existing_refs:
                         break
                     if not getattr(obj, "id", None):
@@ -263,10 +265,10 @@ def add_case_task_references(misp, event, case):
                         ref.relationship_type = "includes"
                         misp.add_object_reference(ref)
                         logger.info("MISP export: added 'includes' reference from case to task '%s'",
-                                    task.get("title", task["uuid"]))
+                                    task.get("title", task.get("uuid")))
                     except Exception as e:
                         logger.warning("MISP export: failed to add case→task reference for '%s': %s",
-                                       task.get("title", task["uuid"]), e)
+                                       task.get("title", task.get("uuid")), e)
                     break
 
 
@@ -398,9 +400,9 @@ def add_external_references_to_event(misp, event, case):
                 logger.warning("MISP export: failed to add external reference '%s': %s", url, e)
 
 
-def handler(instance, case, user, case_model=None, db_session=None):
+def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
-    instance: name, url, description, uuid, connector_id, type, api_key, identifier
+    instance: name, url, description, uuid, connector_id, api_key, identifier
 
     case: id, uuid, title, description, creation_date, last_modif, status_id, status, completed, owner_org_id
           org_name, org_uuid, recurring_type, deadline, finish_date, tasks, clusters, connectors
@@ -416,9 +418,18 @@ def handler(instance, case, user, case_model=None, db_session=None):
         return {"message": "Error connecting to MISP"}
     flag = False
     object_uuid_list = {}
+    create_extended = bool(payload and payload.get("create_extended_event"))
+    base_event = None
+    if create_extended and not instance.get("identifier"):
+        return {"message": "Cannot create an extended event without a current MISP event identifier"}
     if "identifier" in instance and instance["identifier"]:
         event = misp.get_event(instance["identifier"], pythonify=True)
         if 'errors' in event:
+            if create_extended:
+                return {"message": "Current MISP event not found; cannot create an extended event"}
+            flag = True
+        elif create_extended:
+            base_event = event
             flag = True
         else:
             misp_objects = event.get_objects_by_name("flowintel-case")
@@ -604,11 +615,17 @@ def handler(instance, case, user, case_model=None, db_session=None):
 
     ## Event doesn't exist
     if flag:
-        event = MISPEvent()
-        event.uuid = str(uuid.uuid4())
-        event.info = f"Case: {case['title']}"  # Required
-        event.threat_level_id = current_app.config.get("MISP_EVENT_THREAT_LEVEL", 4)
-        event.analysis = current_app.config.get("MISP_EVENT_ANALYSIS", 0)
+        is_extended_event = create_extended and base_event is not None
+        if is_extended_event:
+            event = create_extended_event(misp, base_event, f"Case: {case['title']}")
+            if isinstance(event, dict) and event.get("message"):
+                return event
+        else:
+            event = MISPEvent()
+            event.uuid = str(uuid.uuid4())
+            event.info = f"Case: {case['title']}"  # Required
+            event.threat_level_id = current_app.config.get("MISP_EVENT_THREAT_LEVEL", 4)
+            event.analysis = current_app.config.get("MISP_EVENT_ANALYSIS", 0)
 
         misp_object = create_case(case)
         event.add_object(misp_object)
@@ -636,7 +653,11 @@ def handler(instance, case, user, case_model=None, db_session=None):
                 misp_object.add_reference(loc_misp_task_object.uuid, relationship_type="resource-for")
                 event.add_object(misp_object)
 
-        event = misp.add_event(event, pythonify=True)
+        if is_extended_event:
+            event = bump_event_timestamp(event)
+            event = misp.update_event(event, pythonify=True)
+        else:
+            event = misp.add_event(event, pythonify=True)
 
         add_case_task_references(misp, event, case)
 

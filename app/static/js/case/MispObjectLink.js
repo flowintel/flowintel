@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
+import { mispObjectIconClass } from '/static/js/utils.js'
 const { ref, computed, watch } = Vue
 
 /**
@@ -47,7 +48,7 @@ export default {
         )
 
         const misp_connectors = computed(() =>
-            case_connectors.value.filter(c => c.is_misp_connector)
+            case_connectors.value.filter(c => c.is_misp_connector && c.can_use_connector)
         )
 
         const selected_connector = computed(() =>
@@ -137,12 +138,16 @@ export default {
             display_toast(res)
         }
 
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
         return {
             case_connectors, selected_instance_id, is_loading_connectors,
             remote_objects, remote_search, remote_type_filter, is_loading_remote,
             is_linking,
             filtered_remote, remote_type_options, misp_connectors, selected_connector,
-            current_link_for_instance,
+            current_link_for_instance, objectIconClass,
             on_show, load_remote_objects, link_to, unlink
         }
     },
@@ -160,26 +165,30 @@ export default {
                 </div>
                 <div class="modal-body">
 
-                    <!-- Current link (at most one) -->
+                    <!-- Current links -->
                     <template v-if="local_object && local_object.synced_instances && local_object.synced_instances.length">
-                        <div class="alert alert-info d-flex align-items-center gap-3 py-2 mb-3">
-                            <i class="fa-solid fa-link"></i>
-                            <div class="flex-grow-1" style="min-width:0;">
-                                <span class="badge bg-info text-dark me-2"><i class="fa-solid fa-cloud me-1"></i>[[ local_object.synced_instances[0].instance_name ]]</span>
-                                <code style="font-size:0.8em;">[[ local_object.synced_instances[0].object_uuid ]]</code>
-                                <a v-if="local_object.synced_instances[0].instance_url"
-                                   :href="(local_object.synced_instances[0].instance_url.endsWith('/') ? local_object.synced_instances[0].instance_url : local_object.synced_instances[0].instance_url + '/') + 'objects/view/' + local_object.synced_instances[0].object_uuid"
-                                   target="_blank" class="ms-2 small">
-                                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open on MISP
-                                </a>
+                        <div class="alert alert-info py-2 mb-3">
+                            <div v-for="si in local_object.synced_instances" :key="'current-link-'+si.instance_id"
+                                 class="d-flex align-items-center gap-3"
+                                 :class="{ 'mb-2': si !== local_object.synced_instances[local_object.synced_instances.length - 1] }">
+                                <i class="fa-solid fa-link"></i>
+                                <div class="flex-grow-1" style="min-width:0;">
+                                    <span class="badge bg-info text-dark me-2"><i class="fa-solid fa-cloud me-1"></i>[[ si.instance_name ]]</span>
+                                    <code style="font-size:0.8em;">[[ si.object_uuid ]]</code>
+                                    <a v-if="si.instance_url"
+                                       :href="(si.instance_url.endsWith('/') ? si.instance_url : si.instance_url + '/') + 'objects/view/' + si.object_uuid"
+                                       target="_blank" class="ms-2 small">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Open on MISP
+                                    </a>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
+                                        :disabled="is_linking === 'unlink-' + si.instance_id"
+                                        @click="unlink(si.instance_id)">
+                                    <span v-if="is_linking === 'unlink-' + si.instance_id" class="spinner-border spinner-border-sm" style="width:0.7rem;height:0.7rem;"></span>
+                                    <i v-else class="fa-solid fa-link-slash"></i>
+                                    Unlink
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
-                                    :disabled="is_linking === 'unlink-' + local_object.synced_instances[0].instance_id"
-                                    @click="unlink(local_object.synced_instances[0].instance_id)">
-                                <span v-if="is_linking === 'unlink-' + local_object.synced_instances[0].instance_id" class="spinner-border spinner-border-sm" style="width:0.7rem;height:0.7rem;"></span>
-                                <i v-else class="fa-solid fa-link-slash"></i>
-                                Unlink
-                            </button>
                         </div>
                     </template>
 
@@ -220,7 +229,7 @@ export default {
                         <div class="col-md-4">
                             <div class="card h-100">
                                 <div class="card-header py-2 fw-semibold">
-                                    <i class="fa-solid fa-cube me-1"></i>Local object
+                                    <i :class="objectIconClass(local_object.object_name, 'me-1')"></i>Local object
                                 </div>
                                 <div class="card-body p-2" v-if="local_object">
                                     <p class="mb-1"><span class="badge bg-secondary">[[ local_object.object_name ]]</span></p>

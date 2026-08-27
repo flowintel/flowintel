@@ -130,6 +130,14 @@
                     </label>
                 </div>
                 <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="import_standalone_attributes" v-model="import_standalone_attributes"
+                           :disabled="event_details.attributes.length === 0">
+                    <label class="form-check-label" for="import_standalone_attributes">
+                        Import individual attributes as standalone MISP attributes on the case
+                        <span v-if="event_details.attributes.length === 0" class="text-muted">(no individual attributes on this event)</span>
+                    </label>
+                </div>
+                <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="import_misp_reports" v-model="import_misp_reports"
                            :disabled="event_details.nb_reports === 0">
                     <label class="form-check-label" for="import_misp_reports">
@@ -198,13 +206,13 @@
                 </div>
 
                 <div class="col-md-6">
-                    <div class="misp-import-panel" :class="{ 'is-disabled': !import_attributes_note }">
+                    <div class="misp-import-panel" :class="{ 'is-disabled': !attributes_selection_enabled }">
                         <div class="misp-import-panel-header">
                             <strong>Individual attributes to import</strong>
                             <span class="text-muted small">[[event_details.nb_attributes]] in event</span>
                         </div>
-                        <div v-if="!import_attributes_note" class="small text-muted px-2 py-2">
-                            Tick <em>Import individual attributes</em> above to choose which ones to include.
+                        <div v-if="!attributes_selection_enabled" class="small text-muted px-2 py-2">
+                            Tick either individual-attribute import option above to choose which ones to include.
                         </div>
                         <template v-else-if="event_details.attributes.length === 0">
                             <div class="small text-muted px-2 py-2">No individual attributes on this event.</div>
@@ -262,7 +270,7 @@
             <li>Description is set to the MISP event <em>info</em>; ticket id is set to <code>MISP Event: &lt;event id&gt;</code>.</li>
             <li>Tags and galaxy clusters that already exist in Flowintel are attached to the case; the rest are ignored.</li>
             <li>Only the MISP objects you ticked are converted into Flowintel MISP objects (their attributes come along).</li>
-            <li>The four switches above optionally add a task with an event-info note, a task with a markdown table of the (selected) individual attributes, the MISP event reports as <code>.md</code> attachments, and the files attached to the MISP event (<code>attachment</code> / <code>malware-sample</code> attributes).</li>
+            <li>The switches above optionally add a task with an event-info note, a task with a markdown table of the selected individual attributes, standalone MISP attributes directly on the case, the MISP event reports as <code>.md</code> attachments, and the files attached to the MISP event (<code>attachment</code> / <code>malware-sample</code> attributes).</li>
         </ul>
     </div>
     {% endif %}
@@ -300,6 +308,7 @@
                 // Import options shown after "Check event"
                 const import_event_info_note = ref(true)
                 const import_attributes_note = ref(false)
+                const import_standalone_attributes = ref(true)
                 const import_misp_reports = ref(false)
                 const import_misp_files = ref(false)
                 const selected_objects = ref({})
@@ -322,6 +331,9 @@
                 const selected_attributes_count = computed(() =>
                     !event_details.value ? 0 :
                     event_details.value.attributes.filter(a => selected_attributes.value[a.uuid]).length
+                )
+                const attributes_selection_enabled = computed(() =>
+                    import_attributes_note.value || import_standalone_attributes.value
                 )
                 const all_objects_selected = computed(() =>
                     !!event_details.value && event_details.value.objects.length > 0
@@ -454,6 +466,7 @@
                         "case_template_id": $("#case_template_select").val(),
                         "import_event_info_note": import_event_info_note.value,
                         "import_attributes_note": import_attributes_note.value,
+                        "import_standalone_attributes": import_standalone_attributes.value,
                         "import_misp_reports": import_misp_reports.value,
                         "import_misp_files": import_misp_files.value
                     }
@@ -461,7 +474,7 @@
                         body["selected_object_uuids"] = event_details.value.objects
                             .filter(o => selected_objects.value[o.uuid])
                             .map(o => o.uuid)
-                        if (import_attributes_note.value) {
+                        if (attributes_selection_enabled.value) {
                             body["selected_attribute_uuids"] = event_details.value.attributes
                                 .filter(a => selected_attributes.value[a.uuid])
                                 .map(a => a.uuid)
@@ -513,12 +526,14 @@
 
                     import_event_info_note,
                     import_attributes_note,
+                    import_standalone_attributes,
                     import_misp_reports,
                     import_misp_files,
                     selected_objects,
                     selected_attributes,
                     show_all_objects,
                     show_all_attributes,
+                    attributes_selection_enabled,
                     visible_objects,
                     visible_attributes,
                     selected_objects_count,

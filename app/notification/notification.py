@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, redirect, jsonify, request, flash
+from flask import Blueprint, render_template, request
 from flask_login import login_required, current_user
+from app.alerts import alerts_core as AlertsCore
 
 from app.db_class.db import User
 
@@ -7,6 +8,7 @@ from ..utils.logger import flowintel_log
 
 from . import notification_core as NotifModel
 
+import conf.config_module as ConfigModule
 
 notification_blueprint = Blueprint(
     'notification',
@@ -24,16 +26,29 @@ notification_blueprint = Blueprint(
 @notification_blueprint.route("/", methods=['GET'])
 @login_required
 def index():
-    return render_template("notification/notification.html")
+    return render_template(
+        "notification/notification.html",
+        cfg=ConfigModule,
+        alert_logs=AlertsCore.read_alert_log(50),
+        case_alerts=AlertsCore.latest_alerts(current_user, limit=50),
+    )
 
 
 @notification_blueprint.route("/get_user_notifications", methods=['GET'])
 @login_required
 def get_user_notifications():
     """Return notification for current_user"""
-    data_dict = dict(request.args)
-    unread_read = data_dict["unread_read"]
-    user_notif = NotifModel.get_user_notif(current_user, unread_read)
+    unread_read = request.args.get("unread_read", "true")
+    category = request.args.get("category")
+    notification_type = request.args.get("notification_type")
+    sort = request.args.get("sort", "newest")
+    user_notif = NotifModel.get_user_notif(
+        current_user,
+        unread_read,
+        category=category,
+        notification_type=notification_type,
+        sort=sort
+    )
     user_notif_list = list()
     for notif in user_notif:
         user_notif_list.append(notif.to_json())

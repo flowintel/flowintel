@@ -40,7 +40,7 @@ class Status(Resource):
     def get(self, sid):
         for s in SessionModel.sessions:
             if s.uuid == sid:
-                return jsonify(s.status)
+                return s.status()
         if MispModuleModel.get_misp_modules_result(sid):
             return {"message": "Query is finished. /analyzer/misp-modules/result/<sid> to see the result"}
         return {"message": "Session not found."}

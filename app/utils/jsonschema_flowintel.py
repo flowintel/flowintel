@@ -25,6 +25,14 @@ caseSchema = {
         "misp-objects:": {
             "type": "array",
             "items": {"type": "object"}
+        },
+        "standalone_attributes": {
+            "type": "array",
+            "items": {"type": "object"}
+        },
+        "misp-attributes": {
+            "type": "array",
+            "items": {"type": "object"}
         }
     },
     "required": ['title']
@@ -57,6 +65,14 @@ taskSchema = {
         "subtasks:": {
             "type": "array",
             "items": {"type": "object"},
+        },
+        "misp_object_links": {
+            "type": "array",
+            "items": {"type": "object"}
+        },
+        "misp_attribute_links": {
+            "type": "array",
+            "items": {"type": "object"}
         }
     },
     "required": ['title']

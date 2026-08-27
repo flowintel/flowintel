@@ -1,6 +1,52 @@
 import {display_toast} from '/static/js/toaster.js'
 const { ref, nextTick } = Vue
 
+function textToHtml(value) {
+    const span = document.createElement('span')
+    span.textContent = String(value ?? '')
+    return span.innerHTML
+}
+
+function buildMispTimelineText(obj) {
+    const container = document.createElement('div')
+
+    const uuid = document.createElement('div')
+    uuid.style.marginBottom = '20px'
+    uuid.textContent = 'Object uuid: ' + String(obj.object_uuid ?? '')
+    container.appendChild(uuid)
+
+    const heading = document.createElement('div')
+    const title = document.createElement('h6')
+    title.textContent = 'Attributes'
+    heading.appendChild(title)
+    container.appendChild(heading)
+
+    const table = document.createElement('table')
+    table.className = 'table ms-2'
+
+    const headerRow = document.createElement('tr')
+    for (const label of ['value', 'type', 'comment', 'first seen', 'last seen', 'IDS']) {
+        const th = document.createElement('th')
+        th.textContent = label
+        headerRow.appendChild(th)
+    }
+    table.appendChild(headerRow)
+
+    for (const attr of obj.attributes) {
+        const row = document.createElement('tr')
+        for (const field of ['value', 'type', 'comment', 'first_seen', 'last_seen', 'ids_flag']) {
+            const cell = document.createElement('td')
+            cell.className = 'p-1'
+            cell.textContent = String(attr[field] ?? '')
+            row.appendChild(cell)
+        }
+        table.appendChild(row)
+    }
+
+    container.appendChild(table)
+    return container.innerHTML
+}
+
 export default {
     delimiters: ['[[', ']]'],
 	props: {
@@ -288,23 +334,9 @@ export default {
                     startDate = toStartDateObject(new Date(obj.creation_date))
                 }
 
-                let loc_text = "<div style='margin-bottom:20px'>Object uuid: " + obj.object_uuid + "</div>"
-                loc_text += "<div><h6>Attributes</h6></div>"
-                loc_text += "<table class='table ms-2'><tr><th>value</th><th>type</th><th>comment</th><th>first seen</th>"
-                loc_text += "<th>last seen</th><th>IDS</th></tr>"
-                for(let at in obj.attributes){                    
-                    loc_text += "<tr><td class='p-1'>" + obj.attributes[at].value + "</td>"
-                    loc_text += "<td class='p-1'>" + obj.attributes[at].type + "</td>"
-                    loc_text += "<td class='p-1'>" + obj.attributes[at].comment + "</td>"
-                    loc_text += "<td class='p-1'>" + obj.attributes[at].first_seen + "</td>"
-                    loc_text += "<td class='p-1'>" + obj.attributes[at].last_seen + "</td>"
-                    loc_text += "<td class='p-1'>" + obj.attributes[at].ids_flag + "</td></tr>"
-                }
-                loc_text += "</table>"
-
                 loc_list.push({
                     "start_date": startDate,
-                    "text": {"headline": obj.object_name, "text": loc_text}
+                    "text": {"headline": textToHtml(obj.object_name), "text": buildMispTimelineText(obj)}
                 })
             }
 

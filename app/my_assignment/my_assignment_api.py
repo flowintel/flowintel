@@ -1,8 +1,7 @@
 from flask import request
 
 from flask_restx import Namespace, Resource
-
-from ..decorators import api_required
+from ..decorators import admin_or_org_admin_required, api_required
 from ..utils import utils
 
 from . import my_assignment_core as AssignModel
@@ -13,7 +12,7 @@ my_assignment_ns = Namespace("my_assignment", description="Endpoints to manage a
 @my_assignment_ns.route('/user')
 @my_assignment_ns.doc(description='Get all task assignments for a user')
 class MyAssignment(Resource):
-    method_decorators = [api_required]
+    method_decorators = [admin_or_org_admin_required, api_required]
     @my_assignment_ns.doc(params={"user_id": "Required. Id of the user whose assignments to retrieve", "page": "Page number for pagination (default: 1)"})
     def get(self):
         user_id = request.args.get("user_id")

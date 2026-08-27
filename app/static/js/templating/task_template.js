@@ -267,13 +267,18 @@ export default {
                 <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[ key_loop+1 ]]-[[ template.title ]]</h5>
             </div>
             <div class="case-meta-grid" style="margin-bottom: 4px;">
+				<div class="case-meta-item" v-if="template.creation_date" :title="'Created: ' + template.creation_date">
+                    <i class="fa-solid fa-calendar-plus fa-fw"></i>
+                    <span class="meta-label">Created</span>
+                    <span class="meta-value">[[ dayjs.utc(template.creation_date).fromNow() ]]</span>
+                </div>
                 <div class="case-meta-item" v-if="template.last_modif" :title="'Modified: ' + template.last_modif">
                     <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
                     <span class="meta-label">Modified</span>
                     <span class="meta-value">[[ dayjs.utc(template.last_modif).fromNow() ]]</span>
                 </div>
                 <div class="case-meta-item" v-if="template.uuid" :title="template.uuid">
-                    <i class="fa-solid fa-fingerprint fa-fw"></i>
+                    <i class="misp-icon misp-icon-attribute misp-simple fa-fw"></i>
                     <span class="meta-label">UUID</span>
                     <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[template.uuid]]</span>
                 </div>
@@ -330,7 +335,7 @@ export default {
                 <div style="display: flex;" v-if="template.tags">
                     <template v-for="tag in template.tags">
                         <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                            <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                            <i class="misp-icon misp-icon-tag misp-simple" style="margin-right: 3px; margin-left: 3px;"></i>
                             [[tag.name]]
                         </div>
                     </template>

@@ -1,10 +1,10 @@
 import os
-import re
 import subprocess
 from typing import List
 import uuid
 import datetime
 import json
+from functools import lru_cache
 import sys
 
 from flask_login import current_user
@@ -22,7 +22,7 @@ from app.db_class.db import *
 from app.utils import misp_object_helper
 from ..utils.logger import flowintel_log
 from ..utils.note_variables import resolve_variables
-from ..utils.utils import get_modules_list
+from ..utils.utils import get_modules_list, get_object_templates
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
@@ -38,6 +38,24 @@ import conf.config_module as ConfigModule
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
+
+
+@lru_cache(maxsize=1)
+def _build_misp_attribute_types():
+    """Construct and cache the canonical list of attribute types from templates."""
+    templates = get_object_templates()
+    types_set = set()
+    for tpl in templates:
+        for attr in tpl.get('attributes', []):
+            ma = attr.get('misp_attribute')
+            if not ma:
+                continue
+            if isinstance(ma, (list, tuple)):
+                for value in ma:
+                    types_set.add(value)
+            else:
+                types_set.add(ma)
+    return tuple(sorted(types_set))
 
 class CaseCore(CommonAbstract, FilteringAbstract):
     def __init__(self):
@@ -78,6 +96,57 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def get_custom_tags_class_id(self) -> int:
         return Case_Custom_Tags.case_id
+
+    def get_misp_attribute_types(self, force: bool = False) -> list:
+        """Return canonical MISP attribute types built from templates."""
+        if force:
+            try:
+                _build_misp_attribute_types.cache_clear()
+            except Exception:
+                pass
+        return list(_build_misp_attribute_types())
+
+    def serialize_object_synced_instances(self, case_id, misp_object_id, user):
+        from ..connectors import connectors_core as ConnectorModel
+
+        synced_instances = []
+        synced_rows = Misp_Object_Instance_Uuid.query.filter_by(
+            misp_object_id=misp_object_id,
+            case_id=int(case_id)
+        ).all()
+        can_view_all = CommonModel.can_access_all_case_connectors(int(case_id), user)
+        for sync in synced_rows:
+            inst = CommonModel.get_instance(sync.instance_id)
+            if not inst or (not can_view_all and not ConnectorModel.is_instance_visible_to_user(inst, user)):
+                continue
+            synced_instances.append({
+                "instance_id": sync.instance_id,
+                "instance_name": inst.name if inst else str(sync.instance_id),
+                "instance_url": inst.url if inst else None,
+                "object_uuid": sync.object_instance_uuid
+            })
+        return synced_instances
+
+    def serialize_attribute_synced_instances(self, case_id, misp_attribute_id, user):
+        from ..connectors import connectors_core as ConnectorModel
+
+        synced_instances = []
+        synced_rows = Misp_Attribute_Instance_Uuid.query.filter_by(
+            misp_attribute_id=misp_attribute_id,
+            case_id=int(case_id)
+        ).all()
+        can_view_all = CommonModel.can_access_all_case_connectors(int(case_id), user)
+        for sync in synced_rows:
+            inst = CommonModel.get_instance(sync.instance_id)
+            if not inst or (not can_view_all and not ConnectorModel.is_instance_visible_to_user(inst, user)):
+                continue
+            synced_instances.append({
+                "instance_id": sync.instance_id,
+                "instance_name": inst.name if inst else str(sync.instance_id),
+                "instance_url": inst.url if inst else None,
+                "uuid": sync.attribute_instance_uuid
+            })
+        return synced_instances
 
 
     def create_case(self, form_dict, user):
@@ -159,28 +228,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         except Exception:
             current_app.logger.exception("Webhook delivery failed for case %s", case.id)
 
-        try:
-            from app.db_class.db import Alert
-            if not getattr(ConfigModule, "WEBHOOK_ENABLED", False) or not getattr(ConfigModule, "WEBHOOK_URL", ""):
-                status = "disabled"
-            elif webhook_status is None:
-                status = "error"
-            elif 200 <= webhook_status < 300:
-                status = "sent"
-            else:
-                status = "failed"
-            alert = Alert(
-                case_id=case.id,
-                message=f"New case created: {case.title}",
-                status=status,
-                webhook_url=getattr(ConfigModule, "WEBHOOK_URL", ""),
-                webhook_status=webhook_status,
-            )
-            db.session.add(alert)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            current_app.logger.exception("Failed to create Alert for case %s", case.id)
+        if getattr(ConfigModule, "CASE_CREATE_ALERT_ENABLED", True):
+            try:
+                from app.db_class.db import Alert
+                if not getattr(ConfigModule, "WEBHOOK_ENABLED", False) or not getattr(ConfigModule, "WEBHOOK_URL", ""):
+                    status = "disabled"
+                elif webhook_status is None:
+                    status = "error"
+                elif 200 <= webhook_status < 300:
+                    status = "sent"
+                else:
+                    status = "failed"
+                alert = Alert(
+                    case_id=case.id,
+                    message=f"New case created: {case.title}",
+                    status=status,
+                    webhook_url=getattr(ConfigModule, "WEBHOOK_URL", ""),
+                    webhook_status=webhook_status,
+                )
+                db.session.add(alert)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Failed to create Alert for case %s", case.id)
 
         return case
 
@@ -217,21 +287,45 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc = misp_object_helper.create_misp_object(case.id, obje)
             object_uuid_list = append_dict(object_uuid_list, loc)
 
+        # Import event-level (standalone) attributes
+        standalone_attr_uuid_list = []
+        for event_attr in getattr(event, 'attributes', []):
+            if event_attr.object_id and int(event_attr.object_id) != 0:
+                # attribute belongs to an object, skip (already handled above)
+                continue
+            sa_attr = Misp_Attribute(
+                case_misp_object_id=None,
+                case_id=case.id,
+                value=str(event_attr.value),
+                type=event_attr.type,
+                object_relation="",
+                first_seen=event_attr.first_seen if isinstance(event_attr.first_seen, datetime.datetime) else None,
+                last_seen=event_attr.last_seen if isinstance(event_attr.last_seen, datetime.datetime) else None,
+                comment=event_attr.comment or "",
+                ids_flag=event_attr.to_ids or False,
+                disable_correlation=getattr(event_attr, 'disable_correlation', False) or False,
+                creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+            )
+            db.session.add(sa_attr)
+            db.session.commit()
+            standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": event_attr.uuid})
+
         if "origin_url" in form_dict and form_dict["origin_url"]:
             loc_instance_id = ""
             r = Connector_Instance.query.filter_by(url=form_dict["origin_url"]).all()
             for instance in r:
-                if instance.type=='send_to':
-                    u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
-                    if u:
-                        loc_instance_id=instance.id
-                        cci = Case_Connector_Instance(case_id=case.id, instance_id=instance.id, identifier=event.uuid, is_updating_case=True)
-                        case.is_updated_from_misp = True
-                        db.session.add(cci)
-                        db.session.commit()
-                        break
+                u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
+                if u:
+                    loc_instance_id=instance.id
+                    cci = Case_Connector_Instance(case_id=case.id, instance_id=instance.id, identifier=event.uuid, is_updating_case=True)
+                    case.is_updated_from_misp = True
+                    db.session.add(cci)
+                    db.session.commit()
+                    break
             if loc_instance_id:
                 CaseModel.result_misp_object_module(object_uuid_list, instance_id=loc_instance_id, case_id=case.id)
+                CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=loc_instance_id, case_id=case.id)
 
         return case
 
@@ -239,60 +333,108 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def delete_case(self, case_id, current_user):
         """Delete a case by is id"""
         case = CommonModel.get_case(case_id)
-        if case:
-            # Delete all tasks in the case
-            for task in case.tasks:
+        if not case:
+            return False
+
+        # Delete all tasks in the case (best-effort)
+        for task in list(case.tasks):
+            try:
                 TaskModel.delete_task(task.id, current_user, case_deleted=True)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting task {getattr(task, 'id', None)} during case delete: {str(e)}", CaseId=case.id)
 
-            history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-            if os.path.isfile(history_path):
-                try:
-                    os.remove(history_path)
-                except OSError:
-                    return False
+        # Remove history file (best-effort)
+        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
+        if os.path.isfile(history_path):
+            try:
+                os.remove(history_path)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Failed to remove history file for case {case.id}: {str(e)}", CaseId=case.id)
 
-            NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", case_id, html_icon="fa-solid fa-trash", current_user=current_user)
+        NotifModel.create_notification_all_orgs(f"Case: '{case.id}-{case.title}' was deleted", case_id, html_icon="fa-solid fa-trash", current_user=current_user)
 
-            Case_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Org.query.filter_by(case_id=case.id).delete()
-            Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
-            Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
-            Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
-            Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
-            Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
+        # Explicitly remove related DB records that are not (always) covered by cascade
+        Notification.query.filter_by(case_id=case.id).delete()
+        Case_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Galaxy_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Org.query.filter_by(case_id=case.id).delete()
+        Case_Connector_Instance.query.filter_by(case_id=case.id).delete()
+        Connector_Sync_Log.query.filter_by(case_id=case.id).delete()
+        Case_Misp_Sync_Schedule.query.filter_by(case_id=case.id).delete()
+        Case_Misp_Sync_Conflict.query.filter_by(case_id=case.id).delete()
+        Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
+        Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
 
-            for obj in self.get_misp_object_by_case(case_id):
+        # Delete MISP objects and associated data (best-effort)
+        for obj in self.get_misp_object_by_case(case_id):
+            try:
                 self.delete_misp_object(obj.id)
-            Case_Misp_Object.query.filter_by(case_id=case.id).delete()
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting MISP object {getattr(obj, 'id', None)}: {str(e)}", CaseId=case.id)
+        Case_Misp_Object.query.filter_by(case_id=case.id).delete()
 
-            Recurring_Notification.query.filter_by(case_id=case.id).delete()
-            Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
-            Rulezet_Rule.query.filter_by(case_id=case.id).delete()
-            Alert.query.filter_by(case_id=case.id).delete()
-            Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
-            Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
+        # Standalone attributes
+        for attr in self.get_standalone_attributes_by_case(case_id):
+            try:
+                Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
+                Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).delete()
+            except Exception as e:
+                flowintel_log("warn", 500, f"Error deleting standalone attribute instances for attr {getattr(attr, 'id', None)}: {str(e)}", CaseId=case.id)
+        Misp_Attribute.query.filter_by(case_id=case.id).delete()
 
-            for file in case.files:
-                file_path = os.path.join(FILE_FOLDER, file.uuid)
+        Recurring_Notification.query.filter_by(case_id=case.id).delete()
+        Case_Note_Template_Model.query.filter_by(case_id=case.id).delete()
+        Rulezet_Rule.query.filter_by(case_id=case.id).delete()
+        Alert.query.filter_by(case_id=case.id).delete()
+        Case_Timeline_Event_Link.query.filter_by(case_id=case.id).delete()
+        Case_Timeline_Event.query.filter_by(case_id=case.id).delete()
+
+        # Files: remove from disk and delete DB rows (best-effort)
+        for file in list(case.files):
+            file_path = os.path.join(FILE_FOLDER, file.uuid)
+            try:
                 if os.path.isfile(file_path):
-                    try:
-                        os.remove(file_path)
-                    except OSError as e:
-                        flowintel_log("error", 500, f"Failed to remove file '{file.uuid}' from disk", Error=str(e))
+                    os.remove(file_path)
+            except Exception as e:
+                flowintel_log("warn", 500, f"Failed to remove file '{getattr(file, 'uuid', None)}' from disk: {str(e)}", CaseId=case.id, FileName=getattr(file, 'name', None))
+            try:
+                db.session.delete(file)
+            except Exception:
+                db.session.rollback()
 
+        # Commit intermediate deletions
+        db.session.commit()
+
+        # Delete the case record
+        try:
             db.session.delete(case)
+            CommonModel.update_last_modif(case.id)
             db.session.commit()
-            return True
-        return False
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log("error", 500, f"Error deleting case {case.id}: {str(e)}")
+            return False
+
+        CommonModel.save_history(case.uuid, current_user, f"Case '{case.title}' deleted")
+        return True
     
     def delete_misp_object(self, oid):
         misp_object = self.get_misp_object(oid)
-        if misp_object:
+        if not misp_object:
+            return False
+        try:
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
                 Misp_Attribute.query.filter_by(id=attr.id).delete()
             Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=misp_object.id).delete()
+            Task_Misp_Object.query.filter_by(misp_object_id=misp_object.id).delete()
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log("warn", 500, f"Error deleting MISP object {oid}: {str(e)}")
+            return False
 
     def get_assigned_tags(self, class_id) -> List:
         """Return a list of tags present in a case"""
@@ -581,6 +723,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             case_loc["nb_objects"] = len(self.get_misp_object_by_case(case.id))
         except Exception:
             case_loc["nb_objects"] = 0
+        # number of standalone MISP attributes in the case
+        try:
+            case_loc["nb_standalone_attrs"] = len(self.get_standalone_attributes_by_case(case.id))
+        except Exception:
+            case_loc["nb_standalone_attrs"] = 0
 
         return case_loc
 
@@ -662,12 +809,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.add(c)
                 db.session.commit()
 
+            # Keep mapping of original -> new IDs so we can recreate links
+            object_id_map = {}
+            attr_id_map = {}
+
             loc_misp_objects_list = self.get_misp_object_by_case(case.id)
             for misp_object in loc_misp_objects_list:
                 misp_object_json = misp_object.to_json()
                 misp_object_json["object-template"] = {"uuid": misp_object.template_uuid, "name": misp_object.name}
                 misp_object_json["attributes"] = [attr.to_json() for attr in misp_object.attributes]
-                self.create_misp_object(new_case.id, misp_object_json, user)
+
+                new_obj = self.create_misp_object(new_case.id, misp_object_json, user)
+                if new_obj:
+                    object_id_map[misp_object.id] = new_obj.id
+
+            loc_standalone_attributes_list = self.get_standalone_attributes_by_case(case.id)
+            for attr in loc_standalone_attributes_list:
+                attr_json = attr.to_json()
+                new_attr = self.create_standalone_attribute(new_case.id, attr_json, user)
+                if new_attr:
+                    try:
+                        attr_id_map[attr.id] = new_attr.id
+                    except Exception:
+                        pass
 
             for task in case.tasks:
                 task_json = task.to_json()
@@ -703,21 +867,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 for note in task_json["notes"]:
                     TaskModel.modif_note_core(new_task.id, user, note["note"], '-1')
 
-                for connector in task_json["connectors"]:
-                    c = Task_Connector_Instance(
-                        task_id=new_task.id,
-                        instance_id=connector["id"],
-                        identifier=""
-                    )
-                    db.session.add(c)
-                    db.session.commit()
+                # Recreate MISP object/attribute links using mapped IDs
+                for misp_object in task_json.get("misp_object_links", []):
+                    orig_obj_id = misp_object.get("misp_object_id")
+                    new_obj_id = object_id_map.get(orig_obj_id)
+                    if new_obj_id:
+                        TaskModel.link_misp_object(new_task.id, new_obj_id, user)
+
+                for misp_attr in task_json.get("misp_attribute_links", []):
+                    orig_attr_id = misp_attr.get("misp_attribute_id")
+                    new_attr_id = attr_id_map.get(orig_attr_id)
+                    if new_attr_id:
+                        TaskModel.link_misp_attribute(new_task.id, new_attr_id, user)
+
 
             CommonModel.save_history(case.uuid, user, f"Case forked, {new_case.id} - {new_case.title}")
             return new_case
         except Exception as e:
             print(e)
             db.session.rollback()
-            return {"message": "error when creating the fork"}, 400
+            return {"message": "error when creating the fork"}
     
     def merge_case_core(self, current_case: Case, merging_case: Case, current_user: User) -> bool:
         """Merge Current case into merging case"""
@@ -727,7 +896,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             Case_Custom_Tags,
             Case_Connector_Instance,
             Case_Org,
-            Case_Misp_Object,
         ]
 
         for model in models:
@@ -745,6 +913,26 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 else:
                     # optional: delete the duplicate from current_case
                     db.session.delete(item)
+
+        # -- Handle MISP objects and attributes specially --
+        # Move Case_Misp_Object entries and ensure instance UUIDs follow.
+        for obj in Case_Misp_Object.query.filter_by(case_id=current_case.id).all():
+            obj.case_id = merging_case.id
+            # update any object instance UUID rows to point to the new case
+            for inst in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=obj.id, case_id=current_case.id).all():
+                inst.case_id = merging_case.id
+
+        db.session.commit()
+
+        # Move standalone MISP attributes (case_misp_object_id is NULL)
+        for s_attr in Misp_Attribute.query.filter_by(case_id=current_case.id, case_misp_object_id=None).all():
+            # move standalone attribute to merging case
+            s_attr.case_id = merging_case.id
+            # update attribute instance uuid rows case_id
+            for ainst in Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=s_attr.id, case_id=current_case.id).all():
+                ainst.case_id = merging_case.id
+
+        db.session.commit()
 
         # Reorder tasks
         max_order = db.session.query(db.func.max(Task.case_order_id))\
@@ -1134,7 +1322,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return {"message": "Ollama configuration is missing", "toast_class": "warning-subtle"}, 400
 
         if prompt:
-            message = prompt
+            message = f"{prompt} {json.dumps(return_dict)}"
         else:
             asking_input = "Give me a report using:"
             message = f"{asking_input} {json.dumps(return_dict)}"
@@ -1382,12 +1570,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         _, res = get_modules_list()
         if "connector" in res[module]["config"]:
             connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
+            current_user = User.query.get(user_id)
             instance_list = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
+                if (
+                    instance.sharing_scope == "global"
+                    or (instance.sharing_scope == "org" and current_user and instance.shared_org_id == current_user.org_id)
+                    or CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id)
+                ):
                     loc_instance = instance.to_json()
                     identifier = CommonModel.get_case_connector_id(instance.id, case_id)
-                    loc_instance["identifier"] = identifier.identifier
+                    loc_instance["identifier"] = identifier.identifier if identifier else ""
                     instance_list.append(loc_instance)
             return instance_list
         return []
@@ -1398,46 +1591,183 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     ##############
 
     def add_connector(self, cid, request_json, current_user) -> bool:
+        new_case_connectors = []
+        seen_instance_ids = set()
+
         for connector in request_json["connectors"]:
-            instance = CommonModel.get_instance_by_name(connector["name"])
-            if Case_Connector_Instance.query.filter_by(case_id=cid, instance_id=instance.id).first():
+            instance = None
+            if "id" in connector:
+                instance = CommonModel.get_instance(connector["id"])
+            if not instance and "name" in connector:
+                instance = CommonModel.get_instance_by_name(connector["name"])
+            if not instance:
+                return False
+            if (
+                instance.sharing_scope == "org"
+                and instance.shared_org_id != current_user.org_id
+            ):
+                return False
+            if (
+                instance.sharing_scope == "personal"
+                and not CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id)
+            ):
+                return False
+            if (
+                instance.id in seen_instance_ids
+                or CommonModel.get_case_connectors_both(cid, instance.id)
+            ):
                 continue
-            if "identifier" in connector: loc_identfier = connector["identifier"]
-            else: loc_identfier = ""
-            c = Case_Connector_Instance(
+
+            loc_identfier = connector["identifier"] if "identifier" in connector else ""
+            new_case_connectors.append(Case_Connector_Instance(
                 case_id=cid,
                 instance_id=instance.id,
                 identifier=loc_identfier
-            )
-            db.session.add(c)
-            db.session.commit()
-            case = CommonModel.get_case(cid)
-            CommonModel.save_history(case.uuid, current_user, f"New Connector added")
-            CommonModel.update_last_modif(cid)
+            ))
+            seen_instance_ids.add(instance.id)
+
+        if not new_case_connectors:
+            return True
+
+        db.session.add_all(new_case_connectors)
+        db.session.commit()
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, "New Connector added")
+        CommonModel.update_last_modif(cid)
         return True
 
-    def remove_connector(self, case_instance_id):
+    def remove_connector(self, case_instance_id, current_user=None):
+        case_instance = Case_Connector_Instance.query.get(case_instance_id)
+        if not case_instance:
+            return False
+        case_id = case_instance.case_id
         try:
-            Case_Connector_Instance.query.filter_by(id=case_instance_id).delete()
+            db.session.delete(case_instance)
             db.session.commit()
+            CommonModel.update_last_modif(case_id)
+            if current_user:
+                case = CommonModel.get_case(case_id)
+                CommonModel.save_history(case.uuid, current_user, "Connector removed")
         except SQLAlchemyError:
+            db.session.rollback()
+            return False
+        except Exception:
+            db.session.rollback()
             return False
         return True
 
-    def edit_connector(self, case_instance_id, request_json):
+    def edit_connector(self, case_instance_id, request_json, current_user=None):
         c = Case_Connector_Instance.query.get(case_instance_id)
         if c:
-            c.identifier = request_json["identifier"]            
+            c.identifier = request_json["identifier"]
             db.session.commit()
+            CommonModel.update_last_modif(c.case_id)
+            if current_user:
+                case = CommonModel.get_case(c.case_id)
+                CommonModel.save_history(case.uuid, current_user, "Connector edited")
             return True
         return False
 
+    def _misp_send_remote_change_guard(self, loc_case, case, case_instance, loc_instance, api_key, direction, payload=None):
+        """Stop a send when the target MISP event changed since the last sync baseline."""
+        if direction != "send" or not case_instance.identifier:
+            return None
+        if isinstance(payload, dict) and payload.get("force_conflict_resolution"):
+            return None
 
-    def call_module_case(self, module, case_instance_id, loc_case, user, payload=None):
-        """Run a module"""
+        from ..connectors import connectors_core as ConnectorModel
+
+        schedule = Case_Misp_Sync_Schedule.query.filter_by(
+            case_id=int(loc_case.id),
+            case_connector_instance_id=int(case_instance.id),
+            direction="send"
+        ).first()
+        last_run_at = schedule.last_run_at if schedule and schedule.last_run_at else case_instance.last_sync
+        last_run_at = ConnectorModel.as_utc_datetime(last_run_at)
+        if not last_run_at:
+            return None
+
+        remote_event, error = ConnectorModel._misp_get_event_pythonified(loc_instance, api_key, case_instance.identifier)
+        if error or not remote_event:
+            return None
+        remote_timestamp = ConnectorModel._misp_read_event_value(remote_event, "timestamp")
+        remote_metadata = {
+            "id": ConnectorModel._misp_read_event_value(remote_event, "id"),
+            "uuid": ConnectorModel._misp_read_event_value(remote_event, "uuid"),
+            "info": ConnectorModel._misp_read_event_value(remote_event, "info"),
+            "timestamp": str(remote_timestamp) if remote_timestamp is not None else None,
+            "timestamp_at": ConnectorModel.format_misp_sync_datetime(ConnectorModel.as_utc_datetime(remote_timestamp)),
+            "published": bool(ConnectorModel._misp_read_event_value(remote_event, "published")),
+        }
+
+        remote_modified_at = ConnectorModel.as_utc_datetime(remote_timestamp or remote_metadata.get("timestamp_at"))
+        if not remote_modified_at:
+            return None
+
+        # MISP stores event timestamps at second precision; leave a tiny cushion for the run that wrote the baseline.
+        if remote_modified_at <= last_run_at + datetime.timedelta(seconds=2):
+            return None
+
+        remote_ref = remote_metadata.get("uuid") or remote_metadata.get("id")
+        if ConnectorModel.get_resolved_misp_event_conflict(
+            loc_case.id,
+            case_instance.id,
+            "send",
+            remote_ref,
+            remote_timestamp
+        ):
+            return None
+
+        local_last_modif = ConnectorModel.as_utc_datetime(loc_case.last_modif)
+        base_snapshot = {
+            "last_run_at": ConnectorModel.format_misp_sync_datetime(last_run_at),
+            "last_seen_case_modif": ConnectorModel.format_misp_sync_datetime(schedule.last_seen_case_modif) if schedule else None,
+            "case_connector_last_sync": ConnectorModel.format_misp_sync_datetime(case_instance.last_sync)
+        }
+        local_snapshot = {
+            "case_id": loc_case.id,
+            "case_uuid": case.get("uuid"),
+            "case_title": case.get("title"),
+            "case_last_modif": ConnectorModel.format_misp_sync_datetime(local_last_modif),
+            "changed_since_last_run": bool(local_last_modif and local_last_modif > last_run_at),
+            "object_count": len(case.get("objects") or []),
+            "standalone_attribute_count": len(case.get("standalone_attributes") or []),
+            "objects": case.get("objects") or [],
+            "standalone_attributes": case.get("standalone_attributes") or []
+        }
+        conflict_details = ConnectorModel.build_misp_event_conflict_details(local_snapshot, remote_event)
+        local_snapshot["details"] = conflict_details["local"]
+        remote_metadata["details"] = conflict_details["remote"]
+        if not local_snapshot["details"]:
+            ConnectorModel.clear_pending_misp_event_sync_conflict(
+                loc_case.id,
+                case_instance.id,
+                "send",
+                case.get("uuid"),
+                remote_ref
+            )
+            return None
+        conflict, created = ConnectorModel.upsert_misp_event_sync_conflict(
+            loc_case.id,
+            case_instance.id,
+            "send",
+            case.get("uuid"),
+            remote_metadata,
+            base_snapshot,
+            local_snapshot
+        )
+        return {
+            "message": "The MISP event was modified after the last successful sync. Review the pending sync conflict before sending Flowintel changes.",
+            "toast_class": "warning-subtle",
+            "conflict_id": conflict.id,
+            "conflict_created": created
+        }
+
+    def _build_case_connector_module_context(self, case_instance_id, loc_case, user):
+        """Prepare the common case and connector payload used by case connector modules."""
         org = CommonModel.get_org(loc_case.owner_org_id)
 
-        tasks = list()
+        tasks = []
         for task in loc_case.tasks:
             loc_task = task.to_json()
             loc_task["status"] = CommonModel.get_status(task.status_id).name
@@ -1452,27 +1782,72 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         for cluster in case["clusters"]:
             cluster["galaxy"] = Galaxy.query.get(cluster["galaxy_id"]).to_json()
 
-
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
         if not case_instance:
-            return {"message": "Connector instance not found"}
+            return None, None, None, {"message": "Connector instance not found"}
 
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
-            return {"message": "Connector instance not found"}
-
-        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
+            return None, None, None, {"message": "Connector instance not found"}
+        if not CommonModel.can_interact_with_case_connector(loc_instance, user):
+            return None, None, None, {"message": "Action not allowed", "toast_class": "warning-subtle"}
 
         instance = loc_instance.to_json()
-        if loc_instance.global_api_key:
-            instance["api_key"] = loc_instance.global_api_key
-        elif user_instance:
-            instance["api_key"] = user_instance.api_key
-        else:
-            return {"message": "No API key configured for this connector"}
+        instance["api_key"] = CommonModel.get_case_connector_api_key(loc_instance, user, loc_case.id)
+        if not instance["api_key"]:
+            return None, None, None, {"message": "No API key configured for this connector"}
         instance["identifier"] = case_instance.identifier
 
+        return case, case_instance, loc_instance, instance
+
+    def _build_case_sync_context(self, case_instance_id, loc_case, user):
+        """Prepare the case and connector payload used by MISP sync checks and module runs."""
+        case, case_instance, loc_instance, instance = self._build_case_connector_module_context(case_instance_id, loc_case, user)
+        if not case:
+            return case, case_instance, loc_instance, instance
+
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
+        case["standalone_attributes"] = self.get_standalone_attr_instance(case["id"], instance["id"])
+
+        return case, case_instance, loc_instance, instance
+
+    def ensure_misp_send_conflict(self, case_instance_id, loc_case, user):
+        """Create or refresh a pending send-side MISP collision without running a sync."""
+        case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
+        if not case:
+            return None
+        return self._misp_send_remote_change_guard(
+            loc_case,
+            case,
+            case_instance,
+            loc_instance,
+            instance["api_key"],
+            "send"
+        )
+
+
+    def call_module_case(self, module, case_instance_id, loc_case, user, payload=None):
+        """Run a module"""
+        case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
+        if not case:
+            return instance
+
+        modules, _ = get_modules_list()
+        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
+        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+        automation_log_message = self.misp_sync_automation_log_message(payload)
+
+        remote_change_result = self._misp_send_remote_change_guard(
+            loc_case,
+            case,
+            case_instance,
+            loc_instance,
+            instance["api_key"],
+            direction,
+            payload
+        )
+        if remote_change_result:
+            return remote_change_result
 
         # Include file metadata for MISP export
         case["files"] = [f.to_json() for f in loc_case.files]
@@ -1508,16 +1883,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         #######
         # RUN #
         #######
-        modules, _ = get_modules_list()
         try:
             result = modules[module].handler(instance, case, user, case_model=self, db_session=db, payload=payload)
         except TypeError:
             # fallback for handlers that don't accept a payload parameter
             result = modules[module].handler(instance, case, user, case_model=self, db_session=db)
-
-        # Determine direction from module config
-        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
-        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
 
         # Module returns None for success, or a dict.
         # Dict with "message" key means error.
@@ -1526,13 +1896,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if "message" in result:
                 # Write error log
                 try:
+                    log_message = result["message"]
+                    if automation_log_message:
+                        log_message = f"{automation_log_message}: {log_message}"
                     sync_log = Connector_Sync_Log(
                         case_id=case["id"],
                         case_connector_instance_id=case_instance_id,
                         direction=direction,
                         timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
                         status="error",
-                        message=result["message"],
+                        message=log_message,
                         objects_synced=0,
                         objects_failed=0,
                         details=None
@@ -1547,6 +1920,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
 
         # Write success/partial sync log
+        sync_finished_at = datetime.datetime.now(tz=datetime.timezone.utc)
         try:
             synced = result.get("synced_count", 0) if isinstance(result, dict) else 0
             failed = result.get("failed_count", 0) if isinstance(result, dict) else 0
@@ -1561,9 +1935,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 case_id=case["id"],
                 case_connector_instance_id=case_instance_id,
                 direction=direction,
-                timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
+                timestamp=sync_finished_at,
                 status=status,
-                message=None,
+                message=automation_log_message,
                 objects_synced=synced,
                 objects_failed=failed,
                 details=details
@@ -1573,10 +1947,150 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             pass
 
         # Record last sync time on successful module execution
-        case_instance.last_sync = datetime.datetime.now(tz=datetime.timezone.utc)
+        case_instance.last_sync = sync_finished_at
+        try:
+            from ..connectors import connectors_core as ConnectorModel
+            ConnectorModel.mark_misp_sync_schedule_run(case["id"], case_instance_id, direction, loc_case.last_modif, sync_finished_at)
+        except Exception:
+            pass
         db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
+
+    def call_connector_module_case(self, module, case_instance_id, loc_case, user, payload=None):
+        """Run a non-MISP case connector module."""
+        case, case_instance, loc_instance, instance = self._build_case_connector_module_context(case_instance_id, loc_case, user)
+        if not case:
+            return instance
+
+        modules, _ = get_modules_list()
+        if module not in modules:
+            return {"message": "Module not found"}
+
+        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
+        if module_cfg.get("case_task") != "case":
+            return {"message": "Module is not available for cases"}
+        if module_cfg.get("connector") == "misp":
+            return {"message": "Use the MISP sync route for MISP modules"}
+
+        connector = CommonModel.get_connector(loc_instance.connector_id)
+        expected_connector = module_cfg.get("connector")
+        if expected_connector and connector and connector.name.lower() != expected_connector.lower():
+            return {"message": "Module is not compatible with this connector"}
+
+        try:
+            result = modules[module].handler(instance, case, user, case_model=self, db_session=db, payload=payload)
+        except TypeError:
+            result = modules[module].handler(instance, case, user, case_model=self, db_session=db)
+
+        if isinstance(result, dict):
+            if "message" in result:
+                return result
+            if "identifier" in result and case_instance.identifier != result["identifier"]:
+                case_instance.identifier = result["identifier"]
+                db.session.commit()
+
+        case_instance.last_sync = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+        CommonModel.save_history(case["uuid"], user, f"Case connector module {module} used on instance: {instance['name']}")
+
+    def trigger_misp_send_on_change(self, cid, fallback_user=None):
+        """Run enabled MISP send schedules that are configured for case changes."""
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"ran": 0, "failed": 0, "connectors": [], "failed_connectors": []}
+
+        schedules = Case_Misp_Sync_Schedule.query.filter_by(
+            case_id=int(cid),
+            direction="send",
+            enabled=True,
+            on_change=True
+        ).all()
+        ran = 0
+        failed = 0
+        connectors = []
+        failed_connectors = []
+        for schedule in schedules:
+            case_connector = CommonModel.get_case_connectors_by_id(schedule.case_connector_instance_id)
+            connector_instance = CommonModel.get_instance(case_connector.instance_id) if case_connector else None
+            connector_name = connector_instance.name if connector_instance else f"#{schedule.case_connector_instance_id}"
+            user = User.query.get(schedule.created_by_id) if schedule.created_by_id else fallback_user
+            if not user:
+                failed += 1
+                failed_connectors.append(connector_name)
+                flowintel_log("warning", 400, "MISP on-change sync skipped: no schedule owner", CaseId=cid, ScheduleId=schedule.id)
+                continue
+
+            payload = dict(schedule.payload or {})
+            module_name = schedule.module_name or "misp_object_event"
+            payload["module"] = module_name
+            payload["case_task_instance_id"] = schedule.case_connector_instance_id
+            payload["automation_trigger"] = "case_change"
+
+            try:
+                res = self.call_module_case(module_name, schedule.case_connector_instance_id, case, user, payload=payload)
+                if res:
+                    failed += 1
+                    failed_connectors.append(connector_name)
+                    flowintel_log(
+                        "warning",
+                        400,
+                        f"MISP on-change sync failed: {res.get('message', 'unknown error')}",
+                        User=user.email,
+                        CaseId=cid,
+                        ConnectorInstanceId=schedule.case_connector_instance_id,
+                        ScheduleId=schedule.id
+                    )
+                else:
+                    ran += 1
+                    connectors.append(connector_name)
+            except Exception as e:
+                failed += 1
+                failed_connectors.append(connector_name)
+                flowintel_log(
+                    "error",
+                    500,
+                    f"MISP on-change sync raised an exception: {e}",
+                    User=getattr(user, "email", None),
+                    CaseId=cid,
+                    ConnectorInstanceId=schedule.case_connector_instance_id,
+                    ScheduleId=schedule.id
+                )
+        return {
+            "ran": ran,
+            "failed": failed,
+            "connectors": connectors,
+            "failed_connectors": failed_connectors
+        }
+
+    def misp_sync_automation_log_message(self, payload):
+        if not isinstance(payload, dict):
+            return None
+        trigger = payload.get("automation_trigger")
+        if trigger == "case_change":
+            return "Auto sync: case change"
+        if trigger == "scheduled":
+            return "Auto sync: scheduled"
+        if trigger:
+            return f"Auto sync: {str(trigger).replace('_', ' ')}"
+        return None
+
+    def with_misp_automation_message(self, response, sync_result):
+        response = dict(response or {})
+        sync_result = sync_result or {}
+        connector_names = list(dict.fromkeys(sync_result.get("connectors") or []))
+        failed_connector_names = list(dict.fromkeys(sync_result.get("failed_connectors") or []))
+        details = []
+        if connector_names:
+            details.append("MISP automation synchronized via " + ", ".join(connector_names))
+        if failed_connector_names:
+            details.append("MISP automation failed via " + ", ".join(failed_connector_names))
+        if details:
+            response["message"] = f"{response.get('message', 'Updated')}. " + ". ".join(details)
+            response["not_hide"] = True
+            if failed_connector_names and not connector_names:
+                response["toast_class"] = "warning-subtle"
+        return response
 
     ###############
     # MISP Object #
@@ -1595,6 +2109,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
 
         self.add_attributes_object(cid, case_misp_object.id, request_json)
+
+        # If task ids were provided on creation, link them to the new object
+        try:
+            task_ids = request_json.get('task_ids', []) if isinstance(request_json, dict) else []
+            if isinstance(task_ids, list) and len(task_ids) > 0:
+                valid_task_ids = set()
+                for tid in task_ids:
+                    try:
+                        tid_int = int(tid)
+                    except Exception:
+                        continue
+                    t = Task.query.get(tid_int)
+                    if t and int(t.case_id) == int(cid):
+                        valid_task_ids.add(tid_int)
+
+                for tid in valid_task_ids:
+                    link = Task_Misp_Object(task_id=tid, misp_object_id=case_misp_object.id)
+                    db.session.add(link)
+                if valid_task_ids:
+                    db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log('warning', 500, f"Error linking tasks to MISP object: {e}", User=current_user.email, CaseId=cid)
 
         case = CommonModel.get_case(cid)
         CommonModel.save_history(case.uuid, current_user, f"New MISP-Object created")
@@ -1643,6 +2180,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             misp_objs = Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=cid).all()
             for m_o in misp_objs:
                 db.session.delete(m_o)
+
+            task_object = Task_Misp_Object.query.filter_by(misp_object_id=oid).all()
+            for t_o in task_object:
+                db.session.delete(t_o)
             
 
             db.session.delete(misp_object)
@@ -1654,7 +2195,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
 
-    def add_attributes_object(self, cid, oid, request_json):
+    def add_attributes_object(self, cid, oid, request_json, current_user=None):
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
             for attribute in request_json["attributes"]:
@@ -1663,14 +2204,22 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if "first_seen" in attribute and attribute["first_seen"]:
-                    first_seen = datetime.datetime.strptime(attribute["first_seen"], DATETIME_FORMAT)
+                    val = attribute["first_seen"]
+                    if isinstance(val, datetime.datetime):
+                        first_seen = val
+                    else:
+                        first_seen = self.parse_date(val)
                 if "last_seen" in attribute and attribute["last_seen"]:
-                    last_seen = datetime.datetime.strptime(attribute["last_seen"], DATETIME_FORMAT)
+                    val = attribute["last_seen"]
+                    if isinstance(val, datetime.datetime):
+                        last_seen = val
+                    else:
+                        last_seen = self.parse_date(val)
 
-                if "ids_flag" in attribute and attribute["ids_flag"] and attribute["ids_flag"] == 'true':
+                if "ids_flag" in attribute and attribute["ids_flag"] and (attribute["ids_flag"] == 'true' or attribute["ids_flag"] is True):
                     ids_flag = True
 
-                if "disable_correlation" in attribute and attribute["disable_correlation"] and attribute["disable_correlation"] == 'true':
+                if "disable_correlation" in attribute and attribute["disable_correlation"] and (attribute["disable_correlation"] == 'true' or attribute["disable_correlation"] is True):
                     disable_correlation = True
 
                 attr = Misp_Attribute(
@@ -1691,10 +2240,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             
             misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
             db.session.commit()
+            CommonModel.update_last_modif(cid)
+            if current_user:
+                case = CommonModel.get_case(cid)
+                CommonModel.save_history(case.uuid, current_user, f"Attributes added to MISP object {oid}")
             return True
         return False
 
-    def edit_attr(self, case_id, object_id, attr_id, request_json):
+    def edit_attr(self, case_id, object_id, attr_id, request_json, current_user=None):
         misp_object = self.get_misp_object(object_id)
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
@@ -1704,9 +2257,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 ids_flag = False
                 disable_correlation = False
                 if request_json["first_seen"]:
-                    first_seen = datetime.datetime.strptime(request_json["first_seen"], DATETIME_FORMAT)
+                    val = request_json["first_seen"]
+                    if isinstance(val, datetime.datetime):
+                        first_seen = val
+                    else:
+                        first_seen = self.parse_date(val)
                 if request_json["last_seen"]:
-                    last_seen = datetime.datetime.strptime(request_json["last_seen"], DATETIME_FORMAT)
+                    val = request_json["last_seen"]
+                    if isinstance(val, datetime.datetime):
+                        last_seen = val
+                    else:
+                        last_seen = self.parse_date(val)
 
                 if request_json["ids_flag"] and (request_json["ids_flag"] == 'true' or request_json["ids_flag"] == True):
                     ids_flag = True
@@ -1727,18 +2288,28 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
                 misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
                 db.session.commit()
+                CommonModel.update_last_modif(case_id)
+                if current_user:
+                    case = CommonModel.get_case(case_id)
+                    CommonModel.save_history(case.uuid, current_user, f"MISP object attribute {attr_id} edited")
                 return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
 
 
-    def delete_attribute(self, case_id, object_id, attr_id):
+    def delete_attribute(self, case_id, object_id, attr_id, current_user=None):
         misp_object = self.get_misp_object(object_id)
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
             if attribute.case_misp_object_id == int(object_id):
                 db.session.delete(attribute)
                 db.session.commit()
+                misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                db.session.commit()
+                CommonModel.update_last_modif(case_id)
+                if current_user:
+                    case = CommonModel.get_case(case_id)
+                    CommonModel.save_history(case.uuid, current_user, f"MISP object attribute {attr_id} deleted")
                 return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
             return {"message": "Attribute not found in this object", "toast_class": "warning-subtle"}, 404
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
@@ -1750,12 +2321,234 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
             loc = []
             for loc_attr in attributes:
-                cid = Case_Misp_Object.query.get(loc_attr.case_misp_object_id).case_id
-                if not cid in loc and not cid == case_id:
+                # standalone attribute - use case_id directly
+                if loc_attr.case_misp_object_id is None:
+                    cid = loc_attr.case_id
+                else:
+                    parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
+                    if parent is None:
+                        continue
+                    cid = parent.case_id
+                if cid and not cid in loc and not cid == case_id:
                     loc.append(cid)
             return loc
         return []
-            
+
+    ################################
+    # Standalone MISP Attributes   #
+    ################################
+
+    def create_standalone_attribute(self, cid, data, current_user):
+        """Create a standalone MISP attribute (not inside any object)"""
+        first_seen = None
+        last_seen = None
+        ids_flag = False
+        disable_correlation = False
+
+        if data.get("first_seen"):
+            val = data["first_seen"]
+            if isinstance(val, datetime.datetime):
+                first_seen = val
+            else:
+                first_seen = self.parse_date(val)
+        if data.get("last_seen"):
+            val = data["last_seen"]
+            if isinstance(val, datetime.datetime):
+                last_seen = val
+            else:
+                last_seen = self.parse_date(val)
+        if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
+            ids_flag = True
+        if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
+            disable_correlation = True
+
+        attr = Misp_Attribute(
+            case_misp_object_id=None,
+            case_id=cid,
+            value=data["value"],
+            type=data["type"],
+            object_relation="",
+            first_seen=first_seen,
+            last_seen=last_seen,
+            comment=data.get("comment", ""),
+            ids_flag=ids_flag,
+            disable_correlation=disable_correlation,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(attr)
+        db.session.commit()
+
+        # If task ids were provided on creation, link them to the new standalone attribute
+        try:
+            task_ids = data.get('task_ids', []) if isinstance(data, dict) else []
+            if isinstance(task_ids, list) and len(task_ids) > 0:
+                valid_task_ids = set()
+                for tid in task_ids:
+                    try:
+                        tid_int = int(tid)
+                    except Exception:
+                        continue
+                    t = Task.query.get(tid_int)
+                    if t and int(t.case_id) == int(cid):
+                        valid_task_ids.add(tid_int)
+
+                for tid in valid_task_ids:
+                    link = Task_Misp_Attribute(task_id=tid, misp_attribute_id=attr.id)
+                    db.session.add(link)
+                if valid_task_ids:
+                    db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log('warning', 500, f"Error linking tasks to standalone MISP attribute: {e}", User=current_user.email, CaseId=cid)
+
+        case = CommonModel.get_case(cid)
+        CommonModel.save_history(case.uuid, current_user, "Standalone MISP attribute created")
+        CommonModel.update_last_modif(cid)
+        return attr
+
+    def get_standalone_attributes_by_case(self, cid):
+        """Get all standalone MISP attributes for a case"""
+        return Misp_Attribute.query.filter_by(case_id=cid, case_misp_object_id=None).all()
+
+    def edit_standalone_attr(self, cid, aid, data, current_user=None):
+        """Edit a standalone MISP attribute"""
+        attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not attr:
+            return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+
+        first_seen = None
+        last_seen = None
+        ids_flag = False
+        disable_correlation = False
+
+        if data.get("first_seen"):
+            val = data["first_seen"]
+            if isinstance(val, datetime.datetime):
+                first_seen = val
+            else:
+                first_seen = self.parse_date(val)
+        if data.get("last_seen"):
+            val = data["last_seen"]
+            if isinstance(val, datetime.datetime):
+                last_seen = val
+            else:
+                last_seen = self.parse_date(val)
+        if data.get("ids_flag") and (data["ids_flag"] == 'true' or data["ids_flag"] is True):
+            ids_flag = True
+        if data.get("disable_correlation") and (data["disable_correlation"] == 'true' or data["disable_correlation"] is True):
+            disable_correlation = True
+
+        attr.value = data["value"]
+        attr.type = data["type"]
+        attr.first_seen = first_seen
+        attr.last_seen = last_seen
+        attr.comment = data.get("comment", "")
+        attr.ids_flag = ids_flag
+        attr.disable_correlation = disable_correlation
+        attr.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+        CommonModel.update_last_modif(cid)
+        if current_user:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Standalone MISP attribute {aid} edited")
+        return {"message": "Attribute updated", "toast_class": "success-subtle"}, 200
+
+    def delete_standalone_attr(self, cid, aid, current_user=None):
+        """Delete a standalone MISP attribute"""
+        attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not attr:
+            return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+        
+        misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
+        for m_a in misp_attrs:
+            db.session.delete(m_a)
+
+        task_misp_attrs = Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()
+        for t_a in task_misp_attrs:
+            db.session.delete(t_a)
+
+
+        db.session.delete(attr)
+        db.session.commit()
+        CommonModel.update_last_modif(cid)
+        if current_user:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Standalone MISP attribute {aid} deleted")
+        return {"message": "Attribute deleted", "toast_class": "success-subtle"}, 200
+
+    def set_standalone_attribute_tasks(self, cid, aid, task_ids, current_user):
+        """Assign tasks to a standalone MISP attribute (replace current assignments)."""
+        misp_attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
+        if not misp_attr:
+            return {"message": "Standalone attribute not found in this case", "toast_class": "warning-subtle"}, 404
+
+        if not isinstance(task_ids, list):
+            return {"message": "task_ids must be a list", "toast_class": "warning-subtle"}, 400
+
+        valid_new_ids = set()
+        for tid in task_ids:
+            try:
+                tid_int = int(tid)
+            except Exception:
+                continue
+            task = Task.query.get(tid_int)
+            if task and int(task.case_id) == int(cid):
+                valid_new_ids.add(tid_int)
+
+        existing_links = Task_Misp_Attribute.query.filter_by(misp_attribute_id=aid).all()
+        existing_ids = {link.task_id for link in existing_links}
+
+        to_add = valid_new_ids - existing_ids
+        to_remove = existing_ids - valid_new_ids
+
+        try:
+            for tid in to_add:
+                db.session.add(Task_Misp_Attribute(task_id=tid, misp_attribute_id=aid))
+            if to_remove:
+                Task_Misp_Attribute.query.filter(
+                    Task_Misp_Attribute.misp_attribute_id == aid,
+                    Task_Misp_Attribute.task_id.in_(list(to_remove))
+                ).delete(synchronize_session=False)
+            db.session.commit()
+
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, f"Updated tasks for standalone MISP attribute {misp_attr.id}")
+            CommonModel.update_last_modif(cid)
+            return {"message": "Tasks updated", "toast_class": "success-subtle"}, 200
+        except Exception:
+            db.session.rollback()
+            return {"message": "Error updating tasks", "toast_class": "danger-subtle"}, 500
+
+    def get_standalone_attr_instance(self, case_id, instance_id):
+        """Get standalone attrs with their remote UUIDs for a specific MISP instance"""
+        attrs = Misp_Attribute.query.filter_by(case_id=case_id, case_misp_object_id=None).all()
+        result = []
+        for attr in attrs:
+            loc_attr = attr.to_json()
+            loc_attr["uuid"] = ""
+            loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr.id, instance_id, case_id)
+            if loc_attr_uuid:
+                loc_attr["uuid"] = loc_attr_uuid.attribute_instance_uuid
+            result.append(loc_attr)
+        return result
+
+    def result_standalone_attr_module(self, attr_uuid_list, instance_id, case_id):
+        """Save UUID of standalone attributes for a MISP instance"""
+        for attr in attr_uuid_list:
+            loc_attr_uuid = self.get_exact_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
+            if loc_attr_uuid:
+                loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
+                db.session.commit()
+            else:
+                a = Misp_Attribute_Instance_Uuid(
+                    instance_id=instance_id,
+                    misp_attribute_id=attr["attribute_id"],
+                    attribute_instance_uuid=attr["uuid"],
+                    case_id=case_id
+                )
+                db.session.add(a)
+                db.session.commit()
 
     def get_case_misp_object_by_case_id(self, case_id):
         return Case_Misp_Object.query.filter_by(case_id=case_id).all()
@@ -1772,6 +2565,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     return obj
         return None
 
+    def get_exact_misp_object_instance_uuid(self, object_id, instance_id, case_id):
+        return Misp_Object_Instance_Uuid.query.filter_by(
+            misp_object_id=object_id,
+            instance_id=instance_id,
+            case_id=case_id
+        ).first()
+
     def get_misp_attribute_instance_uuid(self, attr_id, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)
         mattributes = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr_id, case_id=case_id).all()
@@ -1783,6 +2583,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 if loc_instance and loc_instance_obj and loc_instance.url == loc_instance_obj.url:
                     return attr
         return None
+
+    def get_exact_misp_attribute_instance_uuid(self, attr_id, instance_id, case_id):
+        return Misp_Attribute_Instance_Uuid.query.filter_by(
+            misp_attribute_id=attr_id,
+            instance_id=instance_id,
+            case_id=case_id
+        ).first()
     
     def get_misp_object_instance_by_instance_uuid(self, object_uuid, instance_id, case_id):
         loc_instance = CommonModel.get_instance(instance_id)
@@ -1838,7 +2645,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def result_misp_object_module(self, object_uuid_list, instance_id, case_id):
         """Save uuid of objects and attributes for a instance of MISP"""
         for object_id in object_uuid_list:
-            loc_object_uuid = self.get_misp_object_instance_uuid(object_id, instance_id, case_id)
+            loc_object_uuid = self.get_exact_misp_object_instance_uuid(object_id, instance_id, case_id)
             if loc_object_uuid:
                 loc_object_uuid.object_instance_uuid = object_uuid_list[object_id]["uuid"]
                 db.session.commit()
@@ -1853,7 +2660,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 db.session.commit()
 
             for attr in object_uuid_list[object_id]["attributes"]:
-                loc_attr_uuid = self.get_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
+                loc_attr_uuid = self.get_exact_misp_attribute_instance_uuid(attr["attribute_id"], instance_id, case_id)
                 if loc_attr_uuid:
                     loc_attr_uuid.attribute_instance_uuid = attr["uuid"]
                     db.session.commit()
@@ -1930,12 +2737,16 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return True
         return False
     
-    def remove_note_template(self, case_id):
+    def remove_note_template(self, case_id, current_user=None):
         """Remove a note template from a case"""
         c = self.get_case_note_template(case_id)
         if c:
             db.session.delete(c)
             db.session.commit()
+            CommonModel.update_last_modif(case_id)
+            if current_user:
+                case = CommonModel.get_case(case_id)
+                CommonModel.save_history(case.uuid, current_user, "Note Template removed")
             return True
         return False
 
@@ -2104,11 +2915,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 continue
         return None
 
-    def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None):
-        """Import MISP objects with first_seen dates as timeline events.
+    def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None, attribute_ids=None):
+        """Import MISP objects and standalone attributes as timeline events.
 
         If `object_ids` is provided (list of ints), only those objects will be
         considered for import.
+
+        If `attribute_ids` is provided (list of ints), only those standalone
+        attributes will be considered for import.
         """
         misp_objects = self.get_misp_object_by_case(cid)
         # Filter to selected objects if provided
@@ -2119,7 +2933,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 object_ids = []
             misp_objects = [obj for obj in misp_objects if obj.id in object_ids]
 
-        imported = 0
+        imported_objects = 0
         for obj in misp_objects:
             # Skip if this object has already been imported to the timeline
             existing_event = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=obj.id).first()
@@ -2144,8 +2958,45 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     description += " — " + ", ".join(attr_lines)
 
                 self.create_timeline_event(cid, date_text, description, obj.id, current_user)
-                imported += 1
-        return imported
+                imported_objects += 1
+
+        imported_attrs = 0
+        if attribute_ids is not None:
+            standalone_attrs = self.get_standalone_attributes_by_case(cid)
+            try:
+                attribute_ids = [int(i) for i in attribute_ids]
+            except Exception:
+                attribute_ids = []
+            standalone_attrs = [attr for attr in standalone_attrs if attr.id in attribute_ids]
+
+            for attr in standalone_attrs:
+                # Reuse the existing misp_object_id field: positive IDs are objects,
+                # negative IDs represent standalone attributes.
+                timeline_attr_id = -int(attr.id)
+                existing_event = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=timeline_attr_id).first()
+                if existing_event:
+                    continue
+
+                date_value = attr.first_seen or attr.last_seen or attr.creation_date
+                if not date_value:
+                    continue
+
+                date_text = date_value.strftime('%Y-%m-%d %H:%M')
+
+                attr_type = attr.type or 'attribute'
+                relation = f" ({attr.object_relation})" if attr.object_relation else ""
+                attr_value = attr.value or ""
+                description = f"[MISP] {attr_type}{relation}: {attr_value}"
+                if attr.comment:
+                    description += f" — {attr.comment}"
+
+                self.create_timeline_event(cid, date_text, description, timeline_attr_id, current_user)
+                imported_attrs += 1
+
+        return {
+            "objects": imported_objects,
+            "attributes": imported_attrs
+        }
 
 
     #####################
@@ -2192,6 +3043,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return None
         link.label = label or None
         db.session.commit()
+        case = CommonModel.get_case(link.case_id)
+        CommonModel.save_history(case.uuid, current_user, "Timeline event link edited")
+        CommonModel.update_last_modif(link.case_id)
         return link
 
 CaseModel = CaseCore()

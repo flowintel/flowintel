@@ -1,8 +1,6 @@
 from flask import Blueprint, render_template, request, Response
 from flask_login import login_required, current_user
-
-from app.db_class.db import Case, Task
-
+from app.db_class.db import Case, Task, File, Case_Misp_Object, Misp_Attribute
 from ..case.common_core import get_present_in_case
 
 from . import calendar_core as CalendarModel
@@ -28,11 +26,17 @@ def get_task_month():
     """Calendar info"""
     date_month = request.args.get("date")
     flag_dead_creation = request.args.get("dead_creation")
+    assigned_only = request.args.get("assigned_only", "false").lower() == "true"
     if not date_month or not flag_dead_creation:
         return {"message": "Missing date or dead_creation parameter"}, 400
 
     try:
-        tasks_month = CalendarModel.get_task_month_core(date_month, flag_dead_creation, current_user)
+        tasks_month = CalendarModel.get_task_month_core(
+            date_month,
+            flag_dead_creation,
+            current_user,
+            assigned_only=assigned_only,
+        )
     except ValueError:
         return {"message": "Invalid date format"}, 400
 
@@ -54,7 +58,21 @@ def get_case_month():
     except ValueError:
         return {"message": "Invalid date format"}, 400
 
-    cases_list = [case.to_json() for case in cases_month]
+    cases_list = []
+    for case in cases_month:
+        case_json = case.to_json()
+
+        # Add extra case metrics for calendar modal details.
+        case_json["nb_objects"] = Case_Misp_Object.query.filter_by(case_id=case.id).count()
+        case_json["nb_standalone_attrs"] = Misp_Attribute.query.filter_by(case_id=case.id, case_misp_object_id=None).count()
+        case_json["nb_connectors"] = len(case_json.get("connectors", []))
+
+        case_json["nb_case_files"] = File.query.filter_by(case_id=case.id).count()
+        task_ids = [task.id for task in case.tasks.all()]
+        case_json["nb_task_files"] = File.query.filter(File.task_id.in_(task_ids)).count() if task_ids else 0
+        case_json["nb_files"] = case_json["nb_case_files"] + case_json["nb_task_files"]
+
+        cases_list.append(case_json)
     return {"cases": cases_list}
 
 

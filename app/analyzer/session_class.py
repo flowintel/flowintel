@@ -10,7 +10,10 @@ from app.db_class.db import Misp_Module_Result, User
 from ..utils.utils import query_post_query, query_get_module, get_object
 
 from . import misp_modules_core as MispModuleModel
-
+from ..notification import notification_core as NotifModel
+from .. import db
+from ..db_class.db import Misp_Module_Result, User
+from ..utils.logger import flowintel_log
 
 sessions = list()
 
@@ -171,3 +174,34 @@ class SessionClass:
         )
         db.session.add(s)
         db.session.commit()
+        self.notify_finished()
+        return s
+
+    def notify_finished(self):
+        """Notify the requester that analyser results are available."""
+        try:
+            query_count = len(self.query)
+            module_count = len(self.modules_list)
+            message = (
+                f"Analyser run finished: {query_count} input(s), "
+                f"{module_count} module(s), {self.nb_errors} error(s)"
+            )
+            NotifModel.create_notification_user(
+                message=message,
+                case_id=None,
+                user_id=self.current_user.id,
+                html_icon="fa-solid fa-magnifying-glass",
+                category="analyzer",
+                notification_type="analysis_completed",
+                target_url=f"/analyzer/misp-modules/result/{self.uuid}"
+            )
+        except Exception as e:
+            db.session.rollback()
+            flowintel_log(
+                "warn",
+                500,
+                "Analyser completion notification failed",
+                User=getattr(self.current_user, "email", None),
+                SessionId=self.uuid,
+                Error=str(e)
+            )

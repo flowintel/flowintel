@@ -1,5 +1,5 @@
 import { display_toast } from '/static/js/toaster.js'
-import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask, getStatusHint } from '/static/js/case/helpers.js'
+import { isStatusDropdownDisabled, getStatusDropdownTooltip, getAvailableStatuses, canEditRestrictedTask, getStatusHint, touchCaseLastModif, touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
@@ -60,7 +60,7 @@ export default {
 					} else {
 						let loc = await res.json()
 						props.task.users = loc
-						props.task.last_modif = Date.now()
+						touchTaskAndCaseLastModif(props.task, props.cases_info)
 					}
 				}
 				await display_toast(res_msg)
@@ -81,7 +81,7 @@ export default {
 				const statusObj = props.status_info.status.find(s => s.id === status)
 				const isFinished = statusObj && statusObj.name == 'Finished'
 				
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.status_id = status
 				task.completed = isFinished
 
@@ -151,7 +151,7 @@ export default {
 			)
 
 			if (await res.status == 200) {
-				props.task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(props.task, props.cases_info)
 
 				let index = -1
 				for (let i = 0; i < props.task.users.length; i++) {
@@ -193,6 +193,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
 
 			if (await res.status == 200) {
+				touchCaseLastModif(props.cases_info)
 				if (task.completed) {
 					props.open_closed["closed"] -= 1
 				} else {

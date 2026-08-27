@@ -27,12 +27,6 @@ def verif_add_instance(data_dict):
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = ""
 
-    # type is mandatory for creation
-    if "type_select" not in data_dict or not data_dict["type_select"]:
-        return {"message": "Please give a type to your instance"}
-    elif data_dict["type_select"] not in utils.get_module_type():
-        return {"message": "type selected unknown"}
-    
     if "url" not in data_dict or not data_dict["url"]:
         return {"message": "Please give a url to your instance"}
     else:
@@ -47,6 +41,9 @@ def verif_add_instance(data_dict):
     
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = ""
+
+    if "sharing_scope" not in data_dict or not data_dict["sharing_scope"]:
+        data_dict["sharing_scope"] = ""
 
     return data_dict
 
@@ -75,11 +72,6 @@ def verif_edit_instance(data_dict, iid):
     if "description" not in data_dict or not data_dict["description"]:
         data_dict["description"] = instance.description
 
-    if "type_select" not in data_dict or not data_dict["type_select"]:
-        data_dict["type_select"] = instance.type
-    elif data_dict["type_select"] not in utils.get_module_type():
-        return {"message": "type selected unknown"}
-
     if "url" not in data_dict or not data_dict["url"]:
         data_dict["url"] = instance.url
     else:
@@ -93,5 +85,8 @@ def verif_edit_instance(data_dict, iid):
 
     if "api_key" not in data_dict or not data_dict["api_key"]:
         data_dict["api_key"] = ""
+
+    if "sharing_scope" not in data_dict or not data_dict["sharing_scope"]:
+        data_dict["sharing_scope"] = ""
 
     return data_dict

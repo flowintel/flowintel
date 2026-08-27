@@ -7,7 +7,7 @@ history_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 VENV_DIR="${VENV_DIR:-env}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+TAIL_PID=""
 
 
 # Configuration files
@@ -62,21 +62,55 @@ function prepare_app_run {
     mkdir -p logs  # Directory for log files
 }
 
+function start_misp_modules_screen {
+    if ! command -v misp-modules >/dev/null 2>&1; then
+        echo "[WARN] 'misp-modules' command not found." >&2
+        echo "[WARN] MISP modules will not be started. Install it or add it to your PATH to enable this feature." >&2
+        return 1
+    fi
+
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+}
+
 
 function killscript {
     echo "Stopping existing sessions..."
     local isscripted_fcm
     local isscripted_misp_mod
+    local isscripted_misp_sync
 
     isscripted_fcm=$(screen -ls | egrep '[0-9]+\.fcm' | cut -d. -f1 || true)
     isscripted_misp_mod=$(screen -ls | egrep '[0-9]+\.misp_mod_flowintel' | cut -d. -f1 || true)
+    isscripted_misp_sync=$(screen -ls | egrep '[0-9]+\.misp_sync' | cut -d. -f1 || true)
 
     if [ -n "$isscripted_fcm" ]; then
-        screen -X -S fcm quit
+        screen -X -S fcm quit || true
     fi
     if [ -n "$isscripted_misp_mod" ]; then
-        screen -X -S misp_mod_flowintel quit
+        screen -X -S misp_mod_flowintel quit || true
     fi
+    if [ -n "$isscripted_misp_sync" ]; then
+        screen -X -S misp_sync quit || true
+    fi
+}
+
+function cleanup_launch_processes {
+    trap - INT TERM EXIT
+
+    if [ -n "${TAIL_PID:-}" ]; then
+        echo
+        echo "Stopping tail (PID $TAIL_PID)..."
+        kill "$TAIL_PID" 2>/dev/null || true
+        wait "$TAIL_PID" 2>/dev/null || true
+        TAIL_PID=""
+    fi
+
+    killscript
+}
+
+function setup_launch_cleanup {
+    trap cleanup_launch_processes EXIT
+    trap 'cleanup_launch_processes; exit 130' INT TERM
 }
 
 function taxo_galaxy_update {
@@ -88,7 +122,7 @@ function taxo_galaxy_update {
 function misp_module_update {
     prepare_app_run
     export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-development}"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
     sleep 3
     python3 app.py -mm
     killscript
@@ -102,13 +136,14 @@ function launch {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
+    start_misp_modules_screen || true
 
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     # Start our main application
     python3 app.py
@@ -130,12 +165,13 @@ function production {
     killscript
 
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
+    start_misp_modules_screen || true
 
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     gunicorn -w 4 'app:create_app()' -b $FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT --access-logfile -
 }
@@ -145,7 +181,7 @@ function init_db {
     export FLOWINTEL_APP_ENV="development"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
@@ -168,7 +204,7 @@ function init_db_prod {
     export FLOWINTEL_APP_ENV="production"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     echo "Initialise the db if it not exist. Wait for Done..."
     python3 app.py -i
@@ -201,13 +237,14 @@ function launch_docker {
 
     # Start screen sessions with logs
     screen -L -Logfile logs/fcm.log -dmS "fcm" bash -c "python3 startNotif.py"
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    screen -L -Logfile logs/misp_sync.log -dmS "misp_sync" bash -c "python3 startMispSync.py"
+    start_misp_modules_screen || true
 
     # Display logs
-    tail -n 0 -F logs/fcm.log logs/misp.log &
+    tail -n 0 -F logs/fcm.log logs/misp_sync.log logs/misp.log &
     TAIL_PID=$!
 
-    trap "echo; echo 'Stopping tail (PID $TAIL_PID)...'; kill $TAIL_PID 2>/dev/null; $SCRIPT_PATH -ks" INT TERM EXIT
+    setup_launch_cleanup
 
     gunicorn -w 4 'app:create_app()' \
         -b "$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT" \
@@ -222,7 +259,7 @@ function init_db_docker {
     export FLOWINTEL_APP_ENV="${FLOWINTEL_APP_ENV:-production}"
     export HISTORY_DIR=$history_dir/history
 
-    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    start_misp_modules_screen || true
 
     echo "Initialise the db if it not exist. Wait for Done..."
     python3 -u app.py -i

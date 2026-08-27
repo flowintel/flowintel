@@ -108,7 +108,10 @@ def get_taxonomy_counts(name=None):
     return {"total": total, "enabled": enabled}
 
 def get_tags(taxonomy_id):
-    return [tag.to_json() for tag in Taxonomy.query.get(taxonomy_id).tags]
+    taxonomy = Taxonomy.query.get(taxonomy_id)
+    if not taxonomy:
+        return None
+    return [tag.to_json() for tag in taxonomy.tags]
 
 
 ## Galaxies
@@ -122,7 +125,10 @@ def get_clusters():
     return [cluster.to_json() for cluster in Cluster.query.all()]
 
 def get_clusters_galaxy(galaxy_id):
-    return [cluster.to_json() for cluster in get_galaxy(galaxy_id).clusters]
+    galaxy = get_galaxy(galaxy_id)
+    if not galaxy:
+        return None
+    return [cluster.to_json() for cluster in galaxy.clusters]
 
 def get_nb_page_galaxies(name=None, enabled=None):
     """Return number of pages for galaxies, optionally filtered by name and enabled status."""
@@ -136,7 +142,10 @@ def get_galaxy_counts(name=None):
     return {"total": total, "enabled": enabled}
 
 def get_tags_galaxy(galaxy_id):
-    return [cluster.tag for cluster in get_galaxy(galaxy_id).clusters]
+    galaxy = get_galaxy(galaxy_id)
+    if not galaxy:
+        return None
+    return [cluster.tag for cluster in galaxy.clusters]
 
 def get_tag_cluster(cluster_id):
     return Cluster.query.get(cluster_id).tag
@@ -235,12 +244,16 @@ def admin_edit_user_core(form_dict, id):
     user.nickname=form_dict["nickname"] or None
     user.email=form_dict["email"]
     user.matrix_id = form_dict["matrix_id"] or None  # Convert empty string to None to avoid UNIQUE constraint issues
-    if "password" in form_dict and form_dict["password"] and user.auth_provider == 'local':
+    password_changed = "password" in form_dict and form_dict["password"] and user.auth_provider == 'local'
+    if password_changed:
         user.password=form_dict["password"]
     user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
     db.session.commit()
+
+    if password_changed:
+        _invalidate_user_sessions(user.id)
 
     if flag:
         delete_default_org(prev_user_org_id)
@@ -506,5 +519,3 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
-
-

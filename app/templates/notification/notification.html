@@ -1,77 +1,104 @@
-<!-- 
+<!--
     Author: David Cruciani
 -->
 
 {% extends 'base.html' %}
+{% import 'notification/alert.html' as alert_ui with context %}
 
 {% block head %}
 <title>Notifications - {{ config.APP_NAME }}</title>
+{% set requested_tab = request.args.get('tab') %}
+{% if requested_tab == 'case-alerts' %}
+<meta name="sidebar-active" content="/notification/?tab=case-alerts">
+{% endif %}
 {{ super() }}
-{%endblock%}
-
+{{ alert_ui.styles() }}
+{% endblock %}
 
 {% block content %}
 
 <div class="case-core-style" style="border-radius: 0;">
-    <div class="row align-items-center">
+    <div class="row align-items-center g-2">
         <div class="col-auto d-flex align-items-center">
             <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Notifications</h5>
-            <span v-if="notif_list" class="badge bg-secondary ms-2">
+            <span v-if="active_tab === 'notifications' && notif_list" class="badge bg-secondary ms-2">
                 <template v-if="has_filters">[[filtered_list.length]] (of [[notif_list.length]])</template>
                 <template v-else>[[notif_list.length]]</template>
             </span>
-            <button v-if="!flag_is_read" class="btn btn-outline-success btn-sm ms-3"
-                    :disabled="!notif_list || notif_list.length === 0"
-                    :title="!notif_list || notif_list.length === 0 ? 'No unread notifications' : 'Mark all messages as read'"
-                    data-bs-toggle="modal" data-bs-target="#modal-mark-all-read">
-                <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Mark all as read
-            </button>
+            {{ alert_ui.header_badges() }}
         </div>
 
-        <div class="col-auto">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Read filter">
-                <button type="button" class="btn btn-sm" :class="!flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(true)">
-                    <i class="fa-solid fa-envelope fa-sm me-1"></i>Unread
-                </button>
-                <button type="button" class="btn btn-sm" :class="flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(false)">
-                    <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Read
+        {{ alert_ui.tab_buttons() }}
+
+        <template v-if="active_tab === 'notifications'">
+            <div class="col-auto">
+                <button v-if="!flag_is_read" class="btn btn-outline-success btn-sm"
+                        :disabled="!notif_list || notif_list.length === 0"
+                        :title="!notif_list || notif_list.length === 0 ? 'No unread notifications' : 'Mark all messages as read'"
+                        data-bs-toggle="modal" data-bs-target="#modal-mark-all-read">
+                    <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Mark all as read
                 </button>
             </div>
-        </div>
 
-        <div class="col-auto">
-            <div class="btn-group btn-group-sm" role="group" aria-label="Time filter">
-                <button type="button" class="btn btn-sm" :class="time_filter === 'today' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'today'">
-                    Today
-                </button>
-                <button type="button" class="btn btn-sm" :class="time_filter === 'week' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'week'">
-                    This week
-                </button>
-                <button type="button" class="btn btn-sm" :class="time_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'all'">
-                    All
+            <div class="col-auto">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Read filter">
+                    <button type="button" class="btn btn-sm" :class="!flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(true)">
+                        <i class="fa-solid fa-envelope fa-sm me-1"></i>Unread
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(false)">
+                        <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Read
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-auto">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Time filter">
+                    <button type="button" class="btn btn-sm" :class="time_filter === 'today' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'today'">
+                        Today
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="time_filter === 'week' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'week'">
+                        This week
+                    </button>
+                    <button type="button" class="btn btn-sm" :class="time_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'all'">
+                        All
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-auto">
+                <select class="form-select form-select-sm" v-model="category_filter" style="min-width: 150px;" title="Filter by category">
+                    <option v-for="option in category_options" :value="option.value">[[option.label]]</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <select class="form-select form-select-sm" v-model="type_filter" style="min-width: 160px;" title="Filter by type">
+                    <option v-for="option in type_options" :value="option.value">[[option.label]]</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <input type="number" min="1" class="form-control form-control-sm" v-model="case_id_filter"
+                       placeholder="Filter case ID" style="width: 140px;" title="Show only notifications for this case ID">
+            </div>
+
+            <div class="col-auto">
+                <select class="form-select form-select-sm" v-model="sort_mode" style="min-width: 150px;" title="Sort notifications">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="category">Category</option>
+                    <option value="type">Type</option>
+                </select>
+            </div>
+
+            <div class="col-auto">
+                <button class="btn btn-outline-secondary btn-sm" type="button" @click="reset_filters()" :disabled="!has_active_controls" title="Reset filters">
+                    <i class="fa-solid fa-rotate-left fa-sm"></i>
                 </button>
             </div>
-        </div>
+        </template>
 
-        <div class="col-auto">
-            <select class="form-select form-select-sm" v-model="type_filter" style="min-width: 150px;">
-                <option value="all">All types</option>
-                <option value="assign">Assigned</option>
-                <option value="unassign">Unassigned</option>
-                <option value="completed">Completed</option>
-                <option value="revived">Revived</option>
-                <option value="deleted">Deleted</option>
-                <option value="org">Organisation</option>
-                <option value="deadline">Deadline</option>
-                <option value="admin">Admin</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-
-        <div class="col-auto">
-            <input type="number" min="1" class="form-control form-control-sm" v-model="case_id_filter"
-                   placeholder="Filter case ID" style="width: 140px;" title="Show only notifications for this case ID">
-        </div>
+        {{ alert_ui.header_actions() }}
     </div>
 </div>
 
@@ -95,7 +122,7 @@
     </div>
 </div>
 
-<div v-if="show_password_reset_prompt" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+<div v-if="active_tab === 'notifications' && show_password_reset_prompt" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
     <i class="fa-solid fa-check-circle me-2"></i>
     <strong>Password reset completed.</strong> Would you like to mark all password reset notifications for this user for all admins as read?
     <div class="mt-2">
@@ -110,7 +137,7 @@
 
 <hr class="fading-line-2 mt-4 mb-4">
 
-<div class="case-core-style">
+<div v-show="active_tab === 'notifications'" class="case-core-style">
     <template v-if="notif_list">
         <template v-if="filtered_list.length === 0">
             <div class="text-center text-muted py-4">
@@ -122,12 +149,19 @@
             <template v-for="notif in filtered_list">
                 <a :href="getNotificationUrl(notif)" class="list-group-item list-group-item-action case-index-list d-flex align-items-center mb-2 px-4" :style="flag_is_read ? 'background-color: #f8f9fa;' : ''">
                     <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-1" style="font-size: 0.95rem;">
-                                <i class="fa-solid fa-angle-right me-2"></i>
-                                <i v-if="notif.html_icon" :class="notif.html_icon" class="me-1"></i>
-                                [[notif.message]]
-                            </h5>
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <h5 class="mb-1" style="font-size: 0.95rem;">
+                                    <i class="fa-solid fa-angle-right me-2"></i>
+                                    <i v-if="notif.html_icon" :class="notif.html_icon" class="me-1"></i>
+                                    [[notif.message]]
+                                </h5>
+                                <div class="mb-1">
+                                    <span class="badge bg-light text-dark border me-1">[[category_label(notif)]]</span>
+                                    <span class="badge bg-secondary me-1">[[type_label(notif)]]</span>
+                                    <span v-if="notif.case_id && notif.case_id > 0" class="badge bg-light text-dark border">Case #[[notif.case_id]]</span>
+                                </div>
+                            </div>
                             <span v-if="flag_is_read" class="badge bg-secondary">Read</span>
                         </div>
                         <small class="text-muted" style="font-size: 0.75rem;">
@@ -162,48 +196,105 @@
     </template>
 </div>
 
-{% endblock %}
+{{ alert_ui.panels() }}
 
+{% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, computed } = Vue
+    {{ alert_ui.initial_data() }}
+
+    const { createApp, ref, computed, onMounted, nextTick } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
     import { confirmDelete } from '/static/js/confirm.js'
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
+            const urlParams = new URLSearchParams(window.location.search)
+            const valid_tabs = ['notifications', 'case-alerts']
+            const requested_tab = urlParams.get('tab')
+            const active_tab = ref(valid_tabs.includes(requested_tab) ? requested_tab : 'notifications')
+
             let flag_is_read = ref(false)
             const notif_list = ref(null)
             const time_filter = ref('all')
+            const category_filter = ref('all')
             const type_filter = ref('all')
             const case_id_filter = ref('')
+            const sort_mode = ref('newest')
             const show_password_reset_prompt = ref(false)
             const password_reset_user_id = ref(null)
 
-            const icon_type_map = {
-                'fa-solid fa-hand': 'assign',
-                'fa-solid fa-handshake-slash': 'unassign',
-                'fa-solid fa-square-check': 'completed',
-                'fa-solid fa-check': 'completed',
-                'fa-solid fa-circle-check': 'completed',
-                'fa-solid fa-heart-circle-plus': 'revived',
-                'fa-solid fa-heart-circle-bolt': 'revived',
-                'fa-solid fa-circle-xmark': 'revived',
-                'fa-solid fa-trash': 'deleted',
-                'fa-solid fa-sitemap': 'org',
-                'fa-solid fa-hand-holding-hand': 'org',
-                'fa-solid fa-door-open': 'org',
-                'fa-solid fa-circle-exclamation': 'deadline',
-                'fa-solid fa-bell': 'deadline',
-                'fa-solid fa-key': 'admin',
-                'fa-solid fa-user-shield': 'admin',
+            {{ alert_ui.setup_state() }}
+
+            const category_options = [
+                { value: 'all', label: 'All categories' },
+                { value: 'case', label: 'Case' },
+                { value: 'task', label: 'Task' },
+                { value: 'organisation', label: 'Organisation' },
+                { value: 'deadline', label: 'Deadline' },
+                { value: 'alerting', label: 'Alerting' },
+                { value: 'misp_sync', label: 'MISP sync' },
+                { value: 'analyzer', label: 'Analyser' },
+                { value: 'admin', label: 'Admin' },
+                { value: 'general', label: 'General' },
+            ]
+
+            const type_options = [
+                { value: 'all', label: 'All types' },
+                { value: 'assignment', label: 'Assignment' },
+                { value: 'unassignment', label: 'Unassignment' },
+                { value: 'completion', label: 'Completion' },
+                { value: 'revival', label: 'Revival' },
+                { value: 'deletion', label: 'Deletion' },
+                { value: 'membership', label: 'Membership' },
+                { value: 'ownership', label: 'Ownership' },
+                { value: 'deadline', label: 'Deadline' },
+                { value: 'reminder', label: 'Reminder' },
+                { value: 'approval', label: 'Approval' },
+                { value: 'rejection', label: 'Rejection' },
+                { value: 'review', label: 'Review' },
+                { value: 'request', label: 'Request' },
+                { value: 'status', label: 'Status' },
+                { value: 'manual_notice', label: 'Manual notice' },
+                { value: 'external_alert', label: 'External alert' },
+                { value: 'collision', label: 'Collision' },
+                { value: 'analysis_completed', label: 'Analysis completed' },
+                { value: 'password_reset', label: 'Password reset' },
+                { value: 'provisioning', label: 'Provisioning' },
+                { value: 'info', label: 'Info' },
+            ]
+
+            const category_label_map = Object.fromEntries(category_options.map(option => [option.value, option.label]))
+            const type_label_map = Object.fromEntries(type_options.map(option => [option.value, option.label]))
+
+            function notification_metadata(notif) {
+                return {
+                    category: notif.category || 'general',
+                    type: notif.notification_type || 'info'
+                }
+            }
+
+            function category_label(notif) {
+                const category = notification_metadata(notif).category
+                return category_label_map[category] || category
+            }
+
+            function type_label(notif) {
+                const type = notification_metadata(notif).type
+                return type_label_map[type] || type
+            }
+
+            function sort_date(notif) {
+                const date = flag_is_read.value && notif.read_date ? notif.read_date : notif.creation_date
+                const timestamp = dayjs.utc(date).valueOf()
+                return Number.isNaN(timestamp) ? 0 : timestamp
             }
 
             const filtered_list = computed(() => {
                 if (!notif_list.value) return []
-                let list = notif_list.value
+                let list = [...notif_list.value]
 
                 if (time_filter.value !== 'all') {
                     const now = dayjs.utc()
@@ -219,35 +310,67 @@
                     })
                 }
 
+                if (category_filter.value !== 'all') {
+                    list = list.filter(notif => notification_metadata(notif).category === category_filter.value)
+                }
+
                 if (type_filter.value !== 'all') {
-                    list = list.filter(notif => {
-                        const mapped = icon_type_map[notif.html_icon] || 'other'
-                        return mapped === type_filter.value
-                    })
+                    list = list.filter(notif => notification_metadata(notif).type === type_filter.value)
                 }
 
                 const cid = parseInt(case_id_filter.value, 10)
                 if (!isNaN(cid) && cid > 0) {
                     const msg_marker = `case '${cid}-`
                     list = list.filter(notif => {
-                        if (notif.case_id === cid) return true
+                        if (parseInt(notif.case_id, 10) === cid) return true
                         return notif.message && notif.message.includes(msg_marker)
                     })
                 }
 
-                return list
+                return list.sort((a, b) => {
+                    if (sort_mode.value === 'oldest') {
+                        return sort_date(a) - sort_date(b)
+                    }
+                    if (sort_mode.value === 'category') {
+                        const category_compare = category_label(a).localeCompare(category_label(b))
+                        return category_compare || (sort_date(b) - sort_date(a))
+                    }
+                    if (sort_mode.value === 'type') {
+                        const type_compare = type_label(a).localeCompare(type_label(b))
+                        return type_compare || (sort_date(b) - sort_date(a))
+                    }
+                    return sort_date(b) - sort_date(a)
+                })
             })
 
             const has_filters = computed(() => {
-                return time_filter.value !== 'all' || type_filter.value !== 'all' || case_id_filter.value !== ''
+                return time_filter.value !== 'all' || category_filter.value !== 'all' || type_filter.value !== 'all' || case_id_filter.value !== ''
             })
 
-            // Check URL parameters for password reset completion
-            const urlParams = new URLSearchParams(window.location.search)
+            const has_active_controls = computed(() => {
+                return has_filters.value || sort_mode.value !== 'newest'
+            })
+
             if (urlParams.get('password_reset_completed') === 'true') {
+                active_tab.value = 'notifications'
                 show_password_reset_prompt.value = true
                 password_reset_user_id.value = urlParams.get('user_id')
                 window.history.replaceState({}, document.title, window.location.pathname)
+            }
+
+            function set_active_tab(tab) {
+                if (!valid_tabs.includes(tab)) return
+                active_tab.value = tab
+                const nextUrl = tab === 'notifications' ? '/notification/' : `/notification/?tab=${tab}`
+                window.history.replaceState({}, document.title, nextUrl)
+            }
+
+            function reset_filters() {
+                time_filter.value = 'all'
+                category_filter.value = 'all'
+                type_filter.value = 'all'
+                case_id_filter.value = ''
+                sort_mode.value = 'newest'
             }
 
             async function fetchNotif(unread_read) {
@@ -255,18 +378,13 @@
                 const res = await fetch('/notification/get_user_notifications?unread_read=' + unread_read)
                 let loc = await res.json()
                 notif_list.value = loc["notif"]
-                if(!unread_read){
-                    flag_is_read.value = true
-                }
-                else{
-                    flag_is_read.value = false
-                }
+                flag_is_read.value = !unread_read
             }
 
             async function read_notification(notif){
                 const res = await fetch("/notification/read_notification/" + notif.id)
 
-                if(await res.status == 200){
+                if(res.status === 200){
                     notif.is_read = !notif.is_read
                     notif.read_date = Date.now()
 
@@ -278,11 +396,7 @@
             }
 
             async function select_unread_read(unread_read){
-                if(unread_read){
-                    fetchNotif(true)
-                }else{
-                    fetchNotif(false)
-                }
+                fetchNotif(unread_read)
             }
 
             async function delete_notif(notif){
@@ -293,7 +407,7 @@
                 if (!ok) return
                 const res = await fetch("/notification/delete/" + notif.id)
 
-                if(await res.status == 200){
+                if(res.status === 200){
                     let index = notif_list.value.indexOf(notif)
                     if(index > -1)
                         notif_list.value.splice(index, 1)
@@ -304,7 +418,7 @@
             async function mark_all_read(){
                 const res = await fetch("/notification/mark_all_read")
 
-                if(await res.status == 200){
+                if(res.status === 200){
                     notif_list.value = []
                 }
                 display_toast(res)
@@ -314,8 +428,8 @@
                 if (!password_reset_user_id.value) return
 
                 const res = await fetch(`/notification/mark_password_reset_notifs_as_read/${password_reset_user_id.value}`)
-                
-                if (await res.status == 200) {
+
+                if (res.status === 200) {
                     show_password_reset_prompt.value = false
                     fetchNotif(true)
                 }
@@ -327,35 +441,55 @@
             }
 
             function getNotificationUrl(notif) {
+                if (notif.target_url) {
+                    return notif.target_url
+                }
                 if (!notif.case_id) {
-                    return '/';
+                    return '/'
                 }
-                // Negative case_id encodes a user ID for admin notifications
                 if (notif.case_id < 0) {
-                    return `/admin/edit_user/${Math.abs(notif.case_id)}?from_notif=true`;
+                    return `/admin/edit_user/${Math.abs(notif.case_id)}?from_notif=true`
                 }
-                // Link to the case, and if the message mentions a task, deep-link to it
-                let url = `/case/${notif.case_id}`;
-                if (notif.message) {
-                    const match = notif.message.match(/'(\d+)-/);
+                let url = `/case/${notif.case_id}`
+                if (notification_metadata(notif).category === 'task' && notif.message) {
+                    const match = notif.message.match(/'(\d+)-/)
                     if (match) {
-                        url += `#task-${match[1]}`;
+                        url += `#task-${match[1]}`
                     }
                 }
-                return url;
+                return url
             }
+
+            {{ alert_ui.methods() }}
 
             fetchNotif(true)
 
+            onMounted(() => {
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el))
+                nextTick(() => {
+                    {{ alert_ui.mounted_actions() }}
+                })
+            })
+
             return {
                 message_list,
+                active_tab,
+                set_active_tab,
                 notif_list,
                 filtered_list,
                 has_filters,
+                has_active_controls,
                 flag_is_read,
                 time_filter,
+                category_filter,
                 type_filter,
                 case_id_filter,
+                sort_mode,
+                category_options,
+                type_options,
+                category_label,
+                type_label,
+                reset_filters,
                 read_notification,
                 select_unread_read,
                 delete_notif,
@@ -364,7 +498,8 @@
                 getNotificationUrl,
                 show_password_reset_prompt,
                 mark_password_reset_notifs_as_read,
-                dismiss_password_reset_prompt
+                dismiss_password_reset_prompt,
+                {{ alert_ui.return_bindings() }}
             }
         }
     }).mount('#main-container')

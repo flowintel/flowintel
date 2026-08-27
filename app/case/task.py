@@ -5,15 +5,15 @@ import socket
 import uuid
 import requests
 from datetime import datetime
+from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Blueprint, render_template, redirect, jsonify, request, flash, current_app
+from flask import Blueprint, render_template, redirect, jsonify, request, flash
 from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.db_class.db import Case, User, Note
 
-from ..connectors import connectors_core as ConnectorModel
 from ..decorators import editor_required, misp_editor_required
 from ..utils.utils import form_to_dict, validate_file_size, query_post_query
 from ..utils.formHelper import prepare_tags
@@ -40,6 +40,35 @@ def check_user_private_case(case: Case, present_in_case: bool = None) -> bool:
     if case.is_private and not present_in_case and not current_user.is_admin():
         return False
     return True
+
+
+def task_case_bound_required(view_func):
+    @wraps(view_func)
+    def decorated_view(*args, **kwargs):
+        cid = kwargs.get("cid")
+        tid = kwargs.get("tid")
+
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+
+        task = CommonModel.get_task(tid)
+        if not task or task.case_id != case.id:
+            task_case_id = task.case_id if task else None
+            flowintel_log(
+                "audit",
+                403,
+                "Task route denied: task does not belong to requested case",
+                User=current_user.email,
+                CaseId=cid,
+                TaskId=tid,
+                TaskCaseId=task_case_id,
+            )
+            return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
+
+        return view_func(*args, **kwargs)
+
+    return decorated_view
 
 
 @task_blueprint.route("/<cid>/create_task", methods=['GET', 'POST'])
@@ -76,6 +105,7 @@ def create_task(cid):
 @task_blueprint.route("/<cid>/edit_task/<tid>", methods=['GET','POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_task(cid, tid):
     """Edit the task"""
     if CommonModel.get_case(cid):
@@ -138,6 +168,7 @@ def complete_task(tid):
 @task_blueprint.route("/<cid>/delete_task/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_task(cid, tid):
     """Delete the task"""
     if CommonModel.get_case(cid):
@@ -161,6 +192,7 @@ def delete_task(cid, tid):
 @task_blueprint.route("/<cid>/modif_note/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def modif_note(cid, tid):
     """Modify note of the task"""
     if CommonModel.get_case(cid):
@@ -188,6 +220,7 @@ def modif_note(cid, tid):
 @task_blueprint.route("/<cid>/create_note/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
@@ -212,6 +245,7 @@ def create_note(cid, tid):
 @task_blueprint.route("/<cid>/delete_note/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_note(cid, tid):
     """Create note"""
     if CommonModel.get_case(cid):
@@ -236,6 +270,7 @@ def delete_note(cid, tid):
 
 @task_blueprint.route("/<cid>/get_note/<tid>", methods=['GET'])
 @login_required
+@task_case_bound_required
 def get_note(cid, tid):
     """Get note of a task in text format"""
     case = CommonModel.get_case(cid)
@@ -248,6 +283,8 @@ def get_note(cid, tid):
         if task:
             if "note_id" in request.args:
                 task_note = CommonModel.get_task_note(request.args.get("note_id"))
+                if not task_note or task_note.task_id != task.id:
+                    return {"message": "Note not found", "toast_class": "danger-subtle"}, 404
                 return {"note": task_note.note}, 200
             return {"message": "Need to pass a note id", "toast_class": "warning-subtle"}, 400
         return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
@@ -257,6 +294,7 @@ def get_note(cid, tid):
 @task_blueprint.route("/<cid>/take_task/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def take_task(cid, tid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):
@@ -279,6 +317,7 @@ def take_task(cid, tid):
 @task_blueprint.route("/<cid>/assign_users/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def assign_user(cid, tid):
     """Assign a list of users to the task"""
     if CommonModel.get_case(cid):
@@ -312,6 +351,7 @@ def assign_user(cid, tid):
 @task_blueprint.route("/<cid>/remove_assignment/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def remove_assign_task(cid, tid):
     """Remove current user assignment to the task"""
     if CommonModel.get_case(cid):
@@ -329,6 +369,7 @@ def remove_assign_task(cid, tid):
 @task_blueprint.route("/<cid>/remove_assigned_user/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def remove_assigned_user(cid, tid):
     """Assign current user to the task"""
     if CommonModel.get_case(cid):
@@ -356,6 +397,7 @@ def remove_assigned_user(cid, tid):
 @task_blueprint.route("/<cid>/change_task_status/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_task_status(cid, tid):
     """Change the status of the task"""
     if CommonModel.get_case(cid):
@@ -471,6 +513,7 @@ def convert_file_to_note(tid, fid):
 @task_blueprint.route("/<cid>/add_files/<tid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def add_files(cid, tid):
     """Add files to a task"""
     if CommonModel.get_case(cid):
@@ -506,6 +549,7 @@ def add_files(cid, tid):
 @task_blueprint.route("/<cid>/get_files/<tid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def get_files(cid, tid):
     """Get files of a task"""
     case = CommonModel.get_case(cid)
@@ -584,6 +628,7 @@ def sort_tasks(cid):
 @task_blueprint.route("/<cid>/task/<tid>/notify_user", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def notify_user(cid, tid):
     """Notify a user about a task"""
     if CommonModel.get_case(cid):
@@ -605,6 +650,7 @@ def notify_user(cid, tid):
 
 @task_blueprint.route("/<cid>/task/<tid>/export_notes", methods=['GET'])
 @login_required
+@task_case_bound_required
 def export_notes(cid, tid):
     """Export note of a task"""
     case = CommonModel.get_case(cid)
@@ -618,8 +664,14 @@ def export_notes(cid, tid):
                 if "note_id" in request.args:
                     type_req = request.args.get("type")
                     note_id = request.args.get("note_id")
+                    task_note = CommonModel.get_task_note(note_id)
+                    if not task_note or task_note.task_id != int(tid):
+                        return {"message": "Note not found", 'toast_class': "danger-subtle"}, 404
                     res = CommonModel.export_notes(case_task=False, case_task_id=tid, type_req=type_req, note_id=note_id)
                     CommonModel.delete_temp_folder()
+                    if isinstance(res, dict):
+                        flowintel_log("error", 400, "Export notes of a task failed", User=current_user.email, CaseId=cid, TaskId=tid, ExportType=type_req, NoteId=note_id, ErrorMessage=res.get("message"))
+                        return res, 400
                     flowintel_log("audit", 200, "Export notes of a task", User=current_user.email, CaseId=cid, TaskId=tid, ExportType=type_req, NoteId=note_id)
                     return res
                 return {"message": "'note_id' is missing", 'toast_class': "warning-subtle"}, 400
@@ -682,6 +734,7 @@ def get_galaxies_task(tid):
 @task_blueprint.route("/<cid>/change_order/<tid>", methods=["GET",'POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_order(cid, tid):
     """Change the order of tasks"""
     case = CommonModel.get_case(cid)
@@ -690,7 +743,7 @@ def change_order(cid, tid):
             task = CommonModel.get_task(tid)
             if task:
                 if task.case_id == case.id:
-                    if TaskModel.change_order(case, task, request.json):
+                    if TaskModel.change_order(case, task, request.json, current_user):
                         flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "New index is not one of an other task", 'toast_class': "danger-subtle"}, 400
@@ -707,55 +760,10 @@ def get_task_modules():
     """Get all modules"""
     return {"modules": CommonModel.get_modules_by_case_task('task')}, 200
 
-
-@task_blueprint.route("/<cid>/task/<tid>/get_instance_module", methods=['GET'])
-@login_required
-def get_instance_module(cid, tid):
-    """Get all connectors instances by modules"""
-    case = CommonModel.get_case(cid)
-    if case:
-        if not check_user_private_case(case):
-            flowintel_log("audit", 403, "Get instances of a task module: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
-            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
-        if CommonModel.get_task(tid):
-            if "module" not in request.args:
-                return {"message": "Need to pass 'module'", 'toast_class': "danger-subtle"}, 400
-            if "type" not in request.args:
-                return {"message": "Need to pass 'type'", 'toast_class': "danger-subtle"}, 400
-            module = request.args.get("module")
-            type_module = request.args.get("type")
-            return {"instances": TaskModel.get_instance_module_core(module, type_module, tid, current_user.id)}, 200
-        return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
-    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
-
-
-@task_blueprint.route("/<cid>/task/<tid>/call_module_task", methods=['GET', 'POST'])
-@login_required
-@misp_editor_required
-def call_module_task(cid, tid):
-    """Run a module"""
-    case = CommonModel.get_case(cid)
-    if case:
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            task = CommonModel.get_task(tid)
-            if task:
-                task_instance_id = request.get_json()["case_task_instance_id"]
-                module = request.get_json()["module"]
-                res = TaskModel.call_module_task(module, task_instance_id, case, task, current_user)
-                if res:
-                    res["toast_class"] = "danger-subtle"
-                    return jsonify(res), 400
-                flowintel_log("audit", 200, "Call module on task", User=current_user.email, CaseId=cid, TaskId=tid, Module=module)
-                return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
-            return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
-        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
-    return {"message":"Case not found", "toast_class": "danger-subtle"}, 404
-
-
 @task_blueprint.route("/<cid>/task/<tid>/call_module_task_no_instance", methods=['GET', 'POST'])
 @login_required
 @misp_editor_required
+@task_case_bound_required
 def call_module_task_no_instance(cid, tid):
     """Run a module"""
     case = CommonModel.get_case(cid)
@@ -800,6 +808,7 @@ def get_custom_tags_task(tid):
 @task_blueprint.route("/<cid>/task/<tid>/create_url_tool", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_url_tool(cid,tid):
     """Create a new Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -823,6 +832,7 @@ def create_url_tool(cid,tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_url_tool/<utid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_url_tool(cid, tid, utid):
     """Edit a Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -845,6 +855,7 @@ def edit_url_tool(cid, tid, utid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_url_tool/<utid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_url_tool(cid, tid, utid):
     """Delete a Url/Tool"""
     task = CommonModel.get_task(tid)
@@ -869,6 +880,7 @@ def delete_url_tool(cid, tid, utid):
 @task_blueprint.route("/<cid>/task/<tid>/create_external_reference", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_external_reference(cid, tid):
     """Create a new External Reference"""
     task = CommonModel.get_task(tid)
@@ -892,6 +904,7 @@ def create_external_reference(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_external_reference/<erid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_external_reference(cid, tid, erid):
     """Edit an External Reference"""
     task = CommonModel.get_task(tid)
@@ -914,6 +927,7 @@ def edit_external_reference(cid, tid, erid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_external_reference/<erid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_external_reference(cid, tid, erid):
     """Delete an External Reference"""
     task = CommonModel.get_task(tid)
@@ -989,6 +1003,7 @@ def _probe_external_url(url):
 @task_blueprint.route("/<cid>/task/<tid>/convert_external_reference_to_note/<erid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def convert_external_reference_to_note(cid, tid, erid):
     """Convert an external reference URL to a task note"""
     task = CommonModel.get_task(tid)
@@ -1068,6 +1083,7 @@ def convert_external_reference_to_note(cid, tid, erid):
 
 @task_blueprint.route("/<cid>/task/<tid>/get_misp_object_links", methods=['GET'])
 @login_required
+@task_case_bound_required
 def get_misp_object_links(cid, tid):
     """Get all MISP objects linked to a task"""
     task = CommonModel.get_task(tid)
@@ -1085,6 +1101,7 @@ def get_misp_object_links(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/link_misp_object", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def link_misp_object(cid, tid):
     """Link a MISP object (from the current case) to a task"""
     task = CommonModel.get_task(tid)
@@ -1105,6 +1122,7 @@ def link_misp_object(cid, tid):
 @task_blueprint.route("/<cid>/task/<tid>/unlink_misp_object/<oid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def unlink_misp_object(cid, tid, oid):
     """Remove the link between a MISP object and a task"""
     task = CommonModel.get_task(tid)
@@ -1119,6 +1137,62 @@ def unlink_misp_object(cid, tid, oid):
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@task_blueprint.route("/<cid>/task/<tid>/get_misp_attribute_links", methods=['GET'])
+@login_required
+@task_case_bound_required
+def get_misp_attribute_links(cid, tid):
+    """Get all standalone MISP attributes linked to a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        case = CommonModel.get_case(cid)
+        if not case:
+            return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+        if case.is_private and not CommonModel.get_present_in_case(cid, current_user) and not current_user.is_admin():
+            return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+        links = TaskModel.get_misp_attribute_links(tid)
+        return {"misp_attribute_links": links}, 200
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/link_misp_attribute", methods=['POST'])
+@login_required
+@editor_required
+@task_case_bound_required
+def link_misp_attribute(cid, tid):
+    """Link a standalone MISP attribute (from the current case) to a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if "misp_attribute_id" not in request.json:
+                return {"message": "Need to pass 'misp_attribute_id'", 'toast_class': "warning-subtle"}, 400
+            link = TaskModel.link_misp_attribute(tid, request.json["misp_attribute_id"], current_user)
+            if link:
+                flowintel_log("audit", 200, "Standalone MISP attribute linked to task", User=current_user.email, CaseId=cid, TaskId=tid, MispAttributeId=request.json["misp_attribute_id"])
+                return {"message": "Standalone MISP attribute linked", "link": link.to_json(), 'toast_class': "success-subtle"}, 200
+            return {"message": "Standalone MISP attribute not found or does not belong to this case", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Link MISP attribute to task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@task_blueprint.route("/<cid>/task/<tid>/unlink_misp_attribute/<aid>", methods=['GET'])
+@login_required
+@editor_required
+@task_case_bound_required
+def unlink_misp_attribute(cid, tid, aid):
+    """Remove the link between a standalone MISP attribute and a task"""
+    task = CommonModel.get_task(tid)
+    if task:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.unlink_misp_attribute(tid, aid, current_user):
+                flowintel_log("audit", 200, "Standalone MISP attribute unlinked from task", User=current_user.email, CaseId=cid, TaskId=tid, MispAttributeId=aid)
+                return {"message": "Standalone MISP attribute unlinked", 'toast_class': "success-subtle"}, 200
+            return {"message": "Link not found", 'toast_class': "danger-subtle"}, 404
+        flowintel_log("audit", 403, "Unlink MISP attribute from task: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid)
+        return {"message": "Action not Allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
 ###########
 # Subtask #
 ###########
@@ -1126,6 +1200,7 @@ def unlink_misp_object(cid, tid, oid):
 @task_blueprint.route("/<cid>/task/<tid>/create_subtask", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def create_subtask(cid,tid):
     """Create a new subtask"""
     task = CommonModel.get_task(tid)
@@ -1149,6 +1224,7 @@ def create_subtask(cid,tid):
 @task_blueprint.route("/<cid>/task/<tid>/edit_subtask/<sid>", methods=['POST'])
 @login_required
 @editor_required
+@task_case_bound_required
 def edit_subtask(cid, tid, sid):
     """Edit a subtask"""
     task = CommonModel.get_task(tid)
@@ -1171,6 +1247,7 @@ def edit_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/complete_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def complete_subtask(cid, tid, sid):
     """Complete a subtask"""
     task = CommonModel.get_task(tid)
@@ -1195,6 +1272,7 @@ def complete_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/delete_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def delete_subtask(cid, tid, sid):
     """Delete a subtask"""
     task = CommonModel.get_task(tid)
@@ -1216,6 +1294,7 @@ def delete_subtask(cid, tid, sid):
 @task_blueprint.route("/<cid>/task/<tid>/change_order_subtask/<sid>", methods=['GET'])
 @login_required
 @editor_required
+@task_case_bound_required
 def change_order_subtask(cid, tid, sid):
     """Change the order of tasks"""
     if CommonModel.get_case(cid):
@@ -1227,10 +1306,12 @@ def change_order_subtask(cid, tid, sid):
                     return {"message": "Task in Requested or Rejected status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 subtask = TaskModel.get_subtask(sid)
                 if subtask:
+                    if subtask.task_id != task.id:
+                        return {"message": "Subtask Not found", 'toast_class': "danger-subtle"}, 404
                     up_down = None
                     if "up_down" in request.args:
                         up_down = request.args.get("up_down")
-                        TaskModel.change_order_subtask(task, subtask, up_down)
+                        TaskModel.change_order_subtask(task, subtask, up_down, current_user)
                         flowintel_log("audit", 200, "Subtask order changed", User=current_user.email, CaseId=cid, TaskId=tid, TaskTitle=task.title, SubtaskId=sid, Direction=up_down)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "Need to pass up_down", 'toast_class': "danger-subtle"}, 400
@@ -1239,146 +1320,3 @@ def change_order_subtask(cid, tid, sid):
         flowintel_log("audit", 403, "Change subtask order: Action not allowed", User=current_user.email, CaseId=cid, TaskId=tid, SubtaskId=sid)
         return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
-
-
-##############
-# Connectors #
-##############
-
-@task_blueprint.route("/get_connectors", methods=['GET'])
-@login_required
-def get_connectors():
-    """Get all connectors and instances"""
-    connectors_list = CommonModel.get_connectors()
-    connectors_dict = dict()
-    for connector in connectors_list:
-        loc = list()
-        for instance in connector.instances:
-            if instance.global_api_key or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                loc.append(instance.to_json())
-        if loc:
-            connectors_dict[connector.name] = loc
-    
-    return jsonify({"connectors": connectors_dict}), 200
-
-
-@task_blueprint.route("/get_task_connectors/<tid>", methods=['GET'])
-@login_required
-@misp_editor_required
-def get_task_connectors(tid):
-    """Get all connectors for a task"""
-    task = CommonModel.get_task(tid)
-    if task:
-        if not check_user_private_case(CommonModel.get_case(task.case_id)):
-            flowintel_log("audit", 403, "Get connectors of a task: Private case: Permission denied", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-        
-        instance_list = list()
-        misp_connector = CommonModel.get_connector_by_name("MISP")
-        for task_connector in CommonModel.get_task_connectors(tid):
-            is_misp_connector = False
-            if misp_connector:
-                connect_instance = CommonModel.get_instance(task_connector.instance_id)
-                if connect_instance and connect_instance.connector_id == misp_connector.id:
-                    is_misp_connector = True
-            instance_list.append({
-                "case_task_instance_id": task_connector.id,
-                "details": CommonModel.get_instance_with_icon(task_connector.instance_id),
-                "identifier": task_connector.identifier,
-                "is_misp_connector": is_misp_connector
-            })
-        return {"task_connectors": instance_list}, 200
-    return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
-
-
-@task_blueprint.route("/task/<tid>/add_connector", methods=['POST'])
-@login_required
-@misp_editor_required
-def add_connector(tid):
-    """Add Connector"""
-    task = CommonModel.get_task(tid)
-    if task and (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
-        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-            flowintel_log("audit", 403, "Add connector denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-            return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
-        
-        if "connectors" in request.json and TaskModel.add_connector(tid, request.json, current_user):
-            flowintel_log("audit", 200, "Connector added to task", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-            return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
-        return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
-    if not task:
-        return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
-    flowintel_log("audit", 403, "Add connector to task: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-    return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
-
-@task_blueprint.route("/task/<tid>/remove_connector/<ciid>", methods=['GET'])
-@login_required
-@misp_editor_required
-def remove_connector(tid, ciid):
-    """Remove a connector from task"""
-    task = CommonModel.get_task(tid)
-    if task:
-        if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if TaskModel.remove_connector(ciid):
-                flowintel_log("audit", 200, "Connector removed from task", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-                return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
-            return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
-        flowintel_log("audit", 403, "Remove connector from task: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
-
-
-@task_blueprint.route("/task/<tid>/edit_connector/<ciid>", methods=['POST'])
-@login_required
-@misp_editor_required
-def edit_connector(tid, ciid):
-    """Edit Connector"""
-    task = CommonModel.get_task(tid)
-    if task:
-        if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
-            if "identifier" in request.json:
-                if TaskModel.edit_connector(ciid, request.json):
-                    flowintel_log("audit", 200, "Task connector edited", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-                    return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
-                return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
-            return {"message": "Need to pass 'identifier'", "toast_class": "warning-subtle"}, 400
-        flowintel_log("audit", 403, "Edit task connector: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-        return {"message":"Action not Allowed", "toast_class": "warning-subtle"}, 403
-    return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
-
-
-@task_blueprint.route("/task/<tid>/connectors/<ciid>/search_in_misp", methods=['POST'])
-@login_required
-@misp_editor_required
-def search_in_misp_task(tid, ciid):
-    """Search attributes in MISP using a receive_from MISP connector attached to a task."""
-    task = CommonModel.get_task(tid)
-    if not task:
-        return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
-    if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
-        flowintel_log("audit", 403, "Search in MISP: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
-    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
-        flowintel_log("audit", 403, "Search in MISP denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
-        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
-
-    task_connector = CommonModel.get_task_connectors_by_id(ciid)
-    if not task_connector or task_connector.task_id != task.id:
-        return {"message": "Connector not attached to this task", "toast_class": "warning-subtle"}, 404
-
-    instance = CommonModel.get_instance(task_connector.instance_id)
-    misp_connector = CommonModel.get_connector_by_name("MISP")
-    if not instance or not misp_connector or instance.connector_id != misp_connector.id or instance.type != "receive_from":
-        return {"message": "Connector is not a MISP receive_from connector", "toast_class": "warning-subtle"}, 400
-
-    query = ((request.json or {}).get("query") or "").strip()
-    if not query:
-        return {"message": "Search query is required", "toast_class": "warning-subtle"}, 400
-
-    res = ConnectorModel.search_misp_attributes(instance, current_user, query)
-    if not res.get("success"):
-        flowintel_log("audit", 400, f"Search in MISP failed: {res.get('message')}", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid)
-        return {"message": res.get("message", "MISP search failed"), "toast_class": "danger-subtle"}, 400
-
-    flowintel_log("audit", 200, "Searched attributes in MISP", User=current_user.email, CaseId=task.case_id, TaskId=tid, ConnectorInstanceId=ciid, Query=query)
-    return {"results": res["results"]}, 200

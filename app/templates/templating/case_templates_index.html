@@ -178,7 +178,7 @@
                                 <span class="meta-value">[[ dayjs.utc(template.last_modif).fromNow() ]]</span>
                             </div>
                             <div class="case-meta-item" v-if="template.uuid" :title="template.uuid">
-                                <i class="fa-solid fa-fingerprint fa-fw"></i>
+                                <i class="misp-icon misp-icon-attribute misp-simple fa-fw"></i>
                                 <span class="meta-label">UUID</span>
                                 <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[ template.uuid ]]</span>
                             </div>
@@ -227,7 +227,7 @@
                             <div style="display: flex;" v-if="template.tags">
                                 <template v-for="tag in template.tags">
                                     <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+                                        <i class="misp-icon misp-icon-tag misp-simple"></i>
                                         [[tag.name]]
                                     </div>
                                 </template>

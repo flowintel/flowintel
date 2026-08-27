@@ -142,6 +142,8 @@ def exporter():
         case_dict["tasks"] = [t.download() for t in tasks]
         misp_objects = CaseModel.get_misp_object_by_case(cid)
         case_dict["misp-objects"] = [obj.download() for obj in misp_objects]
+        standalone_attrs = CaseModel.get_standalone_attributes_by_case(cid)
+        case_dict["standalone_attributes"] = [attr.download() for attr in standalone_attrs]
         if include_files:
             case_dict["files"] = _encode_files(case.files)
             for i, task in enumerate(tasks):
@@ -334,6 +336,12 @@ def get_tag_galaxy_stats():
     cutoff = ToolsModel.days_cutoff(request.args.get('days'))
     return ToolsModel.get_tag_galaxy_top_stats(current_user, cutoff=cutoff)
 
+@tools_blueprint.route("/misp_stats")
+@login_required
+def misp_stats():
+    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    return ToolsModel.get_misp_stats(current_user, cutoff=cutoff)
+
 @tools_blueprint.route("/community_stats")
 @login_required
 def community_stats():
@@ -375,6 +383,13 @@ def recent_logins():
     return ToolsModel.get_recent_logins(limit=limit)
 
 
+@tools_blueprint.route("/note_variables_reference", methods=['GET'])
+@login_required
+def note_variables_reference_view():
+    """Render the note variables syntax reference page"""
+    reference = get_syntax_reference()
+    return render_template("tools/note_variables_reference.html", reference=reference)
+
 
 #################
 # Note Template #
@@ -385,13 +400,6 @@ def recent_logins():
 def note_template_index():
     return render_template("tools/note_template_index.html")
 
-
-@tools_blueprint.route("/note_variables_reference", methods=['GET'])
-@login_required
-def note_variables_reference_view():
-    """Render the note variables syntax reference page"""
-    reference = get_syntax_reference()
-    return render_template("tools/note_variables_reference.html", reference=reference)
 
 @tools_blueprint.route("/create_note_template_view", methods=['GET'])
 @login_required
@@ -791,7 +799,6 @@ def system_settings_save():
         'TASK_REJECTED': 'int',
         'MISP_EVENT_THREAT_LEVEL': 'int',
         'MISP_EVENT_ANALYSIS': 'int',
-        'LOG_FILE': 'str',
         'AUDIT_LOG_PREFIX': 'str',
         'MAIN_LOGO': 'str',
         'TOPRIGHT_LOGO': 'str',

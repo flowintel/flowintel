@@ -86,7 +86,7 @@
                     <span class="meta-value">[[case_template.time_required]]</span>
                 </div>
                 <div class="case-meta-item" v-if="case_template.uuid" :title="case_template.uuid">
-                    <i class="fa-solid fa-fingerprint fa-fw"></i>
+                    <i class="misp-icon misp-icon-attribute misp-simple fa-fw"></i>
                     <span class="meta-label">UUID</span>
                     <span class="meta-value" style="font-family: monospace; font-size: 0.8em;">[[case_template.uuid]]</span>
                 </div>
@@ -218,8 +218,7 @@
                     :object_id="case_template.id"
                     :cases_info="case_template"
                     :can_edit="{{ 'true' if can_manage_templates else 'false' }}"
-                    @case_connectors="(msg) => fetch_case_template_connectors()"
-                    @task_connectors="">
+                    @case_connectors="(msg) => fetch_case_template_connectors()">
                 </templateconnectors>
             </template>
 

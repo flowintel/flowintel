@@ -24,8 +24,10 @@ def create_notification(case, message, html_icon):
             is_read=False,
             user_id=r_n.user_id,
             case_id=str(case.id),
-            creation_date=datetime.now(timezone.utc),
+            creation_date=datetime.now(tz=timezone.utc),
             html_icon=html_icon,
+            category="deadline",
+            notification_type="reminder"
         )
         db.session.add(notif)
 
@@ -67,7 +69,7 @@ def job():
 
 # job()
 print("[+] Started...")
-schedule.every().day.at("02:00").do(job)
+schedule.every().day.at("03:00").do(job)
 
 while True:
     schedule.run_pending()

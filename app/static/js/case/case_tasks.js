@@ -8,7 +8,7 @@ import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import smart_render from '/static/js/components/smart-render.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
-import { isCompleteTaskDisabled, getCompleteTaskTooltip } from './helpers.js'
+import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed, nextTick } = Vue
 export default {
@@ -22,6 +22,10 @@ export default {
 		open_closed: Object,
 		all_connectors_list: Object,
 		task_modules: Object,
+		can_drag_reorder: {
+			type: Boolean,
+			default: true
+		},
 	},
 	components: {
 		tabMain,
@@ -35,17 +39,13 @@ export default {
 	},
 	setup(props) {
 		// Variables part
-		let is_mounted = false			// Boolean use to know if the app is mount to initialize mermaid
+		let is_mounted = false		// Boolean use to know if the app is mount to initialize mermaid
 		const selected_tab = ref("main")
 
 		const module_loader = ref(false)
 		const task_instances_selected = ref([])
 		const task_module_selected = ref()
-		const task_connectors_list = ref()
-
 		const expandedTasks = ref({});
-
-
 
 		async function complete_task(task) {
 			// Complete a task
@@ -58,7 +58,7 @@ export default {
 					props.open_closed["closed"] += 1
 					props.open_closed["open"] -= 1
 				}
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.completed = !task.completed
 				let status = task.status_id
 				if (props.status_info.status.find(s => s.id === task.status_id)?.name == 'Finished') {
@@ -102,42 +102,6 @@ export default {
 			await display_toast(res)
 		}
 
-		async function fetch_task_connectors() {
-			const res = await fetch("/case/get_task_connectors/" + props.task.id)
-			if (await res.status == 404) {
-				display_toast(res)
-			} else {
-				let loc = await res.json()
-				task_connectors_list.value = loc["task_connectors"]
-			}
-		}
-
-		async function fetch_module_selected(module) {
-			// Get modules and instances linked on
-			const res = await fetch("/case/" + props.task.case_id + "/task/" + props.task.id + "/get_instance_module?type=send_to&module=" + module)
-			if (await res.status == 400) {
-				display_toast(res)
-			} else {
-				let loc = await res.json()
-				task_module_selected.value = loc["instances"]
-				await nextTick()
-				$('#task_instances_select_' + props.task.id).select2({
-					theme: 'bootstrap-5',
-					width: '50%',
-					closeOnSelect: false
-				})
-				$('#task_instances_select_' + props.task.id).on('change.select2', function (e) {
-					let name_instance = $(this).select2('data').map(item => item.id)
-					task_instances_selected.value = []
-					for (let index in task_module_selected.value) {
-						if (name_instance.includes(task_module_selected.value[index].name)) {
-							if (!task_instances_selected.value.includes(task_module_selected.value[index]))
-								task_instances_selected.value.push(task_module_selected.value[index])
-						}
-					}
-				})
-			}
-		}
 
 		function present_user_in_task(task_user_list, user) {
 			// Check if user is already assign
@@ -161,7 +125,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/remove_assignment/' + task.id)
 
 			if (await res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.is_current_user_assigned = false
 
 				let index = -1
@@ -182,7 +146,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/take_task/' + task.id)
 
 			if (await res.status == 200) {
-				task.last_modif = Date.now()
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				task.is_current_user_assigned = true
 				task.users.push(current_user)
 			}
@@ -215,7 +179,6 @@ export default {
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			} else if (tab_name == 'notes') {
@@ -226,7 +189,6 @@ export default {
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			} else if (tab_name == 'files') {
@@ -237,7 +199,6 @@ export default {
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
 			} else if (tab_name == 'external-ref') {
@@ -247,7 +208,6 @@ export default {
 					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
@@ -259,24 +219,9 @@ export default {
 					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
 				}
-			} else if (tab_name == 'connectors') {
-				// await fetch_task_connectors()
-				await nextTick()
-				selected_tab.value = 'connectors'
-				if (!document.getElementById("tab-task-connectors-" + props.task.id).classList.contains("active")) {
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.add("active")
-					document.getElementById("tab-task-main-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-notes-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-info-" + props.task.id).classList.remove("active")
-				}
-			}
-			else if (tab_name == 'info') {
+			} else if (tab_name == 'info') {
 				selected_tab.value = 'info'
 				if (!document.getElementById("tab-task-info-" + props.task.id).classList.contains("active")) {
 					document.getElementById("tab-task-info-" + props.task.id).classList.add("active")
@@ -285,8 +230,6 @@ export default {
 					document.getElementById("tab-task-files-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-external-ref-" + props.task.id).classList.remove("active")
 					document.getElementById("tab-task-misp-objects-" + props.task.id).classList.remove("active")
-					document.getElementById("tab-task-connectors-" + props.task.id).classList.remove("active")
-
 				}
 			}
 
@@ -301,15 +244,12 @@ export default {
 
 		// Vue function
 		Vue.onMounted(() => {
-			if (can_use_connectors.value) fetch_task_connectors()
 			select2_change(props.task.id)
-			// $('.select2-select').select2({
-			// 	theme: 'bootstrap-5',
-			// 	width: '50%',
-			// 	closeOnSelect: false
-			// })
-
 			is_mounted = true
+
+			// Listen for newly created standalone attributes and update task link list
+			window.addEventListener('misp-attribute-created', on_misp_attribute_created)
+			window.addEventListener('misp-attribute-deleted', on_misp_attribute_deleted)
 
 		})
 		Vue.onUpdated(() => {
@@ -325,6 +265,46 @@ export default {
 				})
 			}
 		})
+
+
+		// Handle newly created standalone attributes globally for this task
+		Vue.onBeforeUnmount(() => {
+			try { window.removeEventListener('misp-attribute-created', on_misp_attribute_created) } catch(e) {}
+			try { window.removeEventListener('misp-attribute-deleted', on_misp_attribute_deleted) } catch(e) {}
+		})
+
+		function on_misp_attribute_created(e) {
+			try {
+				const attr = e && e.detail && e.detail.attribute
+				const task_ids = e && e.detail && e.detail.task_ids ? e.detail.task_ids : []
+				if (!attr || !task_ids || !Array.isArray(task_ids)) return
+				const tid = props.task.id
+				if (task_ids.map(x => parseInt(x)).includes(parseInt(tid))) {
+					if (!props.task.misp_attribute_links) props.task.misp_attribute_links = []
+					props.task.misp_attribute_links.push({
+						"misp_attribute_id": attr.id,
+						"misp_attribute_value": attr.value,
+						"misp_attribute_type": attr.type,
+						"misp_attribute_object_relation": attr.object_relation || null
+					})
+				}
+			} catch (e) {}
+		}
+
+		function on_misp_attribute_deleted(e) {
+			try {
+				const aid = e && e.detail && e.detail.attribute_id
+				const task_ids = e && e.detail && e.detail.task_ids ? e.detail.task_ids : []
+				if (!aid) return
+				const tid = props.task.id
+				if (!task_ids || !Array.isArray(task_ids)) return
+				if (task_ids.map(x => parseInt(x)).includes(parseInt(tid))) {
+					if (!props.task.misp_attribute_links) return
+					const idx = props.task.misp_attribute_links.findIndex(l => parseInt(l.misp_attribute_id) === parseInt(aid))
+					if (idx > -1) props.task.misp_attribute_links.splice(idx, 1)
+				}
+			} catch (e) {}
+		}
 
 		const can_use_connectors = computed(() => {
 			if (!props.cases_info) return false
@@ -351,7 +331,6 @@ export default {
 			task_instances_selected,
 			task_module_selected,
 			selected_tab,
-			task_connectors_list,
 			expandedTasks,
 
 			take_task,
@@ -364,14 +343,13 @@ export default {
 			present_user_in_task,
 
 			select_tab_task,
-			fetch_task_connectors,
 			truncateText,
 			toggleCollapse
 		}
 	},
 	template: `
 	<div style="display: flex;">
-		<div v-if="!task.completed && can_reorder" class="task-drag-handle" title="Drag to reorder">
+		<div v-if="!task.completed && can_reorder && can_drag_reorder" class="task-drag-handle" title="Drag to reorder">
 			<i class="fa-solid fa-grip-vertical"></i>
 		</div>
 		<a href="javascript:void(0)" 
@@ -383,7 +361,25 @@ export default {
 				<h5 class="mb-1"><i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ key_loop + 1 ]]- [[task.title]]</h5>
 				<small :title="'Changed: ' + task.last_modif"><i><i class="fa-solid fa-arrows-rotate"></i> [[ formatNow(task.last_modif) ]] </i></small>
 			</div>
-
+			<div class="d-flex w-100 justify-content-between">
+				<div class="case-stats-row">
+					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Files">
+						<i class="fa-solid fa-file-lines me-1"></i> [[ task.files ? task.files.length : 0 ]]
+					</span>
+					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Notes">
+						<i class="fa-solid fa-note-sticky me-1"></i> [[ task.notes ? task.notes.length : 0 ]]
+					</span>
+					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Linked MISP-Objects">
+						<i class="misp-icon misp-icon-object misp-simple me-1"></i> [[ task.misp_object_links.length ? task.misp_object_links.length : 0 ]]
+					</span>
+					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Linked standalone MISP-Attributes">
+						<i class="misp-icon misp-icon-attribute misp-simple me-1"></i> [[ task.misp_attribute_links ? task.misp_attribute_links.length : 0 ]]
+					</span>
+					<span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Urls/Tools">
+						<i class="fa-solid fa-link me-1"></i> [[ task.urls_tools ? task.urls_tools.length : 0 ]]
+					</span>
+				</div>
+			</div>
 			<div class="d-flex w-100 justify-content-between mt-1">
 				<template v-if="task.description">
 					<template v-if="task.description.length > 300">
@@ -426,11 +422,12 @@ export default {
 					</template>
 				</div>
 			</div>
+
 			<div class="d-flex w-100 justify-content-between">
 				<div style="display: flex;" v-if="task.tags">
 					<template v-for="tag in task.tags">
 						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-							<i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
+							<i class="misp-icon misp-icon-tag misp-simple" style="margin-right: 3px; margin-left: 3px;"></i>
 							[[tag.name]]
 						</div>
 					</template>
@@ -466,7 +463,7 @@ export default {
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">
-                <div v-if="task.users.length">
+				<div v-if="task.users.length">
 					<template v-for="user in task.users">
 						<span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
 							<i class="fa-solid fa-user"></i> [[user.nickname]]
@@ -475,24 +472,13 @@ export default {
 							<i class="fa-solid fa-user"></i> [[user.last_name]]
 						</span>
 					</template>
-                </div>
+				</div>
 
-                <div v-else>
-                    <i>No user assigned</i>
-                </div>
-                <small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
-                <small v-else><i>No deadline</i></small>
-            </div>
-			<div class="d-flex w-100 mt-2 justify-content-between">
-				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
-					<i>[[task.files.length]] Files</i>
-				</span>
-				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
-					<i>[[task.notes.length]] Notes</i>
-				</span>
-				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
-					<i>[[task.urls_tools.length]] Urls/Tools</i>
-				</span>
+				<div v-else>
+					<i>No user assigned</i>
+				</div>
+				<small v-if="task.deadline" :title="'Deadline: ' + task.deadline"><i><i class="fa-solid fa-hourglass-start"></i> [[endOf(task.deadline)]]</i></small>
+				<small v-else><i>No deadline</i></small>
 			</div>
 			<div class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
 				<div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
@@ -507,35 +493,35 @@ export default {
 		<div v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin">
 			<div>
 				<span v-if="task.completed" 
-				      title="Revive the task"
-				      style="display:inline-block;">
+					title="Revive the task"
+					style="display:inline-block;">
 					<button class="btn btn-secondary"
-							@click="complete_task(task)">
+						@click="complete_task(task)">
 						<i class="fa-solid fa-backward fa-fw"></i>
 					</button>
 				</span>
 				<span v-else 
-				      :title="getCompleteTaskTooltip(task, cases_info, status_info)"
-				      style="display:inline-block;">
+					:title="getCompleteTaskTooltip(task, cases_info, status_info)"
+					style="display:inline-block;">
 					<button class="btn btn-success"
-							@click="complete_task(task)" 
-							:disabled="isCompleteTaskDisabled(task, cases_info, status_info)"
-							style="pointer-events: auto;">
+						@click="complete_task(task)" 
+						:disabled="isCompleteTaskDisabled(task, cases_info, status_info)"
+						style="pointer-events: auto;">
 						<i class="fa-solid fa-check fa-fw"></i>
 					</button>
 				</span>
 			</div>
 			<div>
 				<button v-if="!task.is_current_user_assigned" 
-						class="btn btn-secondary"
-						@click="take_task(task, cases_info.current_user)" 
-						title="Be assigned to the task">
+					class="btn btn-secondary"
+					@click="take_task(task, cases_info.current_user)" 
+					title="Be assigned to the task">
 					<i class="fa-solid fa-hand fa-fw"></i>
 				</button>
 				<button v-else 
-						class="btn btn-secondary"
-						@click="remove_assign_task(task, cases_info.current_user)" 
-						title="Remove the assignment">
+					class="btn btn-secondary"
+					@click="remove_assign_task(task, cases_info.current_user)" 
+					title="Remove the assignment">
 					<i class="fa-solid fa-handshake-slash fa-fw"></i>
 				</button>
 			</div>
@@ -549,11 +535,11 @@ export default {
 			</div>
 		</div>
 	</div>
-	
+
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">
 		<div class="card card-body" style="background-color: whitesmoke;">
-			
+
 			<ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">
 					<button class="nav-link active" :id="'tab-task-main-'+task.id" aria-current="page" @click="select_tab_task('main')">
@@ -563,11 +549,6 @@ export default {
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-notes-'+task.id" @click="select_tab_task('notes')">
 					<i class="fa-solid fa-note-sticky fa-sm me-1"></i><span class="section-title">Notes<template v-if="task.notes.length"> ([[ task.notes.length ]])</template></span>
-					</button>
-				</li>
-				<li class="nav-item">
-					<button class="nav-link" :id="'tab-task-connectors-'+task.id" @click="select_tab_task('connectors')">
-					<i v-if="!can_use_connectors" class="fa-solid fa-lock me-1"></i><i class="fa-solid fa-plug fa-sm me-1"></i><span class="section-title">Connectors<template v-if="task_connectors_list && task_connectors_list.length"> ([[ task_connectors_list.length ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
@@ -582,7 +563,7 @@ export default {
 				</li>
 				<li class="nav-item">
 					<button class="nav-link" :id="'tab-task-misp-objects-'+task.id" @click="select_tab_task('misp-objects')">
-					<i class="fa-solid fa-shield-halved fa-sm me-1"></i><span class="section-title">MISP Objects<template v-if="task.misp_object_links && task.misp_object_links.length"> ([[ task.misp_object_links.length ]])</template></span>
+					<i class="fa-solid fa-shield-halved fa-sm me-1"></i><span class="section-title">MISP Links<template v-if="(task.misp_object_links && task.misp_object_links.length) || (task.misp_attribute_links && task.misp_attribute_links.length)"> ([[ (task.misp_object_links ? task.misp_object_links.length : 0) + (task.misp_attribute_links ? task.misp_attribute_links.length : 0) ]])</template></span>
 					</button>
 				</li>
 				<li class="nav-item">
@@ -594,38 +575,18 @@ export default {
 
 			<template v-if="selected_tab == 'main'">
 				<tabMain :cases_info="cases_info" 
-						 :users_in_case="users_in_case" 
-						 :status_info="status_info" 
-						 :task="task"
-						 :task_modules="task_modules"
-						 :open_closed="open_closed">
-                </tabMain>
+					 :users_in_case="users_in_case" 
+					 :status_info="status_info" 
+					 :task="task"
+					 :task_modules="task_modules"
+					 :open_closed="open_closed">
+				</tabMain>
 			</template>
 
 			<template v-else-if="selected_tab == 'notes'">
 				<tabNote :cases_info="cases_info"
-						 :task="task">
-                </tabNote>
-			</template>
-
-			<template v-else-if="selected_tab == 'connectors'">
-				<div v-if="!can_use_connectors" class="alert alert-warning" role="alert">
-					<i class="fa-solid fa-lock me-2"></i>
-					<strong>Access Restricted:</strong> You need Admin or MISP Editor permission to use connectors.
-				</div>
-				<div v-else class="card card-body">
-					<caseconnectors 
-						:case_task_connectors_list="task_connectors_list"
-						:all_connectors_list="all_connectors_list"
-						:modules="task_modules"
-						:is_case="false"
-						:object_id="task.id"
-						:cases_info="cases_info"
-						@case_connectors=""
-						@task_connectors="(msg) => fetch_task_connectors()"
-						@task_note_added="(note) => { task.notes.push(note) }">
-					</caseconnectors>
-				</div>
+					 :task="task">
+				</tabNote>
 			</template>
 
 			<template v-else-if="selected_tab == 'files'">

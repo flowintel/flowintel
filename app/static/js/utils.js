@@ -91,5 +91,28 @@ function truncateText(text, maxLength = 300) {
     return text.length > maxLength ? text.substring(0, maxLength) + '…' : text
 }
 
+function toMispIconSlug(value) {
+    if (!value) return ''
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+}
 
-export { truncateText, getTextColor, mapIcon };
+function mispObjectIconClass(objectName, extraClasses = '') {
+    const slug = toMispIconSlug(objectName)
+    return ['misp-icon', 'misp-icon-object', 'misp-simple', slug ? `misp-icon-${slug}` : '', slug ? 'misp-objects' : '', extraClasses]
+        .filter(Boolean)
+        .join(' ')
+}
+
+function mispAttributeIconClass(attributeType, extraClasses = '') {
+    const slug = toMispIconSlug(attributeType)
+    return ['misp-icon', 'misp-icon-attribute', 'misp-simple', slug ? `misp-icon-${slug}` : '', slug ? 'misp-attributes' : '', extraClasses]
+        .filter(Boolean)
+        .join(' ')
+}
+
+
+export { truncateText, getTextColor, mapIcon, toMispIconSlug, mispObjectIconClass, mispAttributeIconClass };

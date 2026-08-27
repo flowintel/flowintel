@@ -1,5 +1,6 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 export default {
 	delimiters: ['[[', ']]'],
 	props: {
@@ -11,6 +12,7 @@ export default {
 			const res = await fetch('/case/' + task.case_id + '/task/' + task.id + "/complete_subtask/" + subtask_id)
 
 			if (await res.status == 200) {
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				for (let i in task.subtasks) {
 					if (task.subtasks[i].id == subtask_id) {
 						task.subtasks[i].completed = !task.subtasks[i].completed
@@ -47,6 +49,7 @@ export default {
 
 				task.subtasks.push({ "id": loc["id"], "description": description, "task_id": task.id, "completed": false, "task_order_id": task.subtasks.length })
 				task.nb_open_subtasks += 1
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				create_message("Subtask created", "success-subtle", false, "fas fa-plus")
 				$("#textarea-subtask-" + task.id).val("")
 				$("#create_subtask_" + task.id).modal("hide")
@@ -77,6 +80,7 @@ export default {
 						break
 					}
 				}
+				touchTaskAndCaseLastModif(task, props.cases_info)
 				$("#edit_subtask_" + subtask_id).modal("hide")
 			}
 			await display_toast(res)
@@ -99,6 +103,7 @@ export default {
 					}
 				}
 				task.subtasks.splice(loc_i, 1)
+				touchTaskAndCaseLastModif(task, props.cases_info)
 			}
 			await display_toast(res)
 		}
@@ -110,6 +115,9 @@ export default {
 
 			const res = await fetch('/case/' + task.case_id + '/task/' + task.id + '/change_order_subtask/' + subtask.id + "?up_down=" + up_down)
 			await display_toast(res)
+			if (res.status == 200) {
+				touchTaskAndCaseLastModif(task, props.cases_info)
+			}
 			for (let i in props.task.subtasks) {
 				if (props.task.subtasks[i]["task_order_id"] == subtask.task_order_id + cp) {
 					props.task.subtasks[i]["task_order_id"] = subtask.task_order_id

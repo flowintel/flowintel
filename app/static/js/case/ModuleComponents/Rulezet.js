@@ -48,7 +48,7 @@ export default {
             results.value = []
             try {
                 if (!module_selected.value || module_selected.value === 'None') return display_toast({ message: 'Select a module', toast_class: 'warning-subtle' })
-                const url = `/case/${props.case_id}/call_module_case`
+                const url = `/case/${props.case_id}/call_connector_module_case`
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $('#csrf_token').val() },
@@ -105,7 +105,7 @@ export default {
 
             is_resyncing_id.value = r.id || r.uuid || queryVal
             try {
-                const url = `/case/${props.case_id}/call_module_case`
+                const url = `/case/${props.case_id}/call_connector_module_case`
                 const res2 = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': $('#csrf_token').val() },

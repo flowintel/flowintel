@@ -15,7 +15,7 @@ export default {
             default: true
         }
     },
-    emits: ['case_connectors', 'task_connectors'],
+    emits: ['case_connectors'],
     setup(props, {emit}) {
         const connector_instances_selected = ref([])
         const edit_instance = ref()
@@ -37,12 +37,7 @@ export default {
                 })
             }
 
-            let url
-            if(props.is_case){
-                url = "/templating/"+ props.object_id +"/add_connector"
-            }else{
-                url = "/templating/task/"+props.object_id+"/add_connector"
-            }
+            let url = "/templating/" + props.object_id + "/add_connector"
 
             const res = await fetch(url, {
                 method: "POST",
@@ -55,11 +50,7 @@ export default {
             })
             if(await res.status==200){
                 connector_instances_selected.value = []
-                if (props.is_case){
-                    emit("case_connectors", true)
-                }else{
-                    emit("task_connectors", true)
-                }
+                emit("case_connectors", true)
                 $("#modal-add-connectors-"+modal_indentifier).modal("hide");
             }
             display_toast(res)
@@ -71,12 +62,7 @@ export default {
                 message: 'Are you sure you want to remove this connector? This cannot be undone.'
             })
             if (!ok) return
-            let url
-            if(props.is_case){
-                url = "/templating/connectors/"+element_instance_id+"/remove_connector"
-            }else{
-                url = "/templating/task/"+props.object_id+"/remove_connector/"+element_instance_id
-            }
+            let url = "/templating/connectors/"+element_instance_id+"/remove_connector"
 
             const res = await fetch(url)
             if(await res.status==200){
@@ -99,12 +85,7 @@ export default {
         }
 
         async function edit_connector(){
-            let url
-            if(props.is_case){
-                url = "/templating/connectors/"+edit_instance.value.template_instance_id+"/edit_connector"
-            }else{
-                url = "/templating/task/"+props.object_id+"/edit_connector/"+edit_instance.value.template_instance_id
-            }
+            let url = "/templating/connectors/" + edit_instance.value.template_instance_id + "/edit_connector"
 
             let loc_indentifier = $("#input-edit-connector").val()
             const res = await fetch(url, {
@@ -187,7 +168,6 @@ export default {
                     <tr>
                         <th>Instance name</th>
                         <th>Instance url</th>
-                        <th>Type</th>
                         <th>Identifier on the instance</th>
                         <th></th>
                     </tr>
@@ -204,10 +184,6 @@ export default {
                             <a style="margin-left: 5px" :href="instance.details.url">[[instance.details.url]]</a>
                         </td>
 
-                        <td v-if="instance.details.type">
-                            <span style="margin-left: 3px;" title="type of the module">[[instance.details.type]]</span>
-                        </td>
-                        <td v-else><i>None</i></td>
 
                         <td v-if="instance.identifier">
                             <span style="margin-left: 3px;" title="identifier used by module">[[instance.identifier]]</span>

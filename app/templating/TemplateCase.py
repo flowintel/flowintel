@@ -307,6 +307,8 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             
         ## Case Connector Instance
         for connector_instances in case_template.to_json()['connector_instances']:
+            if not connector_instances.get('instance'):
+                continue
             c_c_i = Case_Connector_Instance(
                 case_id=case.id,
                 instance_id=connector_instances['instance']['id'],

@@ -4,7 +4,7 @@ import uuid
 import datetime
 
 from flask import current_app
-from flask import request, send_file
+from flask import send_file
 from werkzeug.utils import secure_filename
 
 from sqlalchemy import and_
@@ -12,9 +12,9 @@ from sqlalchemy import and_
 from app.extensions import db
 from app.db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
-    Task_Connector_Instance, Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
-    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_User, User, Galaxy,
-    Case_Misp_Object
+    Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
+    Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_Misp_Attribute, Task_User, User, Galaxy,
+    Case_Misp_Object, Misp_Attribute
 )
 
 from app.utils.utils import get_modules_list
@@ -142,40 +142,67 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def delete_task(self, tid, current_user, case_deleted=False):
         """Delete a task by is id"""
         task = CommonModel.get_task(tid)
-        if task is not None:
-            for file in task.files:
+        if task is None:
+            return False
+
+        # ensure we have the case object before we delete anything
+        case = CommonModel.get_case(task.case_id)
+
+        # Delete files from disk and DB (best-effort, don't abort on file system errors)
+        for file in list(task.files):
+            filepath = os.path.join(FILE_FOLDER, file.uuid)
+            try:
+                os.remove(filepath)
+            except Exception as e:
                 try:
-                    os.remove(os.path.join(FILE_FOLDER, file.uuid))
-                except OSError:
-                    return False
+                    from ..utils.logger import flowintel_log
+                    flowintel_log("warn", 500, f"Error removing file {filepath}: {str(e)}", User=getattr(current_user, 'email', None), TaskId=task.id, FileName=file.name)
+                except Exception:
+                    pass
+            try:
                 db.session.delete(file)
-                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        db.session.commit()
 
-            case = CommonModel.get_case(task.case_id)
-            if not case_deleted:
-                task_users = Task_User.query.where(Task_User.task_id==task.id).all()
-                for task_user in task_users:
-                    user = User.query.get(task_user.user_id)
-                    NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
+        # Notify users and reorder tasks if case is not being deleted
+        if not case_deleted:
+            task_users = Task_User.query.filter_by(task_id=task.id).all()
+            for task_user in task_users:
+                user = User.query.get(task_user.user_id)
+                NotifModel.create_notification_user(f"Task '{task.id}-{task.title}' of case '{case.id}-{case.title}' was deleted", task.case_id, user_id=user.id, html_icon="fa-solid fa-trash")
 
-                ## Move all task down if possible
-                self.reorder_tasks(case, task.id)
+            # Move all tasks down if possible
+            self.reorder_tasks(case, task.id)
 
-            Task_Tags.query.filter_by(task_id=task.id).delete()
-            Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
-            # remove galaxy-level markers
-            Task_Galaxy.query.filter_by(task_id=task.id).delete()
-            Task_User.query.filter_by(task_id=task.id).delete()
-            Task_Connector_Instance.query.filter_by(task_id=task.id).delete()
-            Note.query.filter_by(task_id=tid).delete()
-            Task_Custom_Tags.query.filter_by(task_id=tid).delete()
-            db.session.delete(task)
-            CommonModel.update_last_modif(task.case_id)
-            db.session.commit()
+        # Remove all DB records that are not covered by SQL-level cascade
+        Task_Tags.query.filter_by(task_id=task.id).delete()
+        Task_Galaxy_Tags.query.filter_by(task_id=task.id).delete()
+        # remove galaxy-level markers
+        Task_Galaxy.query.filter_by(task_id=task.id).delete()
+        Task_User.query.filter_by(task_id=task.id).delete()
+        Task_Custom_Tags.query.filter_by(task_id=task.id).delete()
 
+        # URL/tools and external refs (have FK/cascade but explicit removal keeps behavior deterministic)
+        Task_Url_Tool.query.filter_by(task_id=task.id).delete()
+        Task_External_Reference.query.filter_by(task_id=task.id).delete()
+
+        # MISP links
+        Task_Misp_Object.query.filter_by(task_id=task.id).delete()
+        Task_Misp_Attribute.query.filter_by(task_id=task.id).delete()
+
+        # Notes and subtasks
+        Note.query.filter_by(task_id=task.id).delete()
+        Subtask.query.filter_by(task_id=task.id).delete()
+
+        # Finally remove the task itself
+        db.session.delete(task)
+        CommonModel.update_last_modif(task.case_id)
+        db.session.commit()
+
+        if case:
             CommonModel.save_history(case.uuid, current_user, f"Task '{task.title}' deleted")
-            return True
-        return False
+        return True
 
     def get_nb_open_tasks(self, case):
         loc_open = 0
@@ -183,6 +210,22 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             if not task.completed:
                 loc_open += 1
         return loc_open
+
+    def normalize_open_task_order(self, case):
+        """Keep open task order dense and deterministic."""
+        tasks = Task.query.filter_by(case_id=case.id, completed=False)\
+            .order_by(Task.case_order_id.asc(), Task.id.asc()).all()
+
+        changed = False
+        for i, task in enumerate(tasks, start=1):
+            if task.case_order_id != i:
+                task.case_order_id = i
+                changed = True
+
+        if changed:
+            db.session.commit()
+
+        return tasks
 
     def complete_task(self, tid, current_user):
         """Complete task by is id"""
@@ -234,8 +277,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def create_task(self, form_dict, cid, current_user):
         """Add a task to the DB"""
-        if "template_select" in form_dict and 0 not in form_dict["template_select"]:
-            task = CommonModel.create_task_from_template(form_dict["template_select"], cid, current_user)
+        template_select = form_dict.get("template_select")
+        template_id = None
+        if template_select:
+            template_id = next((tid for tid in template_select if tid != 0), None) if isinstance(template_select, list) else template_select
+
+        if template_id:
+            task = CommonModel.create_task_from_template(template_id, cid, current_user)
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
 
@@ -761,6 +809,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def sort_tasks(self, case, user, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", completed=False, filter=False, title_search=None, page=1, per_page=10):
         """Sort all tasks by completed and depending of taxonomies and galaxies"""
 
+        if not completed:
+            self.normalize_open_task_order(case)
 
         if tags or taxonomies or galaxies or clusters or custom_tags:
             tasks = self.build_task_query(case.id, completed, tags, taxonomies, galaxies, clusters, custom_tags)
@@ -816,114 +866,32 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             tasks = tasks[start:start + per_page]
         return {"tasks": self.get_task_info(tasks, user), "total": total}
 
-    def change_order(self, case, task, request_json):
+    def change_order(self, case, task, request_json, current_user=None):
         """Change the order of tasks"""
-        # Get tasks ordered by case_order_id
-        tasks_list = [t for t in case.tasks if not t.completed]
-        tasks = sorted(tasks_list, key=lambda t: t.case_order_id)
-        target_task = None
-        for t in tasks:
-            if t.case_order_id == int(request_json["new-index"])+1:
-                target_task = t
-                break
+        if task.completed:
+            return False
 
-        if target_task:
+        try:
+            new_index = int(request_json["new-index"])
+        except (KeyError, TypeError, ValueError):
+            return False
 
-            moving_task = task
+        tasks = self.normalize_open_task_order(case)
+        if task not in tasks or new_index < 0 or new_index >= len(tasks):
+            return False
 
-            # Find index where to insert
-            target_index = tasks.index(target_task)
+        tasks.remove(task)
+        tasks.insert(new_index, task)
 
-            # Remove the moving task from the list
-            tasks.remove(moving_task)
+        for i, loc_task in enumerate(tasks, start=1):
+            loc_task.case_order_id = i
 
-            # Insert the task before the target
-            tasks.insert(target_index, moving_task)
-
-            # Reassign order IDs
-            for i, loc_task in enumerate(tasks, start=1):
-                loc_task.case_order_id = i
-
-            db.session.commit()
-            return True
-        return False
-
-
-    def get_task_modules(self):
-        """Return modules for task only"""
-        loc_list = {}
-        _, res = get_modules_list()
-        for module in res:
-            if res[module]["config"]["case_task"] == 'task':
-                loc_list[module] = res[module]
-        return loc_list
-
-    def get_instance_module_core(self, module, type_module, task_id, user_id):
-        """Return a list of connectors instances for a module"""
-        _, res = get_modules_list()
-        if "connector" in res[module]["config"]:
-            connector = CommonModel.get_connector_by_name(res[module]["config"]["connector"])
-            instance_list = list()
-            for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=user_id, instance_id=instance.id) and instance.type == type_module:
-                    loc_instance = instance.to_json()
-                    identifier = CommonModel.get_task_connector_id(instance.id, task_id)
-                    loc_instance["identifier"] = identifier.identifier if identifier else None
-                    instance_list.append(loc_instance)
-            return instance_list
-        return []
-
-
-    def call_module_task(self, module, task_instance_id, case, task, user):
-        """Run a module"""
-        org = CommonModel.get_org(case.owner_org_id)
-
-        case = case.to_json()
-        case["org_name"] = org.name
-        case["org_uuid"] = org.uuid
-        case["status"] = CommonModel.get_status(case["status_id"]).name
-
-        task = task.to_json()
-        task["status"] = CommonModel.get_status(task["status_id"]).name
-
-
-        task_instance = CommonModel.get_task_connectors_by_id(task_instance_id)
-        if not task_instance:
-            return {"message": "Connector instance not found"}
-
-        loc_instance = CommonModel.get_instance(task_instance.instance_id)
-        if not loc_instance:
-            return {"message": "Connector instance not found"}
-
-        user_instance = CommonModel.get_user_instance_both(user.id, loc_instance.id)
-
-        instance = loc_instance.to_json()
-        if loc_instance.global_api_key:
-            instance["api_key"] = loc_instance.global_api_key
-        elif user_instance:
-            instance["api_key"] = user_instance.api_key
+        db.session.commit()
+        if current_user:
+            self.update_task_time_modification(task, current_user, f"Task '{task.id}-{task.title}' reordered")
         else:
-            return {"message": "No API key configured for this connector"}
-        instance["identifier"] = task_instance.identifier
-
-        #######
-        # RUN #
-        #######
-        modules, _ = get_modules_list()
-        result = modules[module].handler(instance, case, task, user, case_model=self, db_session=db)
-
-        # Module returns None for success, or a dict.
-        # Dict with "message" key means error.
-        # Dict with "identifier" key means update the connector identifier.
-        if isinstance(result, dict):
-            if "message" in result:
-                return result
-            if "identifier" in result and task_instance.identifier != result["identifier"]:
-                task_instance.identifier = result["identifier"]
-                db.session.commit()
-
-        CommonModel.save_history(case["uuid"], user, f"Task Module {module} used on instances: {instance['name']}")
-
+            CommonModel.update_last_modif(case.id)
+        return True
 
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
         user = User.query.get(user_id)
@@ -1057,6 +1025,53 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             self.update_task_time_modification(task, current_user, f"MISP object '{obj_name}' unlinked from task '{task.title}'")
         return True
 
+    def get_misp_attribute_links(self, task_id):
+        """Return all standalone Misp_Attribute records linked to a task."""
+        links = Task_Misp_Attribute.query.filter_by(task_id=task_id).all()
+        result = []
+        for link in links:
+            attr = Misp_Attribute.query.get(link.misp_attribute_id)
+            if attr and attr.case_misp_object_id is None:
+                d = attr.to_json()
+                d["link_id"] = link.id
+                result.append(d)
+        return result
+
+    def link_misp_attribute(self, task_id, misp_attribute_id, current_user):
+        """Link a standalone MISP attribute to a task. Returns the link or None on error."""
+        task = CommonModel.get_task(task_id)
+        if not task:
+            return None
+        attr = Misp_Attribute.query.get(misp_attribute_id)
+        if not attr:
+            return None
+        if attr.case_misp_object_id is not None:
+            return None
+        if int(attr.case_id or -1) != int(task.case_id):
+            return None
+        existing = Task_Misp_Attribute.query.filter_by(task_id=task_id, misp_attribute_id=misp_attribute_id).first()
+        if existing:
+            return existing
+        link = Task_Misp_Attribute(task_id=task_id, misp_attribute_id=misp_attribute_id)
+        db.session.add(link)
+        db.session.commit()
+        self.update_task_time_modification(task, current_user, f"Standalone MISP attribute '{attr.type}: {attr.value}' linked to task '{task.title}'")
+        return link
+
+    def unlink_misp_attribute(self, task_id, misp_attribute_id, current_user):
+        """Remove the link between a standalone MISP attribute and a task."""
+        link = Task_Misp_Attribute.query.filter_by(task_id=task_id, misp_attribute_id=misp_attribute_id).first()
+        if not link:
+            return False
+        task = CommonModel.get_task(task_id)
+        attr = Misp_Attribute.query.get(misp_attribute_id)
+        attr_label = f"{attr.type}: {attr.value}" if attr else str(misp_attribute_id)
+        db.session.delete(link)
+        db.session.commit()
+        if task:
+            self.update_task_time_modification(task, current_user, f"Standalone MISP attribute '{attr_label}' unlinked from task '{task.title}'")
+        return True
+
     ############
     # Subtasks #
     ############
@@ -1116,7 +1131,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
             return True
         return False
     
-    def change_order_subtask(self, task, subtask, up_down):
+    def change_order_subtask(self, task, subtask, up_down, current_user=None):
         """Change the order of tasks"""
         for subtask_in_task in task.subtasks:
             # A task move up, case_order_id decrease by one
@@ -1131,46 +1146,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                     subtask.task_order_id += 1
                     break
         db.session.commit()
+        if current_user:
+            self.update_task_time_modification(task, current_user, f"Subtask '{subtask.description}' reordered for '{task.title}'")
+        else:
+            CommonModel.update_last_modif(task.case_id)
 
-    ##############
-    # Connectors #
-    ##############
 
-    def add_connector(self, tid, request_json, current_user) -> bool:
-        task = CommonModel.get_task(tid)
-
-        for connector in request_json["connectors"]:
-            instance = CommonModel.get_instance_by_name(connector["name"])
-            if not instance:
-                return False
-            if Task_Connector_Instance.query.filter_by(task_id=tid, instance_id=instance.id).first():
-                continue
-            loc_identfier = connector.get("identifier", "")
-            c = Task_Connector_Instance(
-                task_id=tid,
-                instance_id=instance.id,
-                identifier=loc_identfier
-            )
-            db.session.add(c)
-            db.session.commit()
-
-            self.update_task_time_modification(task, current_user, f"Connector {instance.name} added to task {task.title}")
-        return True
-
-    def remove_connector(self, task_instance_id):
-        c = Task_Connector_Instance.query.filter_by(id=task_instance_id).first()
-        if not c:
-            return False
-        db.session.delete(c)
-        db.session.commit()
-        return True
-
-    def edit_connector(self, task_instance_id, request_json):
-        c = Task_Connector_Instance.query.filter_by(id=task_instance_id).first()
-        if c:
-            c.identifier = request_json["identifier"]
-            db.session.commit()
-            return True
-        return False
     
 TaskModel = TaskCore()

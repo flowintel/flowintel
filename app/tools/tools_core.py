@@ -26,9 +26,102 @@ from ..utils import misp_object_helper
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 
 
+def _parse_misp_datetime(value):
+    """Best-effort conversion of a MISP timestamp-like value into datetime."""
+    if isinstance(value, datetime.datetime):
+        return value
+    if not value:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M', DATETIME_FORMAT_FULL):
+        try:
+            return datetime.datetime.strptime(str(value), fmt)
+        except Exception:
+            continue
+    return None
+
+
+def _import_event_standalone_attributes(case, event, instance_id, selected_attribute_uuids=None):
+    """Create case-level standalone MISP attributes from an event."""
+    standalone_attr_uuid_list = []
+    selected_attribute_uuids = set(selected_attribute_uuids or [])
+
+    for event_attr in getattr(event, 'attributes', []):
+        if event_attr.object_id and int(event_attr.object_id) != 0:
+            continue
+        if selected_attribute_uuids and event_attr.uuid not in selected_attribute_uuids:
+            continue
+
+        sa_attr = Misp_Attribute(
+            case_misp_object_id=None,
+            case_id=case.id,
+            value=str(event_attr.value),
+            type=event_attr.type,
+            object_relation=getattr(event_attr, "object_relation", "") or "",
+            first_seen=_parse_misp_datetime(getattr(event_attr, "first_seen", None)),
+            last_seen=_parse_misp_datetime(getattr(event_attr, "last_seen", None)),
+            comment=event_attr.comment or "",
+            ids_flag=event_attr.to_ids or False,
+            disable_correlation=getattr(event_attr, 'disable_correlation', False) or False,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(sa_attr)
+        db.session.commit()
+        standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": event_attr.uuid})
+
+    if standalone_attr_uuid_list:
+        CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=instance_id, case_id=case.id)
+
+
+def _upsert_case_misp_connector(case, instance, identifier):
+    """Keep a single connector occurrence for the MISP connector used to create the case."""
+    existing_links = (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Connector_Instance.id == Case_Connector_Instance.instance_id)
+        .filter(
+            Case_Connector_Instance.case_id == case.id,
+            Connector_Instance.connector_id == instance.connector_id,
+        )
+        .order_by(Case_Connector_Instance.id.asc())
+        .all()
+    )
+
+    if existing_links:
+        primary_link = existing_links[0]
+        primary_link.instance_id = instance.id
+        primary_link.identifier = identifier
+        primary_link.is_updating_case = True
+
+        for duplicate_link in existing_links[1:]:
+            Connector_Sync_Log.query.filter_by(case_connector_instance_id=duplicate_link.id).delete()
+            db.session.delete(duplicate_link)
+        return primary_link
+
+    case_connector_instance = Case_Connector_Instance(
+        case_id=case.id,
+        instance_id=instance.id,
+        identifier=identifier,
+        is_updating_case=True
+    )
+    db.session.add(case_connector_instance)
+    return case_connector_instance
+
+
 def case_creation_from_importer(case, current_user):
     if not utils.validate_importer_json(case, jsonschema_flowintel.caseSchema):
         return {"message": f"Case '{case['title']}' format not okay"}
+
+    standalone_attrs = case.get("standalone_attributes")
+    alias_standalone_attrs = case.get("misp-attributes")
+    if standalone_attrs is None:
+        standalone_attrs = alias_standalone_attrs if alias_standalone_attrs is not None else []
+    elif isinstance(standalone_attrs, list) and len(standalone_attrs) == 0 and isinstance(alias_standalone_attrs, list) and len(alias_standalone_attrs) > 0:
+        standalone_attrs = alias_standalone_attrs
+    if standalone_attrs is None:
+        standalone_attrs = []
+    if not isinstance(standalone_attrs, list):
+        return {"message": f"Case '{case['title']}': standalone attributes format not okay"}
+
     for task in case.get("tasks", []):
         if not utils.validate_importer_json(task, jsonschema_flowintel.taskSchema):
             return {"message": f"Task '{task['title']}' format not okay"}
@@ -40,6 +133,15 @@ def case_creation_from_importer(case, current_user):
         for attr in misp_obj.get("attributes", []):
             if not utils.validate_importer_json(attr, jsonschema_flowintel.mispAttrSchema):
                 return {"message": f"MISP-Attribute '{attr['value']}' format not okay"}
+
+    for attr in standalone_attrs:
+        if not utils.validate_importer_json(attr, jsonschema_flowintel.mispAttrSchema):
+            return {"message": f"Standalone MISP-Attribute '{attr.get('value', '')}' format not okay"}
+        if not attr.get("value") or not attr.get("type"):
+            return {"message": f"Case '{case['title']}': standalone MISP attributes require 'value' and 'type'"}
+
+    # Keep one normalized key for the DB creation stage.
+    case["standalone_attributes"] = standalone_attrs
             
     if "tasks_template" in case:
         return {"message": "'tasks_template' field is not allowed in case import, only 'tasks'."}
@@ -153,8 +255,19 @@ def case_creation_from_importer(case, current_user):
         CaseModel.modify_note_core(case_created.id, current_user, case["notes"])
 
     ## Task creation
-    for task in case["tasks"]:
+    created_tasks_map = {}
+    for task in case.get("tasks", []):
         task_created = TaskModel.create_task(task, case_created.id, current_user)
+        # keep mapping from task uuid -> created task id for later linking
+        try:
+            created_tasks_map[task["uuid"]] = task_created.id
+        except Exception:
+            pass
+        # record created id on the task dict to avoid relying on possibly-empty uuids
+        try:
+            task["_created_id"] = task_created.id
+        except Exception:
+            pass
         for note in task.get("notes", []):
             loc_note = TaskModel.create_note(task_created.id, current_user)
             TaskModel.modif_note_core(task_created.id, current_user, note["note"], loc_note.id)
@@ -165,9 +278,44 @@ def case_creation_from_importer(case, current_user):
         for urls_tools in task.get("urls_tools", []):
             TaskModel.create_url_tool(task_created.id, urls_tools["name"], current_user)
 
+    # Create MISP objects and link to tasks when task links are present in the import payload
+    created_objects_by_key = {}
     for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
-        CaseModel.create_misp_object(case_created.id, misp_object, current_user)
+        # collect task ids that reference this object in the imported tasks
+        task_ids = set()
+        for task in case.get("tasks", []):
+            for link in task.get("misp_object_links", []):
+                if link.get("misp_object_template_uuid") == misp_object.get("template_uuid") and link.get("misp_object_name") == misp_object.get("name"):
+                    tid = task.get("_created_id") or created_tasks_map.get(task.get("uuid"))
+                    if tid:
+                        task_ids.add(tid)
+        if task_ids:
+            misp_object["task_ids"] = list(task_ids)
+        created_obj = CaseModel.create_misp_object(case_created.id, misp_object, current_user)
+        # store created object for attribute matching (keyed by template_uuid+name)
+        try:
+            created_objects_by_key[(created_obj.template_uuid, created_obj.name)] = created_obj.id
+        except Exception:
+            pass
+
+    for attr in case.get("standalone_attributes", []):
+        # collect task ids that reference this standalone attribute in the imported tasks
+        task_ids = set()
+        for task in case.get("tasks", []):
+            for alink in task.get("misp_attribute_links", []):
+                if alink.get("misp_attribute_uuid") == attr.get("uuid"):
+                    tid = task.get("_created_id") or created_tasks_map.get(task.get("uuid"))
+                    if tid:
+                        task_ids.add(tid)
+        if task_ids:
+            attr["task_ids"] = list(task_ids)
+        CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     return {"id": case_created.id}
 
@@ -347,19 +495,27 @@ def stats_core(cases):
     cases_closed_month = {month: 0 for month in calendar.month_name if month}
     cases_closed_year = {}
     cases_elapsed_time = {}
+    cases_resolution_total = 0
     total_opened_cases = 0
     total_closed_cases = 0
+    overdue_cases = 0
 
     tasks_opened_month = {month: 0 for month in calendar.month_name if month}
     tasks_opened_year = {}
     tasks_closed_month = {month: 0 for month in calendar.month_name if month}
     tasks_closed_year = {}
     tasks_elapsed_time = {}
+    tasks_resolution_total = 0
     tasks_per_case = {}
     total_opened_tasks = 0
     total_closed_tasks = 0
+    overdue_tasks = 0
+    due_soon_tasks = 0
 
     current_year = datetime.datetime.now().year
+    now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
+    upcoming_cutoff = now + datetime.timedelta(days=7)
+    top_cases_by_tasks = []
 
     for case in cases:
         if case.creation_date.year == current_year:
@@ -381,13 +537,20 @@ def stats_core(cases):
             if loc not in cases_elapsed_time:
                 cases_elapsed_time[loc] = 0
             cases_elapsed_time[loc] += 1
+            cases_resolution_total += loc
 
             total_closed_cases += 1
         else:
             total_opened_cases += 1
+            if case.deadline and case.deadline < now:
+                overdue_cases += 1
+
+        case_tasks = list(case.tasks)
+        case_open_tasks = 0
+        case_closed_tasks = 0
 
         # Tasks part
-        for task in case.tasks:
+        for task in case_tasks:
             if task.creation_date.year == current_year:
                 tasks_opened_month[task.creation_date.strftime("%B")] += 1
                 if task.finish_date:
@@ -407,14 +570,33 @@ def stats_core(cases):
                 if loc not in tasks_elapsed_time:
                     tasks_elapsed_time[loc] = 0
                 tasks_elapsed_time[loc] += 1
+                tasks_resolution_total += loc
 
                 total_closed_tasks += 1
+                case_closed_tasks += 1
             else:
                 total_opened_tasks += 1
-            
-            if not case.nb_tasks in tasks_per_case:
-                tasks_per_case[case.nb_tasks] = 0
-            tasks_per_case[case.nb_tasks] += 1
+                case_open_tasks += 1
+                if task.deadline:
+                    if task.deadline < now:
+                        overdue_tasks += 1
+                    elif task.deadline <= upcoming_cutoff:
+                        due_soon_tasks += 1
+
+        task_count = case.nb_tasks if case.nb_tasks is not None else len(case_tasks)
+        if task_count not in tasks_per_case:
+            tasks_per_case[task_count] = 0
+        tasks_per_case[task_count] += 1
+
+        top_cases_by_tasks.append({
+            "id": case.id,
+            "title": case.title,
+            "task_count": task_count,
+            "open_tasks": case_open_tasks,
+            "closed_tasks": case_closed_tasks,
+            "completed": bool(case.completed),
+            "last_modif": case.last_modif.strftime(DATETIME_FORMAT_FULL) if case.last_modif else "",
+        })
 
 
     loc_cases_opened_month = chart_dict_constructor(cases_opened_month)
@@ -434,14 +616,28 @@ def stats_core(cases):
     loc_tasks_elapsed_time = chart_dict_constructor(tasks_elapsed_time)
     loc_tasks_per_case = chart_dict_constructor(tasks_per_case)
 
+    total_cases = total_opened_cases + total_closed_cases
+    total_tasks = total_opened_tasks + total_closed_tasks
+    top_cases_by_tasks.sort(key=lambda row: (-row["task_count"], row["title"].lower()))
+
     return {"cases-opened-month": loc_cases_opened_month, "cases-opened-year": loc_cases_opened_year,
             "cases-closed-month": loc_cases_closed_month, "cases-closed-year": loc_cases_closed_year,
             "cases-elapsed-time": loc_cases_elapsed_time,
             "total_opened_cases": total_opened_cases, "total_closed_cases": total_closed_cases,
+            "total_cases": total_cases,
+            "case_closure_rate": round((total_closed_cases / total_cases) * 100, 1) if total_cases else 0,
+            "avg_case_resolution_weeks": round(cases_resolution_total / total_closed_cases, 1) if total_closed_cases else None,
+            "overdue_cases": overdue_cases,
             "tasks-opened-month": loc_tasks_opened_month, "tasks-opened-year": loc_tasks_opened_year,
             "tasks-closed-month": loc_tasks_closed_month, "tasks-closed-year": loc_tasks_closed_year,
             "tasks-elapsed-time": loc_tasks_elapsed_time, "tasks-per-case": loc_tasks_per_case,
-            "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks}
+            "total_opened_tasks": total_opened_tasks, "total_closed_tasks": total_closed_tasks,
+            "total_tasks": total_tasks,
+            "task_closure_rate": round((total_closed_tasks / total_tasks) * 100, 1) if total_tasks else 0,
+            "avg_task_resolution_weeks": round(tasks_resolution_total / total_closed_tasks, 1) if total_closed_tasks else None,
+            "overdue_tasks": overdue_tasks,
+            "due_soon_tasks": due_soon_tasks,
+            "top_cases_by_tasks": top_cases_by_tasks[:5]}
 
 def get_case_by_tags(current_user, cutoff=None):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
@@ -510,7 +706,7 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     task_cluster_map = {}
 
     for case in cases:
-        case_info = {"id": case.id, "title": case.title}
+        case_info = {"id": case.id, "title": case.title, "description": case.description or ""}
 
         for c in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(case_id=case.id).all():
             e = case_tag_map.setdefault(c.name, {"count": 0, "cases": []})
@@ -557,6 +753,146 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     }
 
 
+def get_misp_stats(current_user, cutoff=None, limit=10):
+    """Aggregate visible MISP objects and standalone attributes for the stats UI."""
+    cases = Case.query.join(Case_Org, Case_Org.case_id == Case.id).where(Case_Org.org_id == current_user.org_id).all()
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_by_date(cases, cutoff)
+    case_ids = [case.id for case in cases]
+
+    if not case_ids:
+        return {
+            "total_objects": 0,
+            "unique_object_names": 0,
+            "total_object_attributes": 0,
+            "total_standalone_attributes": 0,
+            "linked_task_object_refs": 0,
+            "linked_task_attribute_refs": 0,
+            "objects_per_case": [],
+            "object_names": [],
+            "standalone_types": [],
+            "standalone_relations": [],
+            "top_objects": [],
+            "top_standalone_types": [],
+            "top_standalone_relations": [],
+        }
+
+    case_map = {case.id: {"id": case.id, "title": case.title, "description": case.description or ""} for case in cases}
+    case_rows = [{"label": case.title, "count": 0} for case in cases]
+    case_row_index = {case.id: idx for idx, case in enumerate(cases)}
+
+    object_name_counts = {}
+    standalone_type_counts = {}
+    standalone_relation_counts = {}
+    top_objects_map = {}
+    top_standalone_type_map = {}
+    top_standalone_relation_map = {}
+    total_object_attributes = 0
+
+    objects = Case_Misp_Object.query.filter(Case_Misp_Object.case_id.in_(case_ids)).all()
+    object_ids = [obj.id for obj in objects]
+
+    for obj in objects:
+        object_attrs = obj.attributes.all()
+        attr_count = len(object_attrs)
+        total_object_attributes += attr_count
+
+        case_info = case_map.get(obj.case_id)
+        if obj.case_id in case_row_index:
+            case_rows[case_row_index[obj.case_id]]["count"] += 1
+
+        name_key = obj.name or "(unnamed object)"
+        object_name_counts[name_key] = object_name_counts.get(name_key, 0) + 1
+
+        entry = top_objects_map.setdefault(name_key, {
+            "name": name_key,
+            "count": 0,
+            "attribute_count": 0,
+            "cases": [],
+        })
+        entry["count"] += 1
+        entry["attribute_count"] += attr_count
+        if case_info and not any(c["id"] == case_info["id"] for c in entry["cases"]):
+            entry["cases"].append(case_info)
+
+    standalone_attributes = Misp_Attribute.query.filter(
+        Misp_Attribute.case_id.in_(case_ids),
+        Misp_Attribute.case_misp_object_id == None,
+    ).all()
+    standalone_ids = [attr.id for attr in standalone_attributes]
+
+    for attr in standalone_attributes:
+        case_info = case_map.get(attr.case_id)
+        type_key = attr.type or "(no type)"
+        relation_key = attr.object_relation or "(no relation)"
+
+        standalone_type_counts[type_key] = standalone_type_counts.get(type_key, 0) + 1
+        standalone_relation_counts[relation_key] = standalone_relation_counts.get(relation_key, 0) + 1
+
+        type_entry = top_standalone_type_map.setdefault(type_key, {
+            "name": type_key,
+            "count": 0,
+            "cases": [],
+            "attributes": [],
+        })
+        type_entry["count"] += 1
+        if case_info and not any(c["id"] == case_info["id"] for c in type_entry["cases"]):
+            type_entry["cases"].append(case_info)
+        type_entry["attributes"].append({
+            "id": attr.id,
+            "value": attr.value,
+            "type": attr.type,
+            "case_id": attr.case_id,
+            "case_title": case_info["title"] if case_info else "",
+        })
+
+        relation_entry = top_standalone_relation_map.setdefault(relation_key, {
+            "name": relation_key,
+            "count": 0,
+            "cases": [],
+            "attributes": [],
+        })
+        relation_entry["count"] += 1
+        if case_info and not any(c["id"] == case_info["id"] for c in relation_entry["cases"]):
+            relation_entry["cases"].append(case_info)
+        relation_entry["attributes"].append({
+            "id": attr.id,
+            "value": attr.value,
+            "type": attr.type,
+            "case_id": attr.case_id,
+            "case_title": case_info["title"] if case_info else "",
+        })
+
+    linked_task_object_refs = Task_Misp_Object.query.filter(Task_Misp_Object.misp_object_id.in_(object_ids)).count() if object_ids else 0
+    linked_task_attribute_refs = Task_Misp_Attribute.query.filter(Task_Misp_Attribute.misp_attribute_id.in_(standalone_ids)).count() if standalone_ids else 0
+
+    def _sorted_chart_rows(data_dict):
+        return [{"label": key, "count": value} for key, value in sorted(data_dict.items(), key=lambda item: item[1], reverse=True)]
+
+    def _top_rows(data_map):
+        rows = sorted(data_map.values(), key=lambda row: row["count"], reverse=True)[:limit]
+        for row in rows:
+            if "attributes" in row:
+                row["attributes"] = row["attributes"][:25]
+        return rows
+
+    return {
+        "total_objects": len(objects),
+        "unique_object_names": len(object_name_counts),
+        "total_object_attributes": total_object_attributes,
+        "total_standalone_attributes": len(standalone_attributes),
+        "linked_task_object_refs": linked_task_object_refs,
+        "linked_task_attribute_refs": linked_task_attribute_refs,
+        "objects_per_case": case_rows,
+        "object_names": _sorted_chart_rows(object_name_counts),
+        "standalone_types": _sorted_chart_rows(standalone_type_counts),
+        "standalone_relations": _sorted_chart_rows(standalone_relation_counts),
+        "top_objects": _top_rows(top_objects_map),
+        "top_standalone_types": _top_rows(top_standalone_type_map),
+        "top_standalone_relations": _top_rows(top_standalone_relation_map),
+    }
+
+
 ########################
 # Case from MISP Event #
 ########################
@@ -566,14 +902,13 @@ def get_misp_connector_by_user(user_id):
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if instance.type=='receive_from':
-                    if instance.global_api_key:
-                        loc_instance = instance.to_json()
-                        if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                            loc_instance["is_user_global_api"] = True
-                        instances_list.append(loc_instance)
-                    elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
-                        instances_list.append(instance.to_json())
+                if instance.sharing_scope in {"org", "global"}:
+                    loc_instance = instance.to_json()
+                    if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                        loc_instance["is_user_global_api"] = True
+                    instances_list.append(loc_instance)
+                elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                    instances_list.append(instance.to_json())
         return instances_list
 
 def check_connection_misp(misp_instance_id: int, current_user: User):
@@ -833,6 +1168,8 @@ def create_case_misp_event(request_form, current_user):
 
     raw_object_uuids = request_form.get("selected_object_uuids")
     selected_object_uuids = set(raw_object_uuids) if isinstance(raw_object_uuids, list) else None
+    raw_attribute_uuids = request_form.get("selected_attribute_uuids")
+    selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
 
     object_uuid_list = {}
     for obje in event.objects:
@@ -853,6 +1190,14 @@ def create_case_misp_event(request_form, current_user):
     if object_uuid_list:
         CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
+    if request_form.get("import_standalone_attributes"):
+        _import_event_standalone_attributes(
+            case,
+            event,
+            instance.id,
+            selected_attribute_uuids=selected_attribute_uuids,
+        )
+
     event_label = f'event {event.id} "{event.info}"'
 
     if request_form.get("import_event_info_note"):
@@ -865,8 +1210,6 @@ def create_case_misp_event(request_form, current_user):
         )
 
     if request_form.get("import_attributes_note"):
-        raw_attribute_uuids = request_form.get("selected_attribute_uuids")
-        selected_attribute_uuids = raw_attribute_uuids if isinstance(raw_attribute_uuids, list) else None
         _add_markdown_task(
             case,
             "MISP attributes",
@@ -894,13 +1237,7 @@ def create_case_misp_event(request_form, current_user):
     if request_form.get("import_misp_files"):
         _import_misp_attribute_files(misp, misp_event_id, current_user, case)
 
-    case_connector_instance = Case_Connector_Instance(
-        case_id=case.id,
-        instance_id=instance.id,
-        identifier=misp_event_id,
-        is_updating_case=True
-    )
-    db.session.add(case_connector_instance)
+    _upsert_case_misp_connector(case, instance, misp_event_id)
     db.session.commit()
 
     return case
@@ -1034,15 +1371,30 @@ def search_attr_with_value(attr_value: str, current_user: User, start_date: str 
             pass
 
     list_attr = query.all()
-    list_obj = [Case_Misp_Object.query.get(attr.case_misp_object_id) for attr in list_attr]
 
     list_case = []
     seen_case_ids = set()
-    for obj in list_obj:
-        if not obj:
+
+    for attr in list_attr:
+        # Determine the case id for this attribute. Attributes can be part of
+        # a MISP object (`case_misp_object_id`) or standalone with
+        # `case_id` set directly.
+        case_id = None
+        if attr.case_misp_object_id:
+            obj = Case_Misp_Object.query.get(attr.case_misp_object_id)
+            if obj:
+                case_id = obj.case_id
+            else:
+                # fallback to attribute's case_id if object record missing
+                case_id = attr.case_id
+        else:
+            case_id = attr.case_id
+
+        if not case_id:
             continue
+
         if current_user.is_admin():
-            case = Case.query.get(obj.case_id)
+            case = Case.query.get(case_id)
         else:
             case = Case.query.join(Case_Org, Case_Org.case_id == Case.id)\
             .filter(
@@ -1050,11 +1402,13 @@ def search_attr_with_value(attr_value: str, current_user: User, start_date: str 
                     Case_Org.org_id == current_user.org_id,
                     Case.is_private == False
                 ),
-                Case.id == obj.case_id
+                Case.id == case_id
             ).first()
-        if case and not case.id in seen_case_ids:
+
+        if case and case.id not in seen_case_ids:
             list_case.append(case.to_json())
             seen_case_ids.add(case.id)
+
     return list_case
 
 
@@ -1067,6 +1421,14 @@ def get_community_stats():
     # Total counts
     total_orgs = Org.query.count()
     total_users = User.query.count()
+    active_cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=30)
+    active_users_30d = User.query.filter(User.last_login != None, User.last_login >= active_cutoff).count()
+    never_logged_in = User.query.filter(User.last_login == None).count()
+    orgs_without_users = db.session.query(Org.id)\
+        .outerjoin(User, User.org_id == Org.id)\
+        .group_by(Org.id)\
+        .having(db.func.count(User.id) == 0)\
+        .count()
     
     # Users per organisation
     users_per_org = db.session.query(
@@ -1111,6 +1473,10 @@ def get_community_stats():
     return {
         "total_orgs": total_orgs,
         "total_users": total_users,
+        "active_users_30d": active_users_30d,
+        "never_logged_in": never_logged_in,
+        "orgs_without_users": orgs_without_users,
+        "avg_users_per_org": round(total_users / total_orgs, 1) if total_orgs else 0,
         "users_per_org": [{"org_name": row.org_name, "count": row.count} for row in users_per_org],
         "users_per_role": [{"role_name": row.role_name, "count": row.count} for row in users_per_role],
         "cases_per_org": [{"org_name": row.org_name, "count": row.count} for row in cases_per_org],
@@ -1184,6 +1550,7 @@ def get_unassigned_tasks(current_user, limit=20):
 def get_admin_extra_stats(days=90):
     """Notification backlog + login activity per day for the last `days` days."""
     notif_backlog = Notification.query.filter_by(is_read=False).count()
+    total_notifications = Notification.query.count()
 
     cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
     rows = db.session.query(
@@ -1197,7 +1564,9 @@ def get_admin_extra_stats(days=90):
 
     return {
         "notification_backlog": notif_backlog,
+        "total_notifications": total_notifications,
         "login_activity": activity,
+        "recent_login_count": sum(row["count"] for row in activity),
         "login_activity_days": days,
     }
 
@@ -1237,4 +1606,3 @@ def get_recent_logins(limit=20):
             "login_date": ev.login_date.strftime(DATETIME_FORMAT_FULL) if ev.login_date else None,
         } for ev, u in rows],
     }
-

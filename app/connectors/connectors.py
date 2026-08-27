@@ -1,11 +1,11 @@
-from flask import Blueprint, render_template, redirect, request, flash
+from flask import Blueprint, render_template, redirect, request, flash, abort
 from flask_login import (
     current_user,
     login_required,
 )
 
 from ..decorators import admin_required, misp_editor_required
-from ..utils.utils import form_to_dict, get_module_type_with_desc
+from ..utils.utils import form_to_dict
 from ..utils.logger import flowintel_log
 
 from .form import AddConnectorForm, AddIconForm, EditConnectorForm, EditIconForm, AddConnectorInstanceForm, EditConnectorInstanceForm
@@ -17,6 +17,15 @@ connector_blueprint = Blueprint(
     template_folder='templates',
     static_folder='static'
 )
+
+
+def _set_instance_sharing_scope_choices(form, user):
+    choices = [("personal", "Personal only")]
+    if user.is_admin() or user.is_org_admin():
+        choices.append(("org", "Organization-wide"))
+    if user.is_admin():
+        choices.append(("global", "Platform-wide"))
+    form.sharing_scope.choices = choices
 
 
 @connector_blueprint.route("/", methods=['GET'])
@@ -104,14 +113,6 @@ def nb_page_icons():
 
 
 
-@connector_blueprint.route("/type_select_info", methods=['GET'])
-@login_required
-def type_select_info():
-    """Get module types with descriptions."""
-    module_list = get_module_type_with_desc()
-    return {"type_select_info": module_list}, 200
-
-
 @connector_blueprint.route("/<cid>/get_instances", methods=['GET'])
 @login_required
 def get_instances(cid):
@@ -120,18 +121,27 @@ def get_instances(cid):
     if connector:
         instance_list = list()
         for instance in connector.instances:
-            if instance.global_api_key:
+            if ConnectorModel.is_instance_visible_to_user(instance, current_user):
                 loc_instance = instance.to_json()
                 if ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
                     loc_instance["is_user_global_api"] = True
                 loc_instance["has_links"] = ConnectorModel.instance_has_links(instance.id)
-                instance_list.append(loc_instance)
-            elif ConnectorModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
-                loc_instance = instance.to_json()
-                loc_instance["has_links"] = ConnectorModel.instance_has_links(instance.id)
+                loc_instance["can_manage"] = ConnectorModel.can_user_manage_instance(instance, current_user)
                 instance_list.append(loc_instance)
         return {"instances": instance_list}, 200
     return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+
+@connector_blueprint.route("/<cid>/instance/<iid>/cases", methods=['GET'])
+@login_required
+def get_instance_cases(cid, iid):
+    """Get paginated cases linked to a connector instance"""
+    if not ConnectorModel.get_connector(cid):
+        return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
+    if not ConnectorModel.get_connector_instance(cid, iid):
+        return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
+    page = request.args.get('page', 1, type=int)
+    cases, total, nb_pages, private_count = ConnectorModel.get_cases_for_instance(iid, page=page, current_user=current_user)
+    return {"cases": cases, "total": total, "nb_pages": nb_pages, "page": page, "private_count": private_count}, 200
 
 @connector_blueprint.route("/add_connector", methods=['GET','POST'])
 @login_required
@@ -158,8 +168,13 @@ def add_instance(cid):
     """Add an instance"""
     if ConnectorModel.get_connector(cid):
         form = AddConnectorInstanceForm()
+        _set_instance_sharing_scope_choices(form, current_user)
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
+            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user)
+            if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
+                flash("You are not allowed to create a connector with this sharing scope", "danger")
+                return render_template("connectors/add_instance.html", form=form, edit_mode=False)
             instance = ConnectorModel.add_connector_instance_core(cid, form_dict, current_user.id)
             if instance:
                 connector = ConnectorModel.get_connector(cid)
@@ -172,7 +187,6 @@ def add_instance(cid):
                     Instance=instance.name,
                     InstanceId=instance.id,
                     InstanceUrl=instance.url,
-                    InstanceType=instance.type,
                     By=current_user.email
                 )
                 return redirect("/connectors")
@@ -232,11 +246,19 @@ def edit_instance(cid, iid):
     """Edit an instance"""
     if ConnectorModel.get_connector(cid):
         form = EditConnectorInstanceForm()
-        loc_instance = ConnectorModel.get_instance(iid)
+        loc_instance = ConnectorModel.get_connector_instance(cid, iid)
+        if not loc_instance or not ConnectorModel.can_user_manage_instance(loc_instance, current_user):
+            abort(403)
+        _set_instance_sharing_scope_choices(form, current_user)
         form.instance_id.data = iid
 
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
+            form_dict["acting_user_id"] = current_user.id
+            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user)
+            if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
+                flash("You are not allowed to save a connector with this sharing scope", "danger")
+                return render_template("connectors/add_instance.html", form=form, edit_mode=True)
             if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
                 flash("Error editing connector")
             else:
@@ -251,7 +273,6 @@ def edit_instance(cid, iid):
                     Instance=updated_instance.name if updated_instance else "Unknown",
                     InstanceId=iid,
                     InstanceUrl=updated_instance.url if updated_instance else None,
-                    InstanceType=updated_instance.type if updated_instance else None,
                     By=current_user.email
                 )
             return redirect("/connectors")
@@ -260,7 +281,7 @@ def edit_instance(cid, iid):
             form.url.data = loc_instance.url
             form.description.data = loc_instance.description
             form.is_global_connector.data = True if loc_instance.global_api_key else False
-            form.type_select.data = loc_instance.type
+            form.sharing_scope.data = ConnectorModel.get_instance_sharing_scope(loc_instance)
             
         return render_template("connectors/add_instance.html", form=form, edit_mode=True)
     return render_template("404.html")
@@ -304,8 +325,10 @@ def delete_connector(cid):
 def delete_instance(cid, iid):
     """Delete the instance"""
     if ConnectorModel.get_connector(cid):
-        instance = ConnectorModel.get_instance(iid)
+        instance = ConnectorModel.get_connector_instance(cid, iid)
         if instance:
+            if not ConnectorModel.can_user_manage_instance(instance, current_user):
+                return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
             if ConnectorModel.instance_has_links(iid):
                 return {"message":"Instance is linked to a case or task", "toast_class": "warning-subtle"}, 400
             if ConnectorModel.delete_connector_instance_core(iid):
@@ -319,7 +342,6 @@ def delete_instance(cid, iid):
                     Instance=instance.name,
                     InstanceId=iid,
                     InstanceUrl=instance.url,
-                    InstanceType=instance.type,
                     By=current_user.email
                 )
                 return {

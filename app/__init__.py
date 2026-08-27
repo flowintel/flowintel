@@ -1,21 +1,15 @@
 import os
-import logging
-from logging.handlers import RotatingFileHandler
-import redis
-
-import os
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 import redis
 
+
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_session import Session
-from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
+from .utils.log_paths import resolve_log_file_path, validate_log_file_name
 
 from app.extensions import db, csrf, migrate, session, login_manager
 
@@ -85,20 +79,27 @@ def create_app():
 
     config_class = Config[config_name]
     app.config.from_object(config_class)
+    app.config['LOG_FILE'] = validate_log_file_name(app.config.get('LOG_FILE', 'record.log'))
     config_class.init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
 
+    @app.after_request
+    def set_security_headers(resp):
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            "form-action 'self'; frame-src 'self'; img-src 'self' data:; "
+            "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
+        )
+        return resp
     if app.config.get("SIMPLESAML_ENABLED"):
         load_saml_into_app_config(app)
     
     if not app.debug and not app.testing:
-        logs_folder = os.path.join(os.getcwd(), "logs")
-        if not os.path.isdir(logs_folder):
-            os.mkdir(logs_folder)
+        logs_folder = Path.cwd() / "logs"
+        logs_folder.mkdir(exist_ok=True)
         
-        log_file = app.config.get('LOG_FILE', 'record.log')
         file_handler = RotatingFileHandler(
-            f"{logs_folder}/{log_file}", 
+            resolve_log_file_path(app.config['LOG_FILE'], logs_folder),
             mode='a', 
             maxBytes=10*1024*1024,
             backupCount=5
@@ -153,6 +154,7 @@ def create_app():
             @_sa_event.listens_for(db.engine, 'connect')
             def _set_sqlite_pragmas(dbapi_conn, _rec):
                 cur = dbapi_conn.cursor()
+                cur.execute('PRAGMA foreign_keys=ON')
                 cur.execute('PRAGMA journal_mode=WAL')
                 cur.execute('PRAGMA busy_timeout=30000')
                 cur.close()
@@ -176,6 +178,7 @@ def create_app():
     from .custom_tags.custom_tags import custom_tags_blueprint
     from .templating.templating import templating_blueprint
     from .alerts import alerts_blueprint
+    from .alerting import alerting_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -190,6 +193,7 @@ def create_app():
     app.register_blueprint(analyzer_blueprint, url_prefix="/analyzer")
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
+    app.register_blueprint(alerting_blueprint, url_prefix="/alerting")
 
     if app.config.get("ENABLE_CHATBOT", False):
         # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)

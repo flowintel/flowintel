@@ -1,21 +1,27 @@
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
 import { confirmDelete } from '/static/js/confirm.js'
-const { ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue
+import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
+const { ref, computed, onMounted, onUnmounted, watch, nextTick, reactive } = Vue
 export default {
     delimiters: ['[[', ']]'],
     components: { 'misp-object-link': MispObjectLink },
 	props: {
 		case_id: Number,
 		cases_info: Object,
-		spotlight_id: { type: Number, default: null }
+		spotlight_id: { type: Number, default: null },
+		case_misp_objects_list: { type: Array, default: null }
 	},
     emits: ['modif_misp_objects', 'clear_spotlight'],
 	setup(props, {emit}) {
+        function empty_template(overrides = {}) {
+            return { requiredOneOf: [], attributes: [], ...overrides }
+        }
+
         const case_misp_objects = ref([])
         const misp_objects = ref([])
-        const activeTemplate = ref({requiredOneOf: [],})
-        const activeTemplateAttr = ref({requiredOneOf: [],})
+        const activeTemplate = ref(empty_template())
+        const activeTemplateAttr = ref(empty_template())
         const selectedQuickTemplate = ref('');
         const showAddObject = ref(false)
         const newObjectAttrState = ref({ relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true })
@@ -28,6 +34,8 @@ export default {
         const addingAttrToObject = ref(null)
         const newAttrState = ref({})
         const compactView = ref(true)
+        const tabView = ref(false)
+        const activeTabIdx = ref(0)
 
         // Task assignment state
         const assigningTasks = ref(null) // object_id currently editing assignments
@@ -40,8 +48,11 @@ export default {
         // Search / filter / pagination
         const search_query = ref('')
         const type_filter = ref('')
+        const show_unsynced_only = ref(false)
         const current_page = ref(1)
         const per_page = 10
+        const expanded_sync_lists = reactive({})
+        const MAX_SYNC_BADGES = 2
 
         const filtered_objects = computed(() => {
             // Spotlight mode: show only the highlighted object
@@ -60,6 +71,9 @@ export default {
             if (t) {
                 objs = objs.filter(o => o.object_name === t)
             }
+            if (show_unsynced_only.value) {
+                objs = objs.filter(o => !o.synced_instances || !o.synced_instances.length)
+            }
             return objs
         })
 
@@ -75,8 +89,66 @@ export default {
             return names.sort()
         })
 
-        watch([search_query, type_filter], () => { current_page.value = 1 })
-        watch(() => props.spotlight_id, () => { current_page.value = 1 })
+        function syncListKey(prefix, id) {
+            return `${prefix}-${id}`
+        }
+
+        function visibleSyncInstances(instances, key) {
+            if (!instances || instances.length <= MAX_SYNC_BADGES || expanded_sync_lists[key]) {
+                return instances || []
+            }
+            return instances.slice(0, MAX_SYNC_BADGES)
+        }
+
+        function hiddenSyncCount(instances, key) {
+            if (!instances || expanded_sync_lists[key]) return 0
+            return Math.max(0, instances.length - MAX_SYNC_BADGES)
+        }
+
+        function toggleSyncList(key) {
+            expanded_sync_lists[key] = !expanded_sync_lists[key]
+        }
+
+        watch([search_query, type_filter, show_unsynced_only], () => { current_page.value = 1; activeTabIdx.value = 0 })
+        watch(() => props.spotlight_id, () => { current_page.value = 1; activeTabIdx.value = 0 })
+
+        // Select2 for task assignment in new object form
+        let hasJQuery = false
+        let hasSelect2 = false
+        try {
+            hasJQuery = (typeof $ !== 'undefined')
+            hasSelect2 = hasJQuery && $.fn && $.fn.select2
+        } catch(e) {}
+
+        watch(() => activeTemplate.value.uuid, async (newUuid) => {
+            if (!newUuid) return
+            await nextTick()
+            try {
+                const sel = document.getElementById('new-object-task-select')
+                if (!sel) return
+
+                const updateTaskSelection = function(el) {
+                    try {
+                        if (hasSelect2 && $(el).data('select2')) {
+                            new_object_task_ids.value = $(el).select2('data').map(item => parseInt(item.id))
+                        } else {
+                            new_object_task_ids.value = Array.from(el.selectedOptions || []).map(o => parseInt(o.value))
+                        }
+                    } catch (e) {}
+                }
+
+                // Always attach native change listener as a fallback
+                try { sel.removeEventListener && sel.removeEventListener('change', sel._fi_updateTaskSelection) } catch(e) {}
+                sel._fi_updateTaskSelection = function() { updateTaskSelection(this) }
+                sel.addEventListener('change', sel._fi_updateTaskSelection)
+
+                if (hasSelect2) {
+                    try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+                    $(sel).select2({ theme: 'bootstrap-5', dropdownParent: $('body'), placeholder: 'Select tasks...', allowClear: true })
+                    $(sel).on('change.select2', function() { updateTaskSelection(this) })
+                }
+            } catch(e) {}
+        })
 
         const can_edit = computed(() => {
             if (!props.cases_info) return false
@@ -97,6 +169,40 @@ export default {
             !!(newAttrState.value.value && newAttrState.value.relation_type_combo))
         const can_save_edit_attr = computed(() => !!editState.value.value)
 
+        function template_attributes(template) {
+            return Array.isArray(template?.attributes) ? template.attributes : []
+        }
+
+        function objectIconClass(objectName, extraClasses = '') {
+            return mispObjectIconClass(objectName, extraClasses)
+        }
+
+        function attributeIconClass(attributeType, extraClasses = '') {
+            return mispAttributeIconClass(attributeType, extraClasses)
+        }
+
+        function relation_type_option(attribute) {
+            if (!attribute || !attribute.object_relation || !attribute.type) return null
+            return {
+                name: attribute.object_relation,
+                misp_attribute: attribute.type
+            }
+        }
+
+        function fallback_template(template_uuid, attribute = null) {
+            const currentOption = relation_type_option(attribute)
+            return empty_template({
+                uuid: template_uuid || '',
+                name: 'Unknown template',
+                attributes: currentOption ? [currentOption] : []
+            })
+        }
+
+        function find_object_template(template_uuid, attribute = null) {
+            return misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid) ||
+                fallback_template(template_uuid, attribute)
+        }
+
         const defaultObjectTemplates = {
             'domain/ip': '43b3b146-77eb-4931-b4cc-b66c60f28734',
             'url/domain': '60efb77b-40b5-4c46-871b-ed1ed999fce5',
@@ -107,6 +213,11 @@ export default {
         };
 		
         async function fetch_case_misp_object(){
+            if (props.case_misp_objects_list !== null) {
+                // Data is managed by the parent; signal it to refresh
+                emit('modif_misp_objects', true)
+                return
+            }
             const res = await fetch("/case/"+props.case_id+"/get_case_misp_object")
             if(await res.status==404 ){
                 display_toast(res)
@@ -196,7 +307,14 @@ export default {
         }
 
         function resetAddObjectForm() {
-            activeTemplate.value = { requiredOneOf: [] }
+            try {
+                if (hasSelect2) {
+                    const sel = document.getElementById('new-object-task-select')
+                    if (sel && $(sel).data('select2')) $(sel).select2('destroy')
+                }
+            } catch(e) {}
+            new_object_task_ids.value = []
+            activeTemplate.value = empty_template()
             selectedQuickTemplate.value = ''
             newObjectAttrState.value = { relation_type_combo: '', value: '', first_seen: '', last_seen: '', comment: '', ids_flag: false, disable_correlation: true }
             list_attr.value = []
@@ -307,6 +425,11 @@ export default {
             compactView.value = !compactView.value
         }
 
+        function toggleTabView() {
+            tabView.value = !tabView.value
+            activeTabIdx.value = 0
+        }
+
         function copyUuidToClipboard() {
             const text = activeTemplate.value && activeTemplate.value.uuid
             if (!text) return
@@ -414,6 +537,7 @@ export default {
         }
 
         function enterEditMode(attribute, template_uuid) {
+            activeTemplateAttr.value = find_object_template(template_uuid, attribute)
             editingAttrId.value = attribute.id
             editState.value = {
                 value: attribute.value,
@@ -426,7 +550,6 @@ export default {
                 disable_correlation: attribute.disable_correlation,
                 comment: attribute.comment || ''
             }
-            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
         }
 
         function cancelEdit() {
@@ -436,11 +559,12 @@ export default {
 
         function startAddingAttribute(object_id, template_uuid) {
             addingAttrToObject.value = object_id
-            activeTemplateAttr.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === template_uuid)
+            activeTemplateAttr.value = find_object_template(template_uuid)
+            const firstTemplateAttr = template_attributes(activeTemplateAttr.value)[0]
             newAttrState.value = {
                 value: '',
-                relation_type_combo: activeTemplateAttr.value.attributes[0] ? 
-                    activeTemplateAttr.value.attributes[0].name + '::' + activeTemplateAttr.value.attributes[0].misp_attribute : '',
+                relation_type_combo: firstTemplateAttr ?
+                    firstTemplateAttr.name + '::' + firstTemplateAttr.misp_attribute : '',
                 first_seen: '',
                 last_seen: '',
                 ids_flag: false,
@@ -592,8 +716,8 @@ export default {
         }
 
         watch(selectedQuickTemplate, (newValue, oldValue) => {
-            if (defaultObjectTemplates[newValue]) {                
-                activeTemplate.value = misp_objects.value.find((objectTemplate) => objectTemplate.uuid === defaultObjectTemplates[newValue]);
+            if (defaultObjectTemplates[newValue]) {
+                activeTemplate.value = find_object_template(defaultObjectTemplates[newValue])
             }
         });
 
@@ -608,20 +732,31 @@ export default {
         async function on_link_updated() {
             // Refresh objects so synced_instances badges update
             await fetch_case_misp_object()
-            // Keep the modal open with the refreshed object
-            if (link_modal_object.value) {
+            // Keep the modal open with the refreshed object — will also be handled by the prop watch
+            if (link_modal_object.value && props.case_misp_objects_list === null) {
                 const refreshed = case_misp_objects.value.find(o => o.object_id === link_modal_object.value.object_id)
                 if (refreshed) link_modal_object.value = refreshed
             }
         }
-        
+
+        // When parent provides case_misp_objects_list, sync it into local ref
+        watch(() => props.case_misp_objects_list, (val) => {
+            if (val !== null) {
+                case_misp_objects.value = val
+                // Refresh link modal object reference if open
+                if (link_modal_object.value) {
+                    const refreshed = val.find(o => o.object_id === link_modal_object.value.object_id)
+                    if (refreshed) link_modal_object.value = refreshed
+                }
+            }
+        }, { immediate: true })
 
         // Refresh case-side data (task badges per MISP object) when a task
         // independently links/unlinks one of its MISP objects via the task UI.
         const onTaskMispLinkChanged = () => { fetch_case_misp_object() }
 
 		onMounted(() => {
-            fetch_case_misp_object()
+            if (props.case_misp_objects_list === null) fetch_case_misp_object()
             fetch_misp_object()
             window.addEventListener('task-misp-link-changed', onTaskMispLinkChanged)
         })
@@ -635,6 +770,9 @@ export default {
             misp_objects,
             activeTemplate,
             activeTemplateAttr,
+            template_attributes,
+            objectIconClass,
+            attributeIconClass,
             selectedQuickTemplate,
             list_attr,
             showAddObject,
@@ -669,8 +807,12 @@ export default {
             saveNewAttribute,
             compactView,
             toggleCompactView,
+            tabView,
+            activeTabIdx,
+            toggleTabView,
             search_query,
             type_filter,
+            show_unsynced_only,
             current_page,
             per_page,
             filtered_objects,
@@ -688,14 +830,18 @@ export default {
             new_object_task_ids,
             toggleAssignTasks,
             saveAssignTasks,
-            scroll_to_task
+            scroll_to_task,
+            syncListKey,
+            visibleSyncInstances,
+            hiddenSyncCount,
+            toggleSyncList
 		}
     },
 
 	template: `
     <div class="mb-1">
         <button v-if="can_edit" class="btn btn-primary" title="Add a new object" @click="toggleAddObject()">
-            <i class="fa-solid fa-plus"></i> <i class="fa-solid fa-cubes"></i>
+            <i class="fa-solid fa-plus"></i> <i class="misp-icon misp-icon-object misp-simple"></i>
         </button>
         <a v-if="cases_info && (!cases_info.permission.read_only && cases_info.present_in_case || cases_info.permission.admin)" 
            type="button" class="btn btn-secondary ms-3" title="Analyze misp-objects"
@@ -705,6 +851,10 @@ export default {
         <button type="button" class="btn btn-outline-secondary ms-3" @click="toggleCompactView()" :title="compactView ? 'Show all columns' : 'Show compact view'">
             <i :class="compactView ? 'fa-solid fa-expand' : 'fa-solid fa-compress'"></i>
             <span class="d-none d-sm-inline ms-1">[[ compactView ? 'Detailed' : 'Compact' ]]</span>
+        </button>
+        <button type="button" class="btn btn-outline-secondary ms-2" @click="toggleTabView()" :title="tabView ? 'Switch to card view' : 'Switch to tab view'">
+            <i :class="tabView ? 'fa-solid fa-table-cells-large' : 'fa-solid fa-folder'"></i>
+            <span class="d-none d-sm-inline ms-1">[[ tabView ? 'Cards' : 'Tabs' ]]</span>
         </button>
     </div>
 
@@ -776,7 +926,7 @@ export default {
             <div v-if="activeTemplate.uuid">
                 <div class="mb-3">
                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Assign to tasks (optional)</label>
-                    <select v-model="new_object_task_ids" class="form-select form-select-sm" multiple size="4">
+                    <select id="new-object-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
                         <option v-for="t in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :value="t.id">[[ t.title ]]</option>
                     </select>
                 </div>
@@ -800,7 +950,7 @@ export default {
                         <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                         <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
                             <option value="">-- select --</option>
-                            <template v-for="attr in activeTemplate.attributes">
+                            <template v-for="attr in template_attributes(activeTemplate)">
                                 <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                             </template>
                         </select>
@@ -884,7 +1034,7 @@ export default {
                                             <div class="col-md-3">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
                                                 <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                    <template v-for="a in activeTemplate.attributes">
+                                                    <template v-for="a in template_attributes(activeTemplate)">
                                                         <option :value="a.name + '::' + a.misp_attribute">[[a.name]]::[[a.misp_attribute]]</option>
                                                     </template>
                                                 </select>
@@ -968,277 +1118,541 @@ export default {
                 <option v-for="t in object_type_options" :key="t" :value="t">[[ t ]]</option>
             </select>
         </div>
-        <div class="col-md-4 text-muted small">
+        <div class="col-auto">
+            <button type="button"
+                    :class="['btn btn-sm', show_unsynced_only ? 'btn-warning' : 'btn-outline-secondary']"
+                    @click="show_unsynced_only = !show_unsynced_only"
+                    title="Show only objects not yet synced to any MISP instance">
+                <i class="fa-solid fa-filter me-1"></i>Unsynced only
+            </button>
+        </div>
+        <div class="col text-muted small">
             [[ filtered_objects.length ]] object(s)
-            <span v-if="search_query || type_filter"> matching filter</span>
+            <span v-if="search_query || type_filter || show_unsynced_only"> matching filter</span>
         </div>
     </div>
 
-    <div class="row">
-        <div v-for="misp_object, key_obj in paged_objects" class="accordion col-6 p-1" :id="'accordion-'+key_obj">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" :data-bs-target="'#collapse-'+key_obj" aria-expanded="true" :aria-controls="'collapse-'+key_obj">
-                    [[ misp_object.object_name ]]
+    <template v-if="!tabView">
+        <div v-for="misp_object, key_obj in paged_objects" :key="misp_object.object_id" class="card mb-2">
+            <!-- Card header: name + badges + action buttons -->
+            <div class="card-header d-flex align-items-center justify-content-between py-2 px-3">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
+                            type="button" data-bs-toggle="collapse"
+                            :data-bs-target="'#collapse-'+key_obj" aria-expanded="true">
+                        <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
+                    </button>
                     <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
-                        <span v-for="si in misp_object.synced_instances" :key="si.instance_id"
-                              class="badge bg-info text-dark ms-2"
-                              style="font-size:0.7em; cursor:default;"
-                              :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
-                            <i class="fa-solid fa-cloud me-1"></i>[[ si.instance_name ]]
+                        <span v-for="si in visibleSyncInstances(misp_object.synced_instances, syncListKey('card', misp_object.object_id))" :key="si.instance_id"
+                            class="badge bg-info text-dark"
+                            :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
+                            <i class="fa-solid fa-cloud me-1 fa-sm"></i>[[ si.instance_name ]]
+                        </span>
+                        <button v-if="hiddenSyncCount(misp_object.synced_instances, syncListKey('card', misp_object.object_id))" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('card', misp_object.object_id))">+[[ hiddenSyncCount(misp_object.synced_instances, syncListKey('card', misp_object.object_id)) ]] more</button>
+                        <button v-else-if="misp_object.synced_instances.length > 2" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('card', misp_object.object_id))">show less</button>
+                    </template>
+                    <template v-if="misp_object.tasks && misp_object.tasks.length">
+                        <span v-for="t in misp_object.tasks" :key="t.id"
+                            class="badge bg-secondary"
+                            style="cursor:pointer;"
+                            :title="'Go to task: ' + t.title"
+                            @click.stop="scroll_to_task(t.id)">
+                            <i class="fa-solid fa-list-check me-1 fa-sm"></i>[[ t.title ]]
                         </span>
                     </template>
+                </div>
+                <div class="d-flex gap-1">
+                    <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-primary" title="Add attribute"
+                            @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)">
+                        <i class="fa-solid fa-plus fa-sm"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" title="Link to remote MISP object"
+                            @click="open_link_modal(misp_object)">
+                        <i class="fa-solid fa-link fa-sm"></i>
+                    </button>
+                    <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-secondary"
+                            @click="toggleAssignTasks(misp_object)" title="Assign tasks">
+                        <i class="fa-solid fa-tasks fa-sm"></i>
+                    </button>
+                    <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-danger"
+                            @click="delete_object(misp_object.object_id)" title="Delete object">
+                        <i class="fa-solid fa-trash fa-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div :id="'collapse-'+key_obj" class="collapse show">
+                <!-- Task assign panel -->
+                <div v-if="assigningTasks === misp_object.object_id" class="px-3 pt-2 pb-2 border-bottom bg-light">
+                    <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
+                        <div class="d-flex flex-wrap gap-3 mb-2">
+                            <div v-for="task in cases_info.tasks" :key="task.id" class="form-check form-check-inline m-0">
+                                <input class="form-check-input" type="checkbox"
+                                    :id="'assign-'+misp_object.object_id+'-'+task.id"
+                                    :value="task.id" v-model="assign_task_state[misp_object.object_id]">
+                                <label class="form-check-label small" :for="'assign-'+misp_object.object_id+'-'+task.id">[[ task.title ]]</label>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm" @click="saveAssignTasks(misp_object.object_id)">Save</button>
+                        <button class="btn btn-secondary btn-sm ms-1" @click="assigningTasks = null">Cancel</button>
+                    </div>
+                    <div v-else class="text-muted small">No tasks available in this case.</div>
+                </div>
+
+                <!-- Attributes table -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Value</th>
+                                <th>Relation</th>
+                                <th>Type</th>
+                                <th v-show="!compactView">First seen</th>
+                                <th v-show="!compactView">Last seen</th>
+                                <th v-show="!compactView">IDS</th>
+                                <th v-show="!compactView" title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
+                                <th v-show="!compactView">Comment</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="attribute, key_attr in misp_object.attributes">
+                                <!-- Display mode -->
+                                <template v-if="editingAttrId !== attribute.id">
+                                    <td class="ps-3"><i :class="attributeIconClass(attribute.type, 'me-1 text-secondary fa-sm')"></i>[[attribute.value]]</td>
+                                    <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                    <td class="text-muted small align-middle">[[attribute.type]]</td>
+                                    <td v-show="!compactView" class="small">
+                                        <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                        <span v-else class="text-muted">—</span>
+                                    </td>
+                                    <td v-show="!compactView" class="small">
+                                        <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                        <span v-else class="text-muted">—</span>
+                                    </td>
+                                    <td v-show="!compactView">
+                                        <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                        <span v-else class="text-muted">—</span>
+                                    </td>
+                                    <td v-show="!compactView">
+                                        <template v-if="attribute.disable_correlation">
+                                            <i class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                        </template>
+                                        <template v-else>
+                                            <template v-for="(cid, idx) in attribute.correlation_list">
+                                                <template v-if="idx < 4">
+                                                    <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" title="Open case [[cid]]">Case [[cid]]</a>
+                                                </template>
+                                            </template>
+                                            <button v-if="attribute.correlation_list.length > 4" class="btn btn-link p-0 ms-1 small" type="button"
+                                                    data-bs-toggle="collapse"
+                                                    :data-bs-target="'#corr-'+misp_object.object_id+'-'+attribute.id"
+                                                    aria-expanded="false">
+                                                [[ attribute.correlation_list.length - 4 ]] more
+                                            </button>
+                                            <div class="collapse mt-1" :id="'corr-'+misp_object.object_id+'-'+attribute.id">
+                                                <template v-for="(cid, idx) in attribute.correlation_list">
+                                                    <template v-if="idx >= 4">
+                                                        <a :href="'/case/'+cid" class="badge bg-light text-dark me-1">Case [[cid]]</a>
+                                                    </template>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </td>
+                                    <td v-show="!compactView" class="small text-muted">
+                                        <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                        <span v-else>—</span>
+                                    </td>
+                                    <td class="text-end pe-2" style="white-space:nowrap;">
+                                        <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit attribute"
+                                                @click="enterEditMode(attribute, misp_object.object_uuid)">
+                                            <i class="fa-solid fa-pen-to-square fa-sm"></i>
+                                        </button>
+                                        <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 text-danger" title="Delete attribute"
+                                                @click="delete_attribute(attribute.id, misp_object.object_id)">
+                                            <i class="fa-solid fa-trash fa-sm"></i>
+                                        </button>
+                                    </td>
+                                </template>
+
+                                <!-- Edit mode -->
+                                <template v-else>
+                                    <td :colspan="compactView ? 4 : 9" class="p-3 bg-light">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                            <input v-model="editState.value" class="form-control form-control-sm" type="text" style="font-size: 0.875rem;">
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                    <template v-for="attr in template_attributes(activeTemplateAttr)">
+                                                        <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                                <input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                                <input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="editState.ids_flag" type="checkbox" class="form-check-input">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="editState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                            <textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-secondary btn-sm" @click="cancelEdit()">Cancel</button>
+                                            <button type="button" class="btn btn-primary btn-sm" @click="saveInlineEdit(misp_object.object_id, attribute.id)">Save</button>
+                                        </div>
+                                    </td>
+                                </template>
+                            </tr>
+
+                            <!-- Add new attribute row -->
+                            <tr v-if="addingAttrToObject === misp_object.object_id">
+                                <td :colspan="compactView ? 4 : 9" class="p-3 bg-light">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                        <input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                            <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                <template v-for="attr in template_attributes(activeTemplateAttr)">
+                                                    <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                            <input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                            <input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                            <div class="form-check mt-1">
+                                                <input v-model="newAttrState.ids_flag" type="checkbox" class="form-check-input">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                            <div class="form-check mt-1">
+                                                <input v-model="newAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                        <textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-secondary btn-sm" @click="cancelAddAttribute()">Cancel</button>
+                                        <button type="button" class="btn btn-primary btn-sm" @click="saveNewAttribute(misp_object.object_id)">Add</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <nav v-if="total_pages > 1" class="mt-2" aria-label="Objects pagination">
+            <ul class="pagination pagination-sm justify-content-center">
+                <li class="page-item" :class="{disabled: current_page === 1}">
+                    <button class="page-link" @click="current_page--">&laquo;</button>
+                </li>
+                <li v-for="p in total_pages" :key="p" class="page-item" :class="{active: p === current_page}">
+                    <button class="page-link" @click="current_page = p">[[ p ]]</button>
+                </li>
+                <li class="page-item" :class="{disabled: current_page === total_pages}">
+                    <button class="page-link" @click="current_page++">&raquo;</button>
+                </li>
+            </ul>
+        </nav>
+    </template>
+
+    <!-- Tab view -->
+    <template v-else>
+        <div v-if="filtered_objects.length === 0" class="text-muted p-2"><i>No objects match the current filter.</i></div>
+        <template v-else>
+            <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
+                <li v-for="(misp_object, idx) in filtered_objects" :key="misp_object.object_id" class="nav-item flex-shrink-0">
+                    <button class="nav-link py-1 px-3" :class="{active: activeTabIdx === idx}" @click="activeTabIdx = idx" type="button">
+                        <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
+                        <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
+                            <i class="fa-solid fa-cloud ms-1 text-info" style="font-size:0.7rem;"></i>
+                        </template>
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content border border-top-0 rounded-bottom">
+                <div v-for="(misp_object, idx) in filtered_objects" :key="misp_object.object_id"
+                     v-show="activeTabIdx === idx" class="tab-pane active show">
+                    <!-- Tab pane header: badges + action buttons -->
+                    <div class="d-flex align-items-center justify-content-between py-2 px-3 border-bottom">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
+                                <span v-for="si in visibleSyncInstances(misp_object.synced_instances, syncListKey('tab', misp_object.object_id))" :key="si.instance_id"
+                                      class="badge bg-info text-dark"
+                                      :title="'Synced with ' + si.instance_name + ' — remote UUID: ' + si.object_uuid">
+                                    <i class="fa-solid fa-cloud me-1 fa-sm"></i>[[ si.instance_name ]]
+                                </span>
+                                <button v-if="hiddenSyncCount(misp_object.synced_instances, syncListKey('tab', misp_object.object_id))" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('tab', misp_object.object_id))">+[[ hiddenSyncCount(misp_object.synced_instances, syncListKey('tab', misp_object.object_id)) ]] more</button>
+                                <button v-else-if="misp_object.synced_instances.length > 2" type="button" class="btn btn-link btn-sm py-0 px-1 align-baseline" @click.stop="toggleSyncList(syncListKey('tab', misp_object.object_id))">show less</button>
+                            </template>
                             <template v-if="misp_object.tasks && misp_object.tasks.length">
-                                <span v-for="t in misp_object.tasks" :key="t.id" class="badge bg-light text-dark ms-2" style="font-size:0.75em; cursor:pointer;" :title="'Open task: ' + t.title" @click="scroll_to_task(t.id)">
-                                    <i class="fa-solid fa-list-check me-1"></i>[[ t.title ]]
+                                <span v-for="t in misp_object.tasks" :key="t.id"
+                                      class="badge bg-secondary"
+                                      style="cursor:pointer;"
+                                      :title="'Go to task: ' + t.title"
+                                      @click.stop="scroll_to_task(t.id)">
+                                    <i class="fa-solid fa-list-check me-1 fa-sm"></i>[[ t.title ]]
                                 </span>
                             </template>
-                </button>
-                </h2>
-                <div :id="'collapse-'+key_obj" class="accordion-collapse collapse show" :data-bs-parent="'#accordion-'+key_obj">
-                    <div class="accordion-body">
-                        <button v-if="can_edit" type="button" class="btn btn-primary btn-sm" title="Add new attributes" 
-                            @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)" >
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
-                        <button v-if="can_edit" type="button" class="btn btn-danger btn-sm" @click="delete_object(misp_object.object_id)" title="Delete object">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                        <button type="button" class="btn btn-outline-info btn-sm" title="Link to remote MISP object"
-                                @click="open_link_modal(misp_object)">
-                            <i class="fa-solid fa-link"></i>
-                        </button>
-                        <button v-if="can_edit" type="button" class="btn btn-outline-secondary btn-sm ms-1" @click="toggleAssignTasks(misp_object)" title="Assign tasks to this object">
-                            <i class="fa-solid fa-tasks"></i>
-                        </button>
-                        <div v-if="assigningTasks === misp_object.object_id" class="card mt-2 p-2" style="background-color:#f8f9fa;">
-                            <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
-                                <div v-for="task in cases_info.tasks" :key="task.id" class="form-check">
-                                    <input class="form-check-input" type="checkbox" :id="'assign-'+misp_object.object_id+'-'+task.id" :value="task.id" v-model="assign_task_state[misp_object.object_id]">
-                                    <label class="form-check-label" :for="'assign-'+misp_object.object_id+'-'+task.id">[[ task.title ]]</label>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-primary" title="Add attribute"
+                                    @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)">
+                                <i class="fa-solid fa-plus fa-sm"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" title="Link to remote MISP object"
+                                    @click="open_link_modal(misp_object)">
+                                <i class="fa-solid fa-link fa-sm"></i>
+                            </button>
+                            <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-secondary"
+                                    @click="toggleAssignTasks(misp_object)" title="Assign tasks">
+                                <i class="fa-solid fa-tasks fa-sm"></i>
+                            </button>
+                            <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-danger"
+                                    @click="delete_object(misp_object.object_id)" title="Delete object">
+                                <i class="fa-solid fa-trash fa-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Task assign panel -->
+                    <div v-if="assigningTasks === misp_object.object_id" class="px-3 pt-2 pb-2 border-bottom bg-light">
+                        <div v-if="cases_info && cases_info.tasks && cases_info.tasks.length">
+                            <div class="d-flex flex-wrap gap-3 mb-2">
+                                <div v-for="task in cases_info.tasks" :key="task.id" class="form-check form-check-inline m-0">
+                                    <input class="form-check-input" type="checkbox"
+                                           :id="'tab-assign-'+misp_object.object_id+'-'+task.id"
+                                           :value="task.id" v-model="assign_task_state[misp_object.object_id]">
+                                    <label class="form-check-label small" :for="'tab-assign-'+misp_object.object_id+'-'+task.id">[[ task.title ]]</label>
                                 </div>
-                                <div class="mt-2">
-                                    <button class="btn btn-primary btn-sm"
+                            </div>
+                            <button class="btn btn-primary btn-sm"
                                             :disabled="!(assign_task_state[misp_object.object_id] && assign_task_state[misp_object.object_id].length)"
                                             :title="!(assign_task_state[misp_object.object_id] && assign_task_state[misp_object.object_id].length) ? 'Select at least one task' : ''"
                                             @click="saveAssignTasks(misp_object.object_id)">Save</button>
-                                    <button class="btn btn-secondary btn-sm ms-2" @click="assigningTasks = null">Cancel</button>
-                                </div>
-                            </div>
-                            <div v-else class="text-muted">No tasks available in this case.</div>
+                            <button class="btn btn-secondary btn-sm ms-1" @click="assigningTasks = null">Cancel</button>
                         </div>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Value</th>
-                                        <th>Object Relation</th>
-                                        <th>Type</th>
-                                        <th v-show="!compactView">First seen</th>
-                                        <th v-show="!compactView">Last seen</th>
-                                        <th v-show="!compactView">IDS</th>
-                                        <th v-show="!compactView" title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
-                                        <th v-show="!compactView">Comment</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="attribute, key_attr in misp_object.attributes ">
-                                        <!-- Display mode -->
-                                        <template v-if="editingAttrId !== attribute.id">
-                                            <td :title="attribute.value">[[ attribute.value && attribute.value.length > 256 ? attribute.value.slice(0, 256) + '…' : attribute.value ]]</td>
-                                            <td>[[attribute.object_relation]]</td>
-                                            <td>[[attribute.type]]</td>
-                                            <td v-show="!compactView">
-                                                <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
-                                                <i v-else>none</i>
-                                            </td>
-                                            <td v-show="!compactView">
-                                                <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
-                                                <i v-else>none</i>
-                                            </td>
-                                            <td v-show="!compactView">[[attribute.ids_flag]]</td>
-                                            <td v-show="!compactView">
-                                                <template v-if="attribute.disable_correlation">
-                                                    <i class="fa-solid fa-link-slash text-muted" title="Correlation disabled"></i>
+                        <div v-else class="text-muted small">No tasks available in this case.</div>
+                    </div>
+                    <!-- Attributes table -->
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">Value</th>
+                                    <th>Relation</th>
+                                    <th>Type</th>
+                                    <th v-show="!compactView">First seen</th>
+                                    <th v-show="!compactView">Last seen</th>
+                                    <th v-show="!compactView">IDS</th>
+                                    <th v-show="!compactView" title="Correlation"><i class="fa-solid fa-diagram-project"></i></th>
+                                    <th v-show="!compactView">Comment</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="attribute in misp_object.attributes" :key="attribute.id">
+                                    <!-- Display mode -->
+                                    <template v-if="editingAttrId !== attribute.id">
+                                        <td :title="attribute.value">[[ attribute.value && attribute.value.length > 256 ? attribute.value.slice(0, 256) + '…' : attribute.value ]]</td>
+                                        <td><span class="badge bg-light text-dark border">[[attribute.object_relation]]</span></td>
+                                        <td class="text-muted small align-middle">[[attribute.type]]</td>
+                                        <td v-show="!compactView" class="small">
+                                            <template v-if="attribute.first_seen">[[attribute.first_seen]]</template>
+                                            <span v-else class="text-muted">—</span>
+                                        </td>
+                                        <td v-show="!compactView" class="small">
+                                            <template v-if="attribute.last_seen">[[attribute.last_seen]]</template>
+                                            <span v-else class="text-muted">—</span>
+                                        </td>
+                                        <td v-show="!compactView">
+                                            <i v-if="attribute.ids_flag" class="fa-solid fa-check text-success fa-sm"></i>
+                                            <span v-else class="text-muted">—</span>
+                                        </td>
+                                        <td v-show="!compactView">
+                                            <template v-if="attribute.disable_correlation">
+                                                <i class="fa-solid fa-link-slash text-muted fa-sm" title="Correlation disabled"></i>
+                                            </template>
+                                            <template v-else>
+                                                <template v-for="(c_cid, c_idx) in attribute.correlation_list">
+                                                    <template v-if="c_idx < 4">
+                                                        <a :href="'/case/'+c_cid" class="badge bg-light text-dark me-1" :title="'Open case '+c_cid">Case [[c_cid]]</a>
+                                                    </template>
                                                 </template>
-                                                <template v-else>
-                                                    <span>
-                                                        <template v-for="(cid, idx) in attribute.correlation_list">
-                                                            <template v-if="idx < 4">
-                                                                <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" title="Open case [[cid]]">Case [[cid]]</a>
-                                                            </template>
-                                                        </template>
-
-                                                        <template v-if="attribute.correlation_list.length > 4">
-                                                            <button class="btn btn-link p-0 ms-1" type="button"
-                                                                data-bs-toggle="collapse"
-                                                                :data-bs-target="'#corr-'+misp_object.object_id+'-'+attribute.id"
-                                                                aria-expanded="false"
-                                                                :aria-controls="'corr-'+misp_object.object_id+'-'+attribute.id">
-                                                                [[ attribute.correlation_list.length - 4 ]] more
-                                                            </button>
-
-                                                            <div class="collapse mt-1" :id="'corr-'+misp_object.object_id+'-'+attribute.id">
-                                                                <template v-for="(cid, idx) in attribute.correlation_list">
-                                                                    <template v-if="idx >= 4">
-                                                                        <a :href="'/case/'+cid" class="badge bg-light text-dark me-1" title="Open case [[cid]]">Case [[cid]]</a>
-                                                                    </template>
-                                                                </template>
-                                                            </div>
-                                                        </template>
-                                                    </span>
-                                                </template>
-                                            </td>
-                                            <td v-show="!compactView">
-                                                <template v-if="attribute.comment">[[attribute.comment]]</template>
-                                                <i v-else>none</i>
-                                            </td>
-                                            <td style="white-space: nowrap;">
-                                                <button v-if="can_edit" type="button" class="btn btn-primary btn-sm" title="Edit attribute"
-                                                @click="enterEditMode(attribute, misp_object.object_uuid)">
-                                                    <i class="fa-solid fa-fw fa-pen-to-square"></i>
+                                                <button v-if="attribute.correlation_list.length > 4" class="btn btn-link p-0 ms-1 small" type="button"
+                                                        data-bs-toggle="collapse"
+                                                        :data-bs-target="'#tab-corr-'+misp_object.object_id+'-'+attribute.id"
+                                                        aria-expanded="false">
+                                                    [[ attribute.correlation_list.length - 4 ]] more
                                                 </button>
-                                                <button v-if="can_edit" type="button" class="btn btn-danger btn-sm" title="Delete attribute"
-                                                @click="delete_attribute(attribute.id, misp_object.object_id)">
-                                                    <i class="fa-solid fa-fw fa-trash"></i>
-                                                </button>
-                                            </td>
-                                        </template>
-                                        
-                                        <!-- Edit mode -->
-                                        <template v-else>
-                                            <td :colspan="compactView ? 4 : 9" style="padding: 1rem;">
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
-                                                    <textarea v-model="editState.value" class="form-control form-control-sm" rows="2" style="font-size: 0.875rem; resize: vertical;"></textarea>
+                                                <div class="collapse mt-1" :id="'tab-corr-'+misp_object.object_id+'-'+attribute.id">
+                                                    <template v-for="(c_cid, c_idx) in attribute.correlation_list">
+                                                        <template v-if="c_idx >= 4">
+                                                            <a :href="'/case/'+c_cid" class="badge bg-light text-dark me-1">Case [[c_cid]]</a>
+                                                        </template>
+                                                    </template>
                                                 </div>
-                                                <div class="row g-2 mb-3">
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
-                                                        <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                            <template v-for="attr in activeTemplateAttr.attributes">
-                                                                <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
-                                                            </template>
-                                                        </select>
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
-                                                        <input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
-                                                    </div>
-                                                    <div class="col-md-3">
-                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
-                                                        <input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
-                                                    </div>
-                                                    <div class="col-md-1">
-                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
-                                                        <div class="form-check mt-1">
-                                                            <input v-model="editState.ids_flag" type="checkbox" class="form-check-input">
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-1">
-                                                        <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
-                                                        <div class="form-check mt-1">
-                                                            <input v-model="editState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
-                                                    <textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
-                                                </div>
-                                                <div class="d-flex gap-2">
-                                                    <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
-                                                    @click="cancelEdit()">
-                                                        Cancel
-                                                    </button>
-                                                    <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_edit_attr"
-                                                    :title="can_save_edit_attr ? 'Save changes' : 'A value is required'"
-                                                    @click="saveInlineEdit(misp_object.object_id, attribute.id)">
-                                                        Save
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </template>
-                                    </tr>
-                                    
-                                    <!-- Add new attribute row -->
-                                    <tr v-if="addingAttrToObject === misp_object.object_id">
-                                        <td :colspan="compactView ? 4 : 9" style="padding: 1rem; background-color: #f8f9fa;">
+                                            </template>
+                                        </td>
+                                        <td v-show="!compactView" class="small text-muted">
+                                            <template v-if="attribute.comment">[[attribute.comment]]</template>
+                                            <span v-else>—</span>
+                                        </td>
+                                        <td class="text-end pe-2" style="white-space:nowrap;">
+                                            <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 me-2 text-primary" title="Edit attribute"
+                                                    @click="enterEditMode(attribute, misp_object.object_uuid)">
+                                                <i class="fa-solid fa-pen-to-square fa-sm"></i>
+                                            </button>
+                                            <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 text-danger" title="Delete attribute"
+                                                    @click="delete_attribute(attribute.id, misp_object.object_id)">
+                                                <i class="fa-solid fa-trash fa-sm"></i>
+                                            </button>
+                                        </td>
+                                    </template>
+                                    <!-- Edit mode -->
+                                    <template v-else>
+                                        <td :colspan="compactView ? 4 : 9" class="p-3 bg-light">
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value <span class="text-danger">*</span></label>
-                                                <input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                                <textarea v-model="editState.value" class="form-control form-control-sm" rows="2" style="font-size: 0.875rem; resize: vertical;"></textarea>
                                             </div>
                                             <div class="row g-2 mb-3">
                                                 <div class="col-md-4">
-                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
-                                                    <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
-                                                        <template v-for="attr in activeTemplateAttr.attributes">
+                                                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                    <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                        <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                             <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                         </template>
                                                     </select>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
-                                                    <input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                    <input v-model="editState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
                                                 </div>
                                                 <div class="col-md-3">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
-                                                    <input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                                    <input v-model="editState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
                                                 </div>
                                                 <div class="col-md-1">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
                                                     <div class="form-check mt-1">
-                                                        <input v-model="newAttrState.ids_flag" type="checkbox" class="form-check-input">
+                                                        <input v-model="editState.ids_flag" type="checkbox" class="form-check-input">
                                                     </div>
                                                 </div>
                                                 <div class="col-md-1">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
                                                     <div class="form-check mt-1">
-                                                        <input v-model="newAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                        <input v-model="editState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
-                                                <textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                                <textarea v-model="editState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
                                             </div>
                                             <div class="d-flex gap-2">
-                                                <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
-                                                @click="cancelAddAttribute()">
-                                                    Cancel
-                                                </button>
-                                                <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_new_attr"
-                                                :title="can_save_new_attr ? 'Add attribute' : 'A value and object relation & type are required'"
-                                                @click="saveNewAttribute(misp_object.object_id)">
-                                                    Add
-                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm" @click="cancelEdit()">Cancel</button>
+                                                <button type="button" class="btn btn-primary btn-sm" @click="saveInlineEdit(misp_object.object_id, attribute.id)">Save</button>
                                             </div>
                                         </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                    </template>
+                                </tr>
+                                <!-- Add new attribute row -->
+                                <tr v-if="addingAttrToObject === misp_object.object_id">
+                                    <td :colspan="compactView ? 4 : 9" class="p-3 bg-light">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Value</label>
+                                            <input v-model="newAttrState.value" class="form-control form-control-sm" type="text" placeholder="Value" style="font-size: 0.875rem;">
+                                        </div>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
+                                                <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                    <template v-for="attr in template_attributes(activeTemplateAttr)">
+                                                        <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
+                                                    </template>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">First Seen</label>
+                                                <input v-model="newAttrState.first_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Last Seen</label>
+                                                <input v-model="newAttrState.last_seen" class="form-control form-control-sm" type="datetime-local" style="font-size: 0.875rem;">
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">IDS</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="newAttrState.ids_flag" type="checkbox" class="form-check-input">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;" title="Disable correlation">Corr.</label>
+                                                <div class="form-check mt-1">
+                                                    <input v-model="newAttrState.disable_correlation" type="checkbox" class="form-check-input" title="Disable correlation">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Comment</label>
+                                            <textarea v-model="newAttrState.comment" class="form-control form-control-sm" placeholder="Comment" rows="2" style="font-size: 0.875rem;"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-secondary btn-sm" title="Cancel"
+                                            @click="cancelAddAttribute()">
+                                                Cancel
+                                            </button>
+                                            <button type="button" class="btn btn-primary btn-sm" :disabled="!can_save_new_attr"
+                                            :title="can_save_new_attr ? 'Add attribute' : 'A value and object relation & type are required'"
+                                            @click="saveNewAttribute(misp_object.object_id)">
+                                                Add
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-
-        </div>
-    </div>
-
-    <nav v-if="total_pages > 1" class="mt-2" aria-label="Objects pagination">
-        <ul class="pagination pagination-sm justify-content-center">
-            <li class="page-item" :class="{disabled: current_page === 1}">
-                <button class="page-link" @click="current_page--">&laquo;</button>
-            </li>
-            <li v-for="p in total_pages" :key="p" class="page-item" :class="{active: p === current_page}">
-                <button class="page-link" @click="current_page = p">[[ p ]]</button>
-            </li>
-            <li class="page-item" :class="{disabled: current_page === total_pages}">
-                <button class="page-link" @click="current_page++">&raquo;</button>
-            </li>
-        </ul>
-    </nav>
+        </template>
+    </template>
 
     <!-- MispObjectLink modal (single shared instance) -->
     <misp-object-link

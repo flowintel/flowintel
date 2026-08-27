@@ -45,6 +45,7 @@ from .my_assignment.my_assignment_api import my_assignment_ns
 from .templating.templating_api import templating_ns
 from .tools.tools_api import importer_ns, case_misp_ns
 from .calendar.calendar_api import calendar_api
+from .alerting.alerting_api import alerting_ns
 
 api.add_namespace(case_ns, path="/case")
 api.add_namespace(task_ns, path="/task")
@@ -57,3 +58,6 @@ api.add_namespace(templating_ns, path="/templating")
 api.add_namespace(importer_ns, path="/importer")
 api.add_namespace(case_misp_ns, path="/case_from_misp")
 api.add_namespace(calendar_api, path="/calendar")
+api.add_namespace(alerting_ns, path="/alerts")
+
+

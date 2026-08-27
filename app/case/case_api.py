@@ -2,7 +2,7 @@ from flask import request
 
 from flask_restx import Namespace, Resource
 
-from app.db_class.db import Case, User, File
+from app.db_class.db import Case, User, File, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, DATETIME_FORMAT_FULL, db
 
 from ..utils import utils
 from ..utils.logger import flowintel_log
@@ -12,6 +12,7 @@ from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from .TaskCore import TaskModel
 from . import validation_api as CaseModelApi
+from ..connectors import connectors_core as ConnectorModel
 
 case_ns = Namespace("case", description="Endpoints to manage cases")
 
@@ -23,6 +24,32 @@ def check_user_private_case(case: Case, request_headers, current_user: User = No
         return False
     return True
 
+
+def get_api_misp_case_connector(cid, ciid, request_headers, require_write=False):
+    case = CommonModel.get_case(cid)
+    if not case:
+        return None, None, None, ({"message": "Case not found"}, 404)
+
+    current_user = utils.get_user_from_api(request_headers)
+    if not check_user_private_case(case, request_headers, current_user):
+        return None, None, None, ({"message": "Permission denied"}, 403)
+
+    case_instance = CommonModel.get_case_connectors_by_id(ciid)
+    if not case_instance or case_instance.case_id != int(cid):
+        return None, None, None, ({"message": "Connector not found"}, 404)
+
+    loc_instance = CommonModel.get_instance(case_instance.instance_id)
+    connector = CommonModel.get_connector(loc_instance.connector_id) if loc_instance else None
+    if not loc_instance or not connector or connector.name != "MISP":
+        return None, None, None, ({"message": "Connector is not a MISP connector"}, 400)
+
+    if require_write:
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            return None, None, None, ({"message": "Permission denied"}, 403)
+        if not CommonModel.can_use_case_connector(loc_instance, current_user, cid):
+            return None, None, None, ({"message": "Permission denied"}, 403)
+
+    return case, case_instance, current_user, None
 
 @case_ns.route('/all')
 @case_ns.doc(description='Get all cases')
@@ -727,7 +754,11 @@ class GetConnectors(Resource):
         for connector in connectors_list:
             loc = list()
             for instance in connector.instances:
-                if CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id):
+                if (
+                    instance.sharing_scope == "global"
+                    or (instance.sharing_scope == "org" and instance.shared_org_id == current_user.org_id)
+                    or CommonModel.get_user_instance_both(user_id=current_user.id, instance_id=instance.id)
+                ):
                     loc.append(instance.to_json())
             if loc:
                 connectors_dict[connector.name] = loc
@@ -784,7 +815,7 @@ class EditConnectorsCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                 if "identifier" in request.json:
-                    if CaseModel.edit_connector(ciid, request.json):
+                    if CaseModel.edit_connector(ciid, request.json, current_user):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -799,12 +830,117 @@ class RemoveConnectors(Resource):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_connector(ciid):
+                if CaseModel.remove_connector(ciid, current_user):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403
         return {"message": "Case doesn't exist"}, 404
-    
+
+
+@case_ns.route('/<cid>/connectors/<ciid>/sync_automation', methods=['GET'])
+@case_ns.doc(description='Get MISP sync automation settings and pending conflicts')
+class GetMispSyncAutomation(Resource):
+    method_decorators = [misp_editor_required, api_required]
+    def get(self, cid, ciid):
+        case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers)
+        if error:
+            return error
+        if (
+            ConnectorModel.has_enabled_misp_sync_automation(case.id, case_instance.id)
+            and CommonModel.can_use_case_connector(CommonModel.get_instance(case_instance.instance_id), current_user, cid)
+        ):
+            try:
+                CaseModel.ensure_misp_send_conflict(case_instance.id, case, current_user)
+            except Exception:
+                pass
+        return {
+            "schedules": ConnectorModel.get_misp_sync_schedules(case.id, case_instance.id),
+            "conflicts": ConnectorModel.get_pending_misp_sync_conflicts(case.id, case_instance.id),
+            "history": ConnectorModel.get_recent_misp_sync_conflict_history(case.id, case_instance.id),
+            "options": {
+                "intervals": sorted(ConnectorModel.MISP_SYNC_INTERVALS),
+                "conflict_strategies": sorted(ConnectorModel.MISP_SYNC_CONFLICT_STRATEGIES),
+                "resolutions": sorted(ConnectorModel.MISP_SYNC_RESOLUTIONS)
+            }
+        }, 200
+
+
+@case_ns.route('/<cid>/connectors/<ciid>/sync_automation', methods=['POST'])
+@case_ns.doc(description='Create or update MISP sync automation settings')
+class SaveMispSyncAutomation(Resource):
+    method_decorators = [misp_editor_required, api_required]
+    def post(self, cid, ciid):
+        case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
+        if error:
+            return error
+        schedule, error = ConnectorModel.upsert_misp_sync_schedule(case.id, case_instance.id, request.get_json(silent=True) or {}, current_user)
+        if error:
+            return {"message": error}, 400
+        flowintel_log("audit", 200, "API: MISP sync automation updated", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, Direction=schedule.direction)
+        return {"message": "Automation updated", "schedule": ConnectorModel.sanitize_misp_sync_schedule(schedule.to_json())}, 200
+
+
+@case_ns.route('/<cid>/connectors/<ciid>/sync_conflicts/<conflict_id>/resolve', methods=['POST'])
+@case_ns.doc(description='Resolve a pending MISP sync conflict')
+class ResolveMispSyncConflict(Resource):
+    method_decorators = [misp_editor_required, api_required]
+    def post(self, cid, ciid, conflict_id):
+        case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
+        if error:
+            return error
+
+        conflict = Case_Misp_Sync_Conflict.query.get(conflict_id)
+        if not conflict or conflict.case_id != case.id or conflict.case_connector_instance_id != case_instance.id:
+            return {"message": "Conflict not found"}, 404
+
+        data = request.get_json(silent=True) or {}
+        requested_resolution = data.get("resolution")
+        resolution_payload = data.get("resolution_payload") or {}
+        resolved, error = ConnectorModel.resolve_misp_sync_conflict(
+            conflict_id,
+            requested_resolution,
+            resolution_payload,
+            current_user
+        )
+        if error:
+            return {"message": error}, 400
+
+        followup = ConnectorModel.get_misp_conflict_followup_action(conflict, requested_resolution, resolution_payload)
+        if followup:
+            result = CaseModel.call_module_case(
+                followup["module_name"],
+                case_instance.id,
+                case,
+                current_user,
+                payload=followup["payload"]
+            )
+            if result:
+                conflict.status = "pending"
+                conflict.resolution = None
+                conflict.resolution_payload = None
+                conflict.resolved_by_id = None
+                conflict.resolved_at = None
+                db.session.commit()
+                return {"message": result.get("message", "Unable to apply the selected resolution")}, 400
+            if followup.get("direction") == "receive" and conflict.direction == "send":
+                refreshed_case = CommonModel.get_case(cid)
+                remote_timestamp = ConnectorModel.as_utc_datetime((conflict.remote_snapshot or {}).get("timestamp"))
+                if remote_timestamp:
+                    send_schedule = Case_Misp_Sync_Schedule.query.filter_by(
+                        case_id=int(cid),
+                        case_connector_instance_id=int(case_instance.id),
+                        direction="send"
+                    ).first()
+                    if send_schedule:
+                        send_schedule.last_run_at = remote_timestamp
+                        send_schedule.last_seen_case_modif = refreshed_case.last_modif if refreshed_case else None
+                        send_schedule.next_run_at = ConnectorModel.calculate_misp_sync_next_run(send_schedule.interval, remote_timestamp) if send_schedule.enabled else None
+                    db.session.commit()
+
+        flowintel_log("audit", 200, "API: MISP sync conflict resolved", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid, ConflictId=conflict_id, Resolution=resolved.resolution)
+        message = "Conflict resolved and synchronized" if followup else "Conflict resolved"
+        return {"message": message, "conflict": resolved.to_json()}, 200
+
 
 #################
 # Note Template #
@@ -832,7 +968,13 @@ class AddNoteTemplate(Resource):
 class GetNoteTemplate(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied"}, 403
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
             c = CaseModel.get_case_note_template(cid)
             if c:
                 return c.to_json(), 200
@@ -884,7 +1026,7 @@ class RemoveNoteTemplate(Resource):
         if CommonModel.get_case(cid):
             current_user = utils.get_user_from_api(request.headers)
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_note_template(cid):
+                if CaseModel.remove_note_template(cid, current_user):
                     return {"message": "Note template removed"}, 200
                 return {"message": "Something went wrong"}, 400
             return {"message": "Permission denied"}, 403
@@ -976,7 +1118,7 @@ class ChangeOrder(Resource):
                 if task:
                     if 'new-index' in request.json:
                         request.json['new-index'] = request.json['new-index']-1
-                        if TaskModel.change_order(case, task, request.json):
+                        if TaskModel.change_order(case, task, request.json, current_user):
                             flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
@@ -1048,8 +1190,9 @@ class ModifNoteCase(Resource):
                         "attributes": loc_attr_list,
                         "object_id": obj.id,
                         "object_uuid": obj.template_uuid,
-                        "object_creation_date": obj.creation_date.strftime('%Y-%m-%d %H:%M') if obj.creation_date else None,
-                        "object_last_modif": obj.last_modif.strftime('%Y-%m-%d %H:%M') if obj.last_modif else None
+                        "object_creation_date": obj.creation_date.strftime(DATETIME_FORMAT_FULL) if obj.creation_date else None,
+                        "object_last_modif": obj.last_modif.strftime(DATETIME_FORMAT_FULL) if obj.last_modif else None,
+                        "synced_instances": CaseModel.serialize_object_synced_instances(cid, obj.id, current_user)
                     })
 
                 return {"misp-object": loc_object}, 200
@@ -1074,6 +1217,19 @@ class ModifNoteCase(Resource):
             return {"misp-object": utils.get_object_templates()}, 200
 
 
+    @case_ns.route('/get_misp_attribute_types', methods=['GET'])
+    @case_ns.doc(description='Get list of MISP attribute types')
+    class GetMispAttributeTypes(Resource):
+        method_decorators = [api_required]
+        def get(self):
+            force = request.args.get('force', '').lower() in ('1', 'true', 'yes')
+            try:
+                return {"types": CaseModel.get_misp_attribute_types(force=force)}, 200
+            except Exception as e:
+                flowintel_log("error", 500, "Failed to build MISP attribute types", error=str(e))
+                return {"types": []}, 200
+
+
     @case_ns.route('/<cid>/create_misp_object', methods=['POST'])
     @case_ns.doc(description='Create misp object')
     class CreateMispObject(Resource):
@@ -1087,7 +1243,8 @@ class ModifNoteCase(Resource):
                         if "object-template" in request.json:
                             if "attributes" in request.json:
                                 CaseModel.create_misp_object(cid, request.json, current_user)
-                                return {"message": "Object created"}, 200
+                                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                return CaseModel.with_misp_automation_message({"message": "Object created"}, sync_result), 200
                             return {"message": "Need to pass 'attributes'"}, 400
                         return {"message": "Need to pass 'object-template'"}, 400
                     return {"message": "Please give data"}, 400
@@ -1104,7 +1261,8 @@ class ModifNoteCase(Resource):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if CaseModel.delete_object(cid, oid, current_user):
-                        return {"message": "Object deleted"}, 200
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        return CaseModel.with_misp_automation_message({"message": "Object deleted"}, sync_result), 200
                     return {"message": "Object not found in this case"}, 404
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
@@ -1122,8 +1280,9 @@ class ModifNoteCase(Resource):
                     if request.json:
                         if "object-template" in request.json:
                             if "attributes" in request.json:
-                                if CaseModel.add_attributes_object(cid, oid, request.json):
-                                    return {"message": "Receive"}, 200
+                                if CaseModel.add_attributes_object(cid, oid, request.json, current_user):
+                                    sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                    return CaseModel.with_misp_automation_message({"message": "Attribute added"}, sync_result), 200
                                 return {"message": "Object not found in this case"}, 404
                             return {"message": "Need to pass 'attributes'"}, 400
                         return {"message": "Need to pass 'object-template'"}, 400
@@ -1143,7 +1302,11 @@ class ModifNoteCase(Resource):
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
                     if request.json:
                         if "value" in request.json and "type" in request.json:
-                            return CaseModel.edit_attr(cid, oid, aid, request.json)
+                            result, status = CaseModel.edit_attr(cid, oid, aid, request.json, current_user)
+                            if status == 200:
+                                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                                result = CaseModel.with_misp_automation_message(result, sync_result)
+                            return result, status
                         if "type" not in request.json:
                             return {"message": "Need to pass 'type'"}, 400
                         return {"message": "Need to pass 'value'"}, 400
@@ -1160,9 +1323,130 @@ class ModifNoteCase(Resource):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    return CaseModel.delete_attribute(cid, oid, aid)
+                    result, status = CaseModel.delete_attribute(cid, oid, aid, current_user)
+                    if status == 200:
+                        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                        result = CaseModel.with_misp_automation_message(result, sync_result)
+                    return result, status
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/get_case_misp_attributes', methods=['GET'])
+    @case_ns.doc(description='Get standalone MISP attributes for a case')
+    class GetCaseMispAttributes(Resource):
+        method_decorators = [api_required]
+        def get(self, cid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, current_user):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            attrs = CaseModel.get_standalone_attributes_by_case(cid)
+            result = []
+            for attr in attrs:
+                loc_attr = attr.to_json()
+                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+                loc_attr["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
+                result.append(loc_attr)
+
+            return {"attributes": result}, 200
+
+
+    @case_ns.route('/<cid>/create_misp_attribute', methods=['POST'])
+    @case_ns.doc(description='Create a standalone MISP attribute')
+    class CreateMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        @case_ns.doc(params={
+            "value": "Required. Value of the attribute",
+            "type": "Required. MISP attribute type",
+            "comment": "Optional comment",
+            "ids_flag": "Optional boolean",
+            "disable_correlation": "Optional boolean",
+            "first_seen": "Optional datetime (%Y-%m-%d %H:%M)",
+            "last_seen": "Optional datetime (%Y-%m-%d %H:%M)"
+        })
+        def post(self, cid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            if not request.json:
+                return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+            if not request.json.get("value"):
+                return {"message": "Value is required", "toast_class": "warning-subtle"}, 400
+            if not request.json.get("type"):
+                return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
+
+            attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+            flowintel_log("audit", 201, "Standalone MISP attribute created", User=current_user.email, CaseId=cid, AttributeId=attribute.id)
+            return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, sync_result), 201
+
+
+    @case_ns.route('/<cid>/misp_attribute/<aid>/edit_misp_attribute', methods=['POST'])
+    @case_ns.doc(description='Edit a standalone MISP attribute')
+    class EditStandaloneMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        @case_ns.doc(params={
+            "value": "Required. Value of the attribute",
+            "type": "Required. MISP attribute type",
+            "comment": "Optional comment",
+            "ids_flag": "Optional boolean",
+            "disable_correlation": "Optional boolean",
+            "first_seen": "Optional datetime (%Y-%m-%d %H:%M)",
+            "last_seen": "Optional datetime (%Y-%m-%d %H:%M)"
+        })
+        def post(self, cid, aid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            if not request.json:
+                return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
+            if "value" not in request.json:
+                return {"message": "Need to pass 'value'", "toast_class": "warning-subtle"}, 400
+            if "type" not in request.json:
+                return {"message": "Need to pass 'type'", "toast_class": "warning-subtle"}, 400
+
+            result, status = CaseModel.edit_standalone_attr(cid, aid, request.json, current_user)
+            if status == 200:
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
+                flowintel_log("audit", 200, "Standalone MISP attribute edited", User=current_user.email, CaseId=cid, AttributeId=aid)
+            return result, status
+
+
+    @case_ns.route('/<cid>/misp_attribute/<aid>/delete_misp_attribute', methods=['GET'])
+    @case_ns.doc(description='Delete a standalone MISP attribute')
+    class DeleteStandaloneMispAttribute(Resource):
+        method_decorators = [editor_required, misp_editor_required, api_required]
+        def get(self, cid, aid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+
+            result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
+            if status == 200:
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
+                flowintel_log("audit", 200, "Standalone MISP attribute deleted", User=current_user.email, CaseId=cid, AttributeId=aid)
+            return result, status
 
     
 

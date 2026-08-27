@@ -136,3 +136,16 @@ export function getStatusHint(task, statusInfo) {
     }
     return '';
 }
+
+export function touchCaseLastModif(casesInfo) {
+    if (casesInfo?.case) {
+        casesInfo.case.last_modif = Date.now();
+    }
+}
+
+export function touchTaskAndCaseLastModif(task, casesInfo) {
+    if (task) {
+        task.last_modif = Date.now();
+    }
+    touchCaseLastModif(casesInfo);
+}

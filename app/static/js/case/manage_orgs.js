@@ -1,5 +1,6 @@
 import { display_toast } from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref } = Vue
 export default {
     delimiters: ['[[', ']]'],
@@ -32,6 +33,7 @@ export default {
                 let index = cases_info.orgs_in_case.indexOf(org)
                 if (index > -1)
                     cases_info.orgs_in_case.splice(index, 1)
+                touchCaseLastModif(cases_info)
                 // notify parent to refresh users list
                 try { emit('case_orgs_changed') } catch (e) {}
             }
@@ -66,6 +68,7 @@ export default {
                             }
                         }
                     }
+                    touchCaseLastModif(props.cases_info)
                     var myModalEl = document.getElementById('add_orgs');
                     var modal = bootstrap.Modal.getInstance(myModalEl)
                     modal.hide();
@@ -88,6 +91,7 @@ export default {
                 })
                 if (await res.status == 200) {
                     props.cases_info.case.owner_org_id = $("#change_owner_select").val()
+                    touchCaseLastModif(props.cases_info)
                     bootstrap.Modal.getInstance(document.getElementById('change_owner')).hide()
                 }
                 display_toast(res)

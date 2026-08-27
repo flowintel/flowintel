@@ -100,9 +100,9 @@
                                 <template v-for="instance in instances_table[connector.id]">
                                     <tr>
                                         <td title="Name of the instance">[[instance.name]]</td>
-                                        <td v-if="instance.global_api_key">
-                                            <small title="This instance is globally set and can be modify only by the creator">
-                                                <span class="badge rounded-pill text-bg-success">Global</span>
+                                        <td v-if="instance.sharing_scope !== 'personal'">
+                                            <small :title="instance.sharing_scope === 'org' ? 'This instance is shared with your organisation' : 'This instance is shared platform-wide and can only be managed by admins'">
+                                                <span class="badge rounded-pill text-bg-success">[[ instance.sharing_scope === 'org' ? 'Org' : 'Global' ]]</span>
                                             </small>
                                         </td>
                                         <td v-else></td>
@@ -111,22 +111,22 @@
                                         <td v-else><i>No description</i></td>
 
                                         <td title="Url">[[instance.url]]</td>
-                                        <td title="Type">[[instance.type]]</td>
                                         <td><i>api key set</i></td>
                                         
                                         <td>
-                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
-                                            <a class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
+                                            <a v-if="instance.can_manage" class="btn btn-primary btn-sm" :href='"/connectors/"+connector.id+"/edit_instance/"+instance.id' type="button" title="Edit the instance">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </a>
-                                            {% endif %}
                                             <button v-if="connector.name.toLowerCase() === 'misp'" class="btn btn-info btn-sm" type="button" title="Check connectivity" @click="check_misp_connectivity(connector.id, instance.id)">
                                                 <i class="fa-solid fa-plug"></i>
                                             </button>
-                                            {% if current_user.is_admin() or current_user.is_misp_editor() %}
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" title="Cases using this instance" @click="openCasesModal(connector.id, instance)">
+                                                <i class="fa-solid fa-folder-open"></i>
+                                            </button>
                                             <span
                                                 :title="instance.has_links ? 'Cannot delete instance linked to cases/tasks' : 'Delete the instance'"
                                                 style="display: inline-block;"
+                                                v-if="instance.can_manage"
                                             >
                                                 <button class="btn btn-danger btn-sm" type="button"
                                                     :disabled="instance.has_links"
@@ -134,7 +134,6 @@
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </span>
-                                            {% endif %}
                                         </td>
                                     </tr>
 
@@ -174,6 +173,61 @@
             <span class="visually-hidden">Loading...</span>
         </div>
     </template>
+
+    <!-- Shared modal: cases for an instance -->
+    <div class="modal fade" id="instance_cases_modal" tabindex="-1" aria-labelledby="instance_cases_modal_label" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="instance_cases_modal_label">
+                        <i class="fa-solid fa-folder-open me-2"></i>Cases using <strong>[[ cases_modal_instance_name ]]</strong>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="cases_modal_loading" class="text-center py-3">
+                        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+                    </div>
+                    <template v-else-if="cases_modal_list.length">
+                        <ul class="list-group list-group-flush">
+                            <li v-for="c in cases_modal_list" :key="c.id" class="list-group-item d-flex justify-content-between align-items-center">
+                                <span class="d-flex align-items-center gap-2">
+                                    <i v-if="c.is_private" class="fa-solid fa-lock fa-sm text-muted" title="Private case"></i>
+                                    <a :href="'/case/'+c.id" class="text-decoration-none fw-semibold">[[ c.title ]]</a>
+                                </span>
+                                <span v-if="c.completed" class="badge text-bg-success">Completed</span>
+                                <span v-else class="badge text-bg-secondary">Open</span>
+                            </li>
+                            <li v-if="cases_modal_private_count > 0" class="list-group-item d-flex justify-content-between align-items-center text-muted fst-italic">
+                                <span><i class="fa-solid fa-lock me-1"></i>[[ cases_modal_private_count ]] private case<template v-if="cases_modal_private_count > 1">s</template></span>
+                            </li>
+                        </ul>
+                        <nav v-if="cases_modal_nb_pages > 1" class="mt-3 d-flex justify-content-center">
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item" :class="{ disabled: cases_modal_page === 1 }">
+                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page - 1)">&laquo;</button>
+                                </li>
+                                <li v-for="p in cases_modal_nb_pages" :key="p" class="page-item" :class="{ active: p === cases_modal_page }">
+                                    <button class="page-link" @click="fetchCasesPage(p)">[[ p ]]</button>
+                                </li>
+                                <li class="page-item" :class="{ disabled: cases_modal_page === cases_modal_nb_pages }">
+                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page + 1)">&raquo;</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </template>
+                    <p v-else class="text-muted"><i>No cases linked to this instance.</i></p>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted me-auto" v-if="cases_modal_total !== null || cases_modal_private_count > 0">
+                        [[ (cases_modal_total || 0) + cases_modal_private_count ]] case<template v-if="(cases_modal_total || 0) + cases_modal_private_count !== 1">s</template>
+                        <template v-if="cases_modal_private_count > 0"> ([[ cases_modal_private_count ]] private)</template>
+                    </small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 
@@ -191,6 +245,17 @@
                 let searchTimer = null
                 const current_page = ref(1)
                 const nb_pages = ref(0)
+
+                // Cases modal state
+                const cases_modal_instance_name = ref('')
+                const cases_modal_connector_id = ref(null)
+                const cases_modal_instance_id = ref(null)
+                const cases_modal_list = ref([])
+                const cases_modal_loading = ref(false)
+                const cases_modal_page = ref(1)
+                const cases_modal_nb_pages = ref(1)
+                const cases_modal_total = ref(null)
+                const cases_modal_private_count = ref(0)
 
 
                 async function fetchConnectors(page=1) {
@@ -294,6 +359,32 @@
                     nb_pages.value = loc["nb_page"]
                 }
 
+                async function fetchCasesPage(page) {
+                    if (page < 1 || page > cases_modal_nb_pages.value) return
+                    cases_modal_loading.value = true
+                    cases_modal_page.value = page
+                    const res = await fetch('/connectors/' + cases_modal_connector_id.value + '/instance/' + cases_modal_instance_id.value + '/cases?page=' + page)
+                    const data = await res.json()
+                    cases_modal_list.value = data.cases || []
+                    cases_modal_nb_pages.value = data.nb_pages || 1
+                    cases_modal_total.value = data.total ?? null
+                    cases_modal_private_count.value = data.private_count || 0
+                    cases_modal_loading.value = false
+                }
+
+                async function openCasesModal(connector_id, instance) {
+                    cases_modal_connector_id.value = connector_id
+                    cases_modal_instance_id.value = instance.id
+                    cases_modal_instance_name.value = instance.name
+                    cases_modal_list.value = []
+                    cases_modal_total.value = null
+                    cases_modal_private_count.value = 0
+                    cases_modal_page.value = 1
+                    cases_modal_nb_pages.value = 1
+                    const modal = new bootstrap.Modal(document.getElementById('instance_cases_modal'))
+                    modal.show()
+                    await fetchCasesPage(1)
+                }
 
                 return {
                     message_list,
@@ -307,7 +398,16 @@
                     openInstanceDeleteModal,
                     check_misp_connectivity,
                     hasInstances,
-                    onInput
+                    onInput,
+                    openCasesModal,
+                    fetchCasesPage,
+                    cases_modal_instance_name,
+                    cases_modal_list,
+                    cases_modal_loading,
+                    cases_modal_page,
+                    cases_modal_nb_pages,
+                    cases_modal_total,
+                    cases_modal_private_count,
                 }
             }
         }).mount('#main-container')

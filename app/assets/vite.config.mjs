@@ -11,7 +11,7 @@ export default defineConfig({
     assetsDir: '',
     rollupOptions: {
       input: {
-        codemirror: path.resolve(__dirname, 'src/js/codemirror.js')
+        codemirror: path.resolve(import.meta.dirname, 'src/js/codemirror.js')
       },
       output: [
         {
@@ -30,14 +30,14 @@ export default defineConfig({
         },
       ],
     },
-    minify: 'terser',
+    minify: 'esbuild',
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
-      '@js': path.resolve(__dirname, 'src/js'),
-      '@css': path.resolve(__dirname, 'src/css'),
-      '@fonts': path.resolve(__dirname, 'src/fonts'),
+      '@': path.resolve(import.meta.dirname, 'src'),
+      '@js': path.resolve(import.meta.dirname, 'src/js'),
+      '@css': path.resolve(import.meta.dirname, 'src/css'),
+      '@fonts': path.resolve(import.meta.dirname, 'src/fonts'),
     },
   },
   plugins: [
@@ -45,147 +45,151 @@ export default defineConfig({
       targets: [
         // JavaScript
         {
-          src: path.resolve(__dirname, 'node_modules/chart.js/dist/chart.umd.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/chart.js/dist/chart.umd.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/flatpickr/dist/flatpickr.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/flatpickr/dist/flatpickr.min.js'),
           dest: 'js/vendor/calendar',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/flatpickr/dist/plugins/monthSelect/index.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/flatpickr/dist/plugins/monthSelect/index.js'),
           dest: 'js/vendor/calendar',
           rename: 'flatpickr-monthSelect.js',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/fullcalendar/index.global.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/fullcalendar/index.global.min.js'),
           dest: 'js/vendor/calendar',
           rename: 'fullcalendar.global.min.js',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/handlebars/dist/handlebars.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/handlebars/dist/handlebars.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/sortablejs/Sortable.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/sortablejs/Sortable.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/markdown-it/dist/markdown-it.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/markdown-it/dist/markdown-it.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js'),
           dest: 'js/vendor',
           rename: 'timelinejs.js',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js.map'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js.map'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/bootstrap/dist/js/bootstrap.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/bootstrap/dist/js/bootstrap.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/bootstrap/dist/js/bootstrap.min.js.map'),
+          src: path.resolve(import.meta.dirname, 'node_modules/bootstrap/dist/js/bootstrap.min.js.map'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/jquery/dist/jquery.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/jquery/dist/jquery.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/jquery-ui/dist/jquery-ui.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/jquery-ui/dist/jquery-ui.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/select2/dist/js/select2.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/select2/dist/js/select2.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/zxcvbn/dist/zxcvbn.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/zxcvbn/dist/zxcvbn.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/vue/dist/vue.global.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/vue/dist/vue.global.js'),
           dest: 'js/vendor',
         },
         // Pivotick
         {
-          src: path.resolve(__dirname, 'vendor/pivotick/pivotick.umd.js'),
+          src: path.resolve(import.meta.dirname, 'vendor/pivotick/pivotick.umd.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'vendor/pivotick/pivotick.css'),
+          src: path.resolve(import.meta.dirname, 'vendor/pivotick/pivotick.css'),
           dest: 'css/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@popperjs/core/dist/umd/popper.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@popperjs/core/dist/umd/popper.min.js'),
           dest: 'js/vendor',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@popperjs/core/dist/umd/popper.min.js.map'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@popperjs/core/dist/umd/popper.min.js.map'),
           dest: 'js/vendor',
         },
         // Day.js
         {
-          src: path.resolve(__dirname, 'node_modules/dayjs/dayjs.min.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/dayjs/dayjs.min.js'),
           dest: 'js/vendor/dayjs',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/dayjs/plugin/utc.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/dayjs/plugin/utc.js'),
           dest: 'js/vendor/dayjs',
           rename: 'dayjs-utc.js',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/dayjs/plugin/relativeTime.js'),
+          src: path.resolve(import.meta.dirname, 'node_modules/dayjs/plugin/relativeTime.js'),
           dest: 'js/vendor/dayjs',
           rename: 'dayjs-relativeTime.js',
         },
         // CSS
         {
-          src: path.resolve(__dirname, 'node_modules/flatpickr/dist/flatpickr.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/flatpickr/dist/flatpickr.min.css'),
           dest: 'css/vendor/calendar',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/flatpickr/dist/plugins/monthSelect/style.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/flatpickr/dist/plugins/monthSelect/style.css'),
           dest: 'css/vendor/calendar',
           rename: 'flatpickr-monthSelect.css',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css'),
           dest: 'css/vendor/',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css.map'),
+          src: path.resolve(import.meta.dirname, 'node_modules/bootstrap/dist/css/bootstrap.min.css.map'),
           dest: 'css/vendor/',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/jquery-ui/dist/themes/base/jquery-ui.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/jquery-ui/dist/themes/base/jquery-ui.min.css'),
           dest: 'css/vendor/',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/select2/dist/css/select2.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/select2/dist/css/select2.min.css'),
           dest: 'css/vendor/',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css'),
           dest: 'css/vendor/',
           rename: 'timelinejs.css',
         },
         {
-          src: path.resolve(__dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css.map'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css.map'),
           dest: 'css/vendor/',
           rename: 'timelinejs.css.map'
         },
         {
-          src: path.resolve(__dirname, 'node_modules/select2-bootstrap-5-theme/dist/select2-bootstrap-5-theme.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/icons/tl-icons.*'),
+          dest: 'css/css/icons',
+        },
+        {
+          src: path.resolve(import.meta.dirname, 'node_modules/select2-bootstrap-5-theme/dist/select2-bootstrap-5-theme.min.css'),
           dest: 'css/vendor/',
         },
         // FontAwesome CSS with URL transformation
         {
-          src: path.resolve(__dirname, 'node_modules/@fortawesome/fontawesome-free/css/all.min.css'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@fortawesome/fontawesome-free/css/all.min.css'),
           dest: 'css/vendor',
           rename: 'fontawesome.css',
           transform: (content) => {
@@ -197,7 +201,7 @@ export default defineConfig({
         },
         // FontAwesome Fonts
         {
-          src: path.resolve(__dirname, 'node_modules/@fortawesome/fontawesome-free/webfonts/fa-{brands,solid}-*.{ttf,woff2}'),
+          src: path.resolve(import.meta.dirname, 'node_modules/@fortawesome/fontawesome-free/webfonts/fa-{brands,solid}-*.{ttf,woff2}'),
           dest: 'fonts/vendor',
         },
       ],

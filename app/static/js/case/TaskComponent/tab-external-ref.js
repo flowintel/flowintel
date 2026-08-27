@@ -1,5 +1,6 @@
 import { display_toast, create_message } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 
 export default {
     delimiters: ['[[', ']]'],
@@ -29,6 +30,7 @@ export default {
                 let loc = await res.json()
 
                 task.external_references.push({ "id": loc["id"], "url": url, "task_id": task.id })
+                touchTaskAndCaseLastModif(task, props.cases_info)
                 create_message("External reference created", "success-subtle", false, "fas fa-plus")
                 $("#textarea-external-ref-" + task.id).val("")
                 $("#create_external_ref_" + task.id).modal("hide")
@@ -61,6 +63,7 @@ export default {
                         break
                     }
                 }
+                touchTaskAndCaseLastModif(task, props.cases_info)
                 $("#edit_external_ref_" + external_ref_id).modal("hide")
             }
             await display_toast(res)
@@ -79,6 +82,7 @@ export default {
                 if (index > -1) {
                     task.external_references.splice(index, 1)
                 }
+                touchTaskAndCaseLastModif(task, props.cases_info)
             }
             await display_toast(res)
         }
@@ -93,7 +97,7 @@ export default {
             })
             const loc = await res.json()
             if (res.status == 200) {
-                task.last_modif = Date.now()
+                touchTaskAndCaseLastModif(task, props.cases_info)
                 if (loc.note) {
                     task.notes.push(loc.note)
                     task.nb_notes += 1

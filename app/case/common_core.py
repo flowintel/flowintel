@@ -7,14 +7,16 @@ import uuid
 
 from flask import send_file
 
-from sqlalchemy import desc, func, or_
+from sqlalchemy import desc, func, or_, and_
 
 from app.extensions import db
 from app.db_class.db import *
 
+from ..utils.log_paths import resolve_log_file_path
 from ..utils.utils import get_modules_list, isUUID, create_specific_dir
 from ..utils import utils
 from ..custom_tags import custom_tags_core as CustomModel
+
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 TEMP_FOLDER = os.path.join(os.getcwd(), "temp")
@@ -29,6 +31,24 @@ PANDOC_MARKDOWN_FORMAT = (
     "-tex_math_double_backslash"
     "-latex_macros"
 )
+
+def _build_export_error(error_text: str):
+    """Build a user-friendly export error payload from pandoc/mermaid output."""
+    sanitized = "\n".join(line.strip() for line in (error_text or "").splitlines() if line.strip())
+    lower = sanitized.lower()
+
+    message = "Error during export process"
+    if any(token in lower for token in ["mermaid", "parse error", "syntax error", "lexical error"]):
+        message = "Mermaid diagram syntax error: please verify your Mermaid block and try again"
+
+    details = ""
+    if sanitized:
+        details = sanitized[:600]
+
+    payload = {"message": message, "toast_class": "danger-subtle"}
+    if details:
+        payload["details"] = details
+    return payload
 
 
 def _format_logs_as_markdown(case, log_entries, title="History"):
@@ -399,13 +419,67 @@ def get_instance_by_name(name):
 
 def get_case_connectors(cid, current_user: User):
     """Return a list of all connectors present in a case"""
-    return Case_Connector_Instance.query\
-            .join(User_Connector_Instance, User_Connector_Instance.instance_id==Case_Connector_Instance.instance_id)\
-            .join(Connector_Instance, Connector_Instance.id==Case_Connector_Instance.instance_id)\
-            .where(
-                or_(User_Connector_Instance.user_id==current_user.id, Connector_Instance.global_api_key.isnot(None)), 
-                Case_Connector_Instance.case_id==cid)\
-            .all()
+    if current_user.is_admin() or (current_user.is_case_admin() and get_present_in_case(cid, current_user)):
+        return Case_Connector_Instance.query.filter_by(case_id=cid).all()
+
+    return (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Connector_Instance.id == Case_Connector_Instance.instance_id)
+        .outerjoin(
+            User_Connector_Instance,
+            User_Connector_Instance.instance_id == Case_Connector_Instance.instance_id
+        )
+        .where(
+            or_(
+                User_Connector_Instance.user_id == current_user.id,
+                Connector_Instance.sharing_scope == "global",
+                and_(
+                    Connector_Instance.sharing_scope == "org",
+                    Connector_Instance.shared_org_id == current_user.org_id
+                )
+            ),
+            Case_Connector_Instance.case_id == cid
+        )
+        .all()
+    )
+
+
+def can_access_all_case_connectors(case_id: int, current_user: User) -> bool:
+    return current_user.is_admin() or (current_user.is_case_admin() and get_present_in_case(case_id, current_user))
+
+
+def can_interact_with_case_connector(instance, current_user: User) -> bool:
+    if not instance:
+        return False
+    from ..connectors import connectors_core as ConnectorModel
+    return ConnectorModel.is_instance_visible_to_user(instance, current_user)
+
+
+def get_case_connector_api_key(instance, current_user: User, case_id: int):
+    if not instance:
+        return None
+    from ..connectors import connectors_core as ConnectorModel
+
+    if instance.global_api_key:
+        scope = ConnectorModel.get_instance_sharing_scope(instance)
+        if current_user.is_admin():
+            return instance.global_api_key
+        if scope == "global":
+            return instance.global_api_key
+        if scope == "org" and instance.shared_org_id == current_user.org_id:
+            return instance.global_api_key
+
+    user_instance = get_user_instance_both(current_user.id, instance.id)
+    if user_instance and user_instance.api_key:
+        return user_instance.api_key
+
+    return None
+
+
+def can_use_case_connector(instance, current_user: User, case_id: int) -> bool:
+    return can_interact_with_case_connector(instance, current_user) and bool(
+        get_case_connector_api_key(instance, current_user, case_id)
+    )
 
 def get_case_connectors_by_id(case_instance_id):
     """Return a case connector instance"""
@@ -421,23 +495,6 @@ def get_case_connectors_both(case_id, instance_id):
     """Return an instance of Case_Connector_Instance depending of a case id and an instance id"""
     return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
-def get_task_connectors(tid):
-    """Return a list of all connectors present in a task"""
-    return Task_Connector_Instance.query.filter_by(task_id=tid).all()
-
-def get_task_connectors_by_id(task_instance_id):
-    """Return a task connector instance"""
-    return Task_Connector_Instance.query.get(task_instance_id)
-
-def get_task_connectors_name(task_id):
-    """Return a list of all name connectors present in a task"""
-    return [instance.name for instance in \
-            Connector_Instance.query.join(Task_Connector_Instance, Task_Connector_Instance.instance_id==Connector_Instance.id)\
-                .filter_by(task_id=task_id).all()]
-
-def get_task_connectors_both(task_id, instance_id):
-    """Return an instance of Task_Connector_Instance depending of a task id and an instance id"""
-    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_user_instance_both(user_id, instance_id):
     """Return an instance of User_Connector_Instance depending of a user id and an instance id"""
@@ -451,9 +508,6 @@ def get_case_connector_id(instance_id, case_id):
     """Return an instance of Case_Connector_Instance depending of an instance id and a case id"""
     return Case_Connector_Instance.query.filter_by(case_id=case_id, instance_id=instance_id).first()
 
-def get_task_connector_id(instance_id, task_id):
-    """Return an instance of Task_Connector_Instance depending of an instance id and a task id"""
-    return Task_Connector_Instance.query.filter_by(task_id=task_id, instance_id=instance_id).first()
 
 def get_task_note(note_id):
     return Note.query.get(note_id)
@@ -508,7 +562,7 @@ def get_audit_logs(case_id):
     import re
     
     try:
-        log_file_path = os.path.join('logs', current_app.config.get('LOG_FILE', 'record.log'))
+        log_file_path = resolve_log_file_path(current_app.config.get('LOG_FILE', 'record.log'))
         
         if not os.path.exists(log_file_path):
             return []
@@ -676,6 +730,7 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
     mermaid_enabled = current_app.config.get("ENABLE_MERMAID_EXPORT", True)
     use_mermaid_filter = allow_mermaid and mermaid_enabled
 
+    command = None
     if type_req == "pdf":
         command = ["pandoc", "-f", PANDOC_MARKDOWN_FORMAT, temp_md, "--pdf-engine=xelatex", \
                    "--pdf-engine-opt=-no-shell-escape", \
@@ -698,6 +753,11 @@ def export_notes_core(case_task_id: int, type_req: str, note: str, download_file
         process_env["openout_any"] = "p"
     process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=process_env)
 
+    try:
+        process = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
+    except Exception as e:
+        return {"message": "Error during export process", "toast_class": "danger-subtle", "details": str(e)}
+    
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "mermaid-images"))
     except OSError:
@@ -785,6 +845,9 @@ def create_task_from_template(template_id, cid, current_user=None):
     from flask import current_app
     template = Task_Template.query.get(template_id)
     case = get_case(cid)
+    if not template or not case:
+        return None
+
     nb_tasks = 1
     if case.nb_tasks:
         nb_tasks = case.nb_tasks+1
@@ -862,10 +925,10 @@ def create_task_from_template(template_id, cid, current_user=None):
         db.session.commit()
 
     ## Task subtasks
-    for sub in task.subtasks:
+    for sub in template.subtasks:
         subtask = Subtask(
             task_id=task.id,
-            descritpion=sub.description
+            description=sub.description
         )
         db.session.add(subtask)
         db.session.commit()
@@ -891,12 +954,16 @@ def create_task_from_template(template_id, cid, current_user=None):
 
 def get_instance_with_icon(instance_id):
     """Return an instance of a connector with its icon"""
-    loc_instance = get_instance(instance_id).to_json()
-    loc_instance["icon"] = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
+    instance = get_instance(instance_id)
+    if not instance:
+        return None
+    loc_instance = instance.to_json()
+    icon_file = Icon_File.query.join(Connector_Icon, Connector_Icon.file_icon_id==Icon_File.id)\
                                     .join(Connector, Connector.icon_id==Connector_Icon.id)\
                                     .join(Connector_Instance, Connector_Instance.connector_id==Connector.id)\
                                     .where(Connector_Instance.id==instance_id)\
-                                    .first().uuid
+                                    .first()
+    loc_instance["icon"] = icon_file.uuid if icon_file else None
     return loc_instance
 
 

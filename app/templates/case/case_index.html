@@ -282,7 +282,10 @@
                                 <i class="fa-solid fa-file-lines me-1"></i> [[ case_loc.files ? case_loc.files.length : 0 ]]
                             </span>
                             <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="MISP-Objects">
-                                <i class="fa-solid fa-database me-1"></i> [[ case_loc.nb_objects ? case_loc.nb_objects : 0 ]]
+                                <i class="misp-icon misp-icon-object misp-simple me-1"></i> [[ case_loc.nb_objects ? case_loc.nb_objects : 0 ]]
+                            </span>
+                            <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Standalone MISP-Attributes">
+                                <i class="misp-icon misp-icon-attribute misp-simple me-1"></i> [[ case_loc.nb_standalone_attrs ? case_loc.nb_standalone_attrs : 0 ]]
                             </span>
                             <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Links">
                                 <i class="fa-solid fa-link me-1"></i> [[ case_loc.link_to ? case_loc.link_to.length : 0 ]]
@@ -319,7 +322,11 @@
                                             <tag_badge :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon"></tag_badge>
                                         </template>
                                         <template v-else-if="item.type === 'tag'">
-                                            <tag_badge :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon" :title="item.data.description"></tag_badge>
+                                            <div class="tag" :title="item.data.description" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
+                                                <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
+                                                <i v-else class="misp-icon misp-icon-tag misp-simple"></i>
+                                                [[ item.data.name ]]
+                                            </div>
                                         </template>
                                         <template v-else>
                                             <tag_badge :label="item.data.tag" :icon-name="item.data.icon" :title="'Description:\n' + item.data.description + '\n\nMetadata:\n' + item.data.meta"></tag_badge>
@@ -384,6 +391,7 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -736,6 +744,8 @@
                 return {
                     message_list,
                     dayjs,
+                    getTextColor,
+                    mapIcon,
 
                     is_open_cases,
                     current_filter,

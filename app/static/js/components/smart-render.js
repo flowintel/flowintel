@@ -375,8 +375,7 @@ export default {
                 :class="{ 'cv-pre--wrap': wrap }"
                 v-html="highlighted_with_search"
                 ref="pre_ref"
-                @scroll="sync_gutter_scroll">
-            </pre>
+                @scroll="sync_gutter_scroll"></pre>
         </div>
 
     </div>

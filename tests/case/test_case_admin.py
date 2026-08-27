@@ -8,6 +8,24 @@ def create_case(client):
                         )
     return response
 
+def test_create_case_without_in_app_alert(client, app, monkeypatch):
+    import conf.config_module as ConfigModule
+
+    monkeypatch.setattr(ConfigModule, "CASE_CREATE_ALERT_ENABLED", False, raising=False)
+
+    response = client.post("/api/case/create",
+                           content_type='application/json',
+                           headers={"X-API-KEY": API_KEY},
+                           json={"title": "Test Case without alert"}
+                        )
+    assert response.status_code == 201
+
+    case_id = response.json["case_id"]
+
+    with app.app_context():
+        from app.db_class.db import Alert
+        assert Alert.query.filter_by(case_id=case_id).count() == 0
+
 def test_create_case_no_api(client):
     response = client.post("/api/case/create", data={
         'title': "Test Case admin"
