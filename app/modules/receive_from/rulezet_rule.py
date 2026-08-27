@@ -1,5 +1,6 @@
 import requests
 import urllib3
+from urllib.parse import quote
 import conf.config_module as Config
 
 # Default to True so existing deployments without RULEZET_VERIFY_SSL stay on the secure default.
@@ -17,6 +18,33 @@ module_config = {
 }
 
 
+def _rulezet_headers(api_key):
+    if not api_key:
+        return {}
+
+    token = str(api_key).strip()
+    auth_value = token if token.lower().startswith(("bearer ", "token ")) else f"Bearer {token}"
+    return {
+        "Authorization": auth_value,
+        "X-API-KEY": token,
+        "Accept": "application/json"
+    }
+
+
+def _rulezet_error_message(response):
+    message = None
+    try:
+        data = response.json()
+        if isinstance(data, dict):
+            message = data.get("message") or data.get("error") or data.get("detail")
+    except ValueError:
+        message = response.text.strip() if getattr(response, "text", None) else None
+
+    if message:
+        return f"Rulezet returned {response.status_code}: {message}"
+    return f"Rulezet returned HTTP {response.status_code}"
+
+
 def handler(instance, case, user, case_model=None, db_session=None, payload=None):
     """
     instance: name, url, description, uuid, connector_id, api_key, identifier
@@ -32,19 +60,41 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     case_model: CaseCore instance for DB helper access
     db_session: SQLAlchemy db session
     """
+    headers = _rulezet_headers(instance.get("api_key"))
+    base_url = instance["url"].rstrip("/")
+
     try:
-        requests.get(instance["url"], verify=VERIFY_SSL, timeout=20)
+        requests.get(base_url, headers=headers, verify=VERIFY_SSL, timeout=20)
     except Exception:
         return {"message": "Error connecting to Rulezet"}
 
     if not case_model or not db_session:
         return {"message": "Module requires case_model and db_session"}
 
+    if not payload or not payload.get("query"):
+        return {"message": "Need to give a query"}
+
     from app.case import common_core as CommonModel
     from app.db_class.db import Rulezet_Rule
     import datetime
 
-    loc_json = requests.get(f'{instance["url"]}/api/rule/public/detail/{payload["query"]}', verify=VERIFY_SSL, timeout=20).json()
+    try:
+        response = requests.get(
+            f"{base_url}/api/rule/public/detail/{quote(str(payload['query']), safe='')}",
+            headers=headers,
+            verify=VERIFY_SSL,
+            timeout=20
+        )
+    except Exception:
+        return {"message": "Error connecting to Rulezet"}
+
+    if response.status_code >= 400:
+        return {"message": _rulezet_error_message(response)}
+
+    try:
+        loc_json = response.json()
+    except ValueError:
+        return {"message": "Rulezet returned invalid JSON"}
 
     title = loc_json.get("title")
     description = loc_json.get("description")

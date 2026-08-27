@@ -1763,8 +1763,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             "conflict_created": created
         }
 
-    def _build_case_sync_context(self, case_instance_id, loc_case, user):
-        """Prepare the case and connector payload used by MISP sync checks and module runs."""
+    def _build_case_connector_module_context(self, case_instance_id, loc_case, user):
+        """Prepare the common case and connector payload used by case connector modules."""
         org = CommonModel.get_org(loc_case.owner_org_id)
 
         tasks = []
@@ -1789,7 +1789,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
             return None, None, None, {"message": "Connector instance not found"}
-        if not CommonModel.can_use_case_connector(loc_instance, user, loc_case.id):
+        if not CommonModel.can_interact_with_case_connector(loc_instance, user):
             return None, None, None, {"message": "Action not allowed", "toast_class": "warning-subtle"}
 
         instance = loc_instance.to_json()
@@ -1797,6 +1797,14 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not instance["api_key"]:
             return None, None, None, {"message": "No API key configured for this connector"}
         instance["identifier"] = case_instance.identifier
+
+        return case, case_instance, loc_instance, instance
+
+    def _build_case_sync_context(self, case_instance_id, loc_case, user):
+        """Prepare the case and connector payload used by MISP sync checks and module runs."""
+        case, case_instance, loc_instance, instance = self._build_case_connector_module_context(case_instance_id, loc_case, user)
+        if not case:
+            return case, case_instance, loc_instance, instance
 
         case["objects"] = self.get_misp_object_instance(case["id"], instance["id"])
         case["standalone_attributes"] = self.get_standalone_attr_instance(case["id"], instance["id"])
@@ -1948,6 +1956,43 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         db.session.commit()
 
         CommonModel.save_history(case["uuid"], user, f"Case Module {module} used on instance: {instance['name']}")
+
+    def call_connector_module_case(self, module, case_instance_id, loc_case, user, payload=None):
+        """Run a non-MISP case connector module."""
+        case, case_instance, loc_instance, instance = self._build_case_connector_module_context(case_instance_id, loc_case, user)
+        if not case:
+            return instance
+
+        modules, _ = get_modules_list()
+        if module not in modules:
+            return {"message": "Module not found"}
+
+        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
+        if module_cfg.get("case_task") != "case":
+            return {"message": "Module is not available for cases"}
+        if module_cfg.get("connector") == "misp":
+            return {"message": "Use the MISP sync route for MISP modules"}
+
+        connector = CommonModel.get_connector(loc_instance.connector_id)
+        expected_connector = module_cfg.get("connector")
+        if expected_connector and connector and connector.name.lower() != expected_connector.lower():
+            return {"message": "Module is not compatible with this connector"}
+
+        try:
+            result = modules[module].handler(instance, case, user, case_model=self, db_session=db, payload=payload)
+        except TypeError:
+            result = modules[module].handler(instance, case, user, case_model=self, db_session=db)
+
+        if isinstance(result, dict):
+            if "message" in result:
+                return result
+            if "identifier" in result and case_instance.identifier != result["identifier"]:
+                case_instance.identifier = result["identifier"]
+                db.session.commit()
+
+        case_instance.last_sync = datetime.datetime.now(tz=datetime.timezone.utc)
+        db.session.commit()
+        CommonModel.save_history(case["uuid"], user, f"Case connector module {module} used on instance: {instance['name']}")
 
     def trigger_misp_send_on_change(self, cid, fallback_user=None):
         """Run enabled MISP send schedules that are configured for case changes."""

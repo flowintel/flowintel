@@ -84,7 +84,7 @@ def get_module_counts(cid):
 @login_required
 @misp_editor_required
 def call_module_case(cid):
-    """Run a module"""
+    """Run a MISP case sync module."""
     case = CommonModel.get_case(cid)
     if case:
         if not check_user_private_case(case):
@@ -104,6 +104,37 @@ def call_module_case(cid):
             return jsonify(res), 400
         flowintel_log("audit", 200, "Module called on case", User=current_user.email, CaseId=cid, Module=module)
         return {"message": "Connector used", 'toast_class': "success-subtle"}, 200
+    return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<cid>/call_connector_module_case", methods=['POST'])
+@login_required
+def call_connector_module_case(cid):
+    """Run a non-MISP connector module on a case."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            flowintel_log("audit", 403, "Call connector module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Call connector module on case: Org not assigned to case", User=current_user.email, CaseId=cid)
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        payload = request.get_json() or {}
+        case_instance_id = payload.get("case_task_instance_id")
+        module = payload.get("module")
+        if not module:
+            return {"message": "Need to pass 'module'", 'toast_class': "danger-subtle"}, 400
+        if not case_instance_id:
+            return {"message": "Need to pass 'case_task_instance_id'", 'toast_class': "danger-subtle"}, 400
+
+        res = CaseModel.call_connector_module_case(module, case_instance_id, case, current_user, payload=payload)
+        if res:
+            res["toast_class"] = res.get("toast_class", "danger-subtle")
+            return jsonify(res), 400
+        flowintel_log("audit", 200, "Connector module called on case", User=current_user.email, CaseId=cid, Module=module)
+        return {"message": "Connector module used", 'toast_class': "success-subtle"}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
