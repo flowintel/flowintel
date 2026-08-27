@@ -1,3 +1,6 @@
+import importlib
+import re
+
 from flask import jsonify, request, redirect
 from flask_login import login_required, current_user
 import conf.config_module as ConfigModule
@@ -6,7 +9,34 @@ from app.decorators import admin_required
 from app.alerts import alerts_core as AlertsCore
 from . import alerts_blueprint
 
-import conf.config_module as ConfigModule
+CONFIG_MODULE_PATH = "conf/config_module.py"
+ALLOWED_CONFIG_KEYS = {
+    "CASE_CREATE_ALERT_ENABLED": bool,
+    "WEBHOOK_ENABLED": bool,
+    "WEBHOOK_URL": str,
+    "WEBHOOK_SECRET": str,
+    "IMAP_SERVER": str,
+    "IMAP_PORT": int,
+    "IMAP_USE_SSL": bool,
+    "IMAP_USER": str,
+    "IMAP_PASSWORD": str,
+}
+
+
+def _config_value_to_python(value, expected_type):
+    if expected_type is bool:
+        if not isinstance(value, bool):
+            raise ValueError("must be a boolean")
+        return "True" if value else "False"
+    if expected_type is int:
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError("must be an integer")
+        return str(value)
+    if expected_type is str:
+        if not isinstance(value, str):
+            raise ValueError("must be a string")
+        return repr(value)
+    raise ValueError("has an unsupported type")
 
 
 @alerts_blueprint.route("/")
@@ -59,32 +89,34 @@ def update_config():
     data = request.get_json()
     if not data:
         return jsonify({"status": "error", "message": "No data"}), 400
+    if not isinstance(data, dict):
+        return jsonify({"status": "error", "message": "Invalid data"}), 400
 
     try:
-        with open("conf/config_module.py", "r") as f:
+        updates = {}
+        for key, val in data.items():
+            expected_type = ALLOWED_CONFIG_KEYS.get(key)
+            if expected_type is None:
+                return jsonify({"status": "error", "message": "Unsupported config key"}), 400
+            try:
+                updates[key] = _config_value_to_python(val, expected_type)
+            except ValueError as exc:
+                return jsonify({"status": "error", "message": f"{key} {exc}"}), 400
+
+        with open(CONFIG_MODULE_PATH, "r") as f:
             content = f.read()
 
-        for key, val in data.items():
-            if isinstance(val, bool):
-                py_val = "True" if val else "False"
-            elif isinstance(val, int):
-                py_val = str(val)
+        for key, py_val in updates.items():
+            pattern = rf"^{re.escape(key)}\s*=.*$"
+            replacement = f"{key} = {py_val}"
+            if re.search(pattern, content, flags=re.MULTILINE):
+                content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
             else:
-                py_val = repr(val)
-            import re
-            content = re.sub(
-                rf"^{key}\s*=.*",
-                f'{key} = {py_val}',
-                content,
-                flags=re.MULTILINE
-            )
-            if key not in content:
-                content += f"\n{key} = {py_val}\n"
+                content += f"\n{replacement}\n"
 
-        with open("conf/config_module.py", "w") as f:
+        with open(CONFIG_MODULE_PATH, "w") as f:
             f.write(content)
 
-        import importlib
         importlib.reload(ConfigModule)
 
         return jsonify({"status": "ok"})
