@@ -637,7 +637,7 @@ class Notification(db.Model):
     html_icon = db.Column(db.String(60), index=True)
     category = db.Column(db.String(40), index=True, default="general")
     notification_type = db.Column(db.String(40), index=True, default="info")
-    target_url = db.Column(db.String, nullable=True)
+    target_url = db.Column(db.String(8192), nullable=True)
 
     def to_json(self):
         json_dict = {
@@ -698,7 +698,7 @@ class ExternalAlert(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
     case_id = db.Column(db.Integer, index=True)
-    message = db.Column(db.String, index=True)
+    message = db.Column(db.Text, index=True)
     status = db.Column(db.String(30), index=True, default="new")
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
     is_read = db.Column(db.Boolean, index=True, default=False)
@@ -710,7 +710,7 @@ class ExternalAlert(db.Model):
     tlp = db.Column(db.String(20), index=True)
     source = db.Column(db.String(120), index=True)
     source_ref = db.Column(db.String(255), index=True)
-    source_url = db.Column(db.String, nullable=True)
+    source_url = db.Column(db.String(8192), nullable=True)
     connector_instance_id = db.Column(db.Integer, index=True)
     owner_user_id = db.Column(db.Integer, index=True)
     owner_org_id = db.Column(db.Integer, index=True)
@@ -1361,8 +1361,8 @@ class Case_Misp_Sync_Conflict(db.Model):
     case_connector_instance_id = db.Column(db.Integer, index=True)
     direction = db.Column(db.String(10), index=True)
     item_type = db.Column(db.String(30), index=True)  # object, attribute, case, task, report
-    local_ref = db.Column(db.String, nullable=True)
-    remote_ref = db.Column(db.String, nullable=True)
+    local_ref = db.Column(db.Text, nullable=True)
+    remote_ref = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), default="pending", index=True, nullable=False)
     base_snapshot = db.Column(db.JSON, nullable=True)
     local_snapshot = db.Column(db.JSON, nullable=True)

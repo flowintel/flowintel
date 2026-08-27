@@ -43,10 +43,4 @@ def downgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if 'task__misp__attribute' in inspector.get_table_names():
-        indexes = {idx['name'] for idx in inspector.get_indexes('task__misp__attribute')}
-        with op.batch_alter_table('task__misp__attribute', schema=None) as batch_op:
-            if 'ix_task__misp__attribute_misp_attribute_id' in indexes:
-                batch_op.drop_index(batch_op.f('ix_task__misp__attribute_misp_attribute_id'))
-            if 'ix_task__misp__attribute_task_id' in indexes:
-                batch_op.drop_index(batch_op.f('ix_task__misp__attribute_task_id'))
         op.drop_table('task__misp__attribute')

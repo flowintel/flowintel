@@ -139,7 +139,7 @@ def downgrade():
         sa.Column('id', sa.INTEGER(), nullable=False),
         sa.Column('task_id', sa.INTEGER(), nullable=True),
         sa.Column('instance_id', sa.INTEGER(), nullable=True),
-        sa.Column('identifier', sa.VARCHAR(), nullable=True),
+        sa.Column('identifier', sa.VARCHAR(255), nullable=True),
         sa.PrimaryKeyConstraint('id')
         )
         with op.batch_alter_table('task__connector__instance', schema=None) as batch_op:
