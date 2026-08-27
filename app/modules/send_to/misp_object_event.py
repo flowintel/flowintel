@@ -3,7 +3,7 @@ import uuid
 import logging
 import urllib3
 
-from pymisp import MISPEvent, MISPObject, PyMISP
+from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
 from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
 
 
