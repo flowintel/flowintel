@@ -69,7 +69,7 @@ function start_misp_modules_screen {
         return 1
     fi
 
-    # screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
+    screen -L -Logfile logs/misp.log -dmS "misp_mod_flowintel" bash -c "misp-modules -l 127.0.0.1"
 }
 
 
