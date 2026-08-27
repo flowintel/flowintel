@@ -322,7 +322,7 @@ class Config():
     # =============================================================================
     # SIMPLESAML PHP
     # =============================================================================
-    SIMPLESAML_ENABLED        = env_bool('SIMPLESAML_ENABLED', default=True)
+    SIMPLESAML_ENABLED        = env_bool('SIMPLESAML_ENABLED', default=False)
     SIMPLESAML_TRUST_PROXY_HEADERS = env_bool('SIMPLESAML_TRUST_PROXY_HEADERS', default=True)
     # Standard approach for config for python3-saml
     # Note: in settings for Saml, acs is probably analag to redirect in keycloak
