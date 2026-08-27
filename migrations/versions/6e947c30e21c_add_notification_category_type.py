@@ -37,7 +37,7 @@ def upgrade():
         if 'notification_type' not in existing_columns:
             batch_op.add_column(sa.Column('notification_type', sa.String(length=40), nullable=True))
         if 'target_url' not in existing_columns:
-            batch_op.add_column(sa.Column('target_url', sa.String(), nullable=True))
+            batch_op.add_column(sa.Column('target_url', sa.String(8192), nullable=True))
 
     bind = op.get_bind()
     inspector = sa.inspect(bind)
