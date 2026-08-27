@@ -154,6 +154,8 @@ configure_repo_dev:
 	# MacOS Tweak: Let's ignore the error exit code 1 on MacOS (file already exist -> no overwrite)
 	cp -n conf/config.py.default conf/config.py
 	cp -n conf/config_module.py.default conf/config_module.py
+	cp -n conf/saml/settings.json.template conf/saml/settings.json
+	cp -n conf/saml/advanced_settings.json.template conf/saml/advanced_settings.json
 	#
 	cp -n template.env.full.mariadb .env.full.mariadb.custom
 	cp -n template.env.full.postgres .env.full.postgres.custom
