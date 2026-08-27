@@ -1,16 +1,12 @@
 import os
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 import redis
 
 
-from flask import Flask, app, app
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf import CSRFProtect
-from flask_migrate import Migrate
-from flask_session import Session
-from flask_login import LoginManager
+from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from markupsafe import Markup, escape
 from .utils.log_paths import resolve_log_file_path, validate_log_file_name
@@ -25,6 +21,54 @@ def vue_escape(value):
         return ""
     escaped = escape(value)
     return Markup(str(escaped).replace("[[", "[<!---->[").replace("]]", "]<!---->]"))
+
+def load_saml_into_app_config(app):
+    saml_path = app.config.get("SIMPLESAML_PYTHON3_SAML_PATH")
+    if not saml_path:
+        raise RuntimeError("SIMPLESAML_PYTHON3_SAML_PATH is not configured")
+
+    settings_file = os.path.join(saml_path, "settings.json")
+    advanced_file = os.path.join(saml_path, "advanced_settings.json")
+
+    with open(settings_file, "r", encoding="utf-8") as f:
+        saml_settings = json.load(f)
+
+    advanced_settings = {}
+    if os.path.exists(advanced_file):
+        with open(advanced_file, "r", encoding="utf-8") as f:
+            advanced_settings = json.load(f)
+
+    app.config["SIMPLESAML_SETTINGS"] = {
+        "strict": saml_settings.get("strict", True),
+        "debug": saml_settings.get("debug", False),
+        "sp": saml_settings.get("sp", {}),
+        "idp": saml_settings.get("idp", {}),
+        "security": advanced_settings.get("security", {}),
+    }
+
+    app.config["SIMPLESAML_SP_ENTITY_ID"] = saml_settings.get("sp", {}).get("entityId")
+    app.config["SIMPLESAML_ACS_URL"] = (
+        saml_settings.get("sp", {})
+        .get("assertionConsumerService", {})
+        .get("url")
+    )
+    app.config["SIMPLESAML_IDP_ENTITY_ID"] = saml_settings.get("idp", {}).get("entityId")
+    app.config["SIMPLESAML_IDP_SSO_URL"] = (
+        saml_settings.get("idp", {})
+        .get("singleSignOnService", {})
+        .get("url")
+    )
+    app.config["SIMPLESAML_IDP_SLO_URL"] = (
+        saml_settings.get("idp", {})
+        .get("singleLogoutService", {})
+        .get("url")
+    )
+    app.config["SIMPLESAML_HAS_IDP_CERT"] = bool(
+        saml_settings.get("idp", {}).get("x509cert")
+    )
+    app.config["SIMPLESAML_HAS_SP_CERT"] = bool(
+        saml_settings.get("sp", {}).get("x509cert")
+    )
 
 def create_app():
     app = Flask(__name__)
@@ -47,6 +91,8 @@ def create_app():
             "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
         )
         return resp
+    if app.config.get("SIMPLESAML_ENABLED"):
+        load_saml_into_app_config(app)
     
     if not app.debug and not app.testing:
         logs_folder = Path.cwd() / "logs"
