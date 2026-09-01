@@ -258,10 +258,6 @@ export default {
 
         async function saveAssignTasks(misp_object_id){
             const sel = assign_task_state.value[misp_object_id] || []
-            if (!sel.length) {
-                create_message("Select at least one task", "warning-subtle")
-                return
-            }
             const res = await fetch(`/case/${props.case_id}/misp_object/${misp_object_id}/set_tasks`, {
                 method: 'POST',
                 headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
@@ -279,7 +275,7 @@ export default {
                     const affected = new Set(new_ids)
                     for (const t of props.cases_info.tasks) {
                         const links = t.misp_object_links || []
-                        if (links.some(l => l.misp_object_id === misp_object_id)) {
+                        if (links.some(l => Number(l.misp_object_id) === Number(misp_object_id))) {
                             affected.add(t.id)
                         }
                     }
