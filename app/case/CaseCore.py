@@ -2832,7 +2832,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         date_parsed = self.parse_date(date_text)
         event = Case_Timeline_Event(
             case_id=cid,
-            date_text=date_text,
+            date_text=self.format_timeline_event_date(date_parsed),
             date_parsed=date_parsed,
             description=description,
             misp_object_id=misp_object_id if misp_object_id else None,
@@ -2851,8 +2851,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         event = self.get_timeline_event(event_id)
         if not event:
             return None
-        event.date_text = date_text
-        event.date_parsed = self.parse_date(date_text)
+        date_parsed = self.parse_date(date_text)
+        event.date_text = self.format_timeline_event_date(date_parsed)
+        event.date_parsed = date_parsed
         event.description = description
         db.session.commit()
 
@@ -2886,18 +2887,41 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         formats = [
             '%Y-%m-%d %H:%M:%S',
             '%Y-%m-%d %H:%M',
+            '%Y-%m-%d %Hh%M',
+            '%Y-%m-%d %Hh',
             '%Y-%m-%dT%H:%M:%S',
             '%Y-%m-%dT%H:%M',
             '%Y-%m-%d',
             '%d/%m/%Y %H:%M:%S',
             '%d/%m/%Y %H:%M',
+            '%d/%m/%Y %Hh%M',
+            '%d/%m/%Y %Hh',
             '%d/%m/%Y',
+            '%d/%m/%y %H:%M:%S',
+            '%d/%m/%y %H:%M',
+            '%d/%m/%y %Hh%M',
+            '%d/%m/%y %Hh',
+            '%d/%m/%y',
             '%m/%d/%Y %H:%M:%S',
             '%m/%d/%Y %H:%M',
+            '%m/%d/%Y %Hh%M',
+            '%m/%d/%Y %Hh',
             '%m/%d/%Y',
+            '%m/%d/%y %H:%M:%S',
+            '%m/%d/%y %H:%M',
+            '%m/%d/%y %Hh%M',
+            '%m/%d/%y %Hh',
+            '%m/%d/%y',
             '%d-%m-%Y %H:%M:%S',
             '%d-%m-%Y %H:%M',
+            '%d-%m-%Y %Hh%M',
+            '%d-%m-%Y %Hh',
             '%d-%m-%Y',
+            '%d-%m-%y %H:%M:%S',
+            '%d-%m-%y %H:%M',
+            '%d-%m-%y %Hh%M',
+            '%d-%m-%y %Hh',
+            '%d-%m-%y',
             '%b %d, %Y %H:%M:%S',
             '%b %d, %Y %H:%M',
             '%b %d, %Y',
@@ -2906,6 +2930,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             '%B %d, %Y',
             '%Y/%m/%d %H:%M:%S',
             '%Y/%m/%d %H:%M',
+            '%Y/%m/%d %Hh%M',
+            '%Y/%m/%d %Hh',
             '%Y/%m/%d',
         ]
         for fmt in formats:
@@ -2914,6 +2940,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             except ValueError:
                 continue
         return None
+
+    def format_timeline_event_date(self, date_value):
+        """Return the canonical timeline event display value."""
+        return date_value.strftime('%Y-%m-%d %H:%M')
 
     def import_misp_objects_to_timeline(self, cid, current_user, object_ids=None, attribute_ids=None):
         """Import MISP objects and standalone attributes as timeline events.

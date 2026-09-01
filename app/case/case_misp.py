@@ -402,7 +402,7 @@ def create_timeline_event(cid):
                 if not date_text:
                     return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
                 if CaseModel.parse_date(date_text) is None:
-                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 misp_object_id = request.json.get("misp_object_id")
                 event = CaseModel.create_timeline_event(
                     cid, date_text, request.json["description"],
@@ -427,7 +427,7 @@ def edit_timeline_event(cid, eid):
                 if not date_text:
                     return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
                 if CaseModel.parse_date(date_text) is None:
-                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
+                    return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 event = CaseModel.edit_timeline_event(
                     eid, date_text, request.json["description"], current_user
                 )

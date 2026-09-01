@@ -262,8 +262,8 @@ export default {
                     <div class="col-md-4">
                         <label class="form-label">Date / Time</label>
                         <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, Mar 15 2024...">
-                        <div class="form-text">Any common date format is accepted</div>
+                               placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30...">
+                        <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label">Description</label>

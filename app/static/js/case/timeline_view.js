@@ -158,8 +158,11 @@ export default {
             if (!t) return false
             const patterns = [
                 /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{4}-\d{2}-\d{2} \d{1,2}h(\d{2})?$/,
                 /^\d{4}\/\d{2}\/\d{2}( \d{2}:\d{2}(:\d{2})?)?$/,
-                /^\d{2}[\/-]\d{2}[\/-]\d{4}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{4}\/\d{2}\/\d{2} \d{1,2}h(\d{2})?$/,
+                /^\d{2}[\/-]\d{2}[\/-]\d{2,4}( \d{2}:\d{2}(:\d{2})?)?$/,
+                /^\d{2}[\/-]\d{2}[\/-]\d{2,4} \d{1,2}h(\d{2})?$/,
                 /^[A-Za-z]{3,9} \d{1,2}, \d{4}( \d{2}:\d{2}(:\d{2})?)?$/
             ]
             return patterns.some(re => re.test(t))
@@ -171,7 +174,7 @@ export default {
                 return
             }
             if (!is_valid_date_text(new_date_text.value)) {
-                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.', 'danger-subtle')
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.', 'danger-subtle')
                 return
             }
             if (!new_description.value.trim()) {
@@ -214,7 +217,7 @@ export default {
                 return
             }
             if (!is_valid_date_text(edit_date_text.value)) {
-                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024 or Mar 15, 2024.', 'danger-subtle')
+                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.', 'danger-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/edit_timeline_event/' + ev_id, {
@@ -402,8 +405,8 @@ export default {
                     <div class="col-md-4">
                         <label class="form-label">Date / Time <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
                         <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, Mar 15, 2024, 15/03/2024..." required>
-                        <div class="form-text">Any common date format is accepted</div>
+                               placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30..." required>
+                        <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
                         <label class="form-label">Description</label>
