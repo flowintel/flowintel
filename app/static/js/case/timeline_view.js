@@ -2,7 +2,7 @@ import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
 import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
-const { ref, onMounted, nextTick, computed } = Vue
+const { ref, onMounted, onUnmounted, nextTick, computed } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
@@ -19,6 +19,7 @@ export default {
         const edit_date_text = ref('')
         const edit_description = ref('')
         const sort_asc = ref(true)
+        const timeline_root = ref(null)
 
         // Import modal state
         const show_import_modal = ref(false)
@@ -134,6 +135,19 @@ export default {
                     console.error('Timeline render error:', e)
                 }
             }
+        }
+
+        function is_editable_target(target) {
+            if (!target || !target.tagName) return false
+            const tagName = target.tagName.toLowerCase()
+            return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
+        }
+
+        function protect_timeline_form_arrow_keys(event) {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            if (!timeline_root.value || !timeline_root.value.contains(event.target)) return
+            if (!is_editable_target(event.target)) return
+            event.stopImmediatePropagation()
         }
 
         // Mirrors the formats accepted by CaseCore.parse_date(). Kept loose on
@@ -327,11 +341,17 @@ export default {
         }
 
         onMounted(() => {
+            window.addEventListener('keydown', protect_timeline_form_arrow_keys, true)
             fetch_timeline_events()
+        })
+
+        onUnmounted(() => {
+            window.removeEventListener('keydown', protect_timeline_form_arrow_keys, true)
         })
 
         return {
             timeline_events,
+            timeline_root,
             show_add_form,
             new_date_text,
             new_description,
@@ -362,7 +382,7 @@ export default {
         }
     },
     template: `
-    <div>
+    <div ref="timeline_root">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <button class="btn btn-primary btn-sm me-2" @click="show_add_form = !show_add_form">
