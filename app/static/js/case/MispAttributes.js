@@ -495,13 +495,6 @@ export default {
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
                         <input v-model="new_state.comment" class="form-control form-control-sm" placeholder="Comment" />
                     </div>
-                    <div class="col-md-12">
-                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Link to tasks (optional)</label>
-                        <select id="new-attr-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
-                            <option v-for="task in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="task.id" :value="task.id">[[ task.title ]]</option>
-                        </select>
-                        <div class="small text-muted mt-1">Select one or more tasks to link this attribute to upon creation.</div>
-                    </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">First seen</label>
                         <input type="datetime-local" v-model="new_state.first_seen" class="form-control form-control-sm" />
@@ -519,6 +512,13 @@ export default {
                             <input type="checkbox" v-model="new_state.disable_correlation" class="form-check-input" id="sa-nocorr-new" />
                             <label class="form-check-label" for="sa-nocorr-new" style="font-size:0.875rem;">No correlation</label>
                         </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Link to tasks (optional)</label>
+                        <select id="new-attr-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
+                            <option v-for="task in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="task.id" :value="task.id">[[ task.title ]]</option>
+                        </select>
+                        <div class="small text-muted mt-1">Select one or more tasks to link this attribute to upon creation.</div>
                     </div>
                 </div>
                 <div class="mt-3 d-flex gap-2">

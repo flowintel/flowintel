@@ -153,9 +153,41 @@ export default {
             activeTemplate.value = misp_objects.value.find(o => o.uuid === templateUuid) || empty_template()
         }
 
+        function relationSelectState(stateName) {
+            if (stateName === 'new-object-attr') return newObjectAttrState
+            if (stateName === 'edit-object-attr') return editObjectAttrState
+            if (stateName === 'new-attr') return newAttrState
+            if (stateName === 'edit-attr') return editState
+            return null
+        }
+
+        function initObjectRelationSelects() {
+            if (!hasSelect2) return
+            document.querySelectorAll('.misp-object-relation-select').forEach((sel) => {
+                const state = relationSelectState(sel.dataset.relationState)
+                if (!state) return
+                try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+                $(sel)
+                    .select2({
+                        theme: 'bootstrap-5',
+                        dropdownParent: $('body'),
+                        placeholder: 'Select relation and type...',
+                        allowClear: true,
+                        width: '100%'
+                    })
+                    .val(state.value.relation_type_combo || null)
+                    .trigger('change.select2')
+                    .off('change.flowintelMispRelationType')
+                    .on('change.flowintelMispRelationType', function() {
+                        state.value.relation_type_combo = $(this).val() || ''
+                    })
+            })
+        }
+
         watch(() => activeTemplate.value.uuid, async (newUuid) => {
             await nextTick()
             syncObjectTemplateSelect()
+            initObjectRelationSelects()
             if (!newUuid) return
             try {
                 const sel = document.getElementById('new-object-task-select')
@@ -411,6 +443,7 @@ export default {
                 ids_flag: attr.ids_flag,
                 disable_correlation: attr.disable_correlation
             }
+            nextTick(() => initObjectRelationSelects())
         }
 
         function cancelEditObjectAttr() {
@@ -467,6 +500,7 @@ export default {
         function toggleTabView() {
             tabView.value = !tabView.value
             activeTabIdx.value = 0
+            nextTick(() => initObjectRelationSelects())
         }
 
         function copyUuidToClipboard() {
@@ -589,6 +623,7 @@ export default {
                 disable_correlation: attribute.disable_correlation,
                 comment: attribute.comment || ''
             }
+            nextTick(() => initObjectRelationSelects())
         }
 
         function cancelEdit() {
@@ -610,6 +645,7 @@ export default {
                 disable_correlation: false,
                 comment: ''
             }
+            nextTick(() => initObjectRelationSelects())
         }
 
         function cancelAddAttribute() {
@@ -794,6 +830,12 @@ export default {
             if (!showAddObject.value) return
             await nextTick()
             initObjectTemplateSelect()
+            initObjectRelationSelects()
+        })
+
+        watch(() => activeTemplateAttr.value.uuid, async () => {
+            await nextTick()
+            initObjectRelationSelects()
         })
 
         // Refresh case-side data (task badges per MISP object) when a task
@@ -959,23 +1001,26 @@ export default {
                 </label>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">Or select a template from the list:</label>
-                <select id="misp-object-template-select" class="form-select" :value="activeTemplate.uuid || ''" @change="selectObjectTemplate($event.target.value)">
-                    <option value="">--</option>
-                    <template v-for="object in misp_objects">
-                        <option :value="object.uuid">[[object.name]]</option>
-                    </template>
-                </select>
+            <div class="row g-3 mb-3 align-items-start">
+                <div class="col-md-6">
+                    <label class="form-label">Or select a template from the list:</label>
+                    <select id="misp-object-template-select" class="form-select" :value="activeTemplate.uuid || ''" @change="selectObjectTemplate($event.target.value)">
+                        <option value="">--</option>
+                        <template v-for="object in misp_objects">
+                            <option :value="object.uuid">[[object.name]]</option>
+                        </template>
+                    </select>
+                </div>
+
+                <div v-if="activeTemplate.uuid" class="col-md-6">
+                    <label class="form-label">Assign to tasks (optional)</label>
+                    <select id="new-object-task-select" class="form-select" multiple data-placeholder="Select tasks...">
+                        <option v-for="t in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="'new-object-task-' + t.id" :value="t.id">[[ t.title ]]</option>
+                    </select>
+                </div>
             </div>
 
             <div v-if="activeTemplate.uuid">
-                <div class="mb-3">
-                    <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Assign to tasks (optional)</label>
-                    <select id="new-object-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
-                        <option v-for="t in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :value="t.id">[[ t.title ]]</option>
-                    </select>
-                </div>
                 <div class="mb-2">
                     <span class="fw-bold">[[ activeTemplate.name ]] </span>
                     <span class="badge bg-light text-dark">[[activeTemplate.uuid]] </span>
@@ -994,7 +1039,7 @@ export default {
                 <div class="row g-2 mb-2">
                     <div class="col-md-3">
                         <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
-                        <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                        <select v-model="newObjectAttrState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="new-object-attr" style="font-size: 0.875rem;">
                             <option value="">-- select --</option>
                             <template v-for="attr in template_attributes(activeTemplate)">
                                 <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
@@ -1079,7 +1124,7 @@ export default {
                                         <div class="row g-2 mb-2">
                                             <div class="col-md-3">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type <span class="text-danger">*</span></label>
-                                                <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                <select v-model="editObjectAttrState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="edit-object-attr" style="font-size: 0.875rem;">
                                                     <template v-for="a in template_attributes(activeTemplate)">
                                                         <option :value="a.name + '::' + a.misp_attribute">[[a.name]]::[[a.misp_attribute]]</option>
                                                     </template>
@@ -1331,7 +1376,7 @@ export default {
                                         <div class="row g-2 mb-3">
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
-                                                <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                <select v-model="editState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="edit-attr" style="font-size: 0.875rem;">
                                                     <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                         <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                     </template>
@@ -1380,7 +1425,7 @@ export default {
                                     <div class="row g-2 mb-3">
                                         <div class="col-md-4">
                                             <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
-                                            <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                            <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="new-attr" style="font-size: 0.875rem;">
                                                 <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                     <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                 </template>
@@ -1600,7 +1645,7 @@ export default {
                                             <div class="row g-2 mb-3">
                                                 <div class="col-md-4">
                                                     <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
-                                                    <select v-model="editState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                    <select v-model="editState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="edit-attr" style="font-size: 0.875rem;">
                                                         <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                             <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                         </template>
@@ -1648,7 +1693,7 @@ export default {
                                         <div class="row g-2 mb-3">
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold mb-1" style="font-size: 0.875rem;">Object Relation & Type</label>
-                                                <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm" style="font-size: 0.875rem;">
+                                                <select v-model="newAttrState.relation_type_combo" class="form-select form-select-sm misp-object-relation-select" data-relation-state="new-attr" style="font-size: 0.875rem;">
                                                     <template v-for="attr in template_attributes(activeTemplateAttr)">
                                                         <option :value="attr.name + '::' + attr.misp_attribute">[[attr.name]]::[[attr.misp_attribute]]</option>
                                                     </template>
