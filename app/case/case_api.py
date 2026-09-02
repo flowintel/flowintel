@@ -430,6 +430,10 @@ class AddCaseLink(Resource):
         if not request.json or "case_id" not in request.json:
             return {"message": "Need to pass 'case_id'"}, 400
         linked_case_ids = request.json["case_id"]
+        if not isinstance(linked_case_ids, list):
+            return {"message": "Need to pass 'case_id' as a list"}, 400
+        if str(cid) in [str(linked_case_id) for linked_case_id in linked_case_ids]:
+            return {"message": "Cannot link a case to itself"}, 400
         if isinstance(linked_case_ids, list):
             for linked_case_id in linked_case_ids:
                 if not CommonModel.get_case(linked_case_id):

@@ -1481,6 +1481,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Add a new link to case in the DB"""
         case = CommonModel.get_case(cid)
         for loop_case_id in form_dict["case_id"]:
+            if str(loop_case_id) == str(cid):
+                return False
             case_link = CommonModel.get_case(loop_case_id)
             if case_link:
                 case_link_case = Case_Link_Case(

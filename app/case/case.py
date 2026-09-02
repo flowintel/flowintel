@@ -869,6 +869,10 @@ def add_new_link(cid):
             if request.json:
                 if "case_id" in request.json:
                     linked_case_ids = request.json["case_id"]
+                    if not isinstance(linked_case_ids, list):
+                        return {"message": "Need to pass 'case_id' as a list", "toast_class": "warning-subtle"}, 400
+                    if str(cid) in [str(linked_case_id) for linked_case_id in linked_case_ids]:
+                        return {"message": "Cannot link a case to itself", "toast_class": "warning-subtle"}, 400
                     if isinstance(linked_case_ids, list):
                         for linked_case_id in linked_case_ids:
                             if not CommonModel.get_case(linked_case_id):

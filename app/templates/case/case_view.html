@@ -2284,7 +2284,7 @@
                             for(let index in loc){
                                 for(let i in case_for_link.value){
                                     if(case_for_link.value[i].id == loc[index]){
-                                        cases_info.value.case.link_to.push({"id":case_for_link.value[i].id, "title": case_for_link.value[i].text})
+                                        cases_info.value.case.link_to.push({"id":case_for_link.value[i].id, "title": case_for_link.value[i].title})
                                     }
                                 }
                             }
@@ -2373,7 +2373,9 @@
                             processResults: function (data) {
                                 case_for_link.value = []
                                 for(let i in data.cases){
-                                    case_for_link.value.push({id: data.cases[i].id, text: data.cases[i].title})
+                                    const c = data.cases[i]
+                                    if(String(c.id) === String(cases_info.value.case.id)) continue
+                                    case_for_link.value.push({id: c.id, text: `#${c.id} - ${c.title}`, title: c.title})
                                 }
                                 
                                 return {
