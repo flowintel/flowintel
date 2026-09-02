@@ -2792,6 +2792,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 created_files.append(f)
         
         if created_files:
+            db.session.commit()
             CommonModel.save_history(case.uuid, current_user, f"File added for case '{case.title}'")
             CommonModel.update_last_modif(case.id)
         return created_files
@@ -2807,6 +2808,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         except OSError:
             return False
 
+        Case_Timeline_Event.query.filter_by(file_id=file.id).delete(synchronize_session=False)
         db.session.delete(file)
         db.session.commit()
         
@@ -2827,7 +2829,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Get a timeline event by id"""
         return Case_Timeline_Event.query.get(event_id)
 
-    def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user):
+    def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user, file_id=None):
         """Create a new timeline event"""
         date_parsed = self.parse_date(date_text)
         event = Case_Timeline_Event(
@@ -2836,6 +2838,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             date_parsed=date_parsed,
             description=description,
             misp_object_id=misp_object_id if misp_object_id else None,
+            file_id=file_id if file_id else None,
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc)
         )
         db.session.add(event)
@@ -2845,6 +2848,81 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.save_history(case.uuid, current_user, f"Timeline event added")
         CommonModel.update_last_modif(cid)
         return event
+
+    def create_file_timeline_event(self, case, file, current_user, task=None):
+        """Create a timeline event for a newly imported case/task file."""
+        if not case or not file:
+            return None
+
+        existing_event = Case_Timeline_Event.query.filter_by(case_id=case.id, file_id=file.id).first()
+        if existing_event:
+            return existing_event
+
+        date_value = file.upload_date or datetime.datetime.now(tz=datetime.timezone.utc)
+        date_text = date_value.strftime('%Y-%m-%d %H:%M')
+        size = f"{file.file_size} bytes" if file.file_size is not None else "unknown size"
+        file_type = file.file_type or "unknown type"
+        location = f"task '{task.title}'" if task else f"case '{case.title}'"
+        description = f"[File] {file.name} imported in {location} ({size}, {file_type})"
+        return self.create_timeline_event(case.id, date_text, description, None, current_user, file_id=file.id)
+
+    def get_timeline_import_files(self, cid):
+        """Return case and task files with their timeline import status."""
+        case = CommonModel.get_case(cid)
+        if not case:
+            return []
+
+        files = []
+        for file in case.files:
+            item = file.to_json()
+            item["location"] = "case"
+            item["location_label"] = case.title
+            item["is_imported"] = bool(Case_Timeline_Event.query.filter_by(case_id=case.id, file_id=file.id).first())
+            files.append(item)
+
+        for task in case.tasks:
+            for file in task.files:
+                item = file.to_json()
+                item["location"] = "task"
+                item["location_label"] = task.title
+                item["is_imported"] = bool(Case_Timeline_Event.query.filter_by(case_id=case.id, file_id=file.id).first())
+                files.append(item)
+
+        return files
+
+    def import_files_to_timeline(self, cid, current_user, file_ids=None):
+        """Import selected case/task files as timeline events."""
+        case = CommonModel.get_case(cid)
+        if not case:
+            return 0
+
+        if file_ids is not None:
+            try:
+                selected_ids = {int(i) for i in file_ids}
+            except Exception:
+                selected_ids = set()
+        else:
+            selected_ids = None
+
+        imported_files = 0
+        for file in case.files:
+            if selected_ids is not None and file.id not in selected_ids:
+                continue
+            if Case_Timeline_Event.query.filter_by(case_id=case.id, file_id=file.id).first():
+                continue
+            self.create_file_timeline_event(case, file, current_user)
+            imported_files += 1
+
+        for task in case.tasks:
+            for file in task.files:
+                if selected_ids is not None and file.id not in selected_ids:
+                    continue
+                if Case_Timeline_Event.query.filter_by(case_id=case.id, file_id=file.id).first():
+                    continue
+                self.create_file_timeline_event(case, file, current_user, task=task)
+                imported_files += 1
+
+        return imported_files
 
     def edit_timeline_event(self, event_id, date_text, description, current_user):
         """Edit a timeline event"""

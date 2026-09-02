@@ -14,7 +14,7 @@ from app.db_class.db import (
     Cluster, Custom_Tags, File, Note, Org, Role, Status, Subtask, Tags, Task,
     Task_Custom_Tags, Task_Galaxy, Task_Galaxy_Tags,
     Task_Tags, Task_Url_Tool, Task_External_Reference, Task_Misp_Object, Task_Misp_Attribute, Task_User, User, Galaxy,
-    Case_Misp_Object, Misp_Attribute
+    Case_Timeline_Event, Case_Misp_Object, Misp_Attribute
 )
 
 from app.utils.utils import get_modules_list
@@ -514,6 +514,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 created_files.append(f)
         
         if created_files:
+            db.session.commit()
             self.update_task_time_modification(task, current_user, f"File added for task '{task.title}'")
         return created_files
 
@@ -759,6 +760,7 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         except OSError:
             return False
 
+        Case_Timeline_Event.query.filter_by(file_id=file.id).delete(synchronize_session=False)
         db.session.delete(file)
         db.session.commit()
 

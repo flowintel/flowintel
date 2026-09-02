@@ -1865,9 +1865,11 @@ class Case_Timeline_Event(db.Model):
     date_parsed = db.Column(db.DateTime, nullable=True)
     description = db.Column(db.Text, nullable=False)
     misp_object_id = db.Column(db.Integer, nullable=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete="CASCADE"), nullable=True, index=True)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
+        file = File.query.get(self.file_id) if self.file_id else None
         json_dict = {
             "id": self.id,
             "case_id": self.case_id,
@@ -1875,6 +1877,8 @@ class Case_Timeline_Event(db.Model):
             "date_parsed": self.date_parsed.strftime(DATETIME_FORMAT_FULL) if self.date_parsed else None,
             "description": self.description,
             "misp_object_id": self.misp_object_id,
+            "file_id": self.file_id,
+            "file": file.to_json() if file else None,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
         }
         return json_dict

@@ -25,10 +25,13 @@ export default {
         const show_import_modal = ref(false)
         const misp_objects = ref([])
         const misp_attributes = ref([])
+        const files = ref([])
         const selected_ids = ref([])
         const selected_attribute_ids = ref([])
+        const selected_file_ids = ref([])
         const select_all = ref(false)
         const select_all_attributes = ref(false)
+        const select_all_files = ref(false)
 
         const sorted_events = computed(() => {
             const list = [...timeline_events.value]
@@ -103,6 +106,10 @@ export default {
                     } else {
                         headline = '<span style="color:#17a2b8;"><i class="' + mispObjectIconClass('object', 'me-1') + '"></i></span> ' + headlineText
                     }
+                } else if (ev.file_id) {
+                    const cleanText = text.split('(')[0].trim()
+                    const headlineText = cleanText.includes(']') ? (cleanText.split(']').slice(1).join(']').trim() || cleanText) : cleanText
+                    headline = '<span style="color:#198754;"><i class="fa-solid fa-file me-1"></i></span> ' + headlineText
                 } else {
                     headline = text
                 }
@@ -252,9 +259,10 @@ export default {
 
         // --- Import modal helpers ---
         async function open_import_modal() {
-            const [objRes, attrRes] = await Promise.all([
+            const [objRes, attrRes, fileRes] = await Promise.all([
                 fetch('/case/' + props.case_id + '/get_case_misp_object'),
-                fetch('/case/' + props.case_id + '/get_case_misp_attributes')
+                fetch('/case/' + props.case_id + '/get_case_misp_attributes'),
+                fetch('/case/' + props.case_id + '/get_timeline_import_files')
             ])
 
             let canOpen = false
@@ -277,11 +285,22 @@ export default {
                 misp_attributes.value = []
             }
 
+            if (fileRes.status === 200) {
+                const locFiles = await fileRes.json()
+                files.value = locFiles.files || []
+                canOpen = true
+            } else {
+                await display_toast(fileRes)
+                files.value = []
+            }
+
             if (canOpen) {
                 selected_ids.value = []
                 selected_attribute_ids.value = []
+                selected_file_ids.value = []
                 select_all.value = false
                 select_all_attributes.value = false
+                select_all_files.value = false
                 show_import_modal.value = true
             }
         }
@@ -305,6 +324,14 @@ export default {
             }
         }
 
+        function toggle_select_all_files() {
+            if (select_all_files.value) {
+                selected_file_ids.value = files.value.filter(f => !f.is_imported).map(f => f.id)
+            } else {
+                selected_file_ids.value = []
+            }
+        }
+
         async function perform_import() {
             const importableObjectIds = (selected_ids.value || []).filter(id => {
                 const obj = misp_objects.value.find(o => Number(o.object_id) === Number(id))
@@ -314,33 +341,54 @@ export default {
                 const attr = misp_attributes.value.find(a => Number(a.id) === Number(id))
                 return attr && !attr.is_imported
             })
+            const importableFileIds = (selected_file_ids.value || []).filter(id => {
+                const file = files.value.find(f => Number(f.id) === Number(id))
+                return file && !file.is_imported
+            })
 
-            if (importableObjectIds.length === 0 && importableAttributeIds.length === 0) {
-                create_message('Select at least one object or standalone attribute to import', 'warning-subtle')
+            if (importableObjectIds.length === 0 && importableAttributeIds.length === 0 && importableFileIds.length === 0) {
+                create_message('Select at least one object, standalone attribute or file to import', 'warning-subtle')
                 return
             }
-            const res = await fetch('/case/' + props.case_id + '/import_misp_to_timeline', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                body: JSON.stringify({
-                    object_ids: importableObjectIds,
-                    attribute_ids: importableAttributeIds
-                })
-            })
-            if (res.status === 200) {
+
+            const responses = []
+            if (importableObjectIds.length > 0 || importableAttributeIds.length > 0) {
+                responses.push(await fetch('/case/' + props.case_id + '/import_misp_to_timeline', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
+                    body: JSON.stringify({
+                        object_ids: importableObjectIds,
+                        attribute_ids: importableAttributeIds
+                    })
+                }))
+            }
+            if (importableFileIds.length > 0) {
+                responses.push(await fetch('/case/' + props.case_id + '/import_files_to_timeline', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
+                    body: JSON.stringify({ file_ids: importableFileIds })
+                }))
+            }
+
+            const allOk = responses.length > 0 && responses.every(res => res.status === 200)
+            if (allOk) {
                 show_import_modal.value = false
                 touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
-            await display_toast(res)
+            for (const res of responses) {
+                await display_toast(res)
+            }
         }
 
         function close_import_modal() {
             show_import_modal.value = false
             selected_ids.value = []
             selected_attribute_ids.value = []
+            selected_file_ids.value = []
             select_all.value = false
             select_all_attributes.value = false
+            select_all_files.value = false
         }
 
         onMounted(() => {
@@ -374,12 +422,16 @@ export default {
             show_import_modal,
             misp_objects,
             misp_attributes,
+            files,
             selected_ids,
             selected_attribute_ids,
+            selected_file_ids,
             select_all,
             select_all_attributes,
+            select_all_files,
             toggle_select_all,
             toggle_select_all_attributes,
+            toggle_select_all_files,
             close_import_modal,
             fetch_timeline_events
         }
@@ -391,8 +443,8 @@ export default {
                 <button class="btn btn-primary btn-sm me-2" @click="show_add_form = !show_add_form">
                     <i class="fa-solid fa-plus me-1"></i>Add Event
                 </button>
-                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import selected MISP objects and standalone attributes as timeline events">
-                    <i class="misp-icon misp-icon-misp misp-simple me-1"></i>Import MISP Data
+                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import selected MISP objects, standalone attributes and files as timeline events">
+                    <i class="fa-solid fa-file-import me-1"></i>Import Data
                 </button>
             </div>
         </div>
@@ -428,7 +480,7 @@ export default {
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Import MISP Data To Timeline</h5>
+                        <h5 class="modal-title">Import Data To Timeline</h5>
                         <button type="button" class="btn-close" @click="close_import_modal()"></button>
                     </div>
                     <div class="modal-body">
@@ -479,10 +531,34 @@ export default {
                                 </div>
                             </label>
                         </div>
+
+                        <hr>
+                        <h6 class="mb-2">Files</h6>
+                        <div class="mb-2">
+                            <input type="checkbox" id="select_all_files" v-model="select_all_files" @change="toggle_select_all_files()">
+                            <label for="select_all_files" class="ms-1">Select all files</label>
+                        </div>
+                        <div v-if="files.length === 0" class="text-muted">No files found for this case.</div>
+                        <div v-else class="list-group" style="max-height:320px; overflow:auto;">
+                            <label v-for="f in files" :key="f.id" class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-start">
+                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="f.id" v-model="selected_file_ids" :disabled="f.is_imported">
+                                    <div>
+                                        <strong><i class="fa-solid fa-file me-1 text-success"></i>[[ f.name ]]</strong>
+                                        <div class="text-muted small">[[ f.location === 'task' ? 'Task' : 'Case' ]]: [[ f.location_label ]]</div>
+                                        <div class="small">Uploaded: [[ f.upload_date ]] - [[ f.file_type ]] - <template v-if="f.file_size !== 'Unknown'">[[ (f.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown size</template></div>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span v-if="f.is_imported" class="badge bg-success me-2">Imported</span>
+                                    <span v-else class="badge text-bg-success rounded-pill">File</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" @click="close_import_modal()">Cancel</button>
-                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length + selected_attribute_ids.length ]])</button>
+                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length + selected_attribute_ids.length + selected_file_ids.length ]])</button>
                     </div>
                 </div>
             </div>

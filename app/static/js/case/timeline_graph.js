@@ -61,10 +61,12 @@ export default {
                     color = '#17a2b8'
                 } else if (ev.misp_object_id && Number(ev.misp_object_id) < 0) {
                     color = '#fd7e14'
+                } else if (ev.file_id) {
+                    color = '#198754'
                 }
                 return {
                     id: String(ev.id),
-                    data: { label: label, event_id: String(ev.id) },
+                    data: { label: label, event_id: String(ev.id), file_id: ev.file_id ? String(ev.file_id) : null },
                     style: { color: color }
                 }
             })
@@ -338,7 +340,7 @@ export default {
         <div class="mt-2">
             <small class="text-muted">
                 <i class="fa-solid fa-circle-info me-1"></i>
-                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue and standalone attributes are orange.
+                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue, standalone attributes are orange and imported files are green.
             </small>
         </div>
     </div>

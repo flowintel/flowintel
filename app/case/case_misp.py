@@ -483,6 +483,40 @@ def import_misp_to_timeline(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<int:cid>/get_timeline_import_files", methods=['GET'])
+@login_required
+def get_timeline_import_files(cid):
+    """Get case/task files available for timeline import."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if not check_user_private_case(case):
+            return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+        return {"files": CaseModel.get_timeline_import_files(cid)}, 200
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<int:cid>/import_files_to_timeline", methods=['POST'])
+@login_required
+@editor_required
+def import_files_to_timeline(cid):
+    """Import selected case/task files into the timeline."""
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            data = request.get_json(silent=True) or {}
+            file_ids = data.get('file_ids', None)
+            if file_ids is not None and not isinstance(file_ids, list):
+                return {"message": "'file_ids' must be a list", "toast_class": "warning-subtle"}, 400
+
+            imported_files = CaseModel.import_files_to_timeline(cid, current_user, file_ids)
+            return {
+                "message": f"{imported_files} file(s) imported to timeline",
+                "toast_class": "success-subtle"
+            }, 200
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+    return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
 #####################
 # Timeline  - Graph #
 #####################
