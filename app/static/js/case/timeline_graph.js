@@ -16,6 +16,7 @@ export default {
         const show_add_link = ref(false)
         const new_date_text = ref('')
         const new_description = ref('')
+        const new_additional_note = ref('')
         const link_source = ref('')
         const link_target = ref('')
         const link_label = ref('')
@@ -109,7 +110,7 @@ export default {
                 return
             }
             if (!new_description.value.trim()) {
-                create_message('Description is required', 'warning-subtle')
+                create_message('Event is required', 'warning-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/create_timeline_event', {
@@ -117,12 +118,14 @@ export default {
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
                 body: JSON.stringify({
                     date_text: new_date_text.value,
-                    description: new_description.value
+                    description: new_description.value,
+                    additional_note: new_additional_note.value
                 })
             })
             if (res.status === 200) {
                 new_date_text.value = ''
                 new_description.value = ''
+                new_additional_note.value = ''
                 show_add_event.value = false
                 touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
@@ -224,6 +227,7 @@ export default {
             show_add_link,
             new_date_text,
             new_description,
+            new_additional_note,
             link_source,
             link_target,
             link_label,
@@ -268,9 +272,14 @@ export default {
                         <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control form-control-sm" v-model="new_description" rows="2"
-                                  placeholder="What happened at this point in time?"></textarea>
+                        <label class="form-label">Event</label>
+                        <input type="text" class="form-control form-control-sm" v-model="new_description"
+                               placeholder="Short event summary">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Additional Note</label>
+                        <textarea class="form-control form-control-sm" v-model="new_additional_note" rows="3"
+                                  placeholder="Optional details"></textarea>
                     </div>
                 </div>
                 <div class="mt-2">

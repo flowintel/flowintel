@@ -38,6 +38,7 @@ import conf.config_module as ConfigModule
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
+TIMELINE_ADDITIONAL_NOTE_UNSET = object()
 
 
 @lru_cache(maxsize=1)
@@ -2831,7 +2832,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Get a timeline event by id"""
         return Case_Timeline_Event.query.get(event_id)
 
-    def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user, file_id=None):
+    def create_timeline_event(self, cid, date_text, description, misp_object_id, current_user, file_id=None, additional_note=None):
         """Create a new timeline event"""
         date_parsed = self.parse_date(date_text)
         event = Case_Timeline_Event(
@@ -2839,6 +2840,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             date_text=self.format_timeline_event_date(date_parsed),
             date_parsed=date_parsed,
             description=description,
+            additional_note=additional_note or None,
             misp_object_id=misp_object_id if misp_object_id else None,
             file_id=file_id if file_id else None,
             creation_date=datetime.datetime.now(tz=datetime.timezone.utc)
@@ -2865,8 +2867,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         size = f"{file.file_size} bytes" if file.file_size is not None else "unknown size"
         file_type = file.file_type or "unknown type"
         location = f"task '{task.title}'" if task else f"case '{case.title}'"
-        description = f"[File] {file.name} imported in {location} ({size}, {file_type})"
-        return self.create_timeline_event(case.id, date_text, description, None, current_user, file_id=file.id)
+        description = f"[File] {file.name}"
+        additional_note = f"Imported in {location}\nSize: {size}\nType: {file_type}"
+        return self.create_timeline_event(case.id, date_text, description, None, current_user, file_id=file.id, additional_note=additional_note)
 
     def get_timeline_import_files(self, cid):
         """Return case and task files with their timeline import status."""
@@ -2926,7 +2929,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         return imported_files
 
-    def edit_timeline_event(self, event_id, date_text, description, current_user):
+    def edit_timeline_event(self, event_id, date_text, description, current_user, additional_note=TIMELINE_ADDITIONAL_NOTE_UNSET):
         """Edit a timeline event"""
         event = self.get_timeline_event(event_id)
         if not event:
@@ -2935,6 +2938,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         event.date_text = self.format_timeline_event_date(date_parsed)
         event.date_parsed = date_parsed
         event.description = description
+        if additional_note is not TIMELINE_ADDITIONAL_NOTE_UNSET:
+            event.additional_note = additional_note or None
         db.session.commit()
 
         case = CommonModel.get_case(event.case_id)
@@ -3064,10 +3069,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 for attr in obj.attributes:
                     attr_lines.append(f"{attr.object_relation}: {attr.value}")
                 description = f"[MISP] {obj.name}"
-                if attr_lines:
-                    description += " — " + ", ".join(attr_lines)
+                additional_note = "\n".join(attr_lines) if attr_lines else None
 
-                self.create_timeline_event(cid, date_text, description, obj.id, current_user)
+                self.create_timeline_event(cid, date_text, description, obj.id, current_user, additional_note=additional_note)
                 imported_objects += 1
 
         imported_attrs = 0
@@ -3097,10 +3101,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 relation = f" ({attr.object_relation})" if attr.object_relation else ""
                 attr_value = attr.value or ""
                 description = f"[MISP] {attr_type}{relation}: {attr_value}"
-                if attr.comment:
-                    description += f" — {attr.comment}"
+                additional_note = attr.comment or None
 
-                self.create_timeline_event(cid, date_text, description, timeline_attr_id, current_user)
+                self.create_timeline_event(cid, date_text, description, timeline_attr_id, current_user, additional_note=additional_note)
                 imported_attrs += 1
 
         return {

@@ -1864,6 +1864,7 @@ class Case_Timeline_Event(db.Model):
     date_text = db.Column(db.String(64), nullable=False)
     date_parsed = db.Column(db.DateTime, nullable=True)
     description = db.Column(db.Text, nullable=False)
+    additional_note = db.Column(db.Text, nullable=True)
     misp_object_id = db.Column(db.Integer, nullable=True)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete="CASCADE"), nullable=True, index=True)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
@@ -1876,6 +1877,7 @@ class Case_Timeline_Event(db.Model):
             "date_text": self.date_text,
             "date_parsed": self.date_parsed.strftime(DATETIME_FORMAT_FULL) if self.date_parsed else None,
             "description": self.description,
+            "additional_note": self.additional_note,
             "misp_object_id": self.misp_object_id,
             "file_id": self.file_id,
             "file": file.to_json() if file else None,

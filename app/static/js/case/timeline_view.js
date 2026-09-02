@@ -15,9 +15,11 @@ export default {
         const show_add_form = ref(false)
         const new_date_text = ref('')
         const new_description = ref('')
+        const new_additional_note = ref('')
         const editing_event_id = ref(null)
         const edit_date_text = ref('')
         const edit_description = ref('')
+        const edit_additional_note = ref('')
         const sort_asc = ref(true)
         const timeline_root = ref(null)
 
@@ -81,10 +83,35 @@ export default {
             }
         }
 
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+        }
+
+        function textToSafeHtml(value) {
+            const escaped = escapeHtml(value)
+            const withBreaks = escaped.replace(/\r\n|\r|\n/g, '<br>')
+            if (typeof DOMPurify !== 'undefined' && DOMPurify && DOMPurify.sanitize) {
+                return DOMPurify.sanitize(withBreaks, { ALLOWED_TAGS: ['br'], ALLOWED_ATTR: [] })
+            }
+            return withBreaks
+        }
+
+        function sanitizeTimelineHtml(value) {
+            if (typeof DOMPurify !== 'undefined' && DOMPurify && DOMPurify.sanitize) {
+                return DOMPurify.sanitize(value, { ALLOWED_TAGS: ['div', 'span', 'i', 'br'], ALLOWED_ATTR: ['style', 'class'] })
+            }
+            return value
+        }
+
         function render_timeline() {
             if (!timeline_events.value || timeline_events.value.length === 0) {
                 const container = document.getElementById('case-timeline-embed')
-                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No timeline events yet. Add events or import from MISP objects and standalone attributes to build your timeline.</p>'
+                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No timeline events yet. Add events or import data to build your timeline.</p>'
                 return
             }
 
@@ -93,32 +120,28 @@ export default {
                 const startDate = parseDateForTimeline(ev.date_text, ev.date_parsed)
                 if (!startDate) continue
 
-                let text = ev.description.replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                text = text.replace(/\n/g, '<br>')
+                const eventText = textToSafeHtml(ev.description)
+                const noteText = textToSafeHtml(ev.additional_note || '')
 
                 let headline
                 if (ev.misp_object_id) {
                     const isStandaloneAttr = Number(ev.misp_object_id) < 0
-                    const cleanText = text.split('—')[0]
-                    const headlineText = cleanText.includes(']') ? (cleanText.split(']').slice(1).join(']').trim() || cleanText) : cleanText
                     if (isStandaloneAttr) {
-                        headline = '<span style="color:#fd7e14;"><i class="' + mispAttributeIconClass('attribute', 'me-1') + '"></i></span> ' + headlineText
+                        headline = '<span style="color:#fd7e14;"><i class="' + mispAttributeIconClass('attribute', 'me-1') + '"></i></span> ' + eventText
                     } else {
-                        headline = '<span style="color:#17a2b8;"><i class="' + mispObjectIconClass('object', 'me-1') + '"></i></span> ' + headlineText
+                        headline = '<span style="color:#17a2b8;"><i class="' + mispObjectIconClass('object', 'me-1') + '"></i></span> ' + eventText
                     }
                 } else if (ev.file_id) {
-                    const cleanText = text.split('(')[0].trim()
-                    const headlineText = cleanText.includes(']') ? (cleanText.split(']').slice(1).join(']').trim() || cleanText) : cleanText
-                    headline = '<span style="color:#198754;"><i class="fa-solid fa-file me-1"></i></span> ' + headlineText
+                    headline = '<span style="color:#198754;"><i class="fa-solid fa-file me-1"></i></span> ' + eventText
                 } else {
-                    headline = text
+                    headline = eventText
                 }
 
                 events.push({
                     start_date: startDate,
                     text: {
-                        headline: headline,
-                        text: '<div style="max-width:500px">' + text + '</div>'
+                        headline: sanitizeTimelineHtml(headline),
+                        text: noteText ? sanitizeTimelineHtml('<div style="max-width:500px">' + noteText + '</div>') : ''
                     }
                 })
             }
@@ -185,7 +208,7 @@ export default {
                 return
             }
             if (!new_description.value.trim()) {
-                create_message('Description is required', 'warning-subtle')
+                create_message('Event is required', 'warning-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/create_timeline_event', {
@@ -193,12 +216,14 @@ export default {
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
                 body: JSON.stringify({
                     date_text: new_date_text.value,
-                    description: new_description.value
+                    description: new_description.value,
+                    additional_note: new_additional_note.value
                 })
             })
             if (res.status === 200) {
                 new_date_text.value = ''
                 new_description.value = ''
+                new_additional_note.value = ''
                 show_add_form.value = false
                 touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
@@ -210,17 +235,19 @@ export default {
             editing_event_id.value = ev.id
             edit_date_text.value = ev.date_text
             edit_description.value = ev.description
+            edit_additional_note.value = ev.additional_note || ''
         }
 
         function cancel_edit() {
             editing_event_id.value = null
             edit_date_text.value = ''
             edit_description.value = ''
+            edit_additional_note.value = ''
         }
 
         async function save_edit(ev_id) {
             if (!edit_date_text.value.trim() || !edit_description.value.trim()) {
-                create_message('Date and description are required', 'warning-subtle')
+                create_message('Date and event are required', 'warning-subtle')
                 return
             }
             if (!is_valid_date_text(edit_date_text.value)) {
@@ -232,11 +259,13 @@ export default {
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
                 body: JSON.stringify({
                     date_text: edit_date_text.value,
-                    description: edit_description.value
+                    description: edit_description.value,
+                    additional_note: edit_additional_note.value
                 })
             })
             if (res.status === 200) {
                 editing_event_id.value = null
+                edit_additional_note.value = ''
                 touchCaseLastModif(props.cases_info)
                 await fetch_timeline_events()
             }
@@ -406,9 +435,11 @@ export default {
             show_add_form,
             new_date_text,
             new_description,
+            new_additional_note,
             editing_event_id,
             edit_date_text,
             edit_description,
+            edit_additional_note,
             sorted_events,
             sort_asc,
             toggle_sort,
@@ -461,9 +492,14 @@ export default {
                         <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control form-control-sm" v-model="new_description" rows="2"
-                                  placeholder="What happened at this point in time?"></textarea>
+                        <label class="form-label">Event <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
+                        <input type="text" class="form-control form-control-sm" v-model="new_description"
+                               placeholder="Short event summary" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Additional Note</label>
+                        <textarea class="form-control form-control-sm" v-model="new_additional_note" rows="3"
+                                  placeholder="Optional details"></textarea>
                     </div>
                 </div>
                 <div class="mt-2">
@@ -577,19 +613,23 @@ export default {
                             Date/Time
                             <i class="fa-solid fa-sm ms-1" :class="sort_asc ? 'fa-arrow-up-short-wide' : 'fa-arrow-down-wide-short'"></i>
                         </th>
-                        <th>Description</th>
-                        <th style="width:50px">MISP</th>
+                        <th>Event</th>
+                        <th>Additional Note</th>
+                        <th style="width:90px">Source</th>
                         <th style="width:120px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : '')">
+                    <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : (ev.file_id ? 'table-success' : ''))">
                         <template v-if="editing_event_id === ev.id">
                             <td>
                                 <input type="text" class="form-control form-control-sm" v-model="edit_date_text">
                             </td>
                             <td>
-                                <textarea class="form-control form-control-sm" v-model="edit_description" rows="1"></textarea>
+                                <input type="text" class="form-control form-control-sm" v-model="edit_description">
+                            </td>
+                            <td>
+                                <textarea class="form-control form-control-sm" v-model="edit_additional_note" rows="2"></textarea>
                             </td>
                             <td>
                                 <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
@@ -597,6 +637,9 @@ export default {
                                 </span>
                                 <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
                                     <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
+                                </span>
+                                <span v-else-if="ev.file_id" class="badge text-bg-success" title="Linked to imported file">
+                                    <i class="fa-solid fa-file me-1"></i>File
                                 </span>
                             </td>
                             <td>
@@ -611,12 +654,16 @@ export default {
                         <template v-else>
                             <td><code>[[ ev.date_text ]]</code></td>
                             <td>[[ ev.description ]]</td>
+                            <td style="white-space: pre-wrap;">[[ ev.additional_note || '' ]]</td>
                             <td>
                                 <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
                                     <i class="misp-icon misp-icon-object misp-simple me-1"></i>Object
                                 </span>
                                 <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
                                     <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
+                                </span>
+                                <span v-else-if="ev.file_id" class="badge text-bg-success" title="Linked to imported file">
+                                    <i class="fa-solid fa-file me-1"></i>File
                                 </span>
                             </td>
                             <td>

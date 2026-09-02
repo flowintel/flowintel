@@ -399,14 +399,18 @@ def create_timeline_event(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
                 date_text = (request.json["date_text"] or "").strip()
+                description = (request.json["description"] or "").strip()
                 if not date_text:
                     return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if not description:
+                    return {"message": "Event is required", "toast_class": "warning-subtle"}, 400
                 if CaseModel.parse_date(date_text) is None:
                     return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 misp_object_id = request.json.get("misp_object_id")
                 event = CaseModel.create_timeline_event(
-                    cid, date_text, request.json["description"],
-                    misp_object_id, current_user
+                    cid, date_text, description,
+                    misp_object_id, current_user,
+                    additional_note=request.json.get("additional_note")
                 )
                 return {"message": "Event created", "toast_class": "success-subtle", "event": event.to_json()}, 200
             return {"message": "Need 'date_text' and 'description'", "toast_class": "warning-subtle"}, 400
@@ -424,13 +428,22 @@ def edit_timeline_event(cid, eid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "date_text" in request.json and "description" in request.json:
                 date_text = (request.json["date_text"] or "").strip()
+                description = (request.json["description"] or "").strip()
                 if not date_text:
                     return {"message": "Date/time is required", "toast_class": "warning-subtle"}, 400
+                if not description:
+                    return {"message": "Event is required", "toast_class": "warning-subtle"}, 400
                 if CaseModel.parse_date(date_text) is None:
                     return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
-                event = CaseModel.edit_timeline_event(
-                    eid, date_text, request.json["description"], current_user
-                )
+                if "additional_note" in request.json:
+                    event = CaseModel.edit_timeline_event(
+                        eid, date_text, description, current_user,
+                        additional_note=request.json.get("additional_note")
+                    )
+                else:
+                    event = CaseModel.edit_timeline_event(
+                        eid, date_text, description, current_user
+                    )
                 if event:
                     return {"message": "Event updated", "toast_class": "success-subtle", "event": event.to_json()}, 200
                 return {"message": "Event not found", "toast_class": "warning-subtle"}, 404

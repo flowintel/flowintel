@@ -1,4 +1,4 @@
-"""Add file_id to case timeline event
+"""Add file_id and additional_note to case timeline event
 
 Revision ID: 8d9f2a4c6b10
 Revises: 51c89f0d2a4b
@@ -19,6 +19,10 @@ def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     columns = [col['name'] for col in inspector.get_columns('case__timeline__event')]
+
+    with op.batch_alter_table('case__timeline__event', schema=None) as batch_op:
+        if 'additional_note' not in columns:
+            batch_op.add_column(sa.Column('additional_note', sa.Text(), nullable=True))
 
     if 'file_id' not in columns:
         with op.batch_alter_table('case__timeline__event', schema=None) as batch_op:
@@ -43,3 +47,7 @@ def downgrade():
             batch_op.drop_constraint(batch_op.f('fk_case__timeline__event_file_id_file'), type_='foreignkey')
             batch_op.drop_index(batch_op.f('ix_case__timeline__event_file_id'))
             batch_op.drop_column('file_id')
+
+    if 'additional_note' in columns:
+        with op.batch_alter_table('case__timeline__event', schema=None) as batch_op:
+            batch_op.drop_column('additional_note')
