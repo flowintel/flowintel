@@ -120,9 +120,43 @@ export default {
             hasSelect2 = hasJQuery && $.fn && $.fn.select2
         } catch(e) {}
 
+        function syncObjectTemplateSelect() {
+            if (!hasSelect2) return
+            const sel = document.getElementById('misp-object-template-select')
+            if (!sel || !$(sel).data('select2')) return
+            $(sel).val(activeTemplate.value.uuid || null).trigger('change.select2')
+        }
+
+        function initObjectTemplateSelect() {
+            if (!showAddObject.value || !hasSelect2) return
+            const sel = document.getElementById('misp-object-template-select')
+            if (!sel) return
+            try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+            $(sel)
+                .select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('body'),
+                    placeholder: 'Select a template...',
+                    allowClear: true,
+                    width: '100%'
+                })
+                .val(activeTemplate.value.uuid || null)
+                .trigger('change.select2')
+                .off('change.flowintelMispObjectTemplate')
+                .on('change.flowintelMispObjectTemplate', function() {
+                    selectObjectTemplate($(this).val() || '')
+                })
+        }
+
+        function selectObjectTemplate(templateUuid) {
+            selectedQuickTemplate.value = ''
+            activeTemplate.value = misp_objects.value.find(o => o.uuid === templateUuid) || empty_template()
+        }
+
         watch(() => activeTemplate.value.uuid, async (newUuid) => {
-            if (!newUuid) return
             await nextTick()
+            syncObjectTemplateSelect()
+            if (!newUuid) return
             try {
                 const sel = document.getElementById('new-object-task-select')
                 if (!sel) return
@@ -299,11 +333,20 @@ export default {
             showAddObject.value = !showAddObject.value
             if (!showAddObject.value) {
                 resetAddObjectForm()
+            } else {
+                nextTick(() => initObjectTemplateSelect())
             }
         }
 
         function resetAddObjectForm() {
             try {
+                if (hasSelect2) {
+                    const templateSel = document.getElementById('misp-object-template-select')
+                    if (templateSel) {
+                        $(templateSel).off('change.flowintelMispObjectTemplate')
+                        if ($(templateSel).data('select2')) $(templateSel).select2('destroy')
+                    }
+                }
                 if (hasSelect2) {
                     const sel = document.getElementById('new-object-task-select')
                     if (sel && $(sel).data('select2')) $(sel).select2('destroy')
@@ -747,6 +790,12 @@ export default {
             }
         }, { immediate: true })
 
+        watch(misp_objects, async () => {
+            if (!showAddObject.value) return
+            await nextTick()
+            initObjectTemplateSelect()
+        })
+
         // Refresh case-side data (task badges per MISP object) when a task
         // independently links/unlinks one of its MISP objects via the task UI.
         const onTaskMispLinkChanged = () => { fetch_case_misp_object() }
@@ -766,6 +815,7 @@ export default {
             misp_objects,
             activeTemplate,
             activeTemplateAttr,
+            selectObjectTemplate,
             template_attributes,
             objectIconClass,
             attributeIconClass,
@@ -911,10 +961,10 @@ export default {
 
             <div class="mb-3">
                 <label class="form-label">Or select a template from the list:</label>
-                <select class="form-select" @change="activeTemplate = misp_objects.find(o => o.uuid === $event.target.value) || { requiredOneOf: [] }">
+                <select id="misp-object-template-select" class="form-select" :value="activeTemplate.uuid || ''" @change="selectObjectTemplate($event.target.value)">
                     <option value="">--</option>
                     <template v-for="object in misp_objects">
-                        <option :value="object.uuid" :selected="activeTemplate.uuid === object.uuid">[[object.name]]</option>
+                        <option :value="object.uuid">[[object.name]]</option>
                     </template>
                 </select>
             </div>
