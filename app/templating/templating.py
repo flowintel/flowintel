@@ -438,6 +438,17 @@ def get_task_by_case(cid):
     return {"tasks": []}
 
 
+@templating_blueprint.route("/task/<tid>/case_templates", methods=['GET'])
+@login_required
+def get_case_templates_using_task_template(tid):
+    """Return case templates using a task template."""
+    if CommonModel.get_task_template(tid):
+        return {
+            "case_templates": TaskModel.get_case_templates_using_task_template(tid)
+        }, 200
+    return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
+
+
 @templating_blueprint.route("/case/<cid>/remove_task/<tid>", methods=['GET'])
 @login_required
 @template_editor_required
