@@ -1,0 +1,11 @@
+# Adapt to your needs
+SIMPLESAML_GROUP_ALIASES    = {
+    "your_saml_group": "FlowintelEditor",   # group in lowercase — must match exactly what IdP sends
+    "your_other_saml_group": "your_flowintel_custom_role",   # group in lowercase — must match exactly what IdP sends
+}
+
+# This one should contain only custom group / roles priority listing (no Flowintel System roles, no Flowintel "Base" roles)
+# The Flowintel Base roles are already included in the base priority list alongside system roles
+SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY = [
+    {'group': "your_other_saml_group", 'role': "your_flowintel_custom_role",},
+]
