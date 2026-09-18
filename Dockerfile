@@ -148,7 +148,9 @@ RUN set -eux \
         # Essential to send signed emails
         gnupg \
         #
+        # end-to-end encryption (Matrix for example)
         libolm-dev \
+        # render svg diagrams in PDF reports
         librsvg2-bin \
         # screen is kept for now, but we should question the idea of using screen inside the launch_docker as it smells antipatternistic
         # Currently it is required by launch.sh: runs startNotif.py and startMispSync.py (as detached background sessions alongside gunicorn)
@@ -173,9 +175,6 @@ RUN set -eux \
 
 WORKDIR /home/flowintel/app
 
-# Copy Python3 venv from python-builder
-COPY --from=python-builder /opt/flowintel-venv /opt/flowintel-venv
-
 # Copy Node + Mermaid from builder
 COPY --from=node-builder \
     /usr/local/bin/mmdc* \
@@ -183,6 +182,9 @@ COPY --from=node-builder \
     /usr/local/bin/
 COPY --from=node-builder /usr/local/bin/node /usr/local/bin/node
 COPY --from=node-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
+
+# Copy Python3 venv from python-builder
+COPY --from=python-builder /opt/flowintel-venv /opt/flowintel-venv
 
 # Proxy mmdc with proper puppeteer config
 RUN <<'EOF'
@@ -222,13 +224,15 @@ RUN --mount=type=bind,from=pkg-download,source=/tmp/pandoc.deb,target=/tmp/pando
 # With forced proper ownership
 COPY --from=source --chown=flowintel:flowintel /src/ /home/flowintel/app/
 
-# Make relevant script executables
+# Make relevant script executables and link the Python3 venv to make it reachable from the legacy location
 RUN set -eux \
+    && chown flowintel:flowintel /home/flowintel/app \    
     && chmod 0755 \
         /home/flowintel/app/launch.sh \
         /home/flowintel/app/bin/wait-for-it.sh \
         /home/flowintel/app/bin/entrypoint.sh \
-    && chown -R flowintel:flowintel /home/flowintel/.pandoc;
+    && chown -R flowintel:flowintel /home/flowintel/.pandoc \
+    && ln -s /opt/flowintel-venv /home/flowintel/venv;
 
 # Some people may want this hardening as a 1st step towards distroless image (before even a noshell variant)
 # But this will blind the Vulnerability scanners...
