@@ -46,7 +46,8 @@ def _import_event_standalone_attributes(case, event, instance_id, selected_attri
     selected_attribute_uuids = set(selected_attribute_uuids or [])
 
     for event_attr in getattr(event, 'attributes', []):
-        if event_attr.object_id and int(event_attr.object_id) != 0:
+        event_attr_object_id = getattr(event_attr, "object_id", None)
+        if event_attr_object_id and int(event_attr_object_id) != 0:
             continue
         if selected_attribute_uuids and event_attr.uuid not in selected_attribute_uuids:
             continue
@@ -71,6 +72,7 @@ def _import_event_standalone_attributes(case, event, instance_id, selected_attri
 
     if standalone_attr_uuid_list:
         CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=instance_id, case_id=case.id)
+    return standalone_attr_uuid_list
 
 
 def _upsert_case_misp_connector(case, instance, identifier):
@@ -280,6 +282,9 @@ def case_creation_from_importer(case, current_user):
 
     # Create MISP objects and link to tasks when task links are present in the import payload
     created_objects_by_key = {}
+    created_objects_by_uuid = {}
+    created_attributes_by_uuid = {}
+    created_attributes_by_key = {}
     for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         # collect task ids that reference this object in the imported tasks
@@ -298,6 +303,20 @@ def case_creation_from_importer(case, current_user):
             created_objects_by_key[(created_obj.template_uuid, created_obj.name)] = created_obj.id
         except Exception:
             pass
+        if misp_object.get("uuid"):
+            created_objects_by_uuid[misp_object.get("uuid")] = created_obj.id
+        try:
+            created_attrs = list(created_obj.attributes)
+            for source_attr, created_attr in zip(misp_object.get("attributes", []), created_attrs):
+                if source_attr.get("uuid"):
+                    created_attributes_by_uuid[source_attr.get("uuid")] = created_attr.id
+                created_attributes_by_key[(
+                    source_attr.get("type"),
+                    source_attr.get("object_relation"),
+                    source_attr.get("value")
+                )] = created_attr.id
+        except Exception:
+            pass
 
     for attr in case.get("standalone_attributes", []):
         # collect task ids that reference this standalone attribute in the imported tasks
@@ -310,7 +329,52 @@ def case_creation_from_importer(case, current_user):
                         task_ids.add(tid)
         if task_ids:
             attr["task_ids"] = list(task_ids)
-        CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+        created_attr = CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+        if attr.get("uuid"):
+            created_attributes_by_uuid[attr.get("uuid")] = created_attr.id
+        created_attributes_by_key[(attr.get("type"), attr.get("object_relation"), attr.get("value"))] = created_attr.id
+
+    def resolve_imported_reference(reference):
+        if reference.get("referenced_type") == "attribute" or reference.get("referenced_attribute_uuid"):
+            attr_id = created_attributes_by_uuid.get(reference.get("referenced_attribute_uuid"))
+            if not attr_id:
+                attr_id = created_attributes_by_key.get((
+                    reference.get("referenced_attribute_type"),
+                    reference.get("referenced_attribute_object_relation"),
+                    reference.get("referenced_attribute_value")
+                ))
+            return "attribute", attr_id
+
+        object_id = created_objects_by_uuid.get(reference.get("referenced_object_uuid"))
+        if not object_id:
+            object_id = created_objects_by_key.get((
+                reference.get("referenced_object_template_uuid"),
+                reference.get("referenced_object_name")
+            ))
+        return "object", object_id
+
+    for misp_object in case.get("misp-objects", []):
+        source_id = created_objects_by_uuid.get(misp_object.get("uuid"))
+        if not source_id:
+            source_id = created_objects_by_key.get((misp_object.get("template_uuid"), misp_object.get("name")))
+        if not source_id:
+            continue
+
+        for reference in misp_object.get("references", []):
+            referenced_type, referenced_id = resolve_imported_reference(reference)
+            if not referenced_id:
+                continue
+            CaseModel.create_misp_object_reference(
+                case_created.id,
+                source_id,
+                referenced_id,
+                reference.get("relationship_type"),
+                current_user,
+                comment=reference.get("comment", ""),
+                validate_relationship=False,
+                record_history=False,
+                referenced_type=referenced_type,
+            )
 
     try:
         db.session.commit()
@@ -1190,13 +1254,23 @@ def create_case_misp_event(request_form, current_user):
     if object_uuid_list:
         CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
+    standalone_attr_uuid_list = []
     if request_form.get("import_standalone_attributes"):
-        _import_event_standalone_attributes(
+        standalone_attr_uuid_list = _import_event_standalone_attributes(
             case,
             event,
             instance.id,
             selected_attribute_uuids=selected_attribute_uuids,
         )
+
+    CaseModel.import_misp_object_references_from_event(
+        case.id,
+        instance.id,
+        event.objects,
+        current_user=current_user,
+        object_uuid_list=object_uuid_list,
+        standalone_attr_uuid_list=standalone_attr_uuid_list,
+    )
 
     event_label = f'event {event.id} "{event.info}"'
 

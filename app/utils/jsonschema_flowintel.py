@@ -89,6 +89,10 @@ mispObjectSchema = {
         "attributes": {
             "type": "array",
             "items": {"type": "object"}
+        },
+        "references": {
+            "type": "array",
+            "items": {"type": "object"}
         }
     }
 }
@@ -105,7 +109,7 @@ mispAttrSchema = {
         "ids_flag:": {"type": "boolean"},
         "creation_date:": {"type": "string"},
         "last_modif:": {"type": "string"},
-        "disable_correlation:": {"type": "boolean"}
+        "disable_correlation:": {"type": "boolean"},
     }
 }
 

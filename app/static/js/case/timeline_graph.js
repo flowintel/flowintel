@@ -76,7 +76,12 @@ export default {
                 id: String(lk.id),
                 from: String(lk.source_event_id),
                 to: String(lk.target_event_id),
-                data: { label: lk.label || '', link_id: String(lk.id) }
+                data: {
+                    label: lk.automatic ? `[MISP] ${lk.label || 'relationship'}` : (lk.label || ''),
+                    link_id: String(lk.id),
+                    automatic: !!lk.automatic,
+                    link_type: lk.link_type || 'manual'
+                }
             }))
 
             const data = { nodes: nodes, edges: edges }
@@ -164,6 +169,10 @@ export default {
 
         async function save_edge_label() {
             if (!selected_edge.value) return
+            if (selected_edge.value.automatic) {
+                create_message('Automatic MISP relationship links are edited from the MISP relationship UI.', 'info-subtle')
+                return
+            }
             const res = await fetch('/case/' + props.case_id + '/edit_timeline_event_link/' + selected_edge.value.id, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
@@ -179,6 +188,10 @@ export default {
 
         async function delete_selected_edge() {
             if (!selected_edge.value) return
+            if (selected_edge.value.automatic) {
+                create_message('Automatic MISP relationship links are removed by deleting the MISP relationship.', 'info-subtle')
+                return
+            }
             const ok = await confirmDelete({
                 title: 'Delete link?',
                 message: 'Are you sure you want to delete this link? This cannot be undone.'
@@ -329,11 +342,12 @@ export default {
             <div class="card-body py-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted">Selected link:</span>
+                    <span v-if="selected_edge.automatic" class="badge bg-info text-dark">MISP relationship</span>
                     <input type="text" class="form-control form-control-sm" v-model="edit_link_label" placeholder="Link label" style="max-width: 200px;">
-                    <button class="btn btn-success btn-sm" @click="save_edge_label()" title="Save label">
+                    <button class="btn btn-success btn-sm" @click="save_edge_label()" title="Save label" :disabled="selected_edge.automatic">
                         <i class="fa-solid fa-check"></i>
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" @click="delete_selected_edge()" title="Delete link">
+                    <button class="btn btn-outline-danger btn-sm" @click="delete_selected_edge()" title="Delete link" :disabled="selected_edge.automatic">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" @click="selected_edge = null" title="Deselect">

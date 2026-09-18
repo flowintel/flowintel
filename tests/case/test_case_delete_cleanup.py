@@ -85,6 +85,7 @@ def test_delete_case_cleans_up_all_features(client, app):
             Case_Timeline_Event,
             Case_Timeline_Event_Link,
             Case_Misp_Object,
+            Case_Misp_Object_Reference,
         )
 
         db.session.add(Case_Tags(tag_id=999, case_id=case_id))
@@ -100,6 +101,18 @@ def test_delete_case_cleans_up_all_features(client, app):
         db.session.add(Case_Note_Template_Model(case_id=case_id, note_template_id=999, values={}, content=""))
         db.session.add(Rulezet_Rule(case_id=case_id, instance_id=999, remote_id="rule-1"))
         db.session.add(Alert(case_id=case_id, message="pending alert", status="pending"))
+
+        misp_source = Case_Misp_Object(case_id=case_id, template_uuid="source-template", name="SourceObject")
+        misp_target = Case_Misp_Object(case_id=case_id, template_uuid="target-template", name="TargetObject")
+        db.session.add(misp_source)
+        db.session.add(misp_target)
+        db.session.commit()
+        db.session.add(Case_Misp_Object_Reference(
+            case_id=case_id,
+            source_object_id=misp_source.id,
+            referenced_object_id=misp_target.id,
+            relationship_type="related-to",
+        ))
 
         # Two timeline events linked to each other
         event_a = Case_Timeline_Event(case_id=case_id, date_text="2024-01-01", description="Event A")
@@ -143,6 +156,7 @@ def test_delete_case_cleans_up_all_features(client, app):
             Case_Timeline_Event,
             Case_Timeline_Event_Link,
             Case_Misp_Object,
+            Case_Misp_Object_Reference,
         )
 
         assert Case.query.get(case_id) is None, "Case record should be deleted"
@@ -159,6 +173,7 @@ def test_delete_case_cleans_up_all_features(client, app):
         assert Recurring_Notification.query.filter_by(case_id=case_id).count() == 0, "Recurring_Notification should be deleted"
         assert Case_Note_Template_Model.query.filter_by(case_id=case_id).count() == 0, "Case_Note_Template_Model should be deleted"
         assert Case_Misp_Object.query.filter_by(case_id=case_id).count() == 0, "Case_Misp_Object should be deleted"
+        assert Case_Misp_Object_Reference.query.filter_by(case_id=case_id).count() == 0, "Case_Misp_Object_Reference should be deleted"
         assert Rulezet_Rule.query.filter_by(case_id=case_id).count() == 0, "Rulezet_Rule should be deleted"
         assert Alert.query.filter_by(case_id=case_id).count() == 0, "Alert should be deleted"
         assert Case_Timeline_Event.query.filter_by(case_id=case_id).count() == 0, "Case_Timeline_Event should be deleted"

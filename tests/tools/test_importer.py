@@ -1,4 +1,4 @@
-from app.db_class.db import Case, Misp_Attribute, Task, Case_Misp_Object, Task_Misp_Object, Task_Misp_Attribute
+from app.db_class.db import Case, Misp_Attribute, Task, Case_Misp_Object, Case_Misp_Object_Reference, Task_Misp_Object, Task_Misp_Attribute
 
 
 IMPORTER_KEY = "importer_api_key"
@@ -237,6 +237,71 @@ def test_import_case_task_links_to_object_and_attribute(client, app):
         assert attr is not None
         tam = Task_Misp_Attribute.query.filter_by(task_id=task.id, misp_attribute_id=attr.id).first()
         assert tam is None
+
+
+def test_import_case_with_misp_object_relationship(client, app):
+    """Importer should recreate relationships between imported MISP objects."""
+    title = "Case With MISP Object Relationship"
+    payload = minimal_case(title)
+    payload["misp-objects"] = [
+        {
+            "uuid": "source-object-uuid",
+            "template_uuid": "tpl-source",
+            "name": "SourceObject",
+            "attributes": [{
+                "value": "source",
+                "type": "text",
+                "object_relation": "text",
+                "first_seen": "",
+                "last_seen": "",
+                "comment": "",
+                "ids_flag": False,
+                "disable_correlation": False
+            }],
+            "references": [{
+                "source_object_uuid": "source-object-uuid",
+                "referenced_object_uuid": "target-object-uuid",
+                "relationship_type": "related-to",
+                "comment": "imported link"
+            }]
+        },
+        {
+            "uuid": "target-object-uuid",
+            "template_uuid": "tpl-target",
+            "name": "TargetObject",
+            "attributes": [{
+                "value": "target",
+                "type": "text",
+                "object_relation": "text",
+                "first_seen": "",
+                "last_seen": "",
+                "comment": "",
+                "ids_flag": False,
+                "disable_correlation": False
+            }],
+            "references": []
+        }
+    ]
+
+    response = client.post("/api/importer/case",
+                           content_type="application/json",
+                           headers={"X-API-KEY": IMPORTER_KEY},
+                           json=payload)
+    assert response.status_code == 200
+    assert "All created" in response.json["message"]
+
+    with app.app_context():
+        case = Case.query.filter_by(title=title).first()
+        source = Case_Misp_Object.query.filter_by(case_id=case.id, name="SourceObject").first()
+        target = Case_Misp_Object.query.filter_by(case_id=case.id, name="TargetObject").first()
+        relationship = Case_Misp_Object_Reference.query.filter_by(
+            case_id=case.id,
+            source_object_id=source.id,
+            referenced_object_id=target.id,
+            relationship_type="related-to"
+        ).first()
+        assert relationship is not None
+        assert relationship.comment == "imported link"
 
 
 def test_import_case_duplicate_title(client):

@@ -1193,10 +1193,19 @@ class ModifNoteCase(Resource):
                         "object_name": obj.name,
                         "attributes": loc_attr_list,
                         "object_id": obj.id,
+                        "object_instance_uuid": obj.uuid,
                         "object_uuid": obj.template_uuid,
                         "object_creation_date": obj.creation_date.strftime(DATETIME_FORMAT_FULL) if obj.creation_date else None,
                         "object_last_modif": obj.last_modif.strftime(DATETIME_FORMAT_FULL) if obj.last_modif else None,
-                        "synced_instances": CaseModel.serialize_object_synced_instances(cid, obj.id, current_user)
+                        "synced_instances": CaseModel.serialize_object_synced_instances(cid, obj.id, current_user),
+                        "references": [
+                            ref.to_json()
+                            for ref in CaseModel.get_misp_object_references_from_object(cid, obj.id)
+                        ],
+                        "referenced_by": [
+                            ref.to_json()
+                            for ref in CaseModel.get_misp_object_references_to_object(cid, obj.id)
+                        ]
                     })
 
                 return {"misp-object": loc_object}, 200
@@ -1219,6 +1228,14 @@ class ModifNoteCase(Resource):
         method_decorators = [api_required]
         def get(self):
             return {"misp-object": utils.get_object_templates()}, 200
+
+
+    @case_ns.route('/get_misp_object_relationships', methods=['GET'])
+    @case_ns.doc(description='Get list of MISP object relationship types')
+    class GetMispObjectRelationships(Resource):
+        method_decorators = [api_required]
+        def get(self):
+            return {"relationships": utils.get_object_relationships()}, 200
 
 
     @case_ns.route('/get_misp_attribute_types', methods=['GET'])
@@ -1270,6 +1287,68 @@ class ModifNoteCase(Resource):
                     return {"message": "Object not found in this case"}, 404
                 return {"message": "Permission denied"}, 403
             return {"message": "Case not found"}, 404
+
+
+    @case_ns.route('/<cid>/misp_object/<oid>/references', methods=['POST'])
+    @case_ns.doc(description='Create a relationship from one MISP object to another MISP entity')
+    class CreateMispObjectReference(Resource):
+        method_decorators = [editor_required, api_required]
+        @case_ns.doc(params={
+            "referenced_type": "Optional. Target type: object or attribute. Defaults to object",
+            "referenced_id": "Required. Target local object or attribute id",
+            "referenced_object_id": "Required for object targets. Target local MISP object id",
+            "referenced_attribute_id": "Required for attribute targets. Target local MISP attribute id",
+            "relationship_type": "Required. MISP object relationship type",
+            "comment": "Optional relationship comment"
+        })
+        def post(self, cid, oid):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
+            if not request.json:
+                return {"message": "Please give data"}, 400
+
+            referenced_type = request.json.get("referenced_type") or request.json.get("target_type") or "object"
+            referenced_id = request.json.get("referenced_attribute_id") if referenced_type in ("attribute", "misp_attribute") else request.json.get("referenced_object_id")
+            if referenced_id is None:
+                referenced_id = request.json.get("referenced_id")
+            result, status = CaseModel.create_misp_object_reference(
+                cid,
+                oid,
+                referenced_id,
+                request.json.get("relationship_type"),
+                current_user,
+                comment=request.json.get("comment", ""),
+                referenced_type=referenced_type,
+            )
+            if status in (200, 201):
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
+            return result, status
+
+
+    @case_ns.route('/<cid>/misp_object_reference/<reference_id>', methods=['DELETE'])
+    @case_ns.doc(description='Delete a MISP entity relationship')
+    class DeleteMispObjectReference(Resource):
+        method_decorators = [editor_required, api_required]
+        def delete(self, cid, reference_id):
+            case = CommonModel.get_case(cid)
+            if not case:
+                return {"message": "Case not found"}, 404
+
+            current_user = utils.get_user_from_api(request.headers)
+            if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+                return {"message": "Permission denied"}, 403
+
+            result, status = CaseModel.delete_misp_object_reference(cid, reference_id, current_user)
+            if status == 200:
+                sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+                result = CaseModel.with_misp_automation_message(result, sync_result)
+            return result, status
 
 
     @case_ns.route('/<cid>/add_attributes/<oid>', methods=['POST'])

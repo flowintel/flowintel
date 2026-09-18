@@ -144,6 +144,12 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
             details.append({"name": getattr(obje, 'name', str(obje)), "status": "error", "error": str(e)})
 
     case_model.result_misp_object_module(object_uuid_list, instance_id=instance["id"], case_id=case["id"])
+    case_model.import_misp_object_references_from_event(
+        case["id"],
+        instance["id"],
+        event.objects,
+        current_user=user
+    )
 
     # Import event-level (standalone) attributes
     standalone_attr_uuid_list = []
@@ -154,7 +160,8 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     from app.db_class.db import Misp_Attribute, Misp_Attribute_Instance_Uuid
     for ev_attr in getattr(event, 'attributes', []):
         # Skip attributes that belong to an object (object_id != 0 means it belongs to an object)
-        if ev_attr.object_id and int(ev_attr.object_id) != 0:
+        ev_attr_object_id = getattr(ev_attr, "object_id", None)
+        if ev_attr_object_id and int(ev_attr_object_id) != 0:
             continue
         if selected_sa_uuids is not None and ev_attr.uuid not in selected_sa_uuids:
             continue

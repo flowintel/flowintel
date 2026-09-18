@@ -22,7 +22,7 @@ from app.db_class.db import *
 from app.utils import misp_object_helper
 from ..utils.logger import flowintel_log
 from ..utils.note_variables import resolve_variables
-from ..utils.utils import get_modules_list, get_object_templates
+from ..utils.utils import get_modules_list, get_object_templates, get_object_relationship_names
 from ..custom_tags import custom_tags_core as CustomModel
 from ..notification import notification_core as NotifModel
 from ..templating.TemplateCase import TemplateModel as CaseTemplateModel
@@ -291,19 +291,22 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # Import event-level (standalone) attributes
         standalone_attr_uuid_list = []
         for event_attr in getattr(event, 'attributes', []):
-            if event_attr.object_id and int(event_attr.object_id) != 0:
+            event_attr_object_id = getattr(event_attr, "object_id", None)
+            if event_attr_object_id and int(event_attr_object_id) != 0:
                 # attribute belongs to an object, skip (already handled above)
                 continue
+            event_attr_first_seen = getattr(event_attr, "first_seen", None)
+            event_attr_last_seen = getattr(event_attr, "last_seen", None)
             sa_attr = Misp_Attribute(
                 case_misp_object_id=None,
                 case_id=case.id,
                 value=str(event_attr.value),
                 type=event_attr.type,
                 object_relation="",
-                first_seen=event_attr.first_seen if isinstance(event_attr.first_seen, datetime.datetime) else None,
-                last_seen=event_attr.last_seen if isinstance(event_attr.last_seen, datetime.datetime) else None,
-                comment=event_attr.comment or "",
-                ids_flag=event_attr.to_ids or False,
+                first_seen=event_attr_first_seen if isinstance(event_attr_first_seen, datetime.datetime) else None,
+                last_seen=event_attr_last_seen if isinstance(event_attr_last_seen, datetime.datetime) else None,
+                comment=getattr(event_attr, "comment", "") or "",
+                ids_flag=getattr(event_attr, "to_ids", False) or False,
                 disable_correlation=getattr(event_attr, 'disable_correlation', False) or False,
                 creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
@@ -312,8 +315,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             db.session.commit()
             standalone_attr_uuid_list.append({"attribute_id": sa_attr.id, "uuid": event_attr.uuid})
 
+        loc_instance_id = None
         if "origin_url" in form_dict and form_dict["origin_url"]:
-            loc_instance_id = ""
             r = Connector_Instance.query.filter_by(url=form_dict["origin_url"]).all()
             for instance in r:
                 u = User_Connector_Instance.query.filter_by(instance_id=instance.id, user_id=user.id)
@@ -327,6 +330,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             if loc_instance_id:
                 CaseModel.result_misp_object_module(object_uuid_list, instance_id=loc_instance_id, case_id=case.id)
                 CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=loc_instance_id, case_id=case.id)
+
+        CaseModel.import_misp_object_references_from_event(
+            case.id,
+            loc_instance_id,
+            event.objects,
+            current_user=user,
+            object_uuid_list=object_uuid_list,
+            standalone_attr_uuid_list=standalone_attr_uuid_list,
+        )
 
         return case
 
@@ -366,6 +378,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         Case_Custom_Tags.query.filter_by(case_id=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_1=case.id).delete()
         Case_Link_Case.query.filter_by(case_id_2=case.id).delete()
+        Case_Misp_Object_Reference.query.filter_by(case_id=case.id).delete()
 
         # Delete MISP objects and associated data (best-effort)
         for obj in self.get_misp_object_by_case(case_id):
@@ -427,7 +440,19 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         try:
             for attr in misp_object.attributes:
                 Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id).delete()
+                Case_Misp_Object_Reference.query.filter(
+                    or_(
+                        Case_Misp_Object_Reference.source_attribute_id == attr.id,
+                        Case_Misp_Object_Reference.referenced_attribute_id == attr.id
+                    )
+                ).delete(synchronize_session=False)
                 Misp_Attribute.query.filter_by(id=attr.id).delete()
+            Case_Misp_Object_Reference.query.filter(
+                or_(
+                    Case_Misp_Object_Reference.source_object_id == misp_object.id,
+                    Case_Misp_Object_Reference.referenced_object_id == misp_object.id
+                )
+            ).delete(synchronize_session=False)
             Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=misp_object.id).delete()
             Task_Misp_Object.query.filter_by(misp_object_id=misp_object.id).delete()
             db.session.commit()
@@ -818,11 +843,15 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             for misp_object in loc_misp_objects_list:
                 misp_object_json = misp_object.to_json()
                 misp_object_json["object-template"] = {"uuid": misp_object.template_uuid, "name": misp_object.name}
-                misp_object_json["attributes"] = [attr.to_json() for attr in misp_object.attributes]
+                old_attrs = list(misp_object.attributes)
+                misp_object_json["attributes"] = [attr.to_json() for attr in old_attrs]
 
                 new_obj = self.create_misp_object(new_case.id, misp_object_json, user)
                 if new_obj:
                     object_id_map[misp_object.id] = new_obj.id
+                    new_attrs = list(new_obj.attributes)
+                    for old_attr, new_attr in zip(old_attrs, new_attrs):
+                        attr_id_map[old_attr.id] = new_attr.id
 
             loc_standalone_attributes_list = self.get_standalone_attributes_by_case(case.id)
             for attr in loc_standalone_attributes_list:
@@ -833,6 +862,28 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                         attr_id_map[attr.id] = new_attr.id
                     except Exception:
                         pass
+
+            for ref in Case_Misp_Object_Reference.query.filter_by(case_id=case.id).all():
+                source_object_id = object_id_map.get(ref.source_object_id) if ref.source_object_id else None
+                source_attribute_id = attr_id_map.get(ref.source_attribute_id) if ref.source_attribute_id else None
+                referenced_object_id = object_id_map.get(ref.referenced_object_id) if ref.referenced_object_id else None
+                referenced_attribute_id = attr_id_map.get(ref.referenced_attribute_id) if ref.referenced_attribute_id else None
+                if (ref.source_object_id and not source_object_id) or (ref.source_attribute_id and not source_attribute_id):
+                    continue
+                if (ref.referenced_object_id and not referenced_object_id) or (ref.referenced_attribute_id and not referenced_attribute_id):
+                    continue
+                db.session.add(Case_Misp_Object_Reference(
+                    case_id=new_case.id,
+                    source_object_id=source_object_id,
+                    source_attribute_id=source_attribute_id,
+                    referenced_object_id=referenced_object_id,
+                    referenced_attribute_id=referenced_attribute_id,
+                    relationship_type=ref.relationship_type,
+                    comment=ref.comment,
+                    creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+                    last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+                ))
+            db.session.commit()
 
             for task in case.tasks:
                 task_json = task.to_json()
@@ -922,6 +973,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             # update any object instance UUID rows to point to the new case
             for inst in Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=obj.id, case_id=current_case.id).all():
                 inst.case_id = merging_case.id
+
+        for ref in Case_Misp_Object_Reference.query.filter_by(case_id=current_case.id).all():
+            ref.case_id = merging_case.id
 
         db.session.commit()
 
@@ -2148,6 +2202,314 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Get a misp object by id"""
         return Case_Misp_Object.query.get(oid)
 
+    def get_misp_object_references_from_object(self, cid, oid):
+        return Case_Misp_Object_Reference.query.filter_by(
+            case_id=int(cid),
+            source_object_id=int(oid),
+            source_attribute_id=None,
+        ).all()
+
+    def get_misp_object_references_to_object(self, cid, oid):
+        return Case_Misp_Object_Reference.query.filter_by(
+            case_id=int(cid),
+            referenced_object_id=int(oid),
+            referenced_attribute_id=None,
+        ).all()
+
+    def get_misp_references_from_attribute(self, cid, aid):
+        return Case_Misp_Object_Reference.query.filter_by(
+            case_id=int(cid),
+            source_object_id=None,
+            source_attribute_id=int(aid),
+        ).all()
+
+    def get_misp_references_to_attribute(self, cid, aid):
+        return Case_Misp_Object_Reference.query.filter_by(
+            case_id=int(cid),
+            referenced_object_id=None,
+            referenced_attribute_id=int(aid),
+        ).all()
+
+    def _normalize_misp_reference_entity(self, entity_type, entity_id):
+        entity_type = str(entity_type or "").strip().lower()
+        if entity_type in ("object", "misp_object"):
+            entity_type = "object"
+        elif entity_type in ("attribute", "misp_attribute"):
+            entity_type = "attribute"
+        else:
+            return None, None, {"message": "Reference endpoint type must be object or attribute", "toast_class": "warning-subtle"}, 400
+        try:
+            return entity_type, int(entity_id), None, None
+        except Exception:
+            return None, None, {"message": "Reference endpoint id must be an integer", "toast_class": "warning-subtle"}, 400
+
+    def _get_misp_reference_entity(self, cid, entity_type, entity_id, label):
+        if entity_type == "object":
+            entity = self.get_misp_object(entity_id)
+            if not entity or int(entity.case_id) != int(cid):
+                return None, {"message": f"{label} object not found in this case", "toast_class": "warning-subtle"}, 404
+            return entity, None, None
+
+        entity = self.get_misp_attribute(entity_id)
+        if not entity:
+            return None, {"message": f"{label} attribute not found in this case", "toast_class": "warning-subtle"}, 404
+        if entity.case_id:
+            entity_case_id = entity.case_id
+        elif entity.case_misp_object_id:
+            parent = self.get_misp_object(entity.case_misp_object_id)
+            entity_case_id = parent.case_id if parent else None
+        else:
+            entity_case_id = None
+        if int(entity_case_id or 0) != int(cid):
+            return None, {"message": f"{label} attribute not found in this case", "toast_class": "warning-subtle"}, 404
+        return entity, None, None
+
+    def _touch_misp_reference_entity(self, entity_type, entity):
+        if entity_type == "object":
+            entity.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+        elif entity_type == "attribute":
+            entity.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+            if entity.case_misp_object_id:
+                parent = self.get_misp_object(entity.case_misp_object_id)
+                if parent:
+                    parent.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+
+    def create_misp_entity_reference(
+        self,
+        cid,
+        source_type,
+        source_id,
+        referenced_type,
+        referenced_id,
+        relationship_type,
+        current_user=None,
+        comment="",
+        validate_relationship=True,
+        record_history=True,
+    ):
+        """Create or update a relationship between Flowintel MISP objects/attributes."""
+        try:
+            cid = int(cid)
+        except Exception:
+            return {"message": "Case id must be an integer", "toast_class": "warning-subtle"}, 400
+
+        source_type, source_id, error, status = self._normalize_misp_reference_entity(source_type, source_id)
+        if error:
+            return error, status
+        referenced_type, referenced_id, error, status = self._normalize_misp_reference_entity(referenced_type, referenced_id)
+        if error:
+            return error, status
+
+        relationship_type = str(relationship_type or "").strip()
+        comment = str(comment or "").strip()
+        if not relationship_type:
+            return {"message": "Relationship type is required", "toast_class": "warning-subtle"}, 400
+        if source_type == referenced_type and source_id == referenced_id:
+            return {"message": "An entity cannot reference itself", "toast_class": "warning-subtle"}, 400
+        if validate_relationship and relationship_type not in get_object_relationship_names():
+            return {"message": "Unknown MISP object relationship type", "toast_class": "warning-subtle"}, 400
+
+        source_entity, error, status = self._get_misp_reference_entity(cid, source_type, source_id, "Source")
+        if error:
+            return error, status
+        referenced_entity, error, status = self._get_misp_reference_entity(cid, referenced_type, referenced_id, "Referenced")
+        if error:
+            return error, status
+
+        source_object_id = source_id if source_type == "object" else None
+        source_attribute_id = source_id if source_type == "attribute" else None
+        referenced_object_id = referenced_id if referenced_type == "object" else None
+        referenced_attribute_id = referenced_id if referenced_type == "attribute" else None
+
+        existing = Case_Misp_Object_Reference.query.filter_by(
+            case_id=cid,
+            source_object_id=source_object_id,
+            source_attribute_id=source_attribute_id,
+            referenced_object_id=referenced_object_id,
+            referenced_attribute_id=referenced_attribute_id,
+            relationship_type=relationship_type
+        ).first()
+        if existing:
+            if existing.comment != comment:
+                existing.comment = comment
+                existing.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
+                self._touch_misp_reference_entity(source_type, source_entity)
+                db.session.commit()
+                CommonModel.update_last_modif(cid)
+            return {
+                "message": "MISP relationship already exists",
+                "toast_class": "info-subtle",
+                "reference": existing.to_json()
+            }, 200
+
+        reference = Case_Misp_Object_Reference(
+            case_id=cid,
+            source_object_id=source_object_id,
+            source_attribute_id=source_attribute_id,
+            referenced_object_id=referenced_object_id,
+            referenced_attribute_id=referenced_attribute_id,
+            relationship_type=relationship_type,
+            comment=comment,
+            creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
+            last_modif=datetime.datetime.now(tz=datetime.timezone.utc)
+        )
+        db.session.add(reference)
+        self._touch_misp_reference_entity(source_type, source_entity)
+        db.session.commit()
+        CommonModel.update_last_modif(cid)
+        if current_user and record_history:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, "MISP relationship created")
+        return {
+            "message": "MISP relationship created",
+            "toast_class": "success-subtle",
+            "reference": reference.to_json()
+        }, 201
+
+    def create_misp_object_reference(
+        self,
+        cid,
+        source_object_id,
+        referenced_object_id,
+        relationship_type,
+        current_user=None,
+        comment="",
+        validate_relationship=True,
+        record_history=True,
+        referenced_type="object",
+    ):
+        """Create/update a relationship sourced from a case MISP object."""
+        return self.create_misp_entity_reference(
+            cid,
+            "object",
+            source_object_id,
+            referenced_type,
+            referenced_object_id,
+            relationship_type,
+            current_user=current_user,
+            comment=comment,
+            validate_relationship=validate_relationship,
+            record_history=record_history,
+        )
+
+    def delete_misp_object_reference(self, cid, reference_id, current_user=None):
+        try:
+            cid = int(cid)
+            reference_id = int(reference_id)
+        except Exception:
+            return {"message": "Reference id must be an integer", "toast_class": "warning-subtle"}, 400
+
+        reference = Case_Misp_Object_Reference.query.filter_by(
+            id=reference_id,
+            case_id=cid
+        ).first()
+        if not reference:
+            return {"message": "MISP relationship not found", "toast_class": "warning-subtle"}, 404
+
+        source_object_id = reference.source_object_id
+        source_attribute_id = reference.source_attribute_id
+        db.session.delete(reference)
+        db.session.commit()
+
+        source_object = self.get_misp_object(source_object_id) if source_object_id else None
+        source_attribute = self.get_misp_attribute(source_attribute_id) if source_attribute_id else None
+        if source_object:
+            self._touch_misp_reference_entity("object", source_object)
+        if source_attribute:
+            self._touch_misp_reference_entity("attribute", source_attribute)
+        if source_object or source_attribute:
+            db.session.commit()
+
+        CommonModel.update_last_modif(cid)
+        if current_user:
+            case = CommonModel.get_case(cid)
+            CommonModel.save_history(case.uuid, current_user, "MISP relationship deleted")
+        return {"message": "MISP relationship deleted", "toast_class": "success-subtle"}, 200
+
+    def import_misp_object_references_from_event(
+        self,
+        cid,
+        instance_id,
+        event_objects,
+        current_user=None,
+        object_uuid_list=None,
+        standalone_attr_uuid_list=None,
+    ):
+        """Store MISP ObjectReference rows for imported/synced event objects."""
+        remote_to_local_id = {}
+        remote_attr_to_local_id = {}
+
+        for local_object_id, sync_info in (object_uuid_list or {}).items():
+            remote_object_uuid = sync_info.get("uuid")
+            if remote_object_uuid:
+                remote_to_local_id[remote_object_uuid] = int(local_object_id)
+            for attribute in sync_info.get("attributes", []) or []:
+                remote_attribute_uuid = attribute.get("uuid")
+                local_attribute_id = attribute.get("attribute_id")
+                if remote_attribute_uuid and local_attribute_id:
+                    remote_attr_to_local_id[remote_attribute_uuid] = int(local_attribute_id)
+
+        for attribute in standalone_attr_uuid_list or []:
+            remote_attribute_uuid = attribute.get("uuid")
+            local_attribute_id = attribute.get("attribute_id")
+            if remote_attribute_uuid and local_attribute_id:
+                remote_attr_to_local_id[remote_attribute_uuid] = int(local_attribute_id)
+
+        if instance_id:
+            remote_to_local_id.update({
+                row.object_instance_uuid: row.misp_object_id
+                for row in Misp_Object_Instance_Uuid.query.filter_by(
+                    case_id=int(cid),
+                    instance_id=int(instance_id)
+                ).all()
+                if row.object_instance_uuid
+            })
+            remote_attr_to_local_id.update({
+                row.attribute_instance_uuid: row.misp_attribute_id
+                for row in Misp_Attribute_Instance_Uuid.query.filter_by(
+                    case_id=int(cid),
+                    instance_id=int(instance_id)
+                ).all()
+                if row.attribute_instance_uuid
+            })
+        created = 0
+        updated = 0
+        for event_object in event_objects or []:
+            source_id = remote_to_local_id.get(getattr(event_object, "uuid", None))
+            if not source_id:
+                continue
+            for object_reference in getattr(event_object, "ObjectReference", []) or []:
+                referenced_uuid = getattr(object_reference, "referenced_uuid", None)
+                relationship_type = getattr(object_reference, "relationship_type", None)
+                if not referenced_uuid or not relationship_type:
+                    continue
+                referenced_id = remote_to_local_id.get(referenced_uuid)
+                referenced_type = "object"
+                if not referenced_id:
+                    referenced_id = remote_attr_to_local_id.get(referenced_uuid)
+                    referenced_type = "attribute"
+                if not referenced_id:
+                    continue
+                result, status = self.create_misp_object_reference(
+                    cid,
+                    source_id,
+                    referenced_id,
+                    relationship_type,
+                    current_user=current_user,
+                    comment=getattr(object_reference, "comment", "") or "",
+                    validate_relationship=False,
+                    record_history=False,
+                    referenced_type=referenced_type,
+                )
+                if status == 201:
+                    created += 1
+                elif status == 200 and result.get("reference"):
+                    updated += 1
+
+        if created or updated:
+            CommonModel.update_last_modif(cid)
+        return {"created": created, "updated": updated}
+
     def get_misp_attribute(self, aid):
         """Get a misp attribute by id"""
         return Misp_Attribute.query.get(aid)
@@ -2177,12 +2539,25 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attribute.id, case_id=cid).all()
                 for m_a in misp_attrs:
                     db.session.delete(m_a)
+                Case_Misp_Object_Reference.query.filter(
+                    or_(
+                        Case_Misp_Object_Reference.source_attribute_id == attribute.id,
+                        Case_Misp_Object_Reference.referenced_attribute_id == attribute.id
+                    )
+                ).delete(synchronize_session=False)
                 db.session.delete(attribute)
             
             # Delete Misp_Object_Instance_Uuid
             misp_objs = Misp_Object_Instance_Uuid.query.filter_by(misp_object_id=oid, case_id=cid).all()
             for m_o in misp_objs:
                 db.session.delete(m_o)
+
+            Case_Misp_Object_Reference.query.filter(
+                or_(
+                    Case_Misp_Object_Reference.source_object_id == oid,
+                    Case_Misp_Object_Reference.referenced_object_id == oid
+                )
+            ).delete(synchronize_session=False)
 
             task_object = Task_Misp_Object.query.filter_by(misp_object_id=oid).all()
             for t_o in task_object:
@@ -2305,6 +2680,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if int(case_id) == misp_object.case_id:
             attribute = self.get_misp_attribute(attr_id)
             if attribute.case_misp_object_id == int(object_id):
+                Case_Misp_Object_Reference.query.filter(
+                    or_(
+                        Case_Misp_Object_Reference.source_attribute_id == attribute.id,
+                        Case_Misp_Object_Reference.referenced_attribute_id == attribute.id
+                    )
+                ).delete(synchronize_session=False)
                 db.session.delete(attribute)
                 db.session.commit()
                 misp_object.last_modif = datetime.datetime.now(tz=datetime.timezone.utc)
@@ -2471,6 +2852,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         for t_a in task_misp_attrs:
             db.session.delete(t_a)
 
+        Case_Misp_Object_Reference.query.filter(
+            or_(
+                Case_Misp_Object_Reference.source_attribute_id == attr.id,
+                Case_Misp_Object_Reference.referenced_attribute_id == attr.id
+            )
+        ).delete(synchronize_session=False)
 
         db.session.delete(attr)
         db.session.commit()
@@ -2641,6 +3028,29 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     loc_attr["uuid"] = loc_attr_uuid.attribute_instance_uuid
 
                 loc_object["attributes"].append(loc_attr)
+            loc_object["references"] = []
+            for reference in self.get_misp_object_references_from_object(case_id, object.id):
+                loc_reference = reference.to_json()
+                loc_reference["source_object_remote_uuid"] = loc_object["uuid"]
+                loc_reference["referenced_object_remote_uuid"] = ""
+                loc_reference["referenced_attribute_remote_uuid"] = ""
+                if reference.referenced_object_id:
+                    referenced_object_uuid = self.get_misp_object_instance_uuid(
+                        reference.referenced_object_id,
+                        instance_id,
+                        case_id
+                    )
+                    if referenced_object_uuid:
+                        loc_reference["referenced_object_remote_uuid"] = referenced_object_uuid.object_instance_uuid
+                elif reference.referenced_attribute_id:
+                    referenced_attribute_uuid = self.get_misp_attribute_instance_uuid(
+                        reference.referenced_attribute_id,
+                        instance_id,
+                        case_id
+                    )
+                    if referenced_attribute_uuid:
+                        loc_reference["referenced_attribute_remote_uuid"] = referenced_attribute_uuid.attribute_instance_uuid
+                loc_object["references"].append(loc_reference)
             object_list.append(loc_object)
         return object_list
 
@@ -3119,6 +3529,67 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def get_timeline_event_links(self, cid):
         """Get all links between timeline events for a case"""
         return Case_Timeline_Event_Link.query.filter_by(case_id=cid).all()
+
+    def _timeline_key_for_misp_reference_endpoint(self, reference, side):
+        object_id = getattr(reference, f"{side}_object_id")
+        if object_id:
+            return int(object_id)
+
+        attribute_id = getattr(reference, f"{side}_attribute_id")
+        if not attribute_id:
+            return None
+
+        attribute = self.get_misp_attribute(attribute_id)
+        if not attribute:
+            return None
+        if attribute.case_misp_object_id:
+            return int(attribute.case_misp_object_id)
+        return -int(attribute.id)
+
+    def get_timeline_relationship_links(self, cid):
+        """Return graph-only links inferred from MISP entity relationships."""
+        timeline_events = Case_Timeline_Event.query.filter(
+            Case_Timeline_Event.case_id == int(cid),
+            Case_Timeline_Event.misp_object_id.isnot(None)
+        ).all()
+        event_by_timeline_key = {
+            int(event.misp_object_id): event.id
+            for event in timeline_events
+            if event.misp_object_id is not None
+        }
+
+        manual_pairs = {
+            (link.source_event_id, link.target_event_id)
+            for link in self.get_timeline_event_links(cid)
+        }
+
+        links = []
+        seen_pairs = set()
+        for reference in Case_Misp_Object_Reference.query.filter_by(case_id=int(cid)).all():
+            source_key = self._timeline_key_for_misp_reference_endpoint(reference, "source")
+            target_key = self._timeline_key_for_misp_reference_endpoint(reference, "referenced")
+            source_event_id = event_by_timeline_key.get(source_key)
+            target_event_id = event_by_timeline_key.get(target_key)
+            if not source_event_id or not target_event_id or source_event_id == target_event_id:
+                continue
+
+            pair = (source_event_id, target_event_id)
+            if pair in manual_pairs or pair in seen_pairs:
+                continue
+            seen_pairs.add(pair)
+
+            links.append({
+                "id": f"misp-reference-{reference.id}",
+                "case_id": int(cid),
+                "source_event_id": source_event_id,
+                "target_event_id": target_event_id,
+                "label": reference.relationship_type,
+                "automatic": True,
+                "link_type": "misp_relationship",
+                "misp_reference_id": reference.id,
+                "reference": reference.to_json(),
+            })
+        return links
 
     def create_timeline_event_link(self, cid, source_event_id, target_event_id, label, current_user):
         """Create a link between two timeline events"""

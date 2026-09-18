@@ -19,7 +19,9 @@ export default {
         }
 
         const case_misp_objects = ref([])
+        const standalone_attributes = ref([])
         const misp_objects = ref([])
+        const relationship_types = ref([])
         const activeTemplate = ref(empty_template())
         const activeTemplateAttr = ref(empty_template())
         const selectedQuickTemplate = ref('');
@@ -45,6 +47,10 @@ export default {
         // Object linking
         const link_modal_object = ref(null)   // the object currently open in the link modal
         const link_modal_ref = ref(null)
+
+        // Object relationships
+        const addingReferenceToObject = ref(null)
+        const referenceState = ref({ referenced_entity: '', relationship_type: '', comment: '' })
         // Search / filter / pagination
         const search_query = ref('')
         const type_filter = ref('')
@@ -65,7 +71,11 @@ export default {
             if (q) {
                 objs = objs.filter(o => {
                     if (o.object_name.toLowerCase().includes(q)) return true
-                    return o.attributes.some(a => String(a.value).toLowerCase().includes(q) || a.object_relation.toLowerCase().includes(q))
+                    if (o.attributes.some(a => String(a.value).toLowerCase().includes(q) || a.object_relation.toLowerCase().includes(q))) return true
+                    return (o.references || []).some(r =>
+                        String(r.relationship_type || '').toLowerCase().includes(q) ||
+                        String(r.referenced_object_name || '').toLowerCase().includes(q)
+                    )
                 })
             }
             if (t) {
@@ -180,6 +190,66 @@ export default {
                     .off('change.flowintelMispRelationType')
                     .on('change.flowintelMispRelationType', function() {
                         state.value.relation_type_combo = $(this).val() || ''
+                    })
+            })
+        }
+
+        function referenceSelectValue(sel) {
+            if (sel.dataset.referenceField === 'relationship_type') {
+                return referenceState.value.relationship_type || null
+            }
+            if (sel.dataset.referenceField === 'referenced_object_id') {
+                return referenceState.value.referenced_entity || null
+            }
+            return null
+        }
+
+        function destroyObjectReferenceSelects() {
+            if (!hasSelect2) return
+            document.querySelectorAll('.misp-object-reference-select').forEach((sel) => {
+                try {
+                    $(sel).off('change.flowintelMispObjectReference')
+                    if ($(sel).data('select2')) $(sel).select2('destroy')
+                } catch(e) {}
+            })
+        }
+
+        function referenceTargetTemplate(option) {
+            if (!option.id || !option.element) return option.text
+            const label = document.createElement('span')
+            label.textContent = option.text
+            const title = option.element.getAttribute('title')
+            if (title) label.title = title
+            return $(label)
+        }
+
+        function initObjectReferenceSelects() {
+            if (!hasSelect2) return
+            document.querySelectorAll('.misp-object-reference-select').forEach((sel) => {
+                try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+                const selectOptions = {
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('body'),
+                    placeholder: sel.dataset.referencePlaceholder || 'Select...',
+                    allowClear: false,
+                    width: '100%'
+                }
+                if (sel.dataset.referenceField === 'referenced_object_id') {
+                    selectOptions.templateResult = referenceTargetTemplate
+                    selectOptions.templateSelection = referenceTargetTemplate
+                }
+                $(sel)
+                    .select2(selectOptions)
+                    .val(referenceSelectValue(sel))
+                    .trigger('change.select2')
+                    .off('change.flowintelMispObjectReference')
+                    .on('change.flowintelMispObjectReference', function() {
+                        const value = $(this).val() || ''
+                        if (this.dataset.referenceField === 'relationship_type') {
+                            referenceState.value.relationship_type = value
+                        } else if (this.dataset.referenceField === 'referenced_object_id') {
+                            referenceState.value.referenced_entity = value
+                        }
                     })
             })
         }
@@ -302,6 +372,47 @@ export default {
             }
         }
 
+        async function fetch_case_misp_attributes(){
+            const res = await fetch(`/case/${props.case_id}/get_case_misp_attributes`)
+            if (res.status === 200) {
+                const loc = await res.json()
+                standalone_attributes.value = loc.attributes || []
+
+                if (addingReferenceToObject.value !== null) {
+                    const source = case_misp_objects.value.find(
+                        (object) => Number(object.object_id) === Number(addingReferenceToObject.value)
+                    )
+                    const targets = source ? relationship_target_options(source) : []
+                    const selectedExists = targets.some(
+                        (target) => `${target.entity_type}:${target.entity_id}` === referenceState.value.referenced_entity
+                    )
+                    if (!selectedExists) {
+                        referenceState.value.referenced_entity = targets.length ?
+                            `${targets[0].entity_type}:${targets[0].entity_id}` : ''
+                    }
+                    await nextTick()
+                    initObjectReferenceSelects()
+                }
+            }
+        }
+
+        async function fetch_misp_object_relationships(){
+            const res = await fetch("/case/get_misp_object_relationships")
+            if(await res.status==404 ){
+                display_toast(res)
+            }else{
+                let loc = await res.json()
+                relationship_types.value = loc.relationships || []
+                if (!referenceState.value.relationship_type) {
+                    referenceState.value.relationship_type = default_relationship_type()
+                }
+                if (addingReferenceToObject.value !== null) {
+                    await nextTick()
+                    initObjectReferenceSelects()
+                }
+            }
+        }
+
         function scroll_to_task(task_id){
             const el = document.getElementById('task-' + task_id)
             if (el) {
@@ -359,6 +470,175 @@ export default {
                 emit('modif_misp_objects', true)
             }
             display_toast(res)
+        }
+
+        function objectTargetLabel(object) {
+            const attributes = object.attributes || []
+            const preview = attributes.slice(0, 3).map((attribute) => {
+                const relation = attribute.object_relation || attribute.type || 'attribute'
+                return `${relation}: ${attribute.value}`
+            })
+            if (attributes.length > 3) preview.push(`+${attributes.length - 3} more`)
+
+            const details = [`[Object #${object.object_id}] ${object.object_name}`]
+            if (preview.length) details.push(preview.join('; '))
+            return details.join(' | ')
+        }
+
+        function objectIdentityTitle(object) {
+            const details = [`Object ID: ${object.object_id}`]
+            if (object.object_instance_uuid) details.push(`Object UUID: ${object.object_instance_uuid}`)
+            return details.join('\n')
+        }
+
+        function attributeTargetLabel(attribute) {
+            const relation = attribute.object_relation && attribute.object_relation !== attribute.type ?
+                `${attribute.object_relation} / ${attribute.type}` :
+                (attribute.type || attribute.object_relation || 'attribute')
+            const details = [`[Attribute #${attribute.id}] ${relation}`, String(attribute.value)]
+            return details.join(' | ')
+        }
+
+        function relationship_target_options(misp_object) {
+            const objectTargets = case_misp_objects.value
+                .filter((object) => Number(object.object_id) !== Number(misp_object.object_id))
+                .map((object) => ({
+                    entity_type: 'object',
+                    entity_id: object.object_id,
+                    label: objectTargetLabel(object),
+                    title: objectIdentityTitle(object)
+                }))
+            const attributeTargets = standalone_attributes.value.map((attribute) => ({
+                entity_type: 'attribute',
+                entity_id: attribute.id,
+                label: attributeTargetLabel(attribute),
+                title: `Standalone attribute ID: ${attribute.id}`
+            }))
+            return [...objectTargets, ...attributeTargets]
+        }
+
+        function hasRelationshipTarget(misp_object) {
+            return relationship_target_options(misp_object).length > 0
+        }
+
+        function relationshipButtonTitle(misp_object) {
+            return hasRelationshipTarget(misp_object) ?
+                'Add relationship' :
+                'Create another object or a standalone attribute before adding a relationship'
+        }
+
+        function default_relationship_type() {
+            const relatedTo = relationship_types.value.find((relationship) => relationship.name === 'related-to')
+            if (relatedTo) return relatedTo.name
+            return relationship_types.value.length ? relationship_types.value[0].name : ''
+        }
+
+        function toggleAddReference(misp_object) {
+            if (addingReferenceToObject.value === misp_object.object_id) {
+                cancelAddReference()
+                return
+            }
+            destroyObjectReferenceSelects()
+            const targets = relationship_target_options(misp_object)
+            addingReferenceToObject.value = misp_object.object_id
+            referenceState.value = {
+                referenced_entity: targets.length ? `${targets[0].entity_type}:${targets[0].entity_id}` : '',
+                relationship_type: default_relationship_type(),
+                comment: ''
+            }
+            nextTick(() => initObjectReferenceSelects())
+        }
+
+        function cancelAddReference() {
+            destroyObjectReferenceSelects()
+            addingReferenceToObject.value = null
+            referenceState.value = { referenced_entity: '', relationship_type: '', comment: '' }
+        }
+
+        function canSaveReference(misp_object) {
+            const parsed = parse_reference_entity(referenceState.value.referenced_entity)
+            return Boolean(
+                parsed &&
+                referenceState.value.relationship_type &&
+                !(parsed.type === 'object' && Number(parsed.id) === Number(misp_object.object_id))
+            )
+        }
+
+        function parse_reference_entity(value) {
+            const parts = String(value || '').split(':')
+            if (parts.length !== 2 || !parts[0] || !parts[1]) return null
+            return { type: parts[0], id: Number(parts[1]) }
+        }
+
+        async function saveObjectReference(misp_object) {
+            if (!canSaveReference(misp_object)) {
+                create_message("Select a target and relationship type", "warning-subtle")
+                return
+            }
+            const target = parse_reference_entity(referenceState.value.referenced_entity)
+            const res = await fetch(`/case/${props.case_id}/misp_object/${misp_object.object_id}/references`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    referenced_type: target.type,
+                    referenced_id: target.id,
+                    relationship_type: referenceState.value.relationship_type,
+                    comment: referenceState.value.comment
+                })
+            })
+            if (await res.status === 200 || res.status === 201) {
+                await fetch_case_misp_object()
+                cancelAddReference()
+                emit("modif_misp_objects", true)
+            }
+            display_toast(res)
+        }
+
+        async function deleteObjectReference(reference_id) {
+            const ok = await confirmDelete({
+                title: 'Delete object relationship?',
+                message: 'Are you sure you want to delete this object relationship?'
+            })
+            if (!ok) return
+            const res = await fetch(`/case/${props.case_id}/misp_object_reference/${reference_id}`, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": $("#csrf_token").val() }
+            })
+            if (await res.status === 200) {
+                await fetch_case_misp_object()
+                emit("modif_misp_objects", true)
+            }
+            display_toast(res)
+        }
+
+        function reference_entity_label(reference, side) {
+            const prefix = side === 'source' ? 'source' : 'referenced'
+            if (reference[`${prefix}_type`] === 'attribute') {
+                const relation = reference[`${prefix}_attribute_object_relation`]
+                const type = reference[`${prefix}_attribute_type`]
+                const value = reference[`${prefix}_attribute_value`] || 'Unknown attribute'
+                const detail = [relation, type && type !== relation ? type : '', value].filter(Boolean).join(' / ')
+                return `[Attribute] ${detail}`
+            }
+            return `[Object] ${reference[`${prefix}_object_name`] || 'Unknown object'}${reference[`${prefix}_object_id`] ? ' #' + reference[`${prefix}_object_id`] : ''}`
+        }
+
+        function format_object_reference_target(reference) {
+            return `${reference.relationship_type} -> ${reference_entity_label(reference, 'referenced')}`
+        }
+
+        function format_reference_source(reference) {
+            return `${reference_entity_label(reference, 'source')} -> ${reference.relationship_type}`
+        }
+
+        function relationship_title(relationshipName) {
+            const relationship = relationship_types.value.find((item) => item.name === relationshipName)
+            if (!relationship) return relationshipName
+            const parts = [relationship.description]
+            if (relationship.opposite) parts.push(`Opposite: ${relationship.opposite}`)
+            return parts.filter(Boolean).join(' ')
         }
 
         function toggleAddObject() {
@@ -498,9 +778,13 @@ export default {
         }
 
         function toggleTabView() {
+            destroyObjectReferenceSelects()
             tabView.value = !tabView.value
             activeTabIdx.value = 0
-            nextTick(() => initObjectRelationSelects())
+            nextTick(() => {
+                initObjectRelationSelects()
+                initObjectReferenceSelects()
+            })
         }
 
         function copyUuidToClipboard() {
@@ -823,6 +1107,9 @@ export default {
                     const refreshed = val.find(o => o.object_id === link_modal_object.value.object_id)
                     if (refreshed) link_modal_object.value = refreshed
                 }
+                if (addingReferenceToObject.value !== null) {
+                    nextTick(() => initObjectReferenceSelects())
+                }
             }
         }, { immediate: true })
 
@@ -841,20 +1128,29 @@ export default {
         // Refresh case-side data (task badges per MISP object) when a task
         // independently links/unlinks one of its MISP objects via the task UI.
         const onTaskMispLinkChanged = () => { fetch_case_misp_object() }
+        const onMispAttributeChanged = () => { fetch_case_misp_attributes() }
 
 		onMounted(() => {
             if (props.case_misp_objects_list === null) fetch_case_misp_object()
             fetch_misp_object()
+            fetch_case_misp_attributes()
+            fetch_misp_object_relationships()
             window.addEventListener('task-misp-link-changed', onTaskMispLinkChanged)
+            window.addEventListener('misp-attribute-created', onMispAttributeChanged)
+            window.addEventListener('misp-attribute-deleted', onMispAttributeChanged)
         })
 
         onUnmounted(() => {
+            destroyObjectReferenceSelects()
             window.removeEventListener('task-misp-link-changed', onTaskMispLinkChanged)
+            window.removeEventListener('misp-attribute-created', onMispAttributeChanged)
+            window.removeEventListener('misp-attribute-deleted', onMispAttributeChanged)
         })
 
 		return {
             case_misp_objects,
             misp_objects,
+            relationship_types,
             activeTemplate,
             activeTemplateAttr,
             selectObjectTemplate,
@@ -919,6 +1215,20 @@ export default {
             toggleAssignTasks,
             saveAssignTasks,
             scroll_to_task,
+            addingReferenceToObject,
+            referenceState,
+            relationship_target_options,
+            hasRelationshipTarget,
+            relationshipButtonTitle,
+            objectIdentityTitle,
+            toggleAddReference,
+            cancelAddReference,
+            canSaveReference,
+            saveObjectReference,
+            deleteObjectReference,
+            format_object_reference_target,
+            format_reference_source,
+            relationship_title,
             syncListKey,
             visibleSyncInstances,
             hiddenSyncCount,
@@ -1230,7 +1540,8 @@ export default {
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <button class="btn btn-link p-0 fw-semibold text-dark text-decoration-none"
                             type="button" data-bs-toggle="collapse"
-                            :data-bs-target="'#collapse-'+key_obj" aria-expanded="true">
+                            :data-bs-target="'#collapse-'+key_obj" aria-expanded="true"
+                            :title="objectIdentityTitle(misp_object)">
                         <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
                     </button>
                     <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
@@ -1256,6 +1567,12 @@ export default {
                     <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-primary" title="Add attribute"
                             @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)">
                         <i class="fa-solid fa-plus fa-sm"></i>
+                    </button>
+                    <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-secondary"
+                            :disabled="!hasRelationshipTarget(misp_object)"
+                            :title="relationshipButtonTitle(misp_object)"
+                            @click="toggleAddReference(misp_object)">
+                        <i class="fa-solid fa-diagram-project fa-sm"></i>
                     </button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" title="Link to remote MISP object"
                             @click="open_link_modal(misp_object)">
@@ -1288,6 +1605,67 @@ export default {
                         <button class="btn btn-secondary btn-sm ms-1" @click="assigningTasks = null">Cancel</button>
                     </div>
                     <div v-else class="text-muted small">No tasks available in this case.</div>
+                </div>
+
+                <!-- Object relationships -->
+                <div v-if="(misp_object.references && misp_object.references.length) || (misp_object.referenced_by && misp_object.referenced_by.length) || addingReferenceToObject === misp_object.object_id"
+                     class="px-3 py-2 border-bottom bg-light-subtle">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="small fw-semibold text-muted">Relationships</span>
+                        <template v-if="misp_object.references && misp_object.references.length">
+                            <span v-for="reference in misp_object.references" :key="'ref-'+reference.id"
+                                  class="badge bg-light text-dark border d-inline-flex align-items-center gap-1"
+                                  :title="relationship_title(reference.relationship_type)">
+                                <i class="fa-solid fa-arrow-right-long text-secondary"></i>
+                                <span>[[ format_object_reference_target(reference) ]]</span>
+                                <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger"
+                                        title="Delete relationship"
+                                        @click.stop="deleteObjectReference(reference.id)">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </span>
+                        </template>
+                        <template v-if="misp_object.referenced_by && misp_object.referenced_by.length">
+                            <span v-for="reference in misp_object.referenced_by" :key="'ref-by-'+reference.id"
+                                  class="badge bg-secondary-subtle text-dark border"
+                                  :title="relationship_title(reference.relationship_type)">
+                                [[ format_reference_source(reference) ]]
+                            </span>
+                        </template>
+                    </div>
+                    <div v-if="addingReferenceToObject === misp_object.object_id" class="row g-2 align-items-end mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold mb-1">Target</label>
+                            <select v-model="referenceState.referenced_entity"
+                                    class="form-select form-select-sm misp-object-reference-select"
+                                    data-reference-field="referenced_object_id"
+                                    data-reference-placeholder="Select target object or attribute...">
+                                <option v-for="target in relationship_target_options(misp_object)" :key="'ref-target-'+misp_object.object_id+'-'+target.entity_type+'-'+target.entity_id" :value="target.entity_type+':'+target.entity_id" :title="target.title">
+                                    [[ target.label ]]
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Relationship</label>
+                            <select v-model="referenceState.relationship_type"
+                                    class="form-select form-select-sm misp-object-reference-select"
+                                    data-reference-field="relationship_type"
+                                    data-reference-placeholder="Select relationship...">
+                                <option v-for="relationship in relationship_types" :key="'relationship-'+relationship.name" :value="relationship.name" :title="relationship.description">
+                                    [[ relationship.name ]]
+                                </option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Comment</label>
+                            <input v-model="referenceState.comment" class="form-control form-control-sm" type="text" placeholder="Optional">
+                        </div>
+                        <div class="col-md-2 d-flex gap-1">
+                            <button type="button" class="btn btn-primary btn-sm" :disabled="!canSaveReference(misp_object)"
+                                    @click="saveObjectReference(misp_object)">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm" @click="cancelAddReference()">Cancel</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Attributes table -->
@@ -1489,7 +1867,7 @@ export default {
         <template v-else>
             <ul class="nav nav-tabs mb-0" style="flex-wrap: wrap;">
                 <li v-for="(misp_object, idx) in filtered_objects" :key="misp_object.object_id" class="nav-item flex-shrink-0">
-                    <button class="nav-link py-1 px-3" :class="{active: activeTabIdx === idx}" @click="activeTabIdx = idx" type="button">
+                    <button class="nav-link py-1 px-3" :class="{active: activeTabIdx === idx}" @click="activeTabIdx = idx" type="button" :title="objectIdentityTitle(misp_object)">
                         <i :class="objectIconClass(misp_object.object_name, 'me-1 text-secondary fa-sm')"></i>[[ misp_object.object_name ]]
                         <template v-if="misp_object.synced_instances && misp_object.synced_instances.length">
                             <i class="fa-solid fa-cloud ms-1 text-info" style="font-size:0.7rem;"></i>
@@ -1527,6 +1905,12 @@ export default {
                                     @click="startAddingAttribute(misp_object.object_id, misp_object.object_uuid)">
                                 <i class="fa-solid fa-plus fa-sm"></i>
                             </button>
+                            <button v-if="can_edit" type="button" class="btn btn-sm btn-outline-secondary"
+                                    :disabled="!hasRelationshipTarget(misp_object)"
+                                    :title="relationshipButtonTitle(misp_object)"
+                                    @click="toggleAddReference(misp_object)">
+                                <i class="fa-solid fa-diagram-project fa-sm"></i>
+                            </button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" title="Link to remote MISP object"
                                     @click="open_link_modal(misp_object)">
                                 <i class="fa-solid fa-link fa-sm"></i>
@@ -1559,6 +1943,66 @@ export default {
                             <button class="btn btn-secondary btn-sm ms-1" @click="assigningTasks = null">Cancel</button>
                         </div>
                         <div v-else class="text-muted small">No tasks available in this case.</div>
+                    </div>
+                    <!-- Object relationships -->
+                    <div v-if="(misp_object.references && misp_object.references.length) || (misp_object.referenced_by && misp_object.referenced_by.length) || addingReferenceToObject === misp_object.object_id"
+                         class="px-3 py-2 border-bottom bg-light-subtle">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <span class="small fw-semibold text-muted">Relationships</span>
+                            <template v-if="misp_object.references && misp_object.references.length">
+                                <span v-for="reference in misp_object.references" :key="'tab-ref-'+reference.id"
+                                      class="badge bg-light text-dark border d-inline-flex align-items-center gap-1"
+                                      :title="relationship_title(reference.relationship_type)">
+                                    <i class="fa-solid fa-arrow-right-long text-secondary"></i>
+                                    <span>[[ format_object_reference_target(reference) ]]</span>
+                                    <button v-if="can_edit" type="button" class="btn btn-link btn-sm p-0 ms-1 text-danger"
+                                            title="Delete relationship"
+                                            @click.stop="deleteObjectReference(reference.id)">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </span>
+                            </template>
+                            <template v-if="misp_object.referenced_by && misp_object.referenced_by.length">
+                                <span v-for="reference in misp_object.referenced_by" :key="'tab-ref-by-'+reference.id"
+                                      class="badge bg-secondary-subtle text-dark border"
+                                      :title="relationship_title(reference.relationship_type)">
+                                    [[ format_reference_source(reference) ]]
+                                </span>
+                            </template>
+                        </div>
+                        <div v-if="addingReferenceToObject === misp_object.object_id" class="row g-2 align-items-end mt-1">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Target</label>
+                                <select v-model="referenceState.referenced_entity"
+                                        class="form-select form-select-sm misp-object-reference-select"
+                                        data-reference-field="referenced_object_id"
+                                        data-reference-placeholder="Select target object or attribute...">
+                                    <option v-for="target in relationship_target_options(misp_object)" :key="'tab-ref-target-'+misp_object.object_id+'-'+target.entity_type+'-'+target.entity_id" :value="target.entity_type+':'+target.entity_id" :title="target.title">
+                                        [[ target.label ]]
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Relationship</label>
+                                <select v-model="referenceState.relationship_type"
+                                        class="form-select form-select-sm misp-object-reference-select"
+                                        data-reference-field="relationship_type"
+                                        data-reference-placeholder="Select relationship...">
+                                    <option v-for="relationship in relationship_types" :key="'tab-relationship-'+relationship.name" :value="relationship.name" :title="relationship.description">
+                                        [[ relationship.name ]]
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Comment</label>
+                                <input v-model="referenceState.comment" class="form-control form-control-sm" type="text" placeholder="Optional">
+                            </div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button type="button" class="btn btn-primary btn-sm" :disabled="!canSaveReference(misp_object)"
+                                        @click="saveObjectReference(misp_object)">Save</button>
+                                <button type="button" class="btn btn-secondary btn-sm" @click="cancelAddReference()">Cancel</button>
+                            </div>
+                        </div>
                     </div>
                     <!-- Attributes table -->
                     <div class="table-responsive">

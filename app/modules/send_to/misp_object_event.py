@@ -3,7 +3,7 @@ import uuid
 import logging
 import urllib3
 
-from pymisp import MISPAttribute, MISPEvent, MISPObject, PyMISP
+from pymisp import MISPAttribute, MISPEvent, MISPObject, MISPObjectReference, PyMISP
 from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
 
 
@@ -28,6 +28,35 @@ REPORT_TEMPLATE_UUID = "70a68471-df22-4e3f-aa1a-5a3be19f82df"
 # object id allows us to update the matching EventReport on re-sync instead of
 # accumulating duplicates.
 _EVENT_REPORT_NAMESPACE = uuid.UUID("5a3be19f-82df-4e3f-aa1a-70a68471df22")
+
+
+def _object_attribute_relation(attr):
+    return attr.get("object_relation") or attr.get("type")
+
+
+def _object_attribute_kwargs(attr):
+    kwargs = {
+        "to_ids": attr.get("ids_flag", False),
+        "comment": attr.get("comment") or "",
+    }
+    if attr.get("type"):
+        # PyMISP can infer the type only when the local object template is known.
+        # Flowintel already stores the attribute type, so pass it explicitly for
+        # custom or missing templates.
+        kwargs["type"] = attr["type"]
+    if attr.get("first_seen"):
+        kwargs["first_seen"] = attr["first_seen"]
+    if attr.get("last_seen"):
+        kwargs["last_seen"] = attr["last_seen"]
+    return kwargs
+
+
+def _add_misp_object_attribute(misp_object, attr):
+    return misp_object.add_attribute(
+        _object_attribute_relation(attr),
+        value=attr.get("value"),
+        **_object_attribute_kwargs(attr)
+    )
 
 
 def bump_event_timestamp(event):
@@ -70,24 +99,16 @@ def create_object(misp, object, event_id):
     attr_uuid_list = list()
     for attr in object["attributes"]:
         try:
-            kwargs = {
-                "to_ids": attr["ids_flag"],
-                "comment": attr["comment"],
-            }
-            if attr.get("first_seen"):
-                kwargs["first_seen"] = attr["first_seen"]
-            if attr.get("last_seen"):
-                kwargs["last_seen"] = attr["last_seen"]
-            loc_attr = misp_object.add_attribute(
-                attr["object_relation"], value=attr["value"], **kwargs
-            )
+            loc_attr = _add_misp_object_attribute(misp_object, attr)
         except NewAttributeError as e:
             # Value doesn't match the type expected by the object template.
             # Skip the attribute rather than aborting the entire export.
             logger.warning(
-                "Skipped attribute %s (relation=%s, value=%r): %s",
-                attr.get("id"), attr["object_relation"], attr["value"], e,
+                "Skipped attribute %s (relation=%s, type=%s, value=%r): %s",
+                attr.get("id"), _object_attribute_relation(attr), attr.get("type"), attr.get("value"), e,
             )
+            continue
+        if not loc_attr:
             continue
         attr_uuid_list.append({
             "attribute_id": attr["id"],
@@ -101,13 +122,26 @@ def create_object(misp, object, event_id):
     res = misp.add_object(event_id, misp_object)
     return misp_object, attr_uuid_list, res
 
+
+def _object_response_value(response, field):
+    payload = response
+    if isinstance(payload, dict):
+        payload = payload.get("Object", payload)
+    if isinstance(payload, dict):
+        return payload.get(field)
+    return getattr(payload, field, None)
+
+
 def manage_object_creation(misp, event, object, object_uuid_list):
     misp_object, attr_uuid_list, res = create_object(misp, object, event.id)
     if "errors" in res:
         return res, object_uuid_list
+    remote_uuid = _object_response_value(res, "uuid") or misp_object.uuid
+    remote_id = _object_response_value(res, "id") or getattr(misp_object, "id", None)
     object_uuid_list[object["id"]] = {      # Get uuid of object and attr to update later
         "attributes": attr_uuid_list,
-        "uuid": misp_object.uuid
+        "uuid": remote_uuid,
+        "remote_id": remote_id,
     }
     return "", object_uuid_list
 
@@ -164,8 +198,10 @@ def all_object_to_misp(misp, event, objects, object_uuid_list, selected_attr_ids
                 except (InvalidMISPObjectAttribute, NewAttributeError):
                     # Object exist but not this attribute, or value type mismatch
                     try:
-                        loc_attr = loc_object.add_attribute(attr["object_relation"], value=attr["value"])
+                        loc_attr = _add_misp_object_attribute(loc_object, attr)
                     except NewAttributeError:
+                        continue
+                    if not loc_attr:
                         continue
                     attr_uuid_list.append({
                         "attribute_id": attr["id"],
@@ -189,6 +225,168 @@ def all_object_to_misp(misp, event, objects, object_uuid_list, selected_attr_ids
             else:
                 details.append({"name": object.get("name", str(object.get("id", ""))), "status": "success", "error": None})
     return details, object_uuid_list
+
+
+def _object_local_id(object):
+    return object.get("object_id") or object.get("id")
+
+
+def _object_sync_result(object_uuid_list, object_id):
+    for key in (object_id, str(object_id)):
+        if key in object_uuid_list:
+            return object_uuid_list[key]
+    try:
+        key = int(object_id)
+        if key in object_uuid_list:
+            return object_uuid_list[key]
+    except Exception:
+        pass
+    return {}
+
+
+def _object_uuid_from_sync_result(object_uuid_list, object_id):
+    sync_result = _object_sync_result(object_uuid_list, object_id)
+    if sync_result:
+        return sync_result.get("uuid")
+    return None
+
+
+def _build_remote_uuid_map(objects, object_uuid_list):
+    remote_uuid_by_local_id = {}
+    for object in objects or []:
+        object_id = _object_local_id(object)
+        if object_id is None:
+            continue
+        # UUIDs returned by this send must win over payload mappings, which may
+        # point to an event that was deleted and recreated.
+        remote_uuid = _object_uuid_from_sync_result(object_uuid_list, object_id) or object.get("uuid")
+        if remote_uuid:
+            remote_uuid_by_local_id[str(object_id)] = remote_uuid
+    return remote_uuid_by_local_id
+
+
+def _refresh_event(misp, event):
+    event_id = event.get("id") if hasattr(event, "get") else getattr(event, "id", None)
+    if not event_id:
+        return event
+    refreshed = misp.get_event(event_id, pythonify=True)
+    if isinstance(refreshed, dict) and refreshed.get("errors"):
+        return event
+    return refreshed
+
+
+def _event_object_by_uuid(event, object_uuid):
+    if not object_uuid:
+        return None
+    try:
+        return event.get_object_by_uuid(object_uuid)
+    except InvalidMISPObject:
+        return None
+
+
+def sync_object_references(misp, event, objects, object_uuid_list, standalone_attr_uuid_list=None):
+    """Push local Flowintel object relationships as MISP ObjectReference rows."""
+    if not objects:
+        return []
+
+    details = []
+    remote_uuid_by_local_id = _build_remote_uuid_map(objects, object_uuid_list)
+    remote_attr_uuid_by_local_id = {}
+    for object in objects:
+        for attribute in object.get("attributes", []) or []:
+            attr_id = attribute.get("id")
+            attr_uuid = attribute.get("uuid")
+            if attr_id and attr_uuid:
+                remote_attr_uuid_by_local_id[str(attr_id)] = attr_uuid
+    for object_id, sync_info in (object_uuid_list or {}).items():
+        for attribute in sync_info.get("attributes", []) or []:
+            attr_id = attribute.get("attribute_id")
+            attr_uuid = attribute.get("uuid")
+            if attr_id and attr_uuid:
+                remote_attr_uuid_by_local_id[str(attr_id)] = attr_uuid
+    for attribute in standalone_attr_uuid_list or []:
+        attr_id = attribute.get("attribute_id")
+        attr_uuid = attribute.get("uuid")
+        if attr_id and attr_uuid:
+            remote_attr_uuid_by_local_id[str(attr_id)] = attr_uuid
+    event = _refresh_event(misp, event)
+
+    for object in objects:
+        object_id = _object_local_id(object)
+        source_uuid = (
+            remote_uuid_by_local_id.get(str(object_id))
+            or object.get("uuid")
+            or object.get("source_object_remote_uuid")
+        )
+        source_object = _event_object_by_uuid(event, source_uuid)
+        source_sync_result = _object_sync_result(object_uuid_list, object_id)
+        source_remote_id = (
+            getattr(source_object, "id", None) if source_object else None
+        ) or source_sync_result.get("remote_id")
+        if not source_uuid or not source_remote_id:
+            continue
+
+        existing_refs = set()
+        existing_object_references = getattr(source_object, "ObjectReference", []) if source_object else []
+        for existing_ref in existing_object_references or []:
+            existing_refs.add((
+                getattr(existing_ref, "referenced_uuid", None),
+                getattr(existing_ref, "relationship_type", None)
+            ))
+
+        for reference in object.get("references", []) or []:
+            relationship_type = reference.get("relationship_type")
+            if not relationship_type:
+                continue
+
+            if reference.get("referenced_type") == "attribute" or reference.get("referenced_attribute_id"):
+                referenced_attribute_id = reference.get("referenced_attribute_id")
+                referenced_uuid = (
+                    remote_attr_uuid_by_local_id.get(str(referenced_attribute_id))
+                    or reference.get("referenced_attribute_remote_uuid")
+                )
+            else:
+                referenced_object_id = reference.get("referenced_object_id")
+                referenced_uuid = (
+                    remote_uuid_by_local_id.get(str(referenced_object_id))
+                    or _object_uuid_from_sync_result(object_uuid_list, referenced_object_id)
+                    or reference.get("referenced_object_remote_uuid")
+                )
+            if not referenced_uuid or referenced_uuid == source_uuid:
+                continue
+            if (referenced_uuid, relationship_type) in existing_refs:
+                continue
+
+            try:
+                misp_reference = MISPObjectReference()
+                misp_reference.object_uuid = source_uuid
+                misp_reference.object_id = source_remote_id
+                misp_reference.referenced_uuid = referenced_uuid
+                misp_reference.relationship_type = relationship_type
+                if reference.get("comment"):
+                    misp_reference.comment = reference.get("comment")
+                res = misp.add_object_reference(misp_reference)
+                if isinstance(res, dict) and res.get("errors"):
+                    details.append({
+                        "name": f"reference:{relationship_type}",
+                        "status": "error",
+                        "error": str(res.get("errors"))
+                    })
+                    continue
+                existing_refs.add((referenced_uuid, relationship_type))
+                details.append({
+                    "name": f"reference:{relationship_type}",
+                    "status": "success",
+                    "error": None
+                })
+            except Exception as exc:
+                details.append({
+                    "name": f"reference:{relationship_type}",
+                    "status": "error",
+                    "error": str(exc)
+                })
+
+    return details
 
 
 def _extract_report_fields(object):
@@ -446,6 +644,8 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
     if case_model and standalone_attr_uuid_list:
         case_model.result_standalone_attr_module(standalone_attr_uuid_list, instance["id"], case["id"])
+
+    details.extend(sync_object_references(misp, event, objects, object_uuid_list, standalone_attr_uuid_list))
 
     synced = sum(1 for d in details if d["status"] == "success")
     failed = sum(1 for d in details if d["status"] == "error")

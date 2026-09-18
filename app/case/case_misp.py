@@ -8,7 +8,7 @@ from ..connectors import connectors_core as ConnectorModel
 from ..db_class.db import Misp_Object_Instance_Uuid, Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, db, DATETIME_FORMAT_FULL
 from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
-from ..utils.utils import get_object_templates
+from ..utils.utils import get_object_templates, get_object_relationships
 
 
 def _build_connector_admin_details(case_connector, connect_instance):
@@ -65,6 +65,7 @@ def get_case_misp_object(cid):
                 "object_name": object.name,
                 "attributes": loc_attr_list,
                 "object_id": object.id,
+                "object_instance_uuid": object.uuid,
                 "object_uuid": object.template_uuid,
                 "object_creation_date": object.creation_date.strftime(DATETIME_FORMAT_FULL),
                 "object_last_modif": object.last_modif.strftime(DATETIME_FORMAT_FULL),
@@ -76,6 +77,14 @@ def get_case_misp_object(cid):
                 "tasks": [
                     {"id": t.task_id, "title": (Task.query.get(t.task_id).title if Task.query.get(t.task_id) else None)}
                     for t in Task_Misp_Object.query.filter_by(misp_object_id=object.id).all()
+                ],
+                "references": [
+                    ref.to_json()
+                    for ref in CaseModel.get_misp_object_references_from_object(cid, object.id)
+                ],
+                "referenced_by": [
+                    ref.to_json()
+                    for ref in CaseModel.get_misp_object_references_to_object(cid, object.id)
                 ]
             })
         return {"misp-object": loc_object}
@@ -100,6 +109,13 @@ def get_correlation_attr(cid, aid):
 def get_misp_object():
     """Get list of misp object"""
     return {"misp-object": get_object_templates()}, 200
+
+
+@case_blueprint.route("/get_misp_object_relationships", methods=['GET'])
+@login_required
+def get_misp_object_relationships():
+    """Get list of MISP object relationship types"""
+    return {"relationships": get_object_relationships()}, 200
 
 
 @case_blueprint.route("/get_misp_attribute_types", methods=['GET'])
@@ -134,6 +150,59 @@ def create_misp_object(cid):
         flowintel_log("audit", 403, "Create MISP object: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<int:cid>/misp_object/<int:oid>/references", methods=['POST'])
+@login_required
+@editor_required
+def create_misp_object_reference(cid, oid):
+    """Create a relationship from one MISP object to another MISP entity in this case."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Create MISP object relationship: Action not allowed", User=current_user.email, CaseId=cid, ObjectId=oid)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    data = request.get_json(silent=True) or {}
+    referenced_type = data.get("referenced_type") or data.get("target_type") or "object"
+    referenced_id = data.get("referenced_attribute_id") if referenced_type in ("attribute", "misp_attribute") else data.get("referenced_object_id")
+    if referenced_id is None:
+        referenced_id = data.get("referenced_id")
+    result, status = CaseModel.create_misp_object_reference(
+        cid,
+        oid,
+        referenced_id,
+        data.get("relationship_type"),
+        current_user,
+        comment=data.get("comment", ""),
+        referenced_type=referenced_type,
+    )
+    if status in (200, 201):
+        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+        result = CaseModel.with_misp_automation_message(result, sync_result)
+        flowintel_log("audit", status, "MISP object relationship created", User=current_user.email, CaseId=cid, ObjectId=oid)
+    return result, status
+
+
+@case_blueprint.route("/<int:cid>/misp_object_reference/<int:reference_id>", methods=['DELETE'])
+@login_required
+@editor_required
+def delete_misp_object_reference(cid, reference_id):
+    """Delete a relationship between case MISP entities."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Delete MISP object relationship: Action not allowed", User=current_user.email, CaseId=cid, ReferenceId=reference_id)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    result, status = CaseModel.delete_misp_object_reference(cid, reference_id, current_user)
+    if status == 200:
+        sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
+        result = CaseModel.with_misp_automation_message(result, sync_result)
+        flowintel_log("audit", 200, "MISP object relationship deleted", User=current_user.email, CaseId=cid, ReferenceId=reference_id)
+    return result, status
 
 
 @case_blueprint.route("/<cid>/delete_object/<oid>", methods=['GET'])
@@ -543,10 +612,11 @@ def get_timeline_graph(cid):
         if not check_user_private_case(case):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         events = CaseModel.get_timeline_events(cid)
-        links = CaseModel.get_timeline_event_links(cid)
+        manual_links = [l.to_json() for l in CaseModel.get_timeline_event_links(cid)]
+        relationship_links = CaseModel.get_timeline_relationship_links(cid)
         return {
             "events": [e.to_json() for e in events],
-            "links": [l.to_json() for l in links]
+            "links": manual_links + relationship_links
         }, 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
