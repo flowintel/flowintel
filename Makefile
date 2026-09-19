@@ -101,7 +101,8 @@ tag_message := ""
 
 rebuild := 1
 
-base_image := ubuntu:noble
+# Legacy
+# base_image := ubuntu:noble
 
 ########################################################################################
 # RULES
@@ -367,11 +368,16 @@ test: first_install
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	echo "Image Rebuild rebuild requested"
-	docker build \
-		--build-arg BASE_IMAGE="${base_image}" \
-		-f Dockerfile \
-		-t flowintel:latest \
-		.	
+	set -a; \
+	source .env.build; \
+	set +a; \
+	docker buildx bake -f docker-bake.hcl flowintel
+# Legacy
+#	docker build \
+#		--build-arg BASE_IMAGE="${base_image}" \
+#		-f Dockerfile \
+#		-t flowintel:latest \
+#		.	
 	# docker run --rm dhi.io/syft:latest ubuntu:latest
 	echo "Image built"
 else

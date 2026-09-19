@@ -3,9 +3,10 @@
 # For Prod, you may want add the sha256 as follow:
 # ARG BASE_IMAGE=ubuntu:noble@sha256:<digest>
 ARG BASE_IMAGE=ubuntu:noble
-ARG NODE_VER=24.21.0
-ARG PANDOC_VER=3.7.0.2
-ARG PANDOC_PATCH=1
+ARG NODE_VER
+ARG PANDOC_VER
+ARG PANDOC_PATCH
+# Decision: Currently, we fix to 3.4.0 version of the template for avoiding the migration to sourcesans.tty before Ubuntu/Debian are ready
 ARG EISVOGEL_VER=3.4.0
 
 # ---------- Stage 1: build Node + Mermaid ----------
@@ -121,12 +122,11 @@ RUN set -eux; \
         "https://github.com/jgm/pandoc/releases/download/${PANDOC_VER}/pandoc-${PANDOC_VER}-${PANDOC_PATCH}-${ARCH}.deb";
 
 # Download pandoc Eisvogel template
-# Decision: We fix to 3.4.0 version of the template for avoiding the migration to sourcesans.tty before Ubuntu/Debian are ready
 RUN set -eux; \
     TMP=$(mktemp -d); \
     curl -fsSL "https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v${EISVOGEL_VER}/Eisvogel-${EISVOGEL_VER}.tar.gz" \
       | tar -xz -C "$TMP"; \
-    cp "$TMP"/Eisvogel-3.4.0/eisvogel.latex /tmp/eisvogel.latex; \
+    cp "$TMP"/Eisvogel-${EISVOGEL_VER}/eisvogel.latex /tmp/eisvogel.latex; \
     rm -rf "$TMP";
 
 # ---------- Stage 5: runtime ----------
