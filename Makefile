@@ -164,6 +164,7 @@ configure_repo_dev:
 	cp -n template.env.full.postgres .env.full.postgres.custom
 	cp -n template.env.mariadb .env.mariadb.custom
 	cp -n template.env.postgres .env.postgres.custom
+	cp -n .env.build.maintained .env.build
 	echo
 	echo "The repository was configured for local dev running."
 	echo
