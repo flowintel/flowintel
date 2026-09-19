@@ -5,26 +5,51 @@ on:
     tags:
       - '*'  # Triggers on any tag push
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}   # owner/repo, lowercased below
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }} # might be changed to ${{ github.actor }} ?
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
+      - name: Compute lowercase image name
+        id: image
+        run: echo "name=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Load build-time overrides from .env.build.maintained
+        run: |
+          if [ -s .env.build.maintained ]; then
+            grep -vE '^\s*#|^\s*$' .env.build.maintained >> "$GITHUB_ENV"
+          fi
+
+      - name: Build and push Docker image via Bake
+        uses: docker/bake-action@v6
         with:
-          context: .
+          files: |
+            ./docker-bake.hcl
+          targets: flowintel
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/flowintel:latest
-            ghcr.io/${{ github.repository_owner }}/flowintel:${{ github.ref_name }}
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
