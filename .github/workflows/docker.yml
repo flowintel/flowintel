@@ -59,6 +59,7 @@ jobs:
       - name: Build and push Docker image via Bake
         uses: docker/bake-action@v6
         with:
+          source: "."
           files: |
             ./docker-bake.hcl
           targets: flowintel
