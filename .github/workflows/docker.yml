@@ -47,8 +47,14 @@ jobs:
 
       - name: Load build-time overrides from .env.build.maintained
         run: |
-          if [ -s .env.build.maintained ]; then
-            grep -vE '^\s*#|^\s*$' .env.build.maintained >> "$GITHUB_ENV"
+          if [ -f .env.build.maintained ]; then
+            set -a
+            . ./.env.build.maintained
+            set +a
+            while IFS='=' read -r key _; do
+              [[ -z "$key" || "$key" == \#* ]] && continue
+              printf '%s=%s\n' "$key" "${!key}" >> "$GITHUB_ENV"
+            done < .env.build.maintained
           fi
 
       - name: Build and push Docker image via Bake
@@ -58,9 +64,9 @@ jobs:
             ./docker-bake.hcl
           targets: flowintel
           push: true
+          # Maybe we prefer here so that ownership is clearer and avoid to create with "stolen" identity?
+          # steps.image.outputs.name
           set: |
-            # Maybe we prefer here so that ownership is clearer and avoid to create with "stolen" identity?
-            # steps.image.outputs.name
             flowintel.tags=ghcr.io/${{ github.repository_owner }}/flowintel:${{ steps.branchcheck.outputs.is_main == 'true' && 'latest' || 'latest_test' }}
             flowintel.tags=ghcr.io/${{ github.repository_owner }}/flowintel:${{ github.ref_name }}
             *.cache-from=type=gha
