@@ -11,7 +11,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}   # owner/repo, lowercased below
 
 jobs:
   build:
@@ -41,9 +40,9 @@ jobs:
           username: ${{ github.repository_owner }} # might be changed to ${{ github.actor }} ?
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute lowercase image name
+      - name: Compute lowercase owner
         id: image
-        run: echo "name=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+        run: echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - name: Load build-time overrides from .env.build.maintained
         run: |
@@ -67,7 +66,7 @@ jobs:
           # Maybe we prefer here so that ownership is clearer and avoid to create with "stolen" identity?
           # steps.image.outputs.name
           set: |
-            flowintel.tags=ghcr.io/${{ github.repository_owner }}/flowintel:${{ steps.branchcheck.outputs.is_main == 'true' && 'latest' || 'latest_test' }}
-            flowintel.tags=ghcr.io/${{ github.repository_owner }}/flowintel:${{ github.ref_name }}
+            flowintel.tags=ghcr.io/${{ steps.image.outputs.owner }}/flowintel:${{ steps.branchcheck.outputs.is_main == 'true' && 'latest' || 'latest_test' }}
+            flowintel.tags=ghcr.io/${{ steps.image.outputs.owner }}/flowintel:${{ github.ref_name }}
             *.cache-from=type=gha
             *.cache-to=type=gha,mode=max
