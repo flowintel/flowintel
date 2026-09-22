@@ -138,7 +138,11 @@ export default {
                 }
             }
 
-            if (!props.resolveNamespaceId || !trimmed) {
+            // Only a candidate for a match once it has a ':' (both taxonomy
+            // "tlp:" and galaxy "misp-galaxy:...=" resolution need one) — a
+            // plain text search with no colon isn't trying to jump anywhere,
+            // so don't spin for every keystroke of an ordinary search.
+            if (!props.resolveNamespaceId || !trimmed.includes(':')) {
                 is_resolving.value = false
                 return
             }
