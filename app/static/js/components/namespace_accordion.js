@@ -207,7 +207,10 @@ export default {
             </div>
 
             <div class="border rounded" style="max-height: 220px; overflow-y: auto;">
-                <div v-if="!filtered_namespaces.length" class="text-muted small p-2">[[namespaceEmptyText]]</div>
+                <div v-if="is_resolving" class="text-muted small p-2">
+                    <span class="spinner-border spinner-border-sm me-1"></span>Looking for a match...
+                </div>
+                <div v-else-if="!filtered_namespaces.length" class="text-muted small p-2">[[namespaceEmptyText]]</div>
                 <template v-for="ns in filtered_namespaces" :key="ns.id">
                     <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2 border-0 border-bottom small"
                             :class="{'bg-primary-subtle': is_expanded(ns)}"
