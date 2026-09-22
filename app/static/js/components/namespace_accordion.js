@@ -125,17 +125,27 @@ export default {
         // every keystroke (not debounced) so it closes right away.
         let auto_expanded_id = null
         let debounce_timer = null
+        function close_auto_expanded() {
+            if (auto_expanded_id == null) return
+            const ns = props.namespaces.find(n => n.id === auto_expanded_id)
+            if (ns && is_expanded(ns)) emit('toggle-namespace', ns)
+            auto_expanded_id = null
+        }
+
         watch(query, (q) => {
             if (debounce_timer) clearTimeout(debounce_timer)
             const trimmed = q.trim()
 
-            if (auto_expanded_id != null && props.resolveNamespaceId) {
-                const still_matches = trimmed && props.resolveNamespaceId(trimmed) === auto_expanded_id
-                if (!still_matches) {
-                    const ns = props.namespaces.find(n => n.id === auto_expanded_id)
-                    if (ns && is_expanded(ns)) emit('toggle-namespace', ns)
-                    auto_expanded_id = null
-                }
+            if (!trimmed) {
+                // Fully cleared (backspaced to nothing, or selected-all + deleted)
+                // — same as hitting the x button: close whatever the search opened.
+                close_auto_expanded()
+                is_resolving.value = false
+                return
+            }
+
+            if (auto_expanded_id != null && props.resolveNamespaceId && props.resolveNamespaceId(trimmed) !== auto_expanded_id) {
+                close_auto_expanded()
             }
 
             // Only a candidate for a match once it has a ':' (both taxonomy
