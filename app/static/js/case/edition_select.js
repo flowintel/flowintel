@@ -98,6 +98,8 @@ export default {
 
 
         async function fetch_taxonomies_case_task() {
+            // No object yet (creation form) — nothing to preload.
+            if (!props.object_id) return
             let url
 
             if (props.type_object == "case") {
@@ -125,6 +127,7 @@ export default {
         fetch_taxonomies_case_task()
 
         async function fetch_galaxies_case_task() {
+            if (!props.object_id) return
             let url
             if (props.type_object == "case") {
                 url = "/case/get_galaxies_case/" + props.object_id
@@ -155,6 +158,7 @@ export default {
         fetch_galaxies_case_task()
 
         async function fetch_custom_tags_case_task() {
+            if (!props.object_id) return
             let url
 
             if (props.type_object == "case") {
