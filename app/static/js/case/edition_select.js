@@ -7,14 +7,18 @@ export default {
     props: {
         type_object: String,
         object_id: Number,
-        // Create mode only (no object_id): pre-seed the picker with a
-        // previously-picked selection, e.g. restored from a failed submit
-        // (server-side validation error re-renders the whole page, which
-        // would otherwise silently drop everything the user had picked).
+        // Pre-seed the picker with a previously-picked selection restored
+        // from a failed submit (server-side validation error re-renders the
+        // whole page, which would otherwise silently drop everything the
+        // user had picked). Always used in create mode (no object_id). In
+        // edit mode (object_id set) it's only used when hasDraft is true,
+        // which also skips the normal DB fetch so the restored draft isn't
+        // immediately overwritten by the object's actual saved selection.
         initialTags: { type: Array, default: () => [] },
         initialClusters: { type: Array, default: () => [] },
         initialGalaxies: { type: Array, default: () => [] },
         initialCustomTags: { type: Array, default: () => [] },
+        hasDraft: { type: Boolean, default: false },
     },
     emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
     components: { picker_pane, namespace_accordion },
@@ -36,15 +40,16 @@ export default {
         // this component still listen for — e.g. edit_task.html). So here,
         // "expanding" a galaxy IS "selecting" it, same as the pre-refactor
         // select2 behaviour, and several galaxies can be expanded/selected at once.
-        const selected_galaxies = ref(props.object_id ? [] : [...props.initialGalaxies])
+        const use_initial = !props.object_id || props.hasDraft
+        const selected_galaxies = ref(use_initial ? [...props.initialGalaxies] : [])
 
-        const selected_tags = ref(props.object_id ? [] : [...props.initialTags])
-        const selected_clusters = ref(props.object_id ? [] : [...props.initialClusters])
-        const selected_custom_tags = ref(props.object_id ? [] : [...props.initialCustomTags])
+        const selected_tags = ref(use_initial ? [...props.initialTags] : [])
+        const selected_clusters = ref(use_initial ? [...props.initialClusters] : [])
+        const selected_custom_tags = ref(use_initial ? [...props.initialCustomTags] : [])
 
         // Mirror the seeded selection back to the caller so its own copy
         // (used to build the hidden inputs on submit) starts in sync too.
-        if (!props.object_id) {
+        if (use_initial) {
             if (selected_tags.value.length) emit('st', selected_tags.value)
             if (selected_clusters.value.length) emit('sc', selected_clusters.value)
             if (selected_galaxies.value.length) emit('sg', selected_galaxies.value)
@@ -118,8 +123,9 @@ export default {
 
 
         async function fetch_taxonomies_case_task() {
-            // No object yet (creation form) — nothing to preload.
-            if (!props.object_id) return
+            // No object yet (creation form), or a restored draft already
+            // seeded the selection — nothing to preload from the DB.
+            if (!props.object_id || props.hasDraft) return
             let url
 
             if (props.type_object == "case") {
@@ -147,7 +153,7 @@ export default {
         fetch_taxonomies_case_task()
 
         async function fetch_galaxies_case_task() {
-            if (!props.object_id) return
+            if (!props.object_id || props.hasDraft) return
             let url
             if (props.type_object == "case") {
                 url = "/case/get_galaxies_case/" + props.object_id
@@ -178,7 +184,7 @@ export default {
         fetch_galaxies_case_task()
 
         async function fetch_custom_tags_case_task() {
-            if (!props.object_id) return
+            if (!props.object_id || props.hasDraft) return
             let url
 
             if (props.type_object == "case") {

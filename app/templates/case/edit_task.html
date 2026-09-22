@@ -62,9 +62,14 @@
 
         <hr style="margin-top: 40px; margin-bottom: 40px;">
 
-        <edition_select 
+        <edition_select
             :type_object="'task'"
             :object_id="{{ task_id }}"
+            :has-draft="has_draft"
+            :initial-tags="tag_draft.tags"
+            :initial-clusters="tag_draft.clusters"
+            :initial-galaxies="tag_draft.galaxies"
+            :initial-custom-tags="tag_draft.custom_tags"
             @st="(msg) => selected_tags=selected_tags.concat(msg)"
             @sc="(msg) => selected_clusters=selected_clusters.concat(msg)"
             @sg="(msg) => selected_galaxies=selected_galaxies.concat(msg)"
@@ -89,6 +94,7 @@
     import {message_list} from '/static/js/toaster.js'
     import edition_select from '/static/js/case/edition_select.js'
     import smart_editor from '/static/js/components/smart-editor.js'
+    import {save_tag_draft, restore_tag_draft} from '/static/js/tag_draft.js'
 
     createApp({
         delimiters: ['[[', ']]'],
@@ -97,6 +103,19 @@
             smart_editor
         },
         setup() {
+            // Recovers tags/clusters/galaxies/custom tags picked before a
+            // failed submit (server-side validation error re-renders this
+            // page from scratch otherwise) — see tag_draft.js. has_draft
+            // also tells edition_select.js to skip loading the task's
+            // actual saved selection so it doesn't overwrite this draft.
+            const restored_draft = restore_tag_draft(location.pathname)
+            const has_draft = !!restored_draft
+            const tag_draft = restored_draft || {}
+            tag_draft.tags ??= []
+            tag_draft.clusters ??= []
+            tag_draft.galaxies ??= []
+            tag_draft.custom_tags ??= []
+
             const selected_tags = ref([])
             const selected_clusters = ref([])
             const selected_galaxies = ref([])
@@ -146,9 +165,16 @@
                 });
                 $.each(selected_galaxies.value, function(i, v){
                     var input = $("<input>").attr({"type":"hidden","name":"galaxies_select"}).val(v.uuid);
-                    $('#form').append(input);    
+                    $('#form').append(input);
                 });
-                
+
+                save_tag_draft(location.pathname, {
+                    tags: selected_tags.value,
+                    clusters: selected_clusters.value,
+                    galaxies: selected_galaxies.value,
+                    custom_tags: selected_custom_tags.value,
+                })
+
                 // Submit the form
                 document.getElementById('form').submit();
             } 
@@ -162,6 +188,8 @@
 
             return {
                 message_list,
+                has_draft,
+                tag_draft,
 
                 selected_tags,
                 selected_clusters,
