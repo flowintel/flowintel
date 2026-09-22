@@ -94,90 +94,19 @@
         
         <hr style="margin-top: 40px; margin-bottom: 40px;">
 
-        <div class="accordion mt-4">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustom" aria-expanded="false" aria-controls="collapseCustom">
-                        Custom Tags <i class="fa fa-question" title="Add custom tags to the case" style="margin-left: 5px;"></i>
-                    </button>
-                </h2>
-                <div id="collapseCustom" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <div v-if="custom_tags" class="col-6">
-                            <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_select" id="custom_select" >
-                                <template v-for="c_t, key in custom_tags">
-                                    <option :value="[[c_t.name]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
-                                </template>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="accordion mt-4">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                        Taxonomies <i class="fa fa-question" title="Add taxonomies to the case" style="margin-left: 5px;"></i>
-                    </button>
-                </h2>
-                <div id="collapseTwo" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <div class="row">
-                            <div v-if="taxonomies" class="col-4">
-                                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                                    <template v-for="taxonomy, key in taxonomies">
-                                        <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                                    </template>
-                                </select>
-                            </div>
-                            
-                            <div v-if="tags_list" class="col-4">
-                                <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                                    <template v-for="(tags, taxo) in tags_list">
-                                        <optgroup :label="[[taxo]]">
-                                            <option :value="[[tag.name]]" :title="tag.description" v-for="tag in tags">[[tag.name]]</option>
-                                        </optgroup>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="accordion mt-4">
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                        Galaxies <i class="fa fa-question" title="Add galaxies to the case" style="margin-left: 5px;"></i>
-                    </button>
-                </h2>
-                <div id="collapseThree" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <div class="row">
-                            <div v-if="galaxies" class="col-4">
-                                <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                                    <template v-for="galaxy, key in galaxies">
-                                        <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                                    </template>
-                                </select>
-                            </div>
-                            
-                            <div v-if="cluster_list" class="col-4">
-                                <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                                    <template v-for="(clusters, galaxy) in cluster_list">
-                                        <optgroup :label="[[galaxy]]">
-                                            <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                                        </optgroup>
-                                    </template>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <h6 class="section-title mb-0"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags, taxonomies and galaxies</h6>
+        <hr class="fading-line-2 mt-2 mb-2">
+        <edition_select
+            :type_object="'task'"
+            @st="(msg) => selected_tags = selected_tags.concat(msg)"
+            @sc="(msg) => selected_clusters = selected_clusters.concat(msg)"
+            @sg="(msg) => selected_galaxies = selected_galaxies.concat(msg)"
+            @sct="(msg) => selected_custom_tags = selected_custom_tags.concat(msg)"
+            @delete_st="(msg) => selected_tags.splice(msg, 1)"
+            @delete_sc="(msg) => selected_clusters.splice(msg, 1)"
+            @delete_sg="(msg) => selected_galaxies.splice(msg, 1)"
+            @delete_sct="(msg) => selected_custom_tags.splice(msg, 1)">
+        </edition_select>
     </div>
     <div class="d-flex gap-2">
         <a href="/case/{{ case_id }}" class="btn btn-secondary">Cancel</a>
@@ -190,24 +119,21 @@
 {% block script %}
 <script type="module">
     const { createApp, onMounted, ref} = Vue
-    import {display_toast, message_list} from '/static/js/toaster.js'
+    import {message_list} from '/static/js/toaster.js'
     import smart_editor from '/static/js/components/smart-editor.js'
+    import edition_select from '/static/js/case/edition_select.js'
 
     createApp({
         delimiters: ['[[', ']]'],
         components: {
-            smart_editor
+            smart_editor,
+            edition_select
         },
         setup() {
-            const taxonomies = ref([])
-            const tags_list = ref([])
-            const selected_taxo = ref([])
-
-            const galaxies = ref([])
-            const cluster_list = ref([])
+            const selected_tags = ref([])
+            const selected_clusters = ref([])
             const selected_galaxies = ref([])
-
-            const custom_tags = ref([])
+            const selected_custom_tags = ref([])
 
             const note_editor_render = ref("")
             const case_id_for_vars = {{ case_id }}
@@ -234,120 +160,61 @@
                 to_hide = !to_hide
             }
 
-            async function fetch_taxonomies(){
-                const res = await fetch("/case/get_taxonomies")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    taxonomies.value = loc["taxonomies"]
-                }
+            function add_tag_hidden_inputs(){
+                const $form = $('#task_form')
+                $('.tag-hidden-input').remove()
+                $.each(selected_tags.value, function(i, v){
+                    $form.append($("<input>").attr({type:"hidden", name:"tags_select", class:"tag-hidden-input"}).val(v.name))
+                })
+                $.each(selected_clusters.value, function(i, v){
+                    $form.append($("<input>").attr({type:"hidden", name:"clusters_select", class:"tag-hidden-input"}).val(v.uuid))
+                })
+                $.each(selected_galaxies.value, function(i, v){
+                    $form.append($("<input>").attr({type:"hidden", name:"galaxies_select", class:"tag-hidden-input"}).val(v.uuid))
+                })
+                $.each(selected_custom_tags.value, function(i, v){
+                    $form.append($("<input>").attr({type:"hidden", name:"custom_select", class:"tag-hidden-input"}).val(v.name))
+                })
             }
-
-            async function fetch_galaxies(){
-                const res = await fetch("/case/get_galaxies")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    galaxies.value = loc["galaxies"]
-                }
-            }
-
-            async function fetch_tags(){
-                tags_list.value = []
-                const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    tags_list.value = loc["tags"]
-                    $('#tags_select').trigger('change');
-                }
-            }
-
-            async function fetch_cluster(){
-                cluster_list.value = []
-                const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    cluster_list.value = loc["clusters"]
-                    $('#clusters_select').trigger('change');
-                }
-            }
-
-            async function fetch_custom_tags(){
-                const res = await fetch("/custom_tags/list")
-                if(await res.status==400 ){
-                    display_toast(res)
-                }else{
-                    let loc = await res.json()
-                    custom_tags.value = loc
-                }
-            }
-
 
             onMounted(() => {
-                fetch_taxonomies()
-                fetch_galaxies()
-                fetch_custom_tags()
-
-                $('.select2-select').select2({
-                    theme: 'bootstrap-5',
-                    closeOnSelect: false
-                })
                 $('.select2-select-template').select2({
                     theme: 'bootstrap-5'
                 })
 
-                $('#taxonomies_select').on('change.select2', function (e) {
-                    selected_taxo.value = $(this).select2('data').map(item => item.id);
-                    fetch_tags()
-                })
-                $('#galaxies_select').on('change.select2', function (e) {
-                    selected_galaxies.value = $(this).select2('data').map(item => item.id);
-                    fetch_cluster()
-                })
+                document.getElementById('task_form').addEventListener('submit', function(e) {
+                    add_tag_hidden_inputs()
+
+                    const titleInput = document.getElementById('task_title');
+                    const titleError = document.getElementById('title_error');
+                    const titleValue = titleInput ? titleInput.value.trim() : '';
+
+                    // Check if template is selected
+                    const templateSelect = document.getElementById('template_select');
+                    const selectedTemplates = Array.from(templateSelect.selectedOptions).filter(opt => opt.value !== '0');
+
+                    // Require title OR template
+                    if (!titleValue && selectedTemplates.length === 0) {
+                        e.preventDefault();
+                        titleError.style.display = 'block';
+                        titleInput.focus();
+                        return false;
+                    }
+                    titleError.style.display = 'none';
+                });
             })
 
             return {
-                selected_taxo,
                 message_list,
-                taxonomies,
-                galaxies,
-                tags_list,
-                cluster_list,
-                custom_tags,
+                selected_tags,
+                selected_clusters,
+                selected_galaxies,
+                selected_custom_tags,
                 note_editor_render,
                 resolve_description_preview,
                 hide_task_creation
             }
         }
     }).mount('#main-container')
-
-    // Client-side validation for create task
-    window.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('task_form').addEventListener('submit', function(e) {
-            const titleInput = document.getElementById('task_title');
-            const titleError = document.getElementById('title_error');
-            const titleValue = titleInput ? titleInput.value.trim() : '';
-            
-            // Check if template is selected
-            const templateSelect = document.getElementById('template_select');
-            const selectedTemplates = Array.from(templateSelect.selectedOptions).filter(opt => opt.value !== '0');
-            
-            // Require title OR template
-            if (!titleValue && selectedTemplates.length === 0) {
-                e.preventDefault();
-                titleError.style.display = 'block';
-                titleInput.focus();
-                return false;
-            }
-            titleError.style.display = 'none';
-        });
-    });
-
 </script>
 {% endblock %}
