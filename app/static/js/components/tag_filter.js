@@ -69,8 +69,11 @@ export default {
         const custom_tags = ref([])
         const selected_custom_tags = ref([])
 
-        const or_and_taxo = ref(false)
-        const or_and_galaxies = ref(false)
+        // Backend semantics: or_and_taxo/or_and_galaxies "true" -> OR (the
+        // default, matching the switch's unchecked/passive state), "false"
+        // -> AND (checked). See FilteringAbstract._sort.
+        const or_and_taxo = ref(true)
+        const or_and_galaxies = ref(true)
 
         // Persistent name -> tag/cluster data maps, merged in (never cleared)
         // as tags/clusters get fetched, so a selected item's color/icon/galaxy
@@ -283,6 +286,7 @@ export default {
             resolve_taxo_for_query, resolve_galaxy_for_query, taxo_search_prefix, galaxy_search_prefix,
             toggle_taxo, toggle_tag, toggle_galaxy, toggle_cluster, toggle_custom_tag,
             toggle_or_and_taxo, toggle_or_and_galaxies,
+            or_and_taxo, or_and_galaxies,
         }
     },
     template: `
@@ -292,7 +296,7 @@ export default {
             <div style="display:flex">
                 <span style="margin-right: 10px">OR</span>
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" role="switch" @click="toggle_or_and_taxo()">
+                    <input class="form-check-input" type="checkbox" role="switch" :checked="!or_and_taxo" @click="toggle_or_and_taxo()">
                     <label class="form-check-label">AND</label>
                 </div>
             </div>
@@ -321,7 +325,7 @@ export default {
             <div style="display:flex">
                 <span style="margin-right: 10px">OR</span>
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" role="switch" @click="toggle_or_and_galaxies()">
+                    <input class="form-check-input" type="checkbox" role="switch" :checked="!or_and_galaxies" @click="toggle_or_and_galaxies()">
                     <label class="form-check-label">AND</label>
                 </div>
             </div>
