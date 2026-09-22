@@ -134,6 +134,8 @@
                         :selected-items="selected_tag_display_items"
                         :selected-item-ids="selected_tags"
                         :loading-items="loading_tags"
+                        :resolve-namespace-id="resolve_filter_taxo_for_query"
+                        :namespace-search-prefix="taxo_filter_search_prefix"
                         namespace-empty-text="No taxonomy found."
                         item-empty-text="No tag in this taxonomy."
                         no-selection-text="No taxonomy/tag filter applied."
@@ -161,6 +163,8 @@
                         :selected-items="selected_cluster_display_items"
                         :selected-item-ids="selected_clusters"
                         :loading-items="loading_clusters"
+                        :resolve-namespace-id="resolve_filter_galaxy_for_query"
+                        :namespace-search-prefix="galaxy_filter_search_prefix"
                         namespace-empty-text="No galaxy found."
                         item-empty-text="No cluster in this galaxy."
                         no-selection-text="No galaxy/cluster filter applied."
@@ -752,6 +756,29 @@
                     id: tag.name, label: tag.name, color: tag.color, iconClass: tag.icon, raw: tag
                 })))
 
+                // ---- search-driven auto-expand: typing/pasting a full tag jumps
+                // straight to its namespace (see resolveNamespaceId in namespace_accordion.js) ----
+
+                function resolve_filter_taxo_for_query(query) {
+                    const colon_idx = query.indexOf(':')
+                    if (colon_idx === -1) return null
+                    const prefix = query.slice(0, colon_idx)
+                    return taxonomies.value.includes(prefix) ? prefix : null
+                }
+                function resolve_filter_galaxy_for_query(query) {
+                    // Galaxy cluster tags always look like: misp-galaxy:<galaxy-type>="<value>"
+                    const m = query.match(/^misp-galaxy:([^=]+)=/)
+                    if (!m) return null
+                    const galaxy = galaxies.value.find(g => g.type === m[1])
+                    return galaxy ? galaxy.name : null
+                }
+                function taxo_filter_search_prefix(ns) {
+                    return ns.raw + ':'
+                }
+                function galaxy_filter_search_prefix(ns) {
+                    return 'misp-galaxy:' + (ns.raw.type || '') + '='
+                }
+
                 // ---- toggle handlers ----
 
                 function toggle_filter_taxo(ns){
@@ -871,6 +898,11 @@
                     toggle_filter_galaxy,
                     toggle_filter_cluster,
                     toggle_filter_custom_tag,
+
+                    resolve_filter_taxo_for_query,
+                    resolve_filter_galaxy_for_query,
+                    taxo_filter_search_prefix,
+                    galaxy_filter_search_prefix,
                 }
             }
         }).mount('#main-container')
