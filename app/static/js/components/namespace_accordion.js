@@ -52,10 +52,21 @@ export default {
         noSelectionText: { type: String, default: 'None selected yet.' },
         searchPlaceholder: { type: String, default: 'Search...' },
         resolveNamespaceId: { type: Function, default: null },
+        namespaceSearchPrefix: { type: Function, default: null },
     },
     emits: ['toggle-namespace', 'toggle-item'],
     setup(props, { emit }) {
         const query = ref('')
+
+        function handle_namespace_click(ns) {
+            const opening = !is_expanded(ns)
+            emit('toggle-namespace', ns)
+            if (opening) {
+                if (props.namespaceSearchPrefix) query.value = props.namespaceSearchPrefix(ns)
+            } else {
+                query.value = ''
+            }
+        }
 
         const expanded_set = computed(() => new Set(props.expandedIds))
         const selected_set = computed(() => new Set(props.selectedItemIds))
@@ -109,6 +120,7 @@ export default {
             is_item_selected,
             filtered_namespaces,
             items_for,
+            handle_namespace_click,
         }
     },
     template: `
@@ -134,7 +146,7 @@ export default {
                 <template v-for="ns in filtered_namespaces" :key="ns.id">
                     <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-1 px-2 border-0 border-bottom small"
                             :class="{'bg-primary-subtle': is_expanded(ns)}"
-                            @click="$emit('toggle-namespace', ns)">
+                            @click="handle_namespace_click(ns)">
                         <span><i class="fas me-1" :class="is_expanded(ns) ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size:0.7em;"></i>[[ns.label]]</span>
                     </button>
                     <div v-if="is_expanded(ns)" class="ps-3 pe-1 py-1 bg-body-tertiary">

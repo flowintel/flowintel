@@ -265,6 +265,15 @@ export default {
             return galaxy ? galaxy.uuid : null
         }
 
+        // When a namespace is opened, pre-fill the search bar with its prefix
+        // so typing straight away narrows down within it.
+        function taxo_search_prefix(ns) {
+            return ns.raw + ':'
+        }
+        function galaxy_search_prefix(ns) {
+            return 'misp-galaxy:' + (ns.raw.type || '') + '='
+        }
+
 
         // ---- toggle handlers ----
 
@@ -348,6 +357,8 @@ export default {
 
             resolve_taxo_for_query,
             resolve_galaxy_for_query,
+            taxo_search_prefix,
+            galaxy_search_prefix,
 
             toggle_custom_tag,
             toggle_taxo,
@@ -377,6 +388,7 @@ export default {
         :selected-item-ids="selected_tag_ids"
         :loading-items="loading_tags"
         :resolve-namespace-id="resolve_taxo_for_query"
+        :namespace-search-prefix="taxo_search_prefix"
         namespace-empty-text="No taxonomy found."
         item-empty-text="No tag in this taxonomy."
         no-selection-text="No tag selected yet."
@@ -396,6 +408,7 @@ export default {
         :selected-item-ids="selected_cluster_ids"
         :loading-items="loading_clusters"
         :resolve-namespace-id="resolve_galaxy_for_query"
+        :namespace-search-prefix="galaxy_search_prefix"
         namespace-empty-text="No galaxy found."
         item-empty-text="No cluster in this galaxy."
         no-selection-text="No cluster selected yet."
