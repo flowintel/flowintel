@@ -130,7 +130,7 @@
                         title="Taxonomies"
                         :namespaces="taxonomy_items"
                         :items="tag_items"
-                        :expanded-ids="selected_taxo"
+                        :expanded-ids="expanded_taxo"
                         :selected-items="selected_tag_display_items"
                         :selected-item-ids="selected_tags"
                         :loading-items="loading_tags"
@@ -157,7 +157,7 @@
                         title="Galaxies"
                         :namespaces="galaxy_items"
                         :items="cluster_items"
-                        :expanded-ids="selected_galaxies"
+                        :expanded-ids="expanded_galaxies"
                         :selected-items="selected_cluster_display_items"
                         :selected-item-ids="selected_clusters"
                         :loading-items="loading_clusters"
@@ -410,24 +410,41 @@
 
                 const taxonomies = ref([])
                 const tags_list = ref({})
-                const selected_taxo = ref([])
+                // Purely which taxonomies are currently expanded for browsing —
+                // decoupled from the actual filter (selected_tags below), so
+                // collapsing a taxonomy never drops a tag you've already picked.
+                const expanded_taxo = ref([])
                 const selected_tags = ref([])
                 const loading_tags = ref(false)
 
                 const galaxies = ref([])
                 const cluster_list = ref({})
-                const selected_galaxies = ref([])
+                // Same as expanded_taxo, for galaxies/clusters.
+                const expanded_galaxies = ref([])
                 const selected_clusters = ref([])
                 const loading_clusters = ref(false)
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
 
+                // The taxonomies/galaxies filter dimensions sent to /case/sort_cases
+                // are derived from what's actually selected, not from what's expanded.
+                const selected_taxo = computed(() => [...new Set(selected_tags.value.map(name => name.split(':')[0]))])
+
+                // Persistent name -> galaxy_id map, merged in (never cleared) as
+                // clusters get fetched, so a selected cluster's galaxy stays
+                // resolvable even after that galaxy is collapsed and re-fetched
+                // out of cluster_list.
+                const cluster_galaxy_map = ref({})
+                const selected_galaxies = computed(() => {
+                    const ids = new Set(selected_clusters.value.map(name => cluster_galaxy_map.value[name]).filter(id => id != null))
+                    return galaxies.value.filter(g => ids.has(g.id)).map(g => g.name)
+                })
+
                 const has_active_filters = computed(() => {
                     return (
                         (search_query.value || '').length > 0 ||
                         selected_tags.value.length > 0 ||
-                        selected_taxo.value.length > 0 ||
                         selected_galaxies.value.length > 0 ||
                         selected_clusters.value.length > 0 ||
                         selected_custom_tags.value.length > 0 ||
@@ -641,46 +658,35 @@
                 async function fetch_tags(){
                     loading_tags.value = true
                     tags_list.value = {}
-                    if(selected_taxo.value.length){
-                        const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                    if(expanded_taxo.value.length){
+                        const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(expanded_taxo.value))
                         if(await res.status==400 ){
                             display_toast(res)
                         }else{
                             let loc = await res.json()
                             tags_list.value = loc["tags"]
-
-                            // Drop selected tags whose taxonomy is no longer selected
-                            const available_tags = new Set()
-                            for(const taxo in tags_list.value){
-                                for(const tag of tags_list.value[taxo]) available_tags.add(tag.name)
-                            }
-                            selected_tags.value = selected_tags.value.filter(t => available_tags.has(t))
                         }
-                    } else {
-                        selected_tags.value = []
                     }
                     loading_tags.value = false
                 }
                 async function fetch_cluster(){
                     loading_clusters.value = true
                     cluster_list.value = {}
-                    if(selected_galaxies.value.length){
-                        const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                    if(expanded_galaxies.value.length){
+                        const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(expanded_galaxies.value))
                         if(await res.status==400 ){
                             display_toast(res)
                         }else{
                             let loc = await res.json()
                             cluster_list.value = loc["clusters"]
-
-                            // Drop selected clusters whose galaxy is no longer selected
-                            const available_clusters = new Set()
+                            // Merge into the persistent name -> galaxy_id map (see
+                            // cluster_galaxy_map above) instead of replacing it.
                             for(const galaxy in cluster_list.value){
-                                for(const cluster of cluster_list.value[galaxy]) available_clusters.add(cluster.name)
+                                for(const cluster of cluster_list.value[galaxy]){
+                                    cluster_galaxy_map.value[cluster.name] = cluster.galaxy_id
+                                }
                             }
-                            selected_clusters.value = selected_clusters.value.filter(c => available_clusters.has(c))
                         }
-                    } else {
-                        selected_clusters.value = []
                     }
                     loading_clusters.value = false
                 }
@@ -736,10 +742,12 @@
                 // ---- toggle handlers ----
 
                 function toggle_filter_taxo(ns){
-                    const idx = selected_taxo.value.indexOf(ns.raw)
-                    if(idx > -1) selected_taxo.value.splice(idx, 1)
-                    else selected_taxo.value.push(ns.raw)
-                    fetch_tags().then(() => fetch_sorted_cases(1))
+                    // Pure browse toggle — never touches selected_tags, so
+                    // collapsing a taxonomy never drops a tag filter under it.
+                    const idx = expanded_taxo.value.indexOf(ns.raw)
+                    if(idx > -1) expanded_taxo.value.splice(idx, 1)
+                    else expanded_taxo.value.push(ns.raw)
+                    fetch_tags()
                 }
                 function toggle_filter_tag(item){
                     const idx = selected_tags.value.indexOf(item.raw.name)
@@ -748,10 +756,12 @@
                     fetch_sorted_cases(1)
                 }
                 function toggle_filter_galaxy(ns){
-                    const idx = selected_galaxies.value.indexOf(ns.raw.name)
-                    if(idx > -1) selected_galaxies.value.splice(idx, 1)
-                    else selected_galaxies.value.push(ns.raw.name)
-                    fetch_cluster().then(() => fetch_sorted_cases(1))
+                    // Pure browse toggle — never touches selected_clusters, so
+                    // collapsing a galaxy never drops a cluster filter under it.
+                    const idx = expanded_galaxies.value.indexOf(ns.raw.name)
+                    if(idx > -1) expanded_galaxies.value.splice(idx, 1)
+                    else expanded_galaxies.value.push(ns.raw.name)
+                    fetch_cluster()
                 }
                 function toggle_filter_cluster(item){
                     const idx = selected_clusters.value.indexOf(item.raw.name)
@@ -811,14 +821,14 @@
 
                     taxonomy_items,
                     tag_items,
-                    selected_taxo,
+                    expanded_taxo,
                     selected_tags,
                     selected_tag_display_items,
                     loading_tags,
 
                     galaxy_items,
                     cluster_items,
-                    selected_galaxies,
+                    expanded_galaxies,
                     selected_clusters,
                     selected_cluster_display_items,
                     loading_clusters,
