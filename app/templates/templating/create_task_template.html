@@ -95,10 +95,10 @@
                     $form.append($("<input>").attr({type:"hidden", name:"tags_select", class:"tag-hidden-input"}).val(v.name))
                 })
                 $.each(selected_clusters.value, function(i, v){
-                    $form.append($("<input>").attr({type:"hidden", name:"clusters_select", class:"tag-hidden-input"}).val(v.uuid))
+                    $form.append($("<input>").attr({type:"hidden", name:"clusters_select", class:"tag-hidden-input"}).val(v.name))
                 })
                 $.each(selected_galaxies.value, function(i, v){
-                    $form.append($("<input>").attr({type:"hidden", name:"galaxies_select", class:"tag-hidden-input"}).val(v.uuid))
+                    $form.append($("<input>").attr({type:"hidden", name:"galaxies_select", class:"tag-hidden-input"}).val(v.name))
                 })
                 $.each(selected_custom_tags.value, function(i, v){
                     $form.append($("<input>").attr({type:"hidden", name:"custom_select", class:"tag-hidden-input"}).val(v.name))
