@@ -49,6 +49,10 @@
             <hr class="fading-line-2 mt-2 mb-2">
             <edition_select
                 :type_object="'task_template'"
+                :initial-tags="tag_draft.tags"
+                :initial-clusters="tag_draft.clusters"
+                :initial-galaxies="tag_draft.galaxies"
+                :initial-custom-tags="tag_draft.custom_tags"
                 @st="(msg) => selected_tags = selected_tags.concat(msg)"
                 @sc="(msg) => selected_clusters = selected_clusters.concat(msg)"
                 @sg="(msg) => selected_galaxies = selected_galaxies.concat(msg)"
@@ -73,6 +77,7 @@
     import {message_list} from '/static/js/toaster.js'
     import smart_editor from '/static/js/components/smart-editor.js'
     import edition_select from '/static/js/case/edition_select.js'
+    import {save_tag_draft, restore_tag_draft} from '/static/js/tag_draft.js'
 
     createApp({
         delimiters: ['[[', ']]'],
@@ -81,6 +86,15 @@
             edition_select
         },
         setup() {
+            // Recovers tags/clusters/galaxies/custom tags picked before a
+            // failed submit (server-side validation error re-renders this
+            // page from scratch otherwise) — see tag_draft.js.
+            const tag_draft = restore_tag_draft(location.pathname) || {}
+            tag_draft.tags ??= []
+            tag_draft.clusters ??= []
+            tag_draft.galaxies ??= []
+            tag_draft.custom_tags ??= []
+
             const selected_tags = ref([])
             const selected_clusters = ref([])
             const selected_galaxies = ref([])
@@ -103,6 +117,13 @@
                 $.each(selected_custom_tags.value, function(i, v){
                     $form.append($("<input>").attr({type:"hidden", name:"custom_select", class:"tag-hidden-input"}).val(v.name))
                 })
+
+                save_tag_draft(location.pathname, {
+                    tags: selected_tags.value,
+                    clusters: selected_clusters.value,
+                    galaxies: selected_galaxies.value,
+                    custom_tags: selected_custom_tags.value,
+                })
             }
 
             onMounted(() => {
@@ -113,6 +134,7 @@
 
             return {
                 message_list,
+                tag_draft,
                 selected_tags,
                 selected_clusters,
                 selected_galaxies,

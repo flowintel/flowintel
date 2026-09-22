@@ -4,7 +4,18 @@ import namespace_accordion from '/static/js/components/namespace_accordion.js'
 const { ref, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
-    props: { type_object: String, object_id: Number },
+    props: {
+        type_object: String,
+        object_id: Number,
+        // Create mode only (no object_id): pre-seed the picker with a
+        // previously-picked selection, e.g. restored from a failed submit
+        // (server-side validation error re-renders the whole page, which
+        // would otherwise silently drop everything the user had picked).
+        initialTags: { type: Array, default: () => [] },
+        initialClusters: { type: Array, default: () => [] },
+        initialGalaxies: { type: Array, default: () => [] },
+        initialCustomTags: { type: Array, default: () => [] },
+    },
     emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
     components: { picker_pane, namespace_accordion },
     setup(props, { emit }) {
@@ -25,11 +36,20 @@ export default {
         // this component still listen for — e.g. edit_task.html). So here,
         // "expanding" a galaxy IS "selecting" it, same as the pre-refactor
         // select2 behaviour, and several galaxies can be expanded/selected at once.
-        const selected_galaxies = ref([])
+        const selected_galaxies = ref(props.object_id ? [] : [...props.initialGalaxies])
 
-        const selected_tags = ref([])
-        const selected_clusters = ref([])
-        const selected_custom_tags = ref([])
+        const selected_tags = ref(props.object_id ? [] : [...props.initialTags])
+        const selected_clusters = ref(props.object_id ? [] : [...props.initialClusters])
+        const selected_custom_tags = ref(props.object_id ? [] : [...props.initialCustomTags])
+
+        // Mirror the seeded selection back to the caller so its own copy
+        // (used to build the hidden inputs on submit) starts in sync too.
+        if (!props.object_id) {
+            if (selected_tags.value.length) emit('st', selected_tags.value)
+            if (selected_clusters.value.length) emit('sc', selected_clusters.value)
+            if (selected_galaxies.value.length) emit('sg', selected_galaxies.value)
+            if (selected_custom_tags.value.length) emit('sct', selected_custom_tags.value)
+        }
 
         const loading_tags = ref(false)
         const loading_clusters = ref(false)
