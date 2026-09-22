@@ -431,13 +431,14 @@
                 // are derived from what's actually selected, not from what's expanded.
                 const selected_taxo = computed(() => [...new Set(selected_tags.value.map(name => name.split(':')[0]))])
 
-                // Persistent name -> galaxy_id map, merged in (never cleared) as
-                // clusters get fetched, so a selected cluster's galaxy stays
-                // resolvable even after that galaxy is collapsed and re-fetched
-                // out of cluster_list.
-                const cluster_galaxy_map = ref({})
+                // Persistent name -> tag/cluster data maps, merged in (never
+                // cleared) as tags/clusters get fetched, so a selected item's
+                // color/icon/galaxy stay resolvable even after its taxonomy or
+                // galaxy is collapsed and re-fetched out of tags_list/cluster_list.
+                const tag_data_map = ref({})
+                const cluster_data_map = ref({})
                 const selected_galaxies = computed(() => {
-                    const ids = new Set(selected_clusters.value.map(name => cluster_galaxy_map.value[name]).filter(id => id != null))
+                    const ids = new Set(selected_clusters.value.map(name => cluster_data_map.value[name]?.galaxy_id).filter(id => id != null))
                     return galaxies.value.filter(g => ids.has(g.id)).map(g => g.name)
                 })
 
@@ -665,6 +666,12 @@
                         }else{
                             let loc = await res.json()
                             tags_list.value = loc["tags"]
+                            // Merge into the persistent tag data map (see tag_data_map above)
+                            for(const taxo in tags_list.value){
+                                for(const tag of tags_list.value[taxo]){
+                                    tag_data_map.value[tag.name] = tag
+                                }
+                            }
                         }
                     }
                     loading_tags.value = false
@@ -679,11 +686,11 @@
                         }else{
                             let loc = await res.json()
                             cluster_list.value = loc["clusters"]
-                            // Merge into the persistent name -> galaxy_id map (see
-                            // cluster_galaxy_map above) instead of replacing it.
+                            // Merge into the persistent cluster data map (see
+                            // cluster_data_map above) instead of replacing it.
                             for(const galaxy in cluster_list.value){
                                 for(const cluster of cluster_list.value[galaxy]){
-                                    cluster_galaxy_map.value[cluster.name] = cluster.galaxy_id
+                                    cluster_data_map.value[cluster.name] = cluster
                                 }
                             }
                         }
@@ -708,11 +715,14 @@
                     }
                     return out
                 })
-                const selected_tag_display_items = computed(() => {
-                    const by_name = {}
-                    for(const item of tag_items.value) by_name[item.id] = item
-                    return selected_tags.value.map(name => by_name[name] || { id: name, label: name })
-                })
+                const selected_tag_display_items = computed(() =>
+                    selected_tags.value.map(name => {
+                        const tag = tag_data_map.value[name]
+                        return tag
+                            ? { id: name, label: name, color: tag.color, title: tag.description }
+                            : { id: name, label: name }
+                    })
+                )
 
                 const galaxy_items = computed(() => galaxies.value.map(galaxy => ({
                     id: galaxy.name, label: galaxy.name, iconName: galaxy.icon, title: galaxy.description, raw: galaxy
@@ -729,11 +739,14 @@
                     }
                     return out
                 })
-                const selected_cluster_display_items = computed(() => {
-                    const by_name = {}
-                    for(const item of cluster_items.value) by_name[item.id] = item
-                    return selected_clusters.value.map(name => by_name[name] || { id: name, label: name })
-                })
+                const selected_cluster_display_items = computed(() =>
+                    selected_clusters.value.map(name => {
+                        const cluster = cluster_data_map.value[name]
+                        return cluster
+                            ? { id: name, label: cluster.tag, iconName: cluster.icon, title: 'Description: ' + cluster.description }
+                            : { id: name, label: name }
+                    })
+                )
 
                 const custom_tag_items = computed(() => custom_tags.value.map(tag => ({
                     id: tag.name, label: tag.name, color: tag.color, iconClass: tag.icon, raw: tag
