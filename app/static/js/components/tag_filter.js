@@ -49,10 +49,18 @@ export default {
     components: { picker_pane, namespace_accordion },
     props: {
         scope: { type: String, default: 'case' },
+        // Restricts scope="task" to tasks belonging to this one case (e.g.
+        // the task filter on a case page) instead of every task system-wide.
+        // Ignored for scope="case".
+        caseId: { type: [Number, String], default: null },
     },
     emits: ['change'],
     setup(props, { emit, expose }) {
         const urls = SCOPE_URLS[props.scope] || SCOPE_URLS.case
+        function with_case_id(url) {
+            if (props.scope !== 'task' || props.caseId == null) return url
+            return url + (url.includes('?') ? '&' : '?') + 'case_id=' + props.caseId
+        }
 
         const taxonomies = ref([])
         const tags_list = ref({})
@@ -109,21 +117,21 @@ export default {
         }
 
         async function fetch_taxonomies(){
-            const res = await fetch(urls.taxonomies)
+            const res = await fetch(with_case_id(urls.taxonomies))
             if (await res.status == 400) display_toast(res)
             else taxonomies.value = (await res.json())["taxonomies"]
         }
         fetch_taxonomies()
 
         async function fetch_galaxies(){
-            const res = await fetch(urls.galaxies)
+            const res = await fetch(with_case_id(urls.galaxies))
             if (await res.status == 400) display_toast(res)
             else galaxies.value = (await res.json())["galaxies"]
         }
         fetch_galaxies()
 
         async function fetch_custom_tags(){
-            const res = await fetch(urls.custom_tags)
+            const res = await fetch(with_case_id(urls.custom_tags))
             if (await res.status == 400) display_toast(res)
             else custom_tags.value = await res.json()
         }
@@ -133,7 +141,7 @@ export default {
             loading_tags.value = true
             tags_list.value = {}
             if (expanded_taxo.value.length){
-                const res = await fetch(urls.tags + "?taxonomies=" + JSON.stringify(expanded_taxo.value))
+                const res = await fetch(with_case_id(urls.tags + "?taxonomies=" + JSON.stringify(expanded_taxo.value)))
                 if (await res.status == 400) {
                     display_toast(res)
                 } else {
@@ -150,7 +158,7 @@ export default {
             loading_clusters.value = true
             cluster_list.value = {}
             if (expanded_galaxies.value.length){
-                const res = await fetch(urls.clusters + "?galaxies=" + JSON.stringify(expanded_galaxies.value))
+                const res = await fetch(with_case_id(urls.clusters + "?galaxies=" + JSON.stringify(expanded_galaxies.value)))
                 if (await res.status == 400) {
                     display_toast(res)
                 } else {

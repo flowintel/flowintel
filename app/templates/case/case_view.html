@@ -998,7 +998,7 @@
                         </div>
                     </div>
                     <hr>
-                    <tag_filter scope="task" @change="on_tag_filter_change"></tag_filter>
+                    <tag_filter scope="task" :case-id="cases_info.case.id" @change="on_tag_filter_change"></tag_filter>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
