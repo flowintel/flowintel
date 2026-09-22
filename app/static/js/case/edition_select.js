@@ -255,17 +255,22 @@ export default {
         // straight to its namespace (see resolveNamespaceId in namespace_accordion.js) ----
 
         function resolve_taxo_for_query(query) {
+            // Case-insensitive ("DML:", "dml:", "Dml:" are all the same
+            // taxonomy) — but return the taxonomy's real stored casing, since
+            // that's what taxonomy_items' id actually is.
             const colon_idx = query.indexOf(':')
             if (colon_idx === -1) return null
-            const prefix = query.slice(0, colon_idx)
-            return taxonomies.value.includes(prefix) ? prefix : null
+            const prefix = query.slice(0, colon_idx).toLowerCase()
+            const match = taxonomies.value.find(t => t.toLowerCase() === prefix)
+            return match || null
         }
 
         function resolve_galaxy_for_query(query) {
             // Galaxy cluster tags always look like: misp-galaxy:<galaxy-type>="<value>"
-            const m = query.match(/^misp-galaxy:([^=]+)=/)
+            const m = query.match(/^misp-galaxy:([^=]+)=/i)
             if (!m) return null
-            const galaxy = galaxies.value.find(g => g.type === m[1])
+            const type_query = m[1].toLowerCase()
+            const galaxy = galaxies.value.find(g => (g.type || '').toLowerCase() === type_query)
             return galaxy ? galaxy.uuid : null
         }
 

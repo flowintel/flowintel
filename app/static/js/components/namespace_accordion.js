@@ -111,11 +111,20 @@ export default {
         // it belongs to, so the match shows up without an extra click. This
         // triggers a fetch (via toggle-namespace), so it's debounced to fire
         // once after the user stops typing rather than on every keystroke.
+        // Shown in the search box while a match is pending, so there's no
+        // silent gap between "typed a full tag" and "namespace pops open"
+        // where it just looks like nothing matched.
+        const is_resolving = ref(false)
         let debounce_timer = null
         watch(query, (q) => {
             if (debounce_timer) clearTimeout(debounce_timer)
-            if (!props.resolveNamespaceId || !q.trim()) return
+            if (!props.resolveNamespaceId || !q.trim()) {
+                is_resolving.value = false
+                return
+            }
+            is_resolving.value = true
             debounce_timer = setTimeout(() => {
+                is_resolving.value = false
                 const match_id = props.resolveNamespaceId(q.trim())
                 if (match_id == null || expanded_set.value.has(match_id)) return
                 const ns = props.namespaces.find(n => n.id === match_id)
@@ -132,6 +141,7 @@ export default {
             items_for,
             handle_namespace_click,
             clear_search,
+            is_resolving,
         }
     },
     template: `
@@ -149,7 +159,8 @@ export default {
 
             <div class="position-relative mb-1">
                 <input v-model="query" type="text" class="form-control form-control-sm" :class="{'pe-4': query}" :placeholder="searchPlaceholder">
-                <button v-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="clear_search()"></button>
+                <span v-if="is_resolving" class="spinner-border spinner-border-sm text-muted position-absolute top-50 end-0 translate-middle-y me-2" role="status" aria-label="Looking for a match..."></span>
+                <button v-else-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="clear_search()"></button>
             </div>
 
             <div class="border rounded" style="max-height: 220px; overflow-y: auto;">
