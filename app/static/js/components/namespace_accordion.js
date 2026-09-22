@@ -68,6 +68,16 @@ export default {
             }
         }
 
+        // Clearing the search also closes whatever's currently expanded —
+        // same toggle as clicking it again, so for galaxies (where expand
+        // doubles as the marker) this un-marks them too, consistent with
+        // what a manual close already does.
+        function clear_search() {
+            const to_close = props.namespaces.filter(is_expanded)
+            query.value = ''
+            to_close.forEach(ns => emit('toggle-namespace', ns))
+        }
+
         const expanded_set = computed(() => new Set(props.expandedIds))
         const selected_set = computed(() => new Set(props.selectedItemIds))
 
@@ -121,6 +131,7 @@ export default {
             filtered_namespaces,
             items_for,
             handle_namespace_click,
+            clear_search,
         }
     },
     template: `
@@ -138,7 +149,7 @@ export default {
 
             <div class="position-relative mb-1">
                 <input v-model="query" type="text" class="form-control form-control-sm" :class="{'pe-4': query}" :placeholder="searchPlaceholder">
-                <button v-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="query = ''"></button>
+                <button v-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="clear_search()"></button>
             </div>
 
             <div class="border rounded" style="max-height: 220px; overflow-y: auto;">
