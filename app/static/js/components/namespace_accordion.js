@@ -64,6 +64,7 @@ export default {
             if (opening) {
                 if (props.namespaceSearchPrefix) query.value = props.namespaceSearchPrefix(ns)
             } else {
+                if (ns.id === auto_expanded_id) auto_expanded_id = null
                 query.value = ''
             }
         }
@@ -74,6 +75,7 @@ export default {
         // what a manual close already does.
         function clear_search() {
             const to_close = props.namespaces.filter(is_expanded)
+            auto_expanded_id = null
             query.value = ''
             to_close.forEach(ns => emit('toggle-namespace', ns))
         }
@@ -115,23 +117,63 @@ export default {
         // silent gap between "typed a full tag" and "namespace pops open"
         // where it just looks like nothing matched.
         const is_resolving = ref(false)
+        // The namespace id the search itself opened (not a manual click) —
+        // only this one auto-closes when the query stops matching it, e.g.
+        // deleting the ':' in "tlp:" -> "tlp". Editing within a match
+        // ("tlp:green" -> "tlp:gree") keeps it open since the ':' is still
+        // there; only losing the match itself closes it, and it's checked on
+        // every keystroke (not debounced) so it closes right away.
+        let auto_expanded_id = null
         let debounce_timer = null
         watch(query, (q) => {
             if (debounce_timer) clearTimeout(debounce_timer)
-            if (!props.resolveNamespaceId || !q.trim()) {
+            const trimmed = q.trim()
+
+            if (auto_expanded_id != null && props.resolveNamespaceId) {
+                const still_matches = trimmed && props.resolveNamespaceId(trimmed) === auto_expanded_id
+                if (!still_matches) {
+                    const ns = props.namespaces.find(n => n.id === auto_expanded_id)
+                    if (ns && is_expanded(ns)) emit('toggle-namespace', ns)
+                    auto_expanded_id = null
+                }
+            }
+
+            if (!props.resolveNamespaceId || !trimmed) {
                 is_resolving.value = false
                 return
             }
             is_resolving.value = true
             debounce_timer = setTimeout(() => {
                 is_resolving.value = false
-                const match_id = props.resolveNamespaceId(q.trim())
+                const match_id = props.resolveNamespaceId(trimmed)
                 if (match_id == null || expanded_set.value.has(match_id)) return
                 const ns = props.namespaces.find(n => n.id === match_id)
-                if (ns) emit('toggle-namespace', ns)
+                if (ns) {
+                    emit('toggle-namespace', ns)
+                    auto_expanded_id = match_id
+                }
             }, 400)
         })
         onBeforeUnmount(() => { if (debounce_timer) clearTimeout(debounce_timer) })
+
+        // Newly-expanded namespace ids, treated as loading even before the
+        // caller's own loadingItems prop update lands, so there's never a
+        // rendered frame showing "no item" for a namespace whose fetch just
+        // started. Cleared once the caller reports loading is done.
+        const pending_ids = ref([])
+        watch(() => props.expandedIds, (new_ids, old_ids) => {
+            old_ids = old_ids || []
+            for (const id of new_ids) {
+                if (!old_ids.includes(id) && !pending_ids.value.includes(id)) pending_ids.value.push(id)
+            }
+            pending_ids.value = pending_ids.value.filter(id => new_ids.includes(id))
+        })
+        watch(() => props.loadingItems, (loading) => {
+            if (!loading) pending_ids.value = []
+        })
+        function is_loading(ns) {
+            return props.loadingItems || pending_ids.value.includes(ns.id)
+        }
 
         return {
             query,
@@ -142,6 +184,7 @@ export default {
             handle_namespace_click,
             clear_search,
             is_resolving,
+            is_loading,
         }
     },
     template: `
@@ -172,7 +215,7 @@ export default {
                         <span><i class="fas me-1" :class="is_expanded(ns) ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size:0.7em;"></i>[[ns.label]]</span>
                     </button>
                     <div v-if="is_expanded(ns)" class="ps-3 pe-1 py-1 bg-body-tertiary">
-                        <div v-if="loadingItems" class="text-muted small py-1">
+                        <div v-if="is_loading(ns)" class="text-muted small py-1">
                             <span class="spinner-border spinner-border-sm me-1"></span>Loading...
                         </div>
                         <template v-else>
