@@ -90,7 +90,7 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, onMounted, nextTick, ref} = Vue
+    const { createApp, ref} = Vue
     import {message_list} from '/static/js/toaster.js'
     import edition_select from '/static/js/case/edition_select.js'
     import smart_editor from '/static/js/components/smart-editor.js'
@@ -177,14 +177,7 @@
 
                 // Submit the form
                 document.getElementById('form').submit();
-            } 
-
-            onMounted(() => {
-                $('.select2-select').select2({
-                    theme: 'bootstrap-5',
-                    closeOnSelect: false
-                })
-            })
+            }
 
             return {
                 message_list,
