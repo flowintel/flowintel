@@ -95,7 +95,10 @@ export default {
                 </span>
             </div>
 
-            <input v-if="searchable" v-model="query" type="text" class="form-control form-control-sm mb-2" :placeholder="searchPlaceholder">
+            <div v-if="searchable" class="position-relative mb-2">
+                <input v-model="query" type="text" class="form-control form-control-sm" :class="{'pe-4': query}" :placeholder="searchPlaceholder">
+                <button v-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="query = ''"></button>
+            </div>
 
             <div v-if="loading" class="text-center py-3 text-muted">
                 <span class="spinner-border spinner-border-sm me-2"></span>Loading...

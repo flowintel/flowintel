@@ -124,7 +124,10 @@ export default {
             </div>
             <div v-else class="text-muted small mb-2">[[noSelectionText]]</div>
 
-            <input v-model="query" type="text" class="form-control form-control-sm mb-1" :placeholder="searchPlaceholder">
+            <div class="position-relative mb-1">
+                <input v-model="query" type="text" class="form-control form-control-sm" :class="{'pe-4': query}" :placeholder="searchPlaceholder">
+                <button v-if="query" type="button" class="btn-close position-absolute top-50 end-0 translate-middle-y me-2" style="font-size:0.65rem;" aria-label="Clear search" @click="query = ''"></button>
+            </div>
 
             <div class="border rounded" style="max-height: 220px; overflow-y: auto;">
                 <div v-if="!filtered_namespaces.length" class="text-muted small p-2">[[namespaceEmptyText]]</div>
