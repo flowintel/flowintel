@@ -33,7 +33,7 @@
  * Emits: toggle-namespace(namespace), toggle-item(item)
  */
 import tag_badge from './tag-badge.js'
-const { computed, ref, watch } = Vue
+const { computed, ref, watch, onBeforeUnmount } = Vue
 
 export default {
     name: 'NamespaceAccordion',
@@ -87,14 +87,21 @@ export default {
 
         // Typing/pasting a full tag (e.g. "tlp:amber", or a galaxy tag like
         // 'misp-galaxy:agent-threat-rules="..."') auto-expands the namespace
-        // it belongs to, so the match shows up without an extra click.
+        // it belongs to, so the match shows up without an extra click. This
+        // triggers a fetch (via toggle-namespace), so it's debounced to fire
+        // once after the user stops typing rather than on every keystroke.
+        let debounce_timer = null
         watch(query, (q) => {
+            if (debounce_timer) clearTimeout(debounce_timer)
             if (!props.resolveNamespaceId || !q.trim()) return
-            const match_id = props.resolveNamespaceId(q.trim())
-            if (match_id == null || expanded_set.value.has(match_id)) return
-            const ns = props.namespaces.find(n => n.id === match_id)
-            if (ns) emit('toggle-namespace', ns)
+            debounce_timer = setTimeout(() => {
+                const match_id = props.resolveNamespaceId(q.trim())
+                if (match_id == null || expanded_set.value.has(match_id)) return
+                const ns = props.namespaces.find(n => n.id === match_id)
+                if (ns) emit('toggle-namespace', ns)
+            }, 400)
         })
+        onBeforeUnmount(() => { if (debounce_timer) clearTimeout(debounce_timer) })
 
         return {
             query,
