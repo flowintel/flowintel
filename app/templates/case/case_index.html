@@ -126,25 +126,21 @@
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex;">
-                        <template v-if="taxonomies">
-                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                                <template v-for="taxonomy, key in taxonomies">
-                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                                </template>
-                            </select>
-                        </template>
-                        
-                        <template v-if="tags_list">
-                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                                <template v-for="(tags, taxo) in tags_list">
-                                    <optgroup :label="[[taxo]]">
-                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                                    </optgroup>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
+                    <namespace_accordion
+                        title="Taxonomies"
+                        :namespaces="taxonomy_items"
+                        :items="tag_items"
+                        :expanded-ids="selected_taxo"
+                        :selected-items="selected_tag_display_items"
+                        :selected-item-ids="selected_tags"
+                        :loading-items="loading_tags"
+                        namespace-empty-text="No taxonomy found."
+                        item-empty-text="No tag in this taxonomy."
+                        no-selection-text="No taxonomy/tag filter applied."
+                        search-placeholder="Search taxonomies or tags..."
+                        @toggle-namespace="toggle_filter_taxo"
+                        @toggle-item="toggle_filter_tag">
+                    </namespace_accordion>
                     <hr>
 
                     <div>Galaxies:</div>
@@ -157,37 +153,32 @@
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex;">
-                        <template v-if="galaxies">
-                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                                <template v-for="galaxy, key in galaxies">
-                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                                </template>
-                            </select>
-                        </template>
-                        
-                        <template v-if="cluster_list">
-                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                                <template v-for="(clusters, galaxy) in cluster_list">
-                                    <optgroup :label="[[galaxy]]">
-                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                                    </optgroup>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
+                    <namespace_accordion
+                        title="Galaxies"
+                        :namespaces="galaxy_items"
+                        :items="cluster_items"
+                        :expanded-ids="selected_galaxies"
+                        :selected-items="selected_cluster_display_items"
+                        :selected-item-ids="selected_clusters"
+                        :loading-items="loading_clusters"
+                        namespace-empty-text="No galaxy found."
+                        item-empty-text="No cluster in this galaxy."
+                        no-selection-text="No galaxy/cluster filter applied."
+                        search-placeholder="Search galaxies or clusters..."
+                        @toggle-namespace="toggle_filter_galaxy"
+                        @toggle-item="toggle_filter_cluster">
+                    </namespace_accordion>
                     <hr>
 
                     <div>Custom Tags:</div>
-                    <div>
-                        <template v-if="custom_tags">
-                            <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
-                                <template v-for="custom_tag, key in custom_tags">
-                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
+                    <picker_pane
+                        title="Custom tags"
+                        :items="custom_tag_items"
+                        :selected-ids="selected_custom_tags"
+                        empty-text="No custom tags defined."
+                        search-placeholder="Search custom tags..."
+                        @toggle="toggle_filter_custom_tag">
+                    </picker_pane>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -387,17 +378,21 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted, computed, nextTick} = Vue
+        const { createApp, ref, computed} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import picker_pane from '/static/js/components/picker_pane.js'
+        import namespace_accordion from '/static/js/components/namespace_accordion.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 smart_render,
-                tag_badge
+                tag_badge,
+                picker_pane,
+                namespace_accordion
             },
             setup() {
                 const case_list = ref([])
@@ -414,14 +409,16 @@
                 const search_query = ref('')
 
                 const taxonomies = ref([])
-                const tags_list = ref([])
+                const tags_list = ref({})
                 const selected_taxo = ref([])
                 const selected_tags = ref([])
+                const loading_tags = ref(false)
 
                 const galaxies = ref([])
-                const cluster_list = ref([])
+                const cluster_list = ref({})
                 const selected_galaxies = ref([])
                 const selected_clusters = ref([])
+                const loading_clusters = ref(false)
 
                 const custom_tags = ref([])
                 const selected_custom_tags = ref([])
@@ -642,44 +639,131 @@
                 fetch_galaxies()
 
                 async function fetch_tags(){
-                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        tags_list.value = loc["tags"]
+                    loading_tags.value = true
+                    tags_list.value = {}
+                    if(selected_taxo.value.length){
+                        const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
+                        if(await res.status==400 ){
+                            display_toast(res)
+                        }else{
+                            let loc = await res.json()
+                            tags_list.value = loc["tags"]
 
-                        // Drop selected tags whose taxonomy is no longer selected
-                        const available_tags = new Set()
-                        for(const taxo in tags_list.value){
-                            for(const tag of tags_list.value[taxo]) available_tags.add(tag.name)
+                            // Drop selected tags whose taxonomy is no longer selected
+                            const available_tags = new Set()
+                            for(const taxo in tags_list.value){
+                                for(const tag of tags_list.value[taxo]) available_tags.add(tag.name)
+                            }
+                            selected_tags.value = selected_tags.value.filter(t => available_tags.has(t))
                         }
-                        selected_tags.value = selected_tags.value.filter(t => available_tags.has(t))
-
-                        // Wait for the option list to reflect tags_list before syncing select2
-                        await nextTick()
-                        $('#tags_select').val(selected_tags.value).trigger('change');
+                    } else {
+                        selected_tags.value = []
                     }
+                    loading_tags.value = false
                 }
                 async function fetch_cluster(){
-                    const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        cluster_list.value = loc["clusters"]
+                    loading_clusters.value = true
+                    cluster_list.value = {}
+                    if(selected_galaxies.value.length){
+                        const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
+                        if(await res.status==400 ){
+                            display_toast(res)
+                        }else{
+                            let loc = await res.json()
+                            cluster_list.value = loc["clusters"]
 
-                        // Drop selected clusters whose galaxy is no longer selected
-                        const available_clusters = new Set()
-                        for(const galaxy in cluster_list.value){
-                            for(const cluster of cluster_list.value[galaxy]) available_clusters.add(cluster.name)
+                            // Drop selected clusters whose galaxy is no longer selected
+                            const available_clusters = new Set()
+                            for(const galaxy in cluster_list.value){
+                                for(const cluster of cluster_list.value[galaxy]) available_clusters.add(cluster.name)
+                            }
+                            selected_clusters.value = selected_clusters.value.filter(c => available_clusters.has(c))
                         }
-                        selected_clusters.value = selected_clusters.value.filter(c => available_clusters.has(c))
-
-                        // Wait for the option list to reflect cluster_list before syncing select2
-                        await nextTick()
-                        $('#clusters_select').val(selected_clusters.value).trigger('change');
+                    } else {
+                        selected_clusters.value = []
                     }
+                    loading_clusters.value = false
+                }
+
+                // ---- normalize backend data for <namespace_accordion>/<picker_pane> ----
+                // (filter context uses .name as the identifier everywhere, matching
+                // what /case/sort_cases expects in its tags/taxonomies/galaxies/clusters/
+                // custom_tags query params)
+
+                const taxonomy_items = computed(() => taxonomies.value.map(taxo => ({
+                    id: taxo, label: taxo, raw: taxo
+                })))
+                const tag_items = computed(() => {
+                    const out = []
+                    for(const taxo in tags_list.value){
+                        for(const tag of tags_list.value[taxo]){
+                            out.push({ id: tag.name, label: tag.name, color: tag.color, title: tag.description, group: taxo, raw: tag })
+                        }
+                    }
+                    return out
+                })
+                const selected_tag_display_items = computed(() => {
+                    const by_name = {}
+                    for(const item of tag_items.value) by_name[item.id] = item
+                    return selected_tags.value.map(name => by_name[name] || { id: name, label: name })
+                })
+
+                const galaxy_items = computed(() => galaxies.value.map(galaxy => ({
+                    id: galaxy.name, label: galaxy.name, iconName: galaxy.icon, title: galaxy.description, raw: galaxy
+                })))
+                const cluster_items = computed(() => {
+                    const out = []
+                    for(const galaxy in cluster_list.value){
+                        for(const cluster of cluster_list.value[galaxy]){
+                            out.push({
+                                id: cluster.name, label: cluster.tag, iconName: cluster.icon,
+                                title: 'Description: ' + cluster.description, group: galaxy, raw: cluster
+                            })
+                        }
+                    }
+                    return out
+                })
+                const selected_cluster_display_items = computed(() => {
+                    const by_name = {}
+                    for(const item of cluster_items.value) by_name[item.id] = item
+                    return selected_clusters.value.map(name => by_name[name] || { id: name, label: name })
+                })
+
+                const custom_tag_items = computed(() => custom_tags.value.map(tag => ({
+                    id: tag.name, label: tag.name, color: tag.color, iconClass: tag.icon, raw: tag
+                })))
+
+                // ---- toggle handlers ----
+
+                function toggle_filter_taxo(ns){
+                    const idx = selected_taxo.value.indexOf(ns.raw)
+                    if(idx > -1) selected_taxo.value.splice(idx, 1)
+                    else selected_taxo.value.push(ns.raw)
+                    fetch_tags().then(() => fetch_sorted_cases(1))
+                }
+                function toggle_filter_tag(item){
+                    const idx = selected_tags.value.indexOf(item.raw.name)
+                    if(idx > -1) selected_tags.value.splice(idx, 1)
+                    else selected_tags.value.push(item.raw.name)
+                    fetch_sorted_cases(1)
+                }
+                function toggle_filter_galaxy(ns){
+                    const idx = selected_galaxies.value.indexOf(ns.raw.name)
+                    if(idx > -1) selected_galaxies.value.splice(idx, 1)
+                    else selected_galaxies.value.push(ns.raw.name)
+                    fetch_cluster().then(() => fetch_sorted_cases(1))
+                }
+                function toggle_filter_cluster(item){
+                    const idx = selected_clusters.value.indexOf(item.raw.name)
+                    if(idx > -1) selected_clusters.value.splice(idx, 1)
+                    else selected_clusters.value.push(item.raw.name)
+                    fetch_sorted_cases(1)
+                }
+                function toggle_filter_custom_tag(item){
+                    const idx = selected_custom_tags.value.indexOf(item.raw.name)
+                    if(idx > -1) selected_custom_tags.value.splice(idx, 1)
+                    else selected_custom_tags.value.push(item.raw.name)
+                    fetch_sorted_cases(1)
                 }
 
                 async function fetch_custom_tags(){
@@ -712,35 +796,6 @@
                     return pages
                 })
 
-                onMounted(() => {
-                    $('.select2-select').select2({
-                        theme: 'bootstrap-5',
-                        width: '50%',
-                        closeOnSelect: false
-                    })
-
-                    $('#taxonomies_select').on('change.select2', function (e) {
-                        selected_taxo.value = $(this).select2('data').map(item => item.id);
-                        fetch_tags()
-                    })
-                    $('#tags_select').on('change.select2', function (e) {
-                        selected_tags.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                    $('#galaxies_select').on('change.select2', function (e) {
-                        selected_galaxies.value = $(this).select2('data').map(item => item.id);
-                        fetch_cluster()
-                    })
-                    $('#clusters_select').on('change.select2', function (e) {
-                        selected_clusters.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                    $('#custom_tags_select').on('change.select2', function (e) {
-                        selected_custom_tags.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                })
-
                 return {
                     message_list,
                     dayjs,
@@ -753,11 +808,24 @@
                     case_list,
                     has_active_filters,
                     status_info,
-                    taxonomies,
-                    tags_list,
-                    galaxies,
-                    cluster_list,
-                    custom_tags,
+
+                    taxonomy_items,
+                    tag_items,
+                    selected_taxo,
+                    selected_tags,
+                    selected_tag_display_items,
+                    loading_tags,
+
+                    galaxy_items,
+                    cluster_items,
+                    selected_galaxies,
+                    selected_clusters,
+                    selected_cluster_display_items,
+                    loading_clusters,
+
+                    custom_tag_items,
+                    selected_custom_tags,
+
                     current_page,
                     expandedCases,
                     expandedTags,
@@ -772,8 +840,14 @@
                     onInput,
                     change_status_sort,
                     change_switch_check,
-                    fetch_sorted_cases
-                    ,deadlineSoon
+                    fetch_sorted_cases,
+                    deadlineSoon,
+
+                    toggle_filter_taxo,
+                    toggle_filter_tag,
+                    toggle_filter_galaxy,
+                    toggle_filter_cluster,
+                    toggle_filter_custom_tag,
                 }
             }
         }).mount('#main-container')
