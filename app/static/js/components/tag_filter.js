@@ -137,6 +137,18 @@ export default {
         }
         fetch_custom_tags()
 
+        // caseId often isn't known yet at mount (e.g. the filter modal exists
+        // in the DOM before the case itself has finished loading) -- refetch
+        // once it actually arrives so the initial fetches above don't stick
+        // with the unscoped (all-tasks) result.
+        watch(() => props.caseId, (new_id, old_id) => {
+            if (props.scope === 'task' && new_id != null && new_id !== old_id) {
+                fetch_taxonomies()
+                fetch_galaxies()
+                fetch_custom_tags()
+            }
+        })
+
         async function fetch_tags(){
             loading_tags.value = true
             tags_list.value = {}
