@@ -823,6 +823,87 @@ def get_clusters():
     return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 
+##########################
+# Used-on-cases variants #
+# (for the case filter)  #
+##########################
+
+@case_blueprint.route("/get_used_taxonomies", methods=['GET'])
+@login_required
+def get_used_taxonomies():
+    """Get taxonomies that have at least one tag applied to a case"""
+    return {"taxonomies": CommonModel.get_used_taxonomies()}, 200
+
+@case_blueprint.route("/get_used_tags", methods=['GET'])
+@login_required
+def get_used_tags():
+    """Get, for the given taxonomies, only the tags applied to at least one case"""
+    data_dict = dict(request.args)
+    if "taxonomies" in data_dict:
+        taxos = json.loads(data_dict["taxonomies"])
+        return {"tags": CommonModel.get_used_tags(taxos)}, 200
+    return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@case_blueprint.route("/get_used_galaxies", methods=['GET'])
+@login_required
+def get_used_galaxies():
+    """Get galaxies that have at least one cluster applied to a case"""
+    return {"galaxies": CommonModel.get_used_galaxies()}, 200
+
+@case_blueprint.route("/get_used_clusters", methods=['GET'])
+@login_required
+def get_used_clusters():
+    """Get, for the given galaxies, only the clusters applied to at least one case"""
+    if "galaxies" in request.args:
+        galaxies = json.loads(request.args.get("galaxies"))
+        return {"clusters": CommonModel.get_used_clusters_galaxy(galaxies)}, 200
+    return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@case_blueprint.route("/get_used_custom_tags", methods=['GET'])
+@login_required
+def get_used_custom_tags():
+    """Get custom tags applied to at least one case"""
+    return CommonModel.get_used_custom_tags(), 200
+
+
+@case_blueprint.route("/get_used_taxonomies_task", methods=['GET'])
+@login_required
+def get_used_taxonomies_task():
+    """Get taxonomies that have at least one tag applied to a task"""
+    return {"taxonomies": CommonModel.get_used_taxonomies_task()}, 200
+
+@case_blueprint.route("/get_used_tags_task", methods=['GET'])
+@login_required
+def get_used_tags_task():
+    """Get, for the given taxonomies, only the tags applied to at least one task"""
+    data_dict = dict(request.args)
+    if "taxonomies" in data_dict:
+        taxos = json.loads(data_dict["taxonomies"])
+        return {"tags": CommonModel.get_used_tags_task(taxos)}, 200
+    return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@case_blueprint.route("/get_used_galaxies_task", methods=['GET'])
+@login_required
+def get_used_galaxies_task():
+    """Get galaxies that have at least one cluster applied to a task"""
+    return {"galaxies": CommonModel.get_used_galaxies_task()}, 200
+
+@case_blueprint.route("/get_used_clusters_task", methods=['GET'])
+@login_required
+def get_used_clusters_task():
+    """Get, for the given galaxies, only the clusters applied to at least one task"""
+    if "galaxies" in request.args:
+        galaxies = json.loads(request.args.get("galaxies"))
+        return {"clusters": CommonModel.get_used_clusters_galaxy_task(galaxies)}, 200
+    return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@case_blueprint.route("/get_used_custom_tags_task", methods=['GET'])
+@login_required
+def get_used_custom_tags_task():
+    """Get custom tags applied to at least one task"""
+    return CommonModel.get_used_custom_tags_task(), 200
+
+
 @case_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
 @login_required
 def get_galaxies_case(cid):

@@ -296,6 +296,91 @@ def get_tags(taxos) -> dict:
         out[taxo] = [tag.to_json() for tag in Taxonomy.query.filter_by(name=taxo).first().tags if not tag.exclude]
     return out
 
+
+# ---- "used" variants: scoped to what's actually applied on at least one
+# case/task, for the tag_filter.js component (avoids browsing the whole MISP
+# taxonomy/galaxy universe just to filter a handful of cases/tasks). Generic
+# helpers take the link model (Case_Tags vs Task_Tags, etc.) so case- and
+# task-scoped endpoints share one implementation. ----
+
+def _used_taxonomies(tag_link_model) -> list:
+    tag_ids = db.session.query(tag_link_model.tag_id).distinct()
+    taxo_ids = {tag.taxonomy_id for tag in Tags.query.filter(Tags.id.in_(tag_ids)).all()}
+    return [t.name for t in Taxonomy.query.filter(Taxonomy.id.in_(taxo_ids)).all()]
+
+def _used_tags(tag_link_model, taxos) -> dict:
+    tag_ids = db.session.query(tag_link_model.tag_id).distinct()
+    out = dict()
+    for taxo in taxos:
+        taxonomy = Taxonomy.query.filter_by(name=taxo).first()
+        if not taxonomy:
+            out[taxo] = []
+            continue
+        out[taxo] = [tag.to_json() for tag in Tags.query.filter(Tags.taxonomy_id==taxonomy.id, Tags.id.in_(tag_ids)).all() if not tag.exclude]
+    return out
+
+def _used_galaxies(galaxy_link_model) -> list:
+    cluster_ids = db.session.query(galaxy_link_model.cluster_id).distinct()
+    galaxy_ids = {cluster.galaxy_id for cluster in Cluster.query.filter(Cluster.id.in_(cluster_ids)).all()}
+    return [g.to_json() for g in Galaxy.query.filter(Galaxy.id.in_(galaxy_ids)).all()]
+
+def _used_clusters_galaxy(galaxy_link_model, galaxies) -> dict:
+    cluster_ids = db.session.query(galaxy_link_model.cluster_id).distinct()
+    out = dict()
+    for galaxy in galaxies:
+        g = Galaxy.query.filter_by(name=galaxy).first()
+        if not g:
+            out[galaxy] = []
+            continue
+        out[galaxy] = [c.to_json() for c in Cluster.query.filter(Cluster.galaxy_id==g.id, Cluster.id.in_(cluster_ids)).all() if not c.exclude]
+    return out
+
+def _used_custom_tags(custom_tag_link_model) -> list:
+    ct_ids = db.session.query(custom_tag_link_model.custom_tag_id).distinct()
+    return [c.to_json() for c in Custom_Tags.query.filter(Custom_Tags.id.in_(ct_ids)).all()]
+
+
+def get_used_taxonomies() -> list:
+    """Return taxonomy names that have at least one tag applied to a case"""
+    return _used_taxonomies(Case_Tags)
+
+def get_used_tags(taxos) -> dict:
+    """Return, for each given taxonomy name, only the tags applied to at least one case"""
+    return _used_tags(Case_Tags, taxos)
+
+def get_used_galaxies() -> list:
+    """Return galaxies that have at least one cluster applied to a case"""
+    return _used_galaxies(Case_Galaxy_Tags)
+
+def get_used_clusters_galaxy(galaxies) -> dict:
+    """Return, for each given galaxy name, only the clusters applied to at least one case"""
+    return _used_clusters_galaxy(Case_Galaxy_Tags, galaxies)
+
+def get_used_custom_tags() -> list:
+    """Return custom tags applied to at least one case"""
+    return _used_custom_tags(Case_Custom_Tags)
+
+
+def get_used_taxonomies_task() -> list:
+    """Return taxonomy names that have at least one tag applied to a task"""
+    return _used_taxonomies(Task_Tags)
+
+def get_used_tags_task(taxos) -> dict:
+    """Return, for each given taxonomy name, only the tags applied to at least one task"""
+    return _used_tags(Task_Tags, taxos)
+
+def get_used_galaxies_task() -> list:
+    """Return galaxies that have at least one cluster applied to a task"""
+    return _used_galaxies(Task_Galaxy_Tags)
+
+def get_used_clusters_galaxy_task(galaxies) -> dict:
+    """Return, for each given galaxy name, only the clusters applied to at least one task"""
+    return _used_clusters_galaxy(Task_Galaxy_Tags, galaxies)
+
+def get_used_custom_tags_task() -> list:
+    """Return custom tags applied to at least one task"""
+    return _used_custom_tags(Task_Custom_Tags)
+
 def get_tag(tag):
     """Return a tag by its name"""
     return Tags.query.filter_by(name=tag).first()

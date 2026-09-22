@@ -116,73 +116,7 @@
                     </div>
                     <hr>
                     <div>Filter by context:</div>
-                    <div>Taxonomies:</div>
-                    <div class="d-flex w-100 justify-content-center">
-                        <div style="display:flex">
-                            <span style="margin-right: 10px">OR</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
-                                <label class="form-check-label" for="switchOperator">AND</label>
-                            </div>
-                        </div>
-                    </div>
-                    <namespace_accordion
-                        title="Taxonomies"
-                        :namespaces="taxonomy_items"
-                        :items="tag_items"
-                        :expanded-ids="expanded_taxo"
-                        :selected-items="selected_tag_display_items"
-                        :selected-item-ids="selected_tags"
-                        :loading-items="loading_tags"
-                        :resolve-namespace-id="resolve_filter_taxo_for_query"
-                        :namespace-search-prefix="taxo_filter_search_prefix"
-                        namespace-empty-text="No taxonomy found."
-                        item-empty-text="No tag in this taxonomy."
-                        no-selection-text="No taxonomy/tag filter applied."
-                        search-placeholder="Search taxonomies or tags..."
-                        @toggle-namespace="toggle_filter_taxo"
-                        @toggle-item="toggle_filter_tag">
-                    </namespace_accordion>
-                    <hr>
-
-                    <div>Galaxies:</div>
-                    <div class="d-flex w-100 justify-content-center">
-                        <div style="display:flex">
-                            <span style="margin-right: 10px">OR</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
-                                <label class="form-check-label" for="switchOperator">AND</label>
-                            </div>
-                        </div>
-                    </div>
-                    <namespace_accordion
-                        title="Galaxies"
-                        :namespaces="galaxy_items"
-                        :items="cluster_items"
-                        :expanded-ids="expanded_galaxies"
-                        :selected-items="selected_cluster_display_items"
-                        :selected-item-ids="selected_clusters"
-                        :loading-items="loading_clusters"
-                        :resolve-namespace-id="resolve_filter_galaxy_for_query"
-                        :namespace-search-prefix="galaxy_filter_search_prefix"
-                        namespace-empty-text="No galaxy found."
-                        item-empty-text="No cluster in this galaxy."
-                        no-selection-text="No galaxy/cluster filter applied."
-                        search-placeholder="Search galaxies or clusters..."
-                        @toggle-namespace="toggle_filter_galaxy"
-                        @toggle-item="toggle_filter_cluster">
-                    </namespace_accordion>
-                    <hr>
-
-                    <div>Custom Tags:</div>
-                    <picker_pane
-                        title="Custom tags"
-                        :items="custom_tag_items"
-                        :selected-ids="selected_custom_tags"
-                        empty-text="No custom tags defined."
-                        search-placeholder="Search custom tags..."
-                        @toggle="toggle_filter_custom_tag">
-                    </picker_pane>
+                    <tag_filter scope="case" @change="on_tag_filter_change"></tag_filter>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -386,8 +320,7 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
-        import picker_pane from '/static/js/components/picker_pane.js'
-        import namespace_accordion from '/static/js/components/namespace_accordion.js'
+        import tag_filter from '/static/js/components/tag_filter.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
@@ -395,8 +328,7 @@
             components: {
                 smart_render,
                 tag_badge,
-                picker_pane,
-                namespace_accordion
+                tag_filter
             },
             setup() {
                 const case_list = ref([])
@@ -406,53 +338,23 @@
 
                 let asc_desc = true
                 let temp_case_list = []
-                let or_and_taxo = true
-                let or_and_galaxies = true
 
                 const is_open_cases = ref(true)
                 const search_query = ref('')
 
-                const taxonomies = ref([])
-                const tags_list = ref({})
-                // Purely which taxonomies are currently expanded for browsing —
-                // decoupled from the actual filter (selected_tags below), so
-                // collapsing a taxonomy never drops a tag you've already picked.
-                const expanded_taxo = ref([])
-                const selected_tags = ref([])
-                const loading_tags = ref(false)
-
-                const galaxies = ref([])
-                const cluster_list = ref({})
-                // Same as expanded_taxo, for galaxies/clusters.
-                const expanded_galaxies = ref([])
-                const selected_clusters = ref([])
-                const loading_clusters = ref(false)
-
-                const custom_tags = ref([])
-                const selected_custom_tags = ref([])
-
-                // The taxonomies/galaxies filter dimensions sent to /case/sort_cases
-                // are derived from what's actually selected, not from what's expanded.
-                const selected_taxo = computed(() => [...new Set(selected_tags.value.map(name => name.split(':')[0]))])
-
-                // Persistent name -> tag/cluster data maps, merged in (never
-                // cleared) as tags/clusters get fetched, so a selected item's
-                // color/icon/galaxy stay resolvable even after its taxonomy or
-                // galaxy is collapsed and re-fetched out of tags_list/cluster_list.
-                const tag_data_map = ref({})
-                const cluster_data_map = ref({})
-                const selected_galaxies = computed(() => {
-                    const ids = new Set(selected_clusters.value.map(name => cluster_data_map.value[name]?.galaxy_id).filter(id => id != null))
-                    return galaxies.value.filter(g => ids.has(g.id)).map(g => g.name)
-                })
+                // Populated by <tag_filter>'s @change — see on_tag_filter_change.
+                const tag_filter_state = ref({ tags: [], taxonomies: [], clusters: [], galaxies: [], custom_tags: [], or_and_taxo: false, or_and_galaxies: false })
+                function on_tag_filter_change(payload){
+                    tag_filter_state.value = payload
+                    fetch_sorted_cases(1)
+                }
 
                 const has_active_filters = computed(() => {
                     return (
                         (search_query.value || '').length > 0 ||
-                        selected_tags.value.length > 0 ||
-                        selected_galaxies.value.length > 0 ||
-                        selected_clusters.value.length > 0 ||
-                        selected_custom_tags.value.length > 0 ||
+                        tag_filter_state.value.tags.length > 0 ||
+                        tag_filter_state.value.clusters.length > 0 ||
+                        tag_filter_state.value.custom_tags.length > 0 ||
                         current_filter.value === 'my_org'
                     )
                 })
@@ -516,11 +418,8 @@
                     is_open_cases.value = status
                     await fetch_sorted_cases(1)
                 }
-                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                function change_switch_check(change=false){
                     if (change) asc_desc = !asc_desc
-                    if (changeOperator) or_and_taxo = !or_and_taxo
-                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
-
                     fetch_sorted_cases(1)
                 }
 
@@ -528,19 +427,19 @@
                     let loc_page = `page=${page}`
                     let loc_filter = `&filter=${current_filter.value}`
                     let loc_status = `&status=${!is_open_cases.value}`
-                    let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
-                    let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
+                    let loc_or_and_taxo = `&or_and_taxo=${tag_filter_state.value.or_and_taxo}`
+                    let loc_or_and_galaxies = `&or_and_galaxies=${tag_filter_state.value.or_and_galaxies}`
 
                     let tags = ""
                     let taxo = ""
                     let galax = ""
                     let clusters = ""
                     let custom_tg = ""
-                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                    if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
+                    if(tag_filter_state.value.tags.length) tags = "&tags=" + JSON.stringify(tag_filter_state.value.tags)
+                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + JSON.stringify(tag_filter_state.value.taxonomies)
+                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + JSON.stringify(tag_filter_state.value.galaxies)
+                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + JSON.stringify(tag_filter_state.value.clusters)
+                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + JSON.stringify(tag_filter_state.value.custom_tags)
 
                     let loc_q = ''
                     if (search_query.value) loc_q = '&q=' + encodeURIComponent(search_query.value)
@@ -638,194 +537,6 @@
                     debouncedCaseSearch(q || '')
                 }
 
-                async function fetch_taxonomies(){
-                    const res = await fetch("/case/get_taxonomies")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        taxonomies.value = loc["taxonomies"]
-                    }
-                }
-                fetch_taxonomies()
-
-                async function fetch_galaxies(){
-                    const res = await fetch("/case/get_galaxies")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        galaxies.value = loc["galaxies"]
-                    }
-                }
-                fetch_galaxies()
-
-                async function fetch_tags(){
-                    loading_tags.value = true
-                    tags_list.value = {}
-                    if(expanded_taxo.value.length){
-                        const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(expanded_taxo.value))
-                        if(await res.status==400 ){
-                            display_toast(res)
-                        }else{
-                            let loc = await res.json()
-                            tags_list.value = loc["tags"]
-                            // Merge into the persistent tag data map (see tag_data_map above)
-                            for(const taxo in tags_list.value){
-                                for(const tag of tags_list.value[taxo]){
-                                    tag_data_map.value[tag.name] = tag
-                                }
-                            }
-                        }
-                    }
-                    loading_tags.value = false
-                }
-                async function fetch_cluster(){
-                    loading_clusters.value = true
-                    cluster_list.value = {}
-                    if(expanded_galaxies.value.length){
-                        const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(expanded_galaxies.value))
-                        if(await res.status==400 ){
-                            display_toast(res)
-                        }else{
-                            let loc = await res.json()
-                            cluster_list.value = loc["clusters"]
-                            // Merge into the persistent cluster data map (see
-                            // cluster_data_map above) instead of replacing it.
-                            for(const galaxy in cluster_list.value){
-                                for(const cluster of cluster_list.value[galaxy]){
-                                    cluster_data_map.value[cluster.name] = cluster
-                                }
-                            }
-                        }
-                    }
-                    loading_clusters.value = false
-                }
-
-                // ---- normalize backend data for <namespace_accordion>/<picker_pane> ----
-                // (filter context uses .name as the identifier everywhere, matching
-                // what /case/sort_cases expects in its tags/taxonomies/galaxies/clusters/
-                // custom_tags query params)
-
-                const taxonomy_items = computed(() => taxonomies.value.map(taxo => ({
-                    id: taxo, label: taxo, raw: taxo
-                })))
-                const tag_items = computed(() => {
-                    const out = []
-                    for(const taxo in tags_list.value){
-                        for(const tag of tags_list.value[taxo]){
-                            out.push({ id: tag.name, label: tag.name, color: tag.color, title: tag.description, group: taxo, raw: tag })
-                        }
-                    }
-                    return out
-                })
-                const selected_tag_display_items = computed(() =>
-                    selected_tags.value.map(name => {
-                        const tag = tag_data_map.value[name]
-                        return tag
-                            ? { id: name, label: name, color: tag.color, title: tag.description }
-                            : { id: name, label: name }
-                    })
-                )
-
-                const galaxy_items = computed(() => galaxies.value.map(galaxy => ({
-                    id: galaxy.name, label: galaxy.name, iconName: galaxy.icon, title: galaxy.description, raw: galaxy
-                })))
-                const cluster_items = computed(() => {
-                    const out = []
-                    for(const galaxy in cluster_list.value){
-                        for(const cluster of cluster_list.value[galaxy]){
-                            out.push({
-                                id: cluster.name, label: cluster.tag, iconName: cluster.icon,
-                                title: 'Description: ' + cluster.description, group: galaxy, raw: cluster
-                            })
-                        }
-                    }
-                    return out
-                })
-                const selected_cluster_display_items = computed(() =>
-                    selected_clusters.value.map(name => {
-                        const cluster = cluster_data_map.value[name]
-                        return cluster
-                            ? { id: name, label: cluster.tag, iconName: cluster.icon, title: 'Description: ' + cluster.description }
-                            : { id: name, label: name }
-                    })
-                )
-
-                const custom_tag_items = computed(() => custom_tags.value.map(tag => ({
-                    id: tag.name, label: tag.name, color: tag.color, iconClass: tag.icon, raw: tag
-                })))
-
-                // ---- search-driven auto-expand: typing/pasting a full tag jumps
-                // straight to its namespace (see resolveNamespaceId in namespace_accordion.js) ----
-
-                function resolve_filter_taxo_for_query(query) {
-                    const colon_idx = query.indexOf(':')
-                    if (colon_idx === -1) return null
-                    const prefix = query.slice(0, colon_idx)
-                    return taxonomies.value.includes(prefix) ? prefix : null
-                }
-                function resolve_filter_galaxy_for_query(query) {
-                    // Galaxy cluster tags always look like: misp-galaxy:<galaxy-type>="<value>"
-                    const m = query.match(/^misp-galaxy:([^=]+)=/)
-                    if (!m) return null
-                    const galaxy = galaxies.value.find(g => g.type === m[1])
-                    return galaxy ? galaxy.name : null
-                }
-                function taxo_filter_search_prefix(ns) {
-                    return ns.raw + ':'
-                }
-                function galaxy_filter_search_prefix(ns) {
-                    return 'misp-galaxy:' + (ns.raw.type || '') + '='
-                }
-
-                // ---- toggle handlers ----
-
-                function toggle_filter_taxo(ns){
-                    // Pure browse toggle — never touches selected_tags, so
-                    // collapsing a taxonomy never drops a tag filter under it.
-                    const idx = expanded_taxo.value.indexOf(ns.raw)
-                    if(idx > -1) expanded_taxo.value.splice(idx, 1)
-                    else expanded_taxo.value.push(ns.raw)
-                    fetch_tags()
-                }
-                function toggle_filter_tag(item){
-                    const idx = selected_tags.value.indexOf(item.raw.name)
-                    if(idx > -1) selected_tags.value.splice(idx, 1)
-                    else selected_tags.value.push(item.raw.name)
-                    fetch_sorted_cases(1)
-                }
-                function toggle_filter_galaxy(ns){
-                    // Pure browse toggle — never touches selected_clusters, so
-                    // collapsing a galaxy never drops a cluster filter under it.
-                    const idx = expanded_galaxies.value.indexOf(ns.raw.name)
-                    if(idx > -1) expanded_galaxies.value.splice(idx, 1)
-                    else expanded_galaxies.value.push(ns.raw.name)
-                    fetch_cluster()
-                }
-                function toggle_filter_cluster(item){
-                    const idx = selected_clusters.value.indexOf(item.raw.name)
-                    if(idx > -1) selected_clusters.value.splice(idx, 1)
-                    else selected_clusters.value.push(item.raw.name)
-                    fetch_sorted_cases(1)
-                }
-                function toggle_filter_custom_tag(item){
-                    const idx = selected_custom_tags.value.indexOf(item.raw.name)
-                    if(idx > -1) selected_custom_tags.value.splice(idx, 1)
-                    else selected_custom_tags.value.push(item.raw.name)
-                    fetch_sorted_cases(1)
-                }
-
-                async function fetch_custom_tags(){
-                    const res = await fetch("/custom_tags/list")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        custom_tags.value = loc
-                    }                    
-                }
-                fetch_custom_tags()
 
                 const visiblePages = computed(() => {
                     const pages = []
@@ -858,23 +569,7 @@
                     case_list,
                     has_active_filters,
                     status_info,
-
-                    taxonomy_items,
-                    tag_items,
-                    expanded_taxo,
-                    selected_tags,
-                    selected_tag_display_items,
-                    loading_tags,
-
-                    galaxy_items,
-                    cluster_items,
-                    expanded_galaxies,
-                    selected_clusters,
-                    selected_cluster_display_items,
-                    loading_clusters,
-
-                    custom_tag_items,
-                    selected_custom_tags,
+                    on_tag_filter_change,
 
                     current_page,
                     expandedCases,
@@ -892,17 +587,6 @@
                     change_switch_check,
                     fetch_sorted_cases,
                     deadlineSoon,
-
-                    toggle_filter_taxo,
-                    toggle_filter_tag,
-                    toggle_filter_galaxy,
-                    toggle_filter_cluster,
-                    toggle_filter_custom_tag,
-
-                    resolve_filter_taxo_for_query,
-                    resolve_filter_galaxy_for_query,
-                    taxo_filter_search_prefix,
-                    galaxy_filter_search_prefix,
                 }
             }
         }).mount('#main-container')
