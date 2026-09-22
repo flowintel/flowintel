@@ -41,6 +41,20 @@ const SCOPE_URLS = {
         clusters: '/case/get_used_clusters_task',
         custom_tags: '/case/get_used_custom_tags_task',
     },
+    case_template: {
+        taxonomies: '/templating/get_used_taxonomies_case_template',
+        tags: '/templating/get_used_tags_case_template',
+        galaxies: '/templating/get_used_galaxies_case_template',
+        clusters: '/templating/get_used_clusters_case_template',
+        custom_tags: '/templating/get_used_custom_tags_case_template',
+    },
+    task_template: {
+        taxonomies: '/templating/get_used_taxonomies_task_template',
+        tags: '/templating/get_used_tags_task_template',
+        galaxies: '/templating/get_used_galaxies_task_template',
+        clusters: '/templating/get_used_clusters_task_template',
+        custom_tags: '/templating/get_used_custom_tags_task_template',
+    },
 }
 
 export default {

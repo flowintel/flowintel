@@ -401,6 +401,48 @@ def get_used_custom_tags_task(case_id=None) -> list:
     restricted to tasks belonging to the given case)"""
     return _used_custom_tags(Task_Custom_Tags, case_id)
 
+
+def get_used_taxonomies_case_template() -> list:
+    """Return taxonomy names that have at least one tag applied to a case template"""
+    return _used_taxonomies(Case_Template_Tags)
+
+def get_used_tags_case_template(taxos) -> dict:
+    """Return, for each given taxonomy name, only the tags applied to at least one case template"""
+    return _used_tags(Case_Template_Tags, taxos)
+
+def get_used_galaxies_case_template() -> list:
+    """Return galaxies that have at least one cluster applied to a case template"""
+    return _used_galaxies(Case_Template_Galaxy_Tags)
+
+def get_used_clusters_galaxy_case_template(galaxies) -> dict:
+    """Return, for each given galaxy name, only the clusters applied to at least one case template"""
+    return _used_clusters_galaxy(Case_Template_Galaxy_Tags, galaxies)
+
+def get_used_custom_tags_case_template() -> list:
+    """Return custom tags applied to at least one case template"""
+    return _used_custom_tags(Case_Template_Custom_Tags)
+
+
+def get_used_taxonomies_task_template() -> list:
+    """Return taxonomy names that have at least one tag applied to a task template"""
+    return _used_taxonomies(Task_Template_Tags)
+
+def get_used_tags_task_template(taxos) -> dict:
+    """Return, for each given taxonomy name, only the tags applied to at least one task template"""
+    return _used_tags(Task_Template_Tags, taxos)
+
+def get_used_galaxies_task_template() -> list:
+    """Return galaxies that have at least one cluster applied to a task template"""
+    return _used_galaxies(Task_Template_Galaxy_Tags)
+
+def get_used_clusters_galaxy_task_template(galaxies) -> dict:
+    """Return, for each given galaxy name, only the clusters applied to at least one task template"""
+    return _used_clusters_galaxy(Task_Template_Galaxy_Tags, galaxies)
+
+def get_used_custom_tags_task_template() -> list:
+    """Return custom tags applied to at least one task template"""
+    return _used_custom_tags(Task_Template_Custom_Tags)
+
 def get_tag(tag):
     """Return a tag by its name"""
     return Tags.query.filter_by(name=tag).first()
