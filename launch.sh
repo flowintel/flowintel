@@ -176,6 +176,7 @@ function test_parallel {
         --cov=./app \
         --cov-report=term-missing \
         -s
+# Kept for easy syntax run of a couple of tests and not the whole suite
 #    pytest tests/case/test_case_editor_not_in_case.py \
 #        tests/case/test_case_editor.py \
 #        -n auto \
@@ -185,6 +186,7 @@ function test_parallel {
 #        --cov=./app \
 #        --cov-report=term-missing \
 #        -s
+#
 
     pytest_exit_code=$?
     set -e    
