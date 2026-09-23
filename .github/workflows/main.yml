@@ -21,6 +21,17 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         git submodule init && git submodule update
-    - name: Test
+    - name: Test - Parallel
+      run: |
+        ls -alh
+        echo $SQLITE_PATH
+        ./launch.sh -tp
+
+    - name: Debug via tmate (parallel failure)
+      if: failure()
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 15
+
+    - name: Test - Sequential
       run: |
         ./launch.sh -t

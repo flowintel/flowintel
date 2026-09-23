@@ -7,8 +7,11 @@ requires-python = ">=3.12"
 dependencies = []
 
 [project.optional-dependencies]
+# for later, not yet usable with the hybrid "fast uv pip init / deps in requirements.*"
 dev = [
     "pytest",
+    "pytest-cov",
+    "pytest-xdist",
 ]
 
 [tool.uv.sources]

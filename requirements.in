@@ -22,6 +22,8 @@ pymisp
 pymispgalaxies
 PyMySQL
 pytest
+pytest-cov
+pytest-xdist
 pytaxonomies
 redis
 requests
