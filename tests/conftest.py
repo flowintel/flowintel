@@ -67,10 +67,11 @@ def app():
     database_name = _db_name()
     assert "_test_" in database_name, "Tests must never touch a real DB"
     
-    #db_file = db_file_path()
-    #db_file.parent.mkdir(parents=True, exist_ok=True)
-    #if db_file.exists():
-    #    db_file.unlink()
+    # kept as a protection against potential previous crashes or during mid-test
+    db_file = db_file_path()
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    if db_file.exists():
+        db_file.unlink()
 
 
     # Own the env var here: set before create_app, restore after

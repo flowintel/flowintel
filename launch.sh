@@ -169,7 +169,7 @@ function test_parallel {
     # Run tests but do not exit on failure to preserve test artefacts
     set +e
     # worth noting that now we try to use coverage, with the src pattern it would much clear to cover
-    pytest -n auto \
+    pytest -n 4 \
 		--dist loadfile \
 		-m "not slow" \
 		-v --capture=no \
