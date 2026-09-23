@@ -47,48 +47,9 @@ def db_file_path():
 def pytest_configure(config):
     logging.basicConfig(
         filename=f"tests_{_worker_id()}.log",
+        filemode="w",
         level=logging.DEBUG,
     )
-
-
-# @pytest.fixture(scope="session")
-# def setup_database():
-#     """
-#     Initialize the test database once per pytest worker.
-#     - Selects a worker-specific SQLite DB via DB_NAME.
-#     - Drops/recreates schema and seeds a test user.
-#     """
-#     worker = _worker_id()
-#     database_name = _db_name()
-
-#     db_file = db_file_path()
-    
-#     # Remove old database file because we are using SQLite with file persistence by assumption
-#     if db_file.exists():
-#         db_file.unlink()
-
-#     os.environ["DB_NAME"] = database_name
-   
-#     app = create_app()
-
-#     with app.app_context():
-#         # Might be useful to keep it while we are validating parallel testing wrt to "sequential legacy" testing
-#         print(f"\n[DEBUG] setup_database: worker={worker}, db_name={database_name}")
-#         print(f"[DEBUG] SQLALCHEMY_DATABASE_URI={app.config.get('SQLALCHEMY_DATABASE_URI')}")
-#         print(f"[DEBUG] db.engine.url={db.engine.url}")
-#         #
-
-#         db.session.remove()
-#         db.drop_all()
-#         db.create_all()
-#         create_user_test()
-
-#     yield
-
-#     with app.app_context():
-#         db.session.remove()
-#         db.engine.dispose()
-#     # Drop database in launch.sh to give the user a chance to access it and debug
 
 
 @pytest.fixture(scope="session")
@@ -106,10 +67,10 @@ def app():
     database_name = _db_name()
     assert "_test_" in database_name, "Tests must never touch a real DB"
     
-    db_file = db_file_path()
-    db_file.parent.mkdir(parents=True, exist_ok=True)
-    if db_file.exists():
-        db_file.unlink()
+    #db_file = db_file_path()
+    #db_file.parent.mkdir(parents=True, exist_ok=True)
+    #if db_file.exists():
+    #    db_file.unlink()
 
 
     # Own the env var here: set before create_app, restore after
