@@ -153,8 +153,61 @@ function test {
     prepare_app_run
     export FLOWINTEL_APP_ENV="testing"
     export HISTORY_DIR=$history_dir/history_test
-    pytest
-    rm -r $HISTORY_DIR
+    # worth noting that now we try to use coverage, with the src pattern it would much clear to cover
+    pytest -n 0 \
+        --cov=./app \
+        --cov-report=term-missing
+    rm -rf "$HISTORY_DIR"
+}
+
+function test_parallel {
+    prepare_app_run
+    export FLOWINTEL_APP_ENV="testing"
+    export HISTORY_DIR="$history_dir/history_test"
+	export PYTEST_XDIST_WORKER_DB_PREFIX=flowintel_test_
+    
+    # Run tests but do not exit on failure to preserve test artefacts
+    set +e
+    # worth noting that now we try to use coverage, with the src pattern it would much clear to cover
+    pytest -n 4 \
+		--dist loadfile \
+		-m "not slow" \
+		-v --capture=no \
+        --cov=./app \
+        --cov-report=term-missing \
+        -s
+# Kept for easy syntax run of a couple of tests and not the whole suite
+#    pytest tests/case/test_case_editor_not_in_case.py \
+#        tests/case/test_case_editor.py \
+#        -n auto \
+#		--dist loadfile \
+#		-m "not slow" \
+#		-v --capture=no \
+#        --cov=./app \
+#        --cov-report=term-missing \
+#        -s
+#
+
+    pytest_exit_code=$?
+    set -e    
+    # Further doc:
+    # https://brilliantbrains.me/blog/fix-test-db-commits-ensure
+    # https://qaskills.sh/blog/pytest-best-practices-2026
+
+    # Optional: drop test database after all workers complete
+    # This should be outside the parallel execution
+    # Comment it out if debug is needed at database level
+        # Clean up only on success
+    if [ $pytest_exit_code -eq 0 ]; then
+        rm -rf "$HISTORY_DIR"
+        rm -f instance/flowintel_test_*.db
+    else
+        echo "[WARN] Tests failed ($pytest_exit_code). History preserved in $HISTORY_DIR for debugging" >&2
+        echo "[WARN] Test databases preserved for inspection:" >&2
+        ls -lh instance/flowintel_test_*.db 2>/dev/null || true
+    fi
+    
+    return $pytest_exit_code
 }
 
 function production {
@@ -319,6 +372,7 @@ if [ "$1" ]; then
         -r | --reload_db )          reload_db;;
         -p | --production )         production;;
         -t | --test )               test;;
+        -tp | --test-parallel )     test_parallel;;
         -ks | --killscript )        killscript;;
         -tg | --taxo_galaxy )       taxo_galaxy_update;;
         -mm | --misp_modules )      misp_module_update;;

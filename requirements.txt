@@ -145,6 +145,8 @@ email-validator==2.3.0
     # via -r requirements.in
 enum-compat==0.0.3
     # via blockchain
+execnet==2.1.2
+    # via pytest-xdist
 fastmcp==1.0
     # via flowintel-mcp
 fastuuid==0.14.0
@@ -432,6 +434,10 @@ pysafebrowsing==0.1.4
 pytaxonomies==2.1.0
     # via -r requirements.in
 pytest==9.0.3
+    # via -r requirements.in
+pytest-cov==7.1.0
+    # via -r requirements.in
+pytest-xdist==3.8.0
     # via -r requirements.in
 python-dateutil==2.9.0.post0
     # via
