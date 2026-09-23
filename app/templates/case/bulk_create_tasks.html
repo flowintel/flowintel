@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Bulk create tasks - Case #{{ case_id }} - {{ config.APP_NAME }}</title>
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<h5 class="mb-0 case-core-style" style="border-radius: 0;">
+    <i class="fa-solid fa-layer-group me-2"></i>Bulk create tasks for Case #{{ case_id }}
+</h5>
+
+<hr class="fading-line-2 mb-4 mt-4">
+
+{% if case.privileged_case %}
+<div class="alert alert-warning" role="alert">
+    <i class="fa-solid fa-shield-halved me-2"></i>
+    This case is <strong>privileged</strong>. Imported tasks are created with status
+    <strong>Requested</strong> and must be approved before work can start.
+</div>
+{% endif %}
+
+<div class="case-core-style">
+    <div class="mb-4">
+        <h6><i class="fa-solid fa-circle-info me-2"></i>Format</h6>
+        <p class="mb-2">
+            Put one task on each line as <code>title;description</code>. The semicolon and
+            description are optional; only the first semicolon separates the fields.
+        </p>
+        <pre class="border rounded bg-body-tertiary p-3 mb-2"><code>Investigate the alert;Review the source host and related indicators
+Contact the system owner
+Write the report;Include findings; recommendations; and next steps</code></pre>
+        <small class="text-muted">
+            Empty lines are ignored. Up to {{ max_task_count }} tasks and {{ max_file_kib }} KiB
+            can be imported at once.
+        </small>
+    </div>
+
+    {% if import_error %}
+    <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>{{ import_error }}
+    </div>
+    {% endif %}
+
+    {% if form.csrf_token is defined and form.csrf_token.errors %}
+    <div class="alert alert-danger" role="alert">
+        The form expired or could not be verified. Reload the page and try again.
+    </div>
+    {% endif %}
+
+    <form action="" method="post" enctype="multipart/form-data" id="bulk-task-form">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-4">
+            <i class="fa-solid fa-paste me-1"></i>
+            <strong>{{ form.tasks_text.label(class_="form-label") }}</strong>
+            {{ form.tasks_text(
+                class_="form-control font-monospace",
+                rows="12",
+                placeholder="Task title;Optional description",
+                maxlength=max_file_kib * 1024,
+                id="tasks_text"
+            ) }}
+        </div>
+
+        <div class="d-flex align-items-center mb-4" aria-hidden="true">
+            <hr class="flex-grow-1">
+            <span class="text-muted px-3">OR</span>
+            <hr class="flex-grow-1">
+        </div>
+
+        <div class="mb-4">
+            <i class="fa-solid fa-file-arrow-up me-1"></i>
+            <strong>{{ form.tasks_file.label(class_="form-label") }}</strong>
+            {{ form.tasks_file(
+                class_="form-control",
+                accept=".txt,.csv,text/plain,text/csv",
+                id="tasks_file"
+            ) }}
+            <div class="form-text">
+                UTF-8 <code>.txt</code> and <code>.csv</code> files only. The file is read in
+                memory for this import and is not stored.
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="/case/{{ case_id }}" class="btn btn-secondary">Cancel</a>
+            {{ form.submit(class_="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+document.getElementById('bulk-task-form').addEventListener('submit', function (event) {
+    const text = document.getElementById('tasks_text').value.trim();
+    const file = document.getElementById('tasks_file').files.length > 0;
+    if ((!text && !file) || (text && file)) {
+        event.preventDefault();
+        window.alert('Choose exactly one source: pasted text or a file.');
+    }
+});
+</script>
+<script type="module">
+    const { createApp } = Vue;
+    import {message_list} from '/static/js/toaster.js'
+    createApp({ delimiters: ['[[', ']]'], setup() {return {message_list}} }).mount('#main-container');
+</script>
+{% endblock %}

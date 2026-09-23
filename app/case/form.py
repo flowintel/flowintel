@@ -1,4 +1,5 @@
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField
 from wtforms import ValidationError
 from wtforms.fields import (
     StringField,
@@ -90,6 +91,11 @@ class TaskForm(FlaskForm):
         if field.data and not self.deadline_date.data:
             raise ValidationError("Choose a date")
 
+
+class BulkTaskForm(FlaskForm):
+    tasks_text = TextAreaField('Tasks', validators=[Optional()])
+    tasks_file = FileField('Task file', validators=[Optional()])
+    submit = SubmitField('Create tasks')
 
 
 class TaskEditForm(FlaskForm):

@@ -31,7 +31,117 @@ from .FilteringAbstract import FilteringAbstract
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
 
+BULK_TASK_MAX_BYTES = 256 * 1024
+BULK_TASK_MAX_REQUEST_BYTES = BULK_TASK_MAX_BYTES + (64 * 1024)
+BULK_TASK_MAX_COUNT = 200
+BULK_TASK_MAX_DESCRIPTION_LENGTH = 20_000
+BULK_TASK_ALLOWED_EXTENSIONS = {".csv", ".txt"}
+BULK_TASK_ALLOWED_MIMETYPES = {
+    "application/csv",
+    "application/octet-stream",
+    "application/vnd.ms-excel",
+    "text/comma-separated-values",
+    "text/csv",
+    "text/plain",
+}
+BIDI_CONTROL_CHARACTERS = frozenset(
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+)
+
+
+class BulkTaskImportError(ValueError):
+    """Raised when a bulk task import cannot be safely parsed."""
+
+
 class TaskCore(CommonAbstract, FilteringAbstract):
+    @staticmethod
+    def parse_bulk_tasks(raw_text):
+        """Parse newline-delimited ``title;description`` task input.
+
+        Only the first semicolon is a separator, so descriptions may contain
+        additional semicolons. Empty lines are ignored.
+        """
+        if not isinstance(raw_text, str):
+            raise BulkTaskImportError("The import must contain UTF-8 text.")
+
+        try:
+            byte_length = len(raw_text.encode("utf-8"))
+        except UnicodeEncodeError as exc:
+            raise BulkTaskImportError(
+                "The import contains invalid Unicode text."
+            ) from exc
+
+        if byte_length > BULK_TASK_MAX_BYTES:
+            raise BulkTaskImportError("The import is larger than 256 KiB.")
+
+        for character in raw_text:
+            codepoint = ord(character)
+            if (
+                (codepoint < 32 and character not in "\r\n")
+                or 127 <= codepoint <= 159
+                or character in BIDI_CONTROL_CHARACTERS
+            ):
+                raise BulkTaskImportError(
+                    "The import contains unsupported control characters."
+                )
+
+        tasks = []
+        for line_number, line in enumerate(raw_text.splitlines(), start=1):
+            if not line.strip():
+                continue
+
+            title, separator, description = line.partition(";")
+            title = title.strip()
+            description = description.strip() if separator else ""
+
+            if not title:
+                raise BulkTaskImportError(f"Line {line_number} has no task title.")
+            if len(title) > 255:
+                raise BulkTaskImportError(
+                    f"Line {line_number} has a title longer than 255 characters."
+                )
+            if len(description) > BULK_TASK_MAX_DESCRIPTION_LENGTH:
+                raise BulkTaskImportError(
+                    f"Line {line_number} has a description longer than "
+                    f"{BULK_TASK_MAX_DESCRIPTION_LENGTH:,} characters."
+                )
+
+            tasks.append({"title": title, "description": description})
+            if len(tasks) > BULK_TASK_MAX_COUNT:
+                raise BulkTaskImportError(
+                    f"An import can create at most {BULK_TASK_MAX_COUNT} tasks."
+                )
+
+        if not tasks:
+            raise BulkTaskImportError("Add at least one non-empty task line.")
+
+        return tasks
+
+    @staticmethod
+    def read_bulk_task_file(upload):
+        """Read a bounded text upload without persisting it to disk."""
+        filename = secure_filename(upload.filename or "")
+        extension = os.path.splitext(filename)[1].lower()
+        if extension not in BULK_TASK_ALLOWED_EXTENSIONS:
+            raise BulkTaskImportError("Only .txt and .csv files are accepted.")
+
+        mimetype = (upload.mimetype or "").lower().split(";", 1)[0]
+        if mimetype not in BULK_TASK_ALLOWED_MIMETYPES:
+            raise BulkTaskImportError(
+                "The uploaded file must be a plain-text or CSV file."
+            )
+
+        raw_bytes = upload.stream.read(BULK_TASK_MAX_BYTES + 1)
+        if len(raw_bytes) > BULK_TASK_MAX_BYTES:
+            raise BulkTaskImportError("The uploaded file is larger than 256 KiB.")
+
+        try:
+            return raw_bytes.decode("utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise BulkTaskImportError(
+                "The uploaded file must use UTF-8 encoding."
+            ) from exc
+
     def get_class(self) -> Task:
         return Task
     

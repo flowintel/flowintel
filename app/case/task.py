@@ -20,10 +20,17 @@ from ..utils.formHelper import prepare_tags
 from ..utils.logger import flowintel_log
 from ..utils.file_converter import convert_file_to_note_content
 
-from .form import TaskEditForm, TaskForm
+from .form import BulkTaskForm, TaskEditForm, TaskForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
-from .TaskCore import TaskModel, FILE_FOLDER
+from .TaskCore import (
+    BULK_TASK_MAX_BYTES,
+    BULK_TASK_MAX_COUNT,
+    BULK_TASK_MAX_REQUEST_BYTES,
+    BulkTaskImportError,
+    FILE_FOLDER,
+    TaskModel,
+)
 
 
 task_blueprint = Blueprint(
@@ -101,6 +108,103 @@ def create_task(cid):
             return render_template("case/create_task.html", form=form, case_id=cid, case=case)
         return redirect(f"/case/{cid}")
     return render_template("404.html")
+
+
+@task_blueprint.route("/<cid>/bulk_create_tasks", methods=["GET", "POST"])
+@login_required
+@editor_required
+def bulk_create_tasks(cid):
+    """Create multiple tasks from pasted text or an uploaded text file."""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return render_template("404.html"), 404
+
+    present_in_case = CommonModel.get_present_in_case(cid, current_user)
+    if not (present_in_case or current_user.is_admin()):
+        flowintel_log("audit", 403, "Bulk task creation denied: Access denied",
+            User=current_user.email,
+            CaseId=cid,
+        )
+        return redirect(f"/case/{cid}")
+
+    # Reject oversized multipart bodies before Flask/Werkzeug parses their fields.
+    # The allowance above the content limit covers normal multipart metadata.
+    if (
+        request.method == "POST"
+        and request.content_length is not None
+        and request.content_length > BULK_TASK_MAX_REQUEST_BYTES
+    ):
+        flowintel_log("audit", 413, "Bulk task creation denied: Request too large",
+            User=current_user.email,
+            CaseId=cid,
+            ContentLength=request.content_length,
+        )
+        return "Bulk task import is too large", 413
+
+    form = BulkTaskForm()
+    import_error = None
+    if form.validate_on_submit():
+        pasted_text = form.tasks_text.data or ""
+        upload = form.tasks_file.data
+        has_pasted_text = bool(pasted_text.strip())
+        has_upload = bool(upload and upload.filename)
+
+        if has_pasted_text == has_upload:
+            import_error = "Choose exactly one source: pasted text or a file."
+        else:
+            try:
+                raw_text = (
+                    TaskModel.read_bulk_task_file(upload)
+                    if has_upload
+                    else pasted_text
+                )
+                tasks = TaskModel.parse_bulk_tasks(raw_text)
+            except BulkTaskImportError as exc:
+                import_error = str(exc)
+            else:
+                created_tasks = []
+                for task_data in tasks:
+                    task = TaskModel.create_task(
+                        {
+                            "title": task_data["title"],
+                            "description": task_data["description"],
+                            "deadline_date": None,
+                            "deadline_time": None,
+                            "time_required": "",
+                            "tags": [],
+                            "clusters": [],
+                            "galaxies": [],
+                            "custom_tags": [],
+                        },
+                        cid,
+                        current_user,
+                    )
+                    created_tasks.append(task)
+                    flowintel_log("audit", 200, "Task created by bulk import",
+                        User=current_user.email,
+                        CaseId=cid,
+                        TaskId=task.id,
+                        TaskTitle=task.title,
+                    )
+
+                flowintel_log("audit", 200, "Bulk task import completed",
+                    User=current_user.email,
+                    CaseId=cid,
+                    TaskCount=len(created_tasks),
+                )
+                flash(f"{len(created_tasks)} tasks created", "success")
+                return redirect(f"/case/{cid}")
+
+    return render_template(
+        "case/bulk_create_tasks.html",
+        form=form,
+        case=case,
+        case_id=cid,
+        import_error=import_error,
+        max_file_kib=BULK_TASK_MAX_BYTES // 1024,
+        max_task_count=BULK_TASK_MAX_COUNT,
+    )
+
 
 @task_blueprint.route("/<cid>/edit_task/<tid>", methods=['GET','POST'])
 @login_required
