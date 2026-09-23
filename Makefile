@@ -101,6 +101,9 @@ tag_message := ""
 
 rebuild := 1
 
+# Legacy
+# base_image := ubuntu:noble
+
 ########################################################################################
 # RULES
 ########################################################################################
@@ -161,6 +164,7 @@ configure_repo_dev:
 	cp -n template.env.full.postgres .env.full.postgres.custom
 	cp -n template.env.mariadb .env.mariadb.custom
 	cp -n template.env.postgres .env.postgres.custom
+	cp -n .env.build.maintained .env.build
 	echo
 	echo "The repository was configured for local dev running."
 	echo
@@ -365,7 +369,17 @@ test: first_install
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	echo "Image Rebuild rebuild requested"
-	docker build -f Dockerfile -t flowintel:latest .
+	set -a; \
+	source .env.build; \
+	set +a; \
+	docker buildx bake -f docker-bake.hcl flowintel
+# Legacy
+#	docker build \
+#		--build-arg BASE_IMAGE="${base_image}" \
+#		-f Dockerfile \
+#		-t flowintel:latest \
+#		.	
+	# docker run --rm dhi.io/syft:latest ubuntu:latest
 	echo "Image built"
 else
 	echo "Image Rebuild skipped"

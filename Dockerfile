@@ -1,107 +1,247 @@
-# Use the official Ubuntu noble (24.04) as a parent image
-FROM ubuntu:noble
+# A multistage image for Flowintel
+# BASE_IMAGE options: ubuntu:noble, debian:bookworm-slim, debian:trixie-slim
+# For Prod, you may want add the sha256 as follow:
+# ARG BASE_IMAGE=ubuntu:noble@sha256:<digest>
+ARG BASE_IMAGE=ubuntu:noble
+ARG NODE_VER
+ARG PANDOC_VER
+ARG PANDOC_PATCH
+# Decision: Currently, we fix to 3.4.0 version of the template for avoiding the migration to sourcesans.tty before Ubuntu/Debian are ready
+ARG EISVOGEL_VER=3.4.0
+
+# ---------- Stage 1: build Node + Mermaid ----------
+FROM ${BASE_IMAGE} AS node-builder
+
+ARG NODE_VER
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        xz-utils \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
+
+# Install Node
+RUN set -eux; \
+    ARCH=$(dpkg --print-architecture); \
+    case "$ARCH" in \
+      amd64) NODE_ARCH=x64 ;; \
+      arm64) NODE_ARCH=arm64 ;; \
+      *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-linux-${NODE_ARCH}.tar.xz" \
+      | tar xJ --strip-components=1 -C /usr/local; \
+    npm install --global mermaid-filter @mermaid-js/mermaid-cli;
+
+# ---------- Stage 2: resolve source submodules ----------
+FROM ${BASE_IMAGE} AS source
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
+
+WORKDIR /src
+
+# This must include the repository tree and .gitmodules.
+COPY . .
+
+# Init git submodules & update (public repos so no need for ssh and/or creds)
+RUN set -eux; \
+    git submodule sync --recursive; \
+    git submodule update --init --recursive; \
+    git rev-parse HEAD > /src/GIT_COMMIT; \
+    git describe --tags --always > /src/GIT_VERSION 2>/dev/null || true;
+
+# Strip Git metadata now that submodules are resolved —
+# runtime never needs .git, only the resulting file tree.
+RUN set -eux \
+    && find /src -name ".git" -maxdepth 3 -exec rm -rf {} + \
+    && rm -f /src/.gitmodules /src/.gitignore;
+
+# ---------- Stage 3: Python dependencies ----------
+FROM ${BASE_IMAGE} AS python-builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    VIRTUAL_ENV=/opt/flowintel-venv \
+    PATH="/opt/flowintel-venv/bin:${PATH}"
+
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        git \
+        python3 \
+        python3-venv \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
+
+COPY requirements.txt /tmp/requirements.txt
+
+# Python venv - Create it as root:
+## Keep the virtual env untouchable by the non privileged user
+# Install Python dependencies in a virtualenv
+RUN set -eux \
+    && python3 -m venv "$VIRTUAL_ENV" \
+    && ${VIRTUAL_ENV}/bin/python3 -m pip install --upgrade pip \
+    && ${VIRTUAL_ENV}/bin/python3 -m pip install \
+        --no-cache-dir \
+        -r /tmp/requirements.txt;
+
+# ---------- Stage 4: Download other external packages ----------
+FROM ${BASE_IMAGE} AS pkg-download
+
+ARG PANDOC_VER
+ARG PANDOC_PATCH
+ARG EISVOGEL_VER
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
+
+# Download pandoc from GitHub
+RUN set -eux; \
+    ARCH=$(dpkg --print-architecture); \
+    curl -fsSL \
+        -o "/tmp/pandoc.deb" \
+        "https://github.com/jgm/pandoc/releases/download/${PANDOC_VER}/pandoc-${PANDOC_VER}-${PANDOC_PATCH}-${ARCH}.deb";
+
+# Download pandoc Eisvogel template
+RUN set -eux; \
+    TMP=$(mktemp -d); \
+    curl -fsSL "https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v${EISVOGEL_VER}/Eisvogel-${EISVOGEL_VER}.tar.gz" \
+      | tar -xz -C "$TMP"; \
+    cp "$TMP"/Eisvogel-${EISVOGEL_VER}/eisvogel.latex /tmp/eisvogel.latex; \
+    rm -rf "$TMP";
+
+# ---------- Stage 5: runtime ----------
+FROM ${BASE_IMAGE} AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    VIRTUAL_ENV=/opt/flowintel-venv \
+    TZ=Europe/Luxembourg \
+    PATH="/opt/flowintel-venv/bin:${PATH}"
 
 # Needed to prevent tzdata to be interactive
-RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
+RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime
 
-RUN apt update && apt install -y \
-    sudo moreutils software-properties-common \
-    git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip \
-    texlive texlive-xetex texlive-fonts-extra # Pandoc dependencies
-
-# Install pandoc from GitHub
-RUN <<EOF
-TMP=$(mktemp -d)
-cd $TMP
-wget https://github.com/jgm/pandoc/releases/download/3.7/pandoc-3.7-1-$(dpkg --print-architecture).deb
-dpkg -i pandoc*.deb
-rm -rf $TMP
-EOF
+# We have 2 apt-get install RUN in the runtime layer, we clean only on the last one to reduce processing
+RUN set -eux \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3 \
+        # Essential to send signed emails
+        gnupg \
+        #
+        # end-to-end encryption (Matrix for example)
+        libolm-dev \
+        # render svg diagrams in PDF reports
+        librsvg2-bin \
+        # screen is kept for now, but we should question the idea of using screen inside the launch_docker as it smells antipatternistic
+        # Currently it is required by launch.sh: runs startNotif.py and startMispSync.py (as detached background sessions alongside gunicorn)
+        # The alternative would be to have different service but this is an architectural implication for Flowintel
+        screen \
+        #
+        # LaTeX
+        texlive-latex-extra \
+        texlive-xetex \
+        texlive-fonts-recommended \
+        texlive-fonts-extra \
+        texlive-lang-cjk \
+        # baseline LaTeX PDF hygiene:
+        # guarantee scalable, embeddable outline fonts are available as a fallback,
+        # even when your body text is overridden to Source Sans
+        lmodern;
 
 # Create a dedicated user and group, fixing user range ids that should be unreserved and so usable in production
-RUN groupadd --gid 10000 flowintel && useradd --uid 10000 --gid 10000 -m -g flowintel flowintel
+RUN set -eux \
+    && groupadd --gid 10000 flowintel \
+    && useradd --uid 10000 --gid 10000 -m -g flowintel flowintel;
 
 WORKDIR /home/flowintel/app
 
-# Copy on top only files that affect dependency resolution
-COPY requirements.txt requirements.in /home/flowintel/app/
+# Copy Node + Mermaid from builder
+COPY --from=node-builder \
+    /usr/local/bin/mmdc* \
+    /usr/local/bin/mermaid-filter \
+    /usr/local/bin/
+COPY --from=node-builder /usr/local/bin/node /usr/local/bin/node
+COPY --from=node-builder /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-## Keep the virtual env untouchable by the non privileged user
-# Install Python dependencies in a virtualenv
-RUN python3 -m venv /home/flowintel/venv
-ENV PATH="/home/flowintel/venv/bin:${PATH}"
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt --timeout 240
-
-# Switch to the non-root user
-USER flowintel
-
-## npm installed moved upper to optimize cache layers - check that there are no strong coupling with Python code updates !
-# Install pandoc Eisvogel template
-RUN <<EOF
-mkdir -p ~/.pandoc/templates
-cd ~/.pandoc/templates
-wget -q https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel.tar.gz
-tar -xf Eisvogel.tar.gz
-cp Eisvogel-*/eisvogel.latex ~/.pandoc/templates
-rm -r Eisvogel.tar.gz Eisvogel-*
-EOF
-
-# Install Node + Mermaid tools
-RUN <<EOF
-wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-. ~/.profile
-nvm install node 20
-npm install --prefix $HOME mermaid-filter
-npm install --prefix $HOME @mermaid-js/mermaid-cli
-echo "export NVM_DIR=\"$NVM_DIR\"" >> ~/.bashrc
-echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> ~/.bashrc
-echo "export PATH=\"\$PATH:$HOME/node_modules/.bin\"" >> ~/.bashrc
-EOF
-
-# We need again to be root, though not sure it is needed due to the chown done in the next steps !
-USER root
-
-# Copy app source later to optimize layer caching
-# TODO This can further be accelerated by using the src pattern for code location and adding separate copies of requirements
-# and other important folders / files from king directory
-COPY . /home/flowintel/app
-
-# Replace secret and update config
-RUN mkdir -p /home/flowintel/app
-
-# Set proper ownership
-RUN chown -R flowintel:flowintel /home/flowintel/app
-
-# We finally switch to the non-root user
-USER flowintel
+# Copy Python3 venv from python-builder
+COPY --from=python-builder /opt/flowintel-venv /opt/flowintel-venv
 
 # Proxy mmdc with proper puppeteer config
-RUN <<EOF
-cd $HOME/node_modules/.bin
+RUN <<'EOF'
+set -eux
+
+cd /usr/local/bin
 mv mmdc mmdc.orig
-cat <<eof > puppeteer.json
+
+cat > puppeteer.json <<'PUPPETEER'
 {
-    "args": [
-        "--no-sandbox"
-    ]
+  "args": ["--no-sandbox"]
 }
-eof
-cat <<eof > mmdc
-#!/bin/bash
-\$HOME/node_modules/.bin/mmdc.orig -p $(realpath $(dirname "\$0"))/puppeteer.json \$@
-eof
-chmod +x mmdc
+PUPPETEER
+
+cat > mmdc <<'MMDC'
+#!/bin/sh
+set -eu
+exec /usr/local/bin/mmdc.orig \
+    -p /usr/local/bin/puppeteer.json \
+    "$@"
+MMDC
+
+chmod 0755 mmdc
 EOF
 
-# Init git submodules & update
-RUN git submodule init && git submodule update
+# Install pandoc and Eisvogel template
+RUN --mount=type=bind,from=pkg-download,source=/tmp/pandoc.deb,target=/tmp/pandoc.deb \
+    --mount=type=bind,from=pkg-download,source=/tmp/eisvogel.latex,target=/tmp/eisvogel.latex \
+    set -eux \
+    && apt-get install -y --no-install-recommends /tmp/pandoc.deb \
+    && mkdir -p /home/flowintel/.pandoc/templates \
+    && cp /tmp/eisvogel.latex /home/flowintel/.pandoc/templates/ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*;
 
-# Cleanup dead screens (optional)
-RUN screen -wipe || true
+# Copy app source and MISP submodule from source
+# With forced proper ownership
+COPY --from=source --chown=flowintel:flowintel /src/ /home/flowintel/app/
 
-# Final permissions check (in case)
-RUN chmod +x launch.sh bin/wait-for-it.sh bin/entrypoint.sh
+# Make relevant script executables and link the Python3 venv to make it reachable from the legacy location
+RUN set -eux \
+    && chown flowintel:flowintel /home/flowintel/app \    
+    && chmod 0755 \
+        /home/flowintel/app/launch.sh \
+        /home/flowintel/app/bin/wait-for-it.sh \
+        /home/flowintel/app/bin/entrypoint.sh \
+    && chown -R flowintel:flowintel /home/flowintel/.pandoc \
+    && ln -s /opt/flowintel-venv /home/flowintel/venv;
+
+# Some people may want this hardening as a 1st step towards distroless image (before even a noshell variant)
+# But this will blind the Vulnerability scanners...
+# Might be acceptable with the SBOM output proposed in the Makefile
+# RUN apt-get purge -y --auto-remove apt \
+#     && rm -rf /var/lib/apt /var/cache/apt /etc/apt
+
+# Finally, switch to the non-root user
+USER flowintel
 
 ENTRYPOINT ["/home/flowintel/app/bin/entrypoint.sh"]
 
