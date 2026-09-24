@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% import 'macros/role_badge.html' as role_badge %}
 
 {% block content %}
     
@@ -58,30 +59,18 @@
                     <td>
                         <a href="/admin/roles" class="text-decoration-none">
                             {{ role.name|vue_escape }}
-                            {% if role.admin %}
-                                <span class="badge bg-danger ms-2">Admin</span>
-                            {% elif role.read_only %}
-                                <span class="badge bg-info ms-2">Read Only</span>
-                            {% else %}
-                                <span class="badge bg-success ms-2">
-                                    Editor
-                                    {% if role.org_admin %}
-                                        <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
-                                    {% endif %}
-                                    {% if role.case_admin %}
-                                        <i class="fa-solid fa-briefcase ms-1" title="Case Admin"></i>
-                                    {% endif %}
-                                    {% if role.queue_admin %}
-                                        <i class="fa-solid fa-list-check ms-1" title="Queue Admin"></i>
-                                    {% endif %}
-                                    {% if role.queuer %}
-                                        <i class="fa-solid fa-inbox ms-1" title="Queuer"></i>
-                                    {% endif %}
-                                    {% if role.audit_viewer %}
-                                        <i class="fa-solid fa-file-lines ms-1" title="Audit Viewer"></i>
-                                    {% endif %}
-                                </span>
-                            {% endif %}
+                            {{ role_badge.render_role_badge(
+                                role.admin,
+                                role.read_only,
+                                role.org_admin,
+                                role.case_admin,
+                                role.queue_admin,
+                                role.queuer,
+                                role.audit_viewer,
+                                role.template_editor,
+                                role.misp_editor,
+                                role.importer
+                            ) }}
                         </a>
                     </td>
                 </tr>

@@ -1,4 +1,5 @@
 
+{% import 'macros/role_badge.html' as role_badge %}
 	<!-- Navbar -->
 <nav id="main-navbar" class="navbar navbar-expand-lg topbar" style="padding: 10px 0;">
     <!-- Container wrapper -->
@@ -85,36 +86,16 @@
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
                     id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    {% if current_user.is_admin() %}
-                        <span class="badge bg-danger ms-1" title="Admin role"><i class="fa-solid fa-shield-halved"></i></span>
-                    {% elif current_user.read_only() %}
-                        <span class="badge bg-info ms-1" title="Read Only role"><i class="fa-solid fa-eye"></i></span>
-                    {% else %}
-                        <span class="badge bg-success ms-1" title="Editor role"><i class="fa-solid fa-pen"></i></span>
-                    {% endif %}
+                    {{ role_badge.render_role_badge(
+                        current_user.is_admin(),
+                        current_user.read_only(),
+                        compact=true
+                    ) }}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
                     <li>
                         <span class="dropdown-item-text fw-semibold">
                             {{ current_user.first_name|vue_escape }} {{ current_user.last_name|vue_escape }}
-                            {% if current_user.is_admin() %}
-                                <span class="badge bg-danger ms-1" title="Admin role"><i class="fa-solid fa-shield-halved"></i></span>
-                            {% elif current_user.read_only() %}
-                                <span class="badge bg-info ms-1" title="Read Only role"><i class="fa-solid fa-eye"></i></span>
-                            {% else %}
-                                <span class="badge bg-success ms-1" title="Editor role">
-                                    <i class="fa-solid fa-pen"></i>
-                                    {% if current_user.is_org_admin() %}
-                                        <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
-                                    {% endif %}
-                                    {% if current_user.is_queue_admin() %}
-                                        <i class="fa-solid fa-clipboard-check ms-1" title="Queue Admin"></i>
-                                    {% endif %}
-                                    {% if current_user.is_queuer() %}
-                                        <i class="fa-solid fa-list-check ms-1" title="Queuer"></i>
-                                    {% endif %}
-                                </span>
-                            {% endif %}
                         </span>
                     </li>
                     <li><hr class="dropdown-divider"></li>
