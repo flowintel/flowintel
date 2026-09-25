@@ -23,10 +23,20 @@ body {
   background-color: #fbfbfb;
 }
 
+/* Sticky footer: the page is a column at least as tall as the window, main takes the
+   free space, so the footer always sits at the bottom even on a nearly empty page. */
+body.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 main {
   padding-left: var(--sidebar);
-  height: 100%;
-  min-height: 90vh;
+}
+
+body.app-layout > main {
+  flex: 1 0 auto;
 }
 
 .nav-pagination {
