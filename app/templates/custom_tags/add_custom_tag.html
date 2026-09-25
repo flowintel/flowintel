@@ -3,13 +3,14 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block content %}
-<div class="case-core-style" style="border-radius: 0">
-    <h5 class="mb-0"><i class="fa-solid fa-user-tag me-2"></i>Add custom tags</h5>
-</div>
-
-<hr class="fading-line-2 mb-4 mt-4">
+{% call(section) page_header('New custom tag', 'fa-solid fa-user-tag', 'Choose a name, a colour and an optional icon.') %}
+    {% if section == 'actions' %}
+        {{ header_link('Custom tags', '/custom_tags/', title='Back to the custom tags') }}
+    {% endif %}
+{% endcall %}
 
 <form action="" method="post" class="case-core-style">
     {{ form.hidden_tag() }}
