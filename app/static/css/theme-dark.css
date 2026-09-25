@@ -305,11 +305,6 @@
   border-color: var(--fi-dark-border);
 }
 
-[data-bs-theme="dark"] .schema-json {
-  background: var(--fi-dark-page);
-  color: var(--bs-body-color);
-}
-
 /* ---------- Analyser ---------- */
 
 [data-bs-theme="dark"] fieldset.analyzer-select-case,

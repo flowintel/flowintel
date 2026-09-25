@@ -147,15 +147,6 @@
     font-size: .78rem;
 }
 
-.schema-json {
-    max-height: 420px;
-    overflow: auto;
-    background: #f7f9fb;
-    border: 1px solid #dde3ea;
-    border-radius: 6px;
-    padding: 12px;
-    font-size: .78rem;
-}
 
 .config-panel {
     background: #ffffff;

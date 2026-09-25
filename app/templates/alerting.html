@@ -4,6 +4,8 @@
 {% block head %}
 {{ super() }}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/alerting.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/smart-render.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -14,7 +16,7 @@
             {{ header_stat('fa-solid fa-circle-exclamation', '[[ newCount ]]', 'new', alert='newCount', attrs='v-if="newCount"') }}
             {{ header_stat('fa-solid fa-fire', '[[ criticalCount ]]', 'critical', alert='criticalCount', attrs='v-if="criticalCount"') }}
         {% elif section == 'actions' %}
-            {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh alerts', attrs='@click="loadAlerts(true)"') }}
+            {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh alerts', attrs='@click="refreshAlerts" :disabled="refreshing" :class="{\'is-busy\': refreshing}"') }}
         {% elif section == 'toolbar' %}
             {{ header_search('Search title, source, ref, asset, observable', model='filters.query') }}
             {{ header_segmented([
@@ -242,7 +244,7 @@
                         <i class="fa-solid fa-book me-1"></i>API
                     </a>
                 </div>
-                <pre class="schema-json mb-0">[[ schemaJson ]]</pre>
+                <smart_render :code="schemaJson" language="json" title="misp-event.json" max-height="460px"></smart_render>
             </div>
         </div>
 
@@ -320,10 +322,12 @@ const schemaExample = {{ alert_schema_example|tojson|safe }};
 const initialCaseTemplates = {{ case_templates|tojson|safe }};
 
 const { createApp, ref, computed, onMounted } = Vue;
-import {message_list, display_toast} from '/static/js/toaster.js';
+import {message_list, display_toast, create_message} from '/static/js/toaster.js';
+import smart_render from '/static/js/components/smart-render.js';
 
 createApp({
     delimiters: ['[[', ']]'],
+    components: { smart_render },
     setup() {
         const urlParams = new URLSearchParams(window.location.search);
         const requestedAlertId = parseInt(urlParams.get('alert_id'), 10);
@@ -540,6 +544,7 @@ createApp({
             if (idx >= 0) alerts.value[idx] = Object.assign({}, alerts.value[idx], nextAlert);
         }
 
+        // Returns true when the alerts were reloaded
         async function loadAlerts(keepSelection = false) {
             try {
                 const resp = await fetch('/alerting/api?limit=200');
@@ -550,8 +555,26 @@ createApp({
                         selectedId.value = null;
                     }
                     refreshSidebarBadge(unreadCount.value);
+                    return true;
                 }
             } catch (e) { }
+            return false;
+        }
+
+        // "Refresh" button: spinning icon while loading, then a toast with the result
+        const refreshing = ref(false);
+        async function refreshAlerts() {
+            if (refreshing.value) return;
+            refreshing.value = true;
+            // keep the animation visible even when the answer is instant
+            const [ok] = await Promise.all([loadAlerts(true), new Promise(r => setTimeout(r, 600))]);
+            refreshing.value = false;
+            if (ok) {
+                const n = alerts.value.length;
+                await create_message(`Alerts refreshed · ${n} ${n === 1 ? 'alert' : 'alerts'} loaded`, 'success-subtle');
+            } else {
+                await create_message('Could not refresh the alerts', 'danger-subtle');
+            }
         }
 
         async function markRead(a) {
@@ -663,7 +686,7 @@ createApp({
 
         return {
             message_list, alerts, selected, filters, sending, caseForm, caseTemplates, templateSearch,
-            schemaJson, filteredAlerts, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected, unreadCount, newCount, criticalCount,
+            schemaJson, refreshing, refreshAlerts, filteredAlerts, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected, unreadCount, newCount, criticalCount,
             severity, severityBadgeClass, reviewLabel, reviewBadgeClass, displayTitle, objectSummary,
             ownerDisplay, activityList, actionLabel, actionUser, lastAction, lastActionSummary, externalReferenceUrl,
             formatDate, relativeDate, loadAlerts, selectAlert, clearSelection, markRead, markAllRead,
