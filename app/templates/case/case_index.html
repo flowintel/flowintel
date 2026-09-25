@@ -3,7 +3,7 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented, header_filters %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -44,10 +44,7 @@
                 <label class="form-check-label" for="topCheckMyOrg">My org</label>
             </div>
 
-            <button type="button" class="ctx-ghost-btn ms-auto" :class="{active: has_active_filters}" data-bs-toggle="modal" data-bs-target="#modalCaseFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter cases'">
-                <i class="fa-solid fa-sliders fa-sm"></i>Filters
-                <span v-if="has_active_filters" class="ctx-ghost-dot" aria-label="Filters applied"></span>
-            </button>
+            {{ header_filters('#modalCaseFilter', active='has_active_filters') }}
 
             {% if not current_user.read_only() %}
                 {{ header_button('New case', href='/case/create_case', title='Create new case') }}

@@ -2,21 +2,21 @@
     page_header — the header card shown at the top of every Flowintel page.
 
     Import:
-        {% from 'macros/page_header.html' import page_header %}
+        {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_filters %}
 
     Call:
         {% call(section) page_header('Users', 'fa-solid fa-users', 'Accounts of your instance.') %}
             {% if section == 'stats' %}
-                <span class="ctx-meta-item"><i class="fa-solid fa-users"></i><strong>[[ users.length ]]</strong>users</span>
-            {% elif section == 'actions' %}
-                <a class="ctx-brand-btn" href="/admin/add_user"><i class="fa-solid fa-plus fa-sm"></i>New user</a>
+                {{ header_stat('fa-solid fa-users', '[[ users.length ]]', 'users') }}
             {% elif section == 'toolbar' %}
-                <div class="ctx-search">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="search" class="form-control form-control-sm" placeholder="Search users" @input="onInput">
-                </div>
+                {{ header_search('Search users by name') }}
+                {{ header_filters('#modalUserFilter', active='has_active_filters') }}
+                {{ header_button('New user', href='/admin/add_user') }}
             {% endif %}
         {% endcall %}
+
+    Layout rules (page_header.css, whatever the markup order): the search is always first,
+    "Filters" right after it, and header_link() / header_button() are pushed to the right.
 
     Arguments:
         title        page title (plain text: escaped, safe for user data)
@@ -29,6 +29,7 @@
         actions  main button after the counters            -> header_button(), header_link()
         aside    small info on the right of the title      -> e.g. <span class="ctx-version">
         toolbar  filter bar under a divider                -> header_search(), header_segmented(),
+                                                              header_filters(), header_link(),
                                                               header_button(), or custom markup
 
     Always build sections with the helpers below rather than hand-written markup:
@@ -86,17 +87,31 @@
 {#- Main action button (Flowintel blue). A link when href is set, a <button> otherwise. -#}
 {% macro header_button(label, href='', icon='fa-solid fa-plus', title='', attrs='') -%}
 {% if href %}
-<a class="ctx-brand-btn" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
+<a class="ctx-brand-btn ctx-push" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
 {% else %}
-<button type="button" class="ctx-brand-btn" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
+<button type="button" class="ctx-brand-btn ctx-push" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
 {% endif %}
 {%- endmacro %}
 
 
-{#- Secondary action (grey outline), e.g. "Back to users" on a form page or an extra
-    shortcut next to the main button. -#}
-{% macro header_link(label, href, icon='fa-solid fa-arrow-left', title='', attrs='') -%}
-<a class="ctx-ghost-btn" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
+{#- Secondary action (grey outline), e.g. "Back to users" on a form page or "Scan" next to
+    the main button. A link when href is set, a <button> otherwise (use attrs for @click). -#}
+{% macro header_link(label, href='', icon='fa-solid fa-arrow-left', title='', attrs='') -%}
+{% if href %}
+<a class="ctx-ghost-btn ctx-push" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
+{% else %}
+<button type="button" class="ctx-ghost-btn ctx-push" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+
+{#- "Filters" button opening a Bootstrap modal (target: '#modalId'). active is an optional
+    Vue expression: when true the button is highlighted and shows a dot. -#}
+{% macro header_filters(target, active='', label='Filters') -%}
+<button type="button" class="ctx-ghost-btn ctx-filters-btn"{% if active %} :class="{active: {{ active }}}"{% endif %} data-bs-toggle="modal" data-bs-target="{{ target }}" title="{{ label }}">
+    <i class="fa-solid fa-sliders fa-sm"></i>{{ label }}
+    {%- if active %}<span v-if="{{ active }}" class="ctx-ghost-dot" aria-label="Filters applied"></span>{% endif %}
+</button>
 {%- endmacro %}
 
 

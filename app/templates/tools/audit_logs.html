@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
 <title>Audit logs - {{ config.APP_NAME }}</title>
@@ -43,11 +44,8 @@
 
 {% block content %}
 
-<div class="case-core-style" style="border-radius: 0">
-    <h5 class="mb-0"><i class="fa-solid fa-scroll me-2"></i>Audit logs</h5>
-</div>
+{% call(section) page_header('Audit logs', 'fa-solid fa-scroll', 'Who did what, and when, on this instance.') %}{% endcall %}
 
-<hr class="fading-line mt-4 mb-4">
 
 <div class="case-core-style">
     <div class="alert alert-info py-2 px-3 mb-3" role="alert">

@@ -292,13 +292,18 @@ a.ctx-meta-item:hover {
 /* The search is always the first item of the filter bar, whatever the markup order */
 .ctx-search {
   position: relative;
-  order: -1;
+  order: -2;
   flex: 1 1 16rem;
   max-width: 22rem;
 }
 
-/* The main button goes to the right end of the bar (after Filters when there is one) */
-.ctx-filter-bar > .ctx-brand-btn:not(.ctx-ghost-btn ~ .ctx-brand-btn) {
+/* "Filters" always sits right after the search */
+.ctx-filters-btn {
+  order: -1;
+}
+
+/* Action buttons (header_link / header_button) go to the right end of the bar */
+.ctx-filter-bar > .ctx-push:not(.ctx-push ~ .ctx-push) {
   margin-left: auto;
 }
 
@@ -317,7 +322,12 @@ a.ctx-meta-item:hover {
   transition: background-color 0.15s ease;
 }
 
-.ctx-brand-btn:hover,
+.ctx-brand-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ctx-brand-btn:not(:disabled):hover,
 .ctx-brand-btn:focus-visible {
   background: var(--ctx-brand-dark);
   color: #fff;
