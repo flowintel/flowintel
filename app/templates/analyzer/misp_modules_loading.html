@@ -3,10 +3,12 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block content %}
+{% call(section) page_header('Running the analyser', 'fa-solid fa-spinner', 'The selected modules are querying their services; results appear when they are done.') %}{% endcall %}
 
-<div style="margin-top: 20%;" class="progress" >
+<div style="margin-top: 10%;" class="progress" >
     <div class="progress-bar" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" :style="'width:'+progress + '%;'">
         [[progress]]%
     </div>

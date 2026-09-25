@@ -2,6 +2,7 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_filters %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -19,38 +20,28 @@
 
 {% block content %}
     {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
-    <div class="case-core-style" style="border-radius: 0;">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-list-check me-2"></i>Task templates</h5>
-                {% if can_manage_templates %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/templating/create_task" title="Add new task template">
-                        <i class="fa-solid fa-plus fa-sm"></i>
-                    </a>
-                {% else %}
-                    <button class="btn btn-primary btn-sm ms-3" type="button" disabled title="You do not have permission to create templates">
-                        <i class="fa-solid fa-plus fa-sm"></i>
-                    </button>
-                {% endif %}
-            </div>
-
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCaseFilter">
-                    <i class="fa-solid fa-filter fa-sm"></i>
-                </button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search task by title' />
-            </div>
-            <!-- Search bar -->
-        </div>
-        {% if not can_manage_templates %}
-            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
-                You do not have the Template Editor permissions and are not allowed to create or edit templates.
-            </div>
+    {% call(section) page_header('Task templates', 'fa-solid fa-list-check', 'Reusable tasks that can be added to any case or case template.') %}
+        {% if section == 'stats' %}
+            <template v-if="templates_list && templates_list.templates">
+                {{ header_stat('fa-solid fa-list-check', '[[ templates_list.templates.length ]]', "[[ templates_list.templates.length === 1 ? 'template' : 'templates' ]]", title='Task templates listed', attrs='v-if="!templates_list.nb_pages || templates_list.nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ templates_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search task templates by title') }}
+            {{ header_filters('#modalCaseFilter') }}
+            {% if can_manage_templates %}
+                {{ header_button('New task template', href='/templating/create_task', title='New task template') }}
+            {% else %}
+                {{ header_button('New task template', title='You do not have permission to create templates', attrs='disabled') }}
+            {% endif %}
         {% endif %}
-    </div>
+    {% endcall %}
+    {% if not can_manage_templates %}
+        <div class="ctx-notice mb-3" role="alert">
+            <i class="fa-solid fa-circle-info"></i>You do not have the Template Editor permissions and are not allowed to create or edit templates.
+        </div>
+    {% endif %}
 
-    <br>
     <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
@@ -73,7 +64,6 @@
             </div>
 		</div>
 	</div>
-    <hr class="fading-line mt-4 mb-4">
     <!-- Search bar -->
 
     <nav aria-label="Page navigation" class="nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">

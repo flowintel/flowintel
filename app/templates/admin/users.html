@@ -3,27 +3,23 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-users me-2"></i>Users</h5>
-                {% if current_user.is_admin() or current_user.is_org_admin() %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/admin/add_user" title="Add user"><i class="fa-solid fa-plus fa-sm"></i></a>
-                {% endif %}
-            </div>
+    {% call(section) page_header('Users', 'fa-solid fa-users', 'Accounts that can sign in to this Flowintel instance.') %}
+        {% if section == 'stats' %}
+            <template v-if="users_list">
+                {{ header_stat('fa-solid fa-users', '[[ users_list.users.length ]]', "[[ users_list.users.length === 1 ? 'user' : 'users' ]]", title='Users listed', attrs='v-if="users_list.nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ users_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search users by name') }}
+            {% if current_user.is_admin() or current_user.is_org_admin() %}
+                {{ header_button('New user', href='/admin/add_user', title='Add user') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Users by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-    </div>
-
-    <hr class="fading-line-2 mt-4 mb-4">
 
     <nav aria-label="Page navigation" class="nav-pagination" v-if="users_list && users_list.nb_pages > 1">
         <ul class="pagination">
@@ -48,7 +44,7 @@
                     <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
                         <a class="list-group-item list-group-item-action case-index-list">
                             <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                <h5 class="mb-1 fi-list-title">
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]
                                 </h5>
                                 <span v-if="user.nickname" title="nickname" class="badge bg-primary d-flex align-items-center">

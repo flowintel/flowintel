@@ -1,5 +1,6 @@
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_button %}
 
 {% block head %}
 <title>Calendar - {{ config.APP_NAME }}</title>
@@ -38,52 +39,29 @@
     </div>
 
 
-    <div class="calendar-filter-bar bg-white d-flex flex-wrap align-items-end justify-content-between p-3 mb-2">
-        <div class="d-flex flex-wrap align-items-end gap-3">
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Show</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Calendar item filters">
-                    <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
-                    <label class="btn btn-outline-primary" for="checkbox-case">
-                        <i class="fa-solid fa-folder-open"></i> Case
-                    </label>
-                    <input class="btn-check" checked type="checkbox" value="" id="checkbox-task" autocomplete="off" @change="selection_case_task(false, true, $event)">
-                    <label class="btn btn-outline-success" for="checkbox-task">
-                        <i class="fa-solid fa-list-check"></i> Task
-                    </label>
-                </div>
-            </div>
-
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Tasks</span>
+    {% call(section) page_header('Calendar', 'fa-solid fa-calendar-days', 'Deadlines and creation dates of your cases and tasks.') %}
+        {% if section == 'actions' %}
+            {{ header_button('Download calendar feed', icon='fa-solid fa-calendar-plus', title='Download an iCalendar feed of your cases and tasks', attrs='@click="downloadCalendarFeed"') }}
+        {% elif section == 'toolbar' %}
+            <span class="ctx-filter-label">Show</span>
+            <div class="ctx-chips" role="group" aria-label="Calendar item filters">
+                <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
+                <label class="ctx-chip" for="checkbox-case"><i class="fa-solid fa-folder-open fa-sm"></i>Case</label>
+                <input class="btn-check" checked type="checkbox" value="" id="checkbox-task" autocomplete="off" @change="selection_case_task(false, true, $event)">
+                <label class="ctx-chip" for="checkbox-task"><i class="fa-solid fa-list-check fa-sm"></i>Task</label>
                 <input class="btn-check" type="checkbox" value="" id="checkbox-task-assigned" autocomplete="off" @change="selection_assigned_tasks">
-                <label class="btn btn-sm btn-outline-secondary" for="checkbox-task-assigned">
-                    <i class="fa-solid fa-user-check"></i> Assigned to me
-                </label>
+                <label class="ctx-chip" for="checkbox-task-assigned"><i class="fa-solid fa-user-check fa-sm"></i>Assigned to me</label>
             </div>
 
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Date</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Calendar date filter">
-                    <input class="btn-check" type="radio" name="radioOther" id="radioDeadLine" autocomplete="off" @change="select_dead_filter()" checked>
-                    <label class="btn btn-outline-dark" for="radioDeadLine">
-                        <i class="fa-solid fa-hourglass-half"></i> Deadline
-                    </label>
-                    <input class="btn-check" type="radio" name="radioOther" id="radioCreation" autocomplete="off" @change="select_creation_filter()">
-                    <label class="btn btn-outline-dark" for="radioCreation">
-                        <i class="fa-solid fa-calendar-day"></i> Creation
-                    </label>
-                </div>
+            <span class="ctx-filter-label">Date</span>
+            <div class="ctx-seg ctx-seg-check" role="group" aria-label="Calendar date filter">
+                <input class="btn-check" type="radio" name="radioOther" id="radioDeadLine" autocomplete="off" @change="select_dead_filter()" checked>
+                <label for="radioDeadLine"><i class="fa-solid fa-hourglass-half fa-sm me-1"></i>Deadline</label>
+                <input class="btn-check" type="radio" name="radioOther" id="radioCreation" autocomplete="off" @change="select_creation_filter()">
+                <label for="radioCreation"><i class="fa-solid fa-calendar-day fa-sm me-1"></i>Creation</label>
             </div>
-        </div>
-
-        <div class="calendar-filter-group">
-            <span class="calendar-filter-label">Export</span>
-            <button class="btn btn-sm btn-primary" @click="downloadCalendarFeed">
-                <i class="fa-solid fa-calendar-plus"></i> Download Calendar Feed
-            </button>
-        </div>
-    </div>
+        {% endif %}
+    {% endcall %}
 
     <input id="monthPicker" class="form-control start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
 

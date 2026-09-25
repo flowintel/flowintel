@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -13,6 +14,11 @@
 
 
 {% block content %}
+{% call(section) page_header('Add tasks to the case template', 'fa-solid fa-list-check', 'Pick existing task templates or create a new one.') %}
+    {% if section == 'actions' %}
+        {{ header_link('Case template', '/templating/case/' ~ request.view_args.cid, title='Back to the case template') }}
+    {% endif %}
+{% endcall %}
 <form action="" method="post" class="case-core-style" id="add_task_case_form">
     {{ form.hidden_tag() }}
     <div class="modal-body">

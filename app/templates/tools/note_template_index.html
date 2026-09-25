@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_filters %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -14,36 +15,27 @@
 {% block content %}
 {% set can_manage_templates = current_user.is_admin() or current_user.is_template_editor() %}
 
-<div class="case-core-style" style="border-radius: 0; margin-bottom: 10px;">
-    <div class="row align-items-center">
-        <div class="col-auto d-flex align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Note templates</h5>
+    {% call(section) page_header('Note templates', 'fa-solid fa-note-sticky', 'Note skeletons with variables, filled in from a case or a task.') %}
+        {% if section == 'stats' %}
+            <template v-if="notes_list && notes_list.notes">
+                {{ header_stat('fa-solid fa-note-sticky', '[[ notes_list.notes.length ]]', "[[ notes_list.notes.length === 1 ? 'note template' : 'note templates' ]]", title='Note templates listed', attrs='v-if="!notes_list.nb_pages || notes_list.nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ notes_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search note templates by title') }}
+            {{ header_filters('#modalNoteFilter') }}
             {% if can_manage_templates %}
-                <a type="button" class="btn btn-primary btn-sm ms-3" href="/tools/create_note_template_view" title="Add new note template">
-                    <i class="fa-solid fa-plus fa-sm"></i>
-                </a>
+                {{ header_button('New note template', href='/tools/create_note_template_view', title='New note template') }}
             {% else %}
-                <button type="button" class="btn btn-primary btn-sm ms-3" disabled title="You do not have permission to create templates">
-                    <i class="fa-solid fa-plus fa-sm"></i>
-                </button>
+                {{ header_button('New note template', title='You do not have permission to create templates', attrs='disabled') }}
             {% endif %}
-        </div>
-
-        <!-- Search bar -->
-        <div class="col input-group w-auto">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNoteFilter">
-                <i class="fa-solid fa-filter fa-sm"></i>
-            </button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search note by title' />
-        </div>
-        <!-- Search bar -->
-    </div>
+        {% endif %}
+    {% endcall %}
     {% if not can_manage_templates %}
-        <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
-            You do not have the Template Editor permissions and are not allowed to create or edit templates.
+        <div class="ctx-notice mb-3" role="alert">
+            <i class="fa-solid fa-circle-info"></i>You do not have the Template Editor permissions and are not allowed to create or edit templates.
         </div>
     {% endif %}
-</div>
 
 <div class="modal fade" id="modalNoteFilter" tabindex="-1" aria-labelledby="modalNoteFilterLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -65,7 +57,6 @@
         </div>
     </div>
 </div>
-<hr class="fading-line">
 
 <!-- pagination -->
 <nav aria-label="Page navigation" class="nav-pagination" v-if="notes_list && notes_list.nb_pages > 1">

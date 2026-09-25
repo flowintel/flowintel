@@ -1,0 +1,172 @@
+{#
+    page_header — the header card shown at the top of every Flowintel page.
+
+    Import:
+        {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_filters %}
+
+    Call:
+        {% call(section) page_header('Users', 'fa-solid fa-users', 'Accounts of your instance.') %}
+            {% if section == 'stats' %}
+                {{ header_stat('fa-solid fa-users', '[[ users.length ]]', 'users') }}
+            {% elif section == 'toolbar' %}
+                {{ header_search('Search users by name') }}
+                {{ header_filters('#modalUserFilter', active='has_active_filters') }}
+                {{ header_button('New user', href='/admin/add_user') }}
+            {% endif %}
+        {% endcall %}
+
+    Layout rules (page_header.css, whatever the markup order): the search is always first,
+    "Filters" right after it, and header_link() / header_button() are pushed to the right.
+
+    Arguments:
+        title        page title (plain text: escaped, safe for user data)
+        icon         Font Awesome classes for the icon square, e.g. 'fa-solid fa-users'
+        description  optional one-line subtitle (plain text: escaped, safe for user data)
+        variant      '' (default white card) or 'hero' (larger gradient card, home page)
+
+    Sections (all optional, an empty section is not rendered):
+        stats    counters shown next to the title          -> header_stat()
+        actions  main button after the counters            -> header_button(), header_link()
+        aside    small info on the right of the title      -> e.g. <span class="ctx-version">
+        toolbar  filter bar under a divider                -> header_search(), header_filters(),
+                                                              header_segmented(), header_select(),
+                                                              header_switch(), header_input(),
+                                                              header_link(), header_button()
+
+    Always build sections with the helpers below rather than hand-written markup:
+    the look of every page then changes from this file only.
+
+    Section content is rendered inside the page's Vue app, so values can hold [[ ]]
+    bindings. `attrs`, `click` and `active` are trusted template code: never put
+    user data in them.
+    Styles: static/css/components/page_header.css (loaded by base.html).
+#}
+{% macro page_header(title, icon, description='', variant='') -%}
+<div class="ctx-shell">
+    <section class="ctx-header{% if variant %} ctx-header--{{ variant }}{% endif %}" aria-labelledby="page-header-title">
+        <div class="ctx-header-main">
+            <div class="ctx-header-top">
+                <div class="ctx-header-heading">
+                    <span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>
+                    <h1 class="ctx-header-title" id="page-header-title">{{ title|vue_escape }}</h1>
+                    {% if description %}
+                    <p class="ctx-header-description">{{ description|vue_escape }}</p>
+                    {% endif %}
+                </div>
+                {% set aside = caller('aside') %}
+                {% if aside|trim %}<div class="ctx-header-aside">{{ aside }}</div>{% endif %}
+            </div>
+
+            {% set stats = caller('stats') %}
+            {% set actions = caller('actions') %}
+            {% if stats|trim or actions|trim %}
+            <div class="ctx-header-meta">
+                {{ stats }}
+                {% if actions|trim %}<div class="ctx-header-actions">{{ actions }}</div>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        {% set toolbar = caller('toolbar') %}
+        {% if toolbar|trim %}<div class="ctx-filter-bar">{{ toolbar }}</div>{% endif %}
+    </section>
+</div>
+{%- endmacro %}
+
+
+{#- Counter pastille. value is shown in bold before label; href makes it a link;
+    alert is a Vue expression that shows a red dot when true. -#}
+{% macro header_stat(icon, value='', label='', href='', title='', alert='', attrs='') -%}
+{% set tag = 'a' if href else 'span' %}
+<{{ tag }} class="ctx-meta-item"{% if href %} href="{{ href }}"{% endif %}{% if title %} title="{{ title }}"{% endif %} {{ attrs|safe }}>
+    <i class="{{ icon }}"></i>{% if value %}<strong>{{ value }}</strong>{% endif %}{{ label }}
+    {%- if alert %}<span v-if="{{ alert }}" class="ctx-meta-alert" aria-hidden="true"></span>{% endif %}
+</{{ tag }}>
+{%- endmacro %}
+
+
+{#- Main action button (Flowintel blue). A link when href is set, a <button> otherwise. -#}
+{% macro header_button(label, href='', icon='fa-solid fa-plus', title='', attrs='') -%}
+{% if href %}
+<a class="ctx-brand-btn ctx-push" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
+{% else %}
+<button type="button" class="ctx-brand-btn ctx-push" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+
+{#- Secondary action (grey outline), e.g. "Back to users" on a form page or "Scan" next to
+    the main button. A link when href is set, a <button> otherwise (use attrs for @click). -#}
+{% macro header_link(label, href='', icon='fa-solid fa-arrow-left', title='', attrs='') -%}
+{% if href %}
+<a class="ctx-ghost-btn ctx-push" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
+{% else %}
+<button type="button" class="ctx-ghost-btn ctx-push" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
+{% endif %}
+{%- endmacro %}
+
+
+{#- "Filters" button opening a Bootstrap modal (target: '#modalId'). active is an optional
+    Vue expression: when true the button is highlighted and shows a dot. -#}
+{% macro header_filters(target, active='', label='Filters') -%}
+<button type="button" class="ctx-ghost-btn ctx-filters-btn"{% if active %} :class="{active: {{ active }}}"{% endif %} data-bs-toggle="modal" data-bs-target="{{ target }}" title="{{ label }}">
+    <i class="fa-solid fa-sliders fa-sm"></i>{{ label }}
+    {%- if active %}<span v-if="{{ active }}" class="ctx-ghost-dot" aria-label="Filters applied"></span>{% endif %}
+</button>
+{%- endmacro %}
+
+
+{#- Search field, always shown first (left) in the filter bar. Either oninput (Vue handler)
+    or model (a v-model target, e.g. 'filters.query'). -#}
+{% macro header_search(placeholder, oninput='onInput', model='') -%}
+<div class="ctx-search">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <input autocomplete="off" {% if model %}v-model.trim="{{ model }}"{% else %}@input="{{ oninput }}"{% endif %} type="search" class="form-control form-control-sm" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
+</div>
+{%- endmacro %}
+
+
+{#- Select menu. options: [{'value': ..., 'label': ...}] and/or options_expr, a Vue array of
+    {value, label} objects rendered with v-for. model is a v-model target; use attrs instead
+    for a custom binding (e.g. ':value="x" @change="y($event.target.value)"'). -#}
+{% macro header_select(options=[], model='', label='', options_expr='', title='', attrs='') -%}
+<label class="ctx-select"{% if title %} title="{{ title }}"{% endif %}>
+    {% if label %}<span>{{ label }}</span>{% endif %}
+    <select class="form-select form-select-sm" aria-label="{{ label or title }}"{% if model %} v-model="{{ model }}"{% endif %} {{ attrs|safe }}>
+        {% if options_expr %}<option v-for="opt in {{ options_expr }}" :value="opt.value">[[ opt.label ]]</option>{% endif %}
+        {% for opt in options %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
+    </select>
+</label>
+{%- endmacro %}
+
+
+{#- Small switch. attrs carries the Vue bindings (':checked="..." @click="..."'). -#}
+{% macro header_switch(label, id, attrs='', title='') -%}
+<div class="form-check form-switch ctx-switch mb-0"{% if title %} title="{{ title }}"{% endif %}>
+    <input class="form-check-input" type="checkbox" role="switch" id="{{ id }}" {{ attrs|safe }}>
+    <label class="form-check-label" for="{{ id }}">{{ label }}</label>
+</div>
+{%- endmacro %}
+
+
+{#- Small text/number field bound with v-model, e.g. a "case ID" filter. -#}
+{% macro header_input(model, placeholder, type='text', title='', attrs='') -%}
+<input class="form-control form-control-sm ctx-input" type="{{ type }}" v-model="{{ model }}" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}"{% if title %} title="{{ title }}"{% endif %} {{ attrs|safe }}>
+{%- endmacro %}
+
+
+{#- Segmented control. options: [{'value': 'all', 'label': 'All', 'icon': '', 'title': '', 'badge': ''}, ...]
+    badge is an optional Vue expression shown as a small red counter when truthy.
+    active and click are Vue expressions where {value} is replaced by each option value,
+    e.g. active="current_filter === '{value}'", click="applyFilter('{value}')". -#}
+{% macro header_segmented(options, active, click, label='', aria='') -%}
+{% if label %}<span class="ctx-filter-label">{{ label }}</span>{% endif %}
+<div class="ctx-seg" role="group" aria-label="{{ aria or label or 'Filter' }}">
+    {% for opt in options %}
+    <button type="button" :class="{active: {{ active|replace('{value}', opt.value) }}}" @click="{{ click|replace('{value}', opt.value) }}"{% if opt.title %} title="{{ opt.title }}"{% endif %}>
+        {%- if opt.icon %}<i class="{{ opt.icon }} fa-sm me-1"></i>{% endif %}{{ opt.label }}
+        {%- if opt.badge %}<span v-if="{{ opt.badge }}" class="ctx-seg-badge">[[ {{ opt.badge }} ]]</span>{% endif %}
+    </button>
+    {% endfor %}
+</div>
+{%- endmacro %}

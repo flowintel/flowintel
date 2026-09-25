@@ -1,0 +1,387 @@
+/*
+  theme-dark.css — Dark theme overrides (first layer).
+
+  Bootstrap 5.3 already switches its own components with <html data-bs-theme="dark">
+  (static/js/theme.js). This file covers Flowintel's own surfaces that still use
+  hard-coded light colours: page background, navbar, footer, cards, page header and
+  its filter bar, list items. Everything is scoped under [data-bs-theme="dark"], so
+  the light theme is untouched.
+*/
+
+/* Flowintel dark theme is navy, not black: a darker family of the sidebar blue (#1f3763) */
+[data-bs-theme="dark"] {
+  --fi-dark-page: #0d1629;
+  --fi-dark-surface: #13203a;
+  --fi-dark-raised: #1b2b4b;
+  --fi-dark-border: #2a3d63;
+  --fi-dark-muted: #9fb0cf;
+  --fi-dark-accent: #8fa8d8;
+
+  /* Bootstrap components (modals, dropdowns, inputs, tables...) use the same navy */
+  --bs-body-bg: var(--fi-dark-surface);
+  --bs-body-bg-rgb: 19, 32, 58;
+  --bs-body-color: #dbe4f3;
+  --bs-body-color-rgb: 219, 228, 243;
+  --bs-emphasis-color: #ffffff;
+  --bs-secondary-color: rgba(219, 228, 243, 0.7);
+  --bs-tertiary-color: rgba(219, 228, 243, 0.5);
+  --bs-secondary-bg: var(--fi-dark-raised);
+  --bs-secondary-bg-rgb: 27, 43, 75;
+  --bs-tertiary-bg: #172642;
+  --bs-tertiary-bg-rgb: 23, 38, 66;
+  --bs-border-color: var(--fi-dark-border);
+  --bs-border-color-translucent: rgba(143, 168, 216, 0.18);
+}
+
+/* ---------- Page, navbar, footer ---------- */
+
+[data-bs-theme="dark"] body {
+  background-color: var(--fi-dark-page);
+}
+
+[data-bs-theme="dark"] .navbar {
+  background-color: var(--fi-dark-surface);
+  border-bottom-color: #070D47;
+}
+
+[data-bs-theme="dark"] footer.site-footer {
+  background-color: var(--fi-dark-surface);
+}
+
+/* ---------- Cards and list items ---------- */
+
+[data-bs-theme="dark"] .case-core-style,
+[data-bs-theme="dark"] .case-tags-style,
+[data-bs-theme="dark"] .case-header-card,
+[data-bs-theme="dark"] .card-stats {
+  background-color: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .case-index-list,
+[data-bs-theme="dark"] .list-group-item {
+  background-color: var(--fi-dark-raised);
+  border-color: var(--fi-dark-border);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .case-meta-item,
+[data-bs-theme="dark"] .ticket-badge,
+[data-bs-theme="dark"] .case-visibility-badge {
+  background-color: var(--fi-dark-raised);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .case-title,
+[data-bs-theme="dark"] .case-meta-item .meta-value {
+  color: var(--bs-emphasis-color);
+}
+
+/* ---------- Shared page header (page_header.css) ---------- */
+
+/* the home hero keeps its own gradient: only the plain header card is darkened */
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) {
+  background: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-header-title {
+  color: var(--bs-emphasis-color);
+}
+
+[data-bs-theme="dark"] .ctx-header-description,
+[data-bs-theme="dark"] .ctx-filter-label,
+[data-bs-theme="dark"] .ctx-select,
+[data-bs-theme="dark"] .ctx-switch,
+[data-bs-theme="dark"] .ctx-breadcrumb,
+[data-bs-theme="dark"] .ctx-breadcrumb-home,
+[data-bs-theme="dark"] .ctx-breadcrumb-link {
+  color: var(--fi-dark-muted);
+}
+
+[data-bs-theme="dark"] .ctx-breadcrumb-link[aria-current="page"] {
+  color: var(--bs-emphasis-color);
+}
+
+[data-bs-theme="dark"] .ctx-filter-bar {
+  border-top-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-meta-item {
+  background: rgba(143, 168, 216, 0.1);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-meta-item strong {
+  color: #cfdcf5;
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-meta-item i {
+  color: var(--fi-dark-accent);
+}
+
+[data-bs-theme="dark"] .ctx-seg {
+  background: var(--fi-dark-raised);
+}
+
+[data-bs-theme="dark"] .ctx-seg button,
+[data-bs-theme="dark"] .ctx-seg-check label {
+  color: var(--fi-dark-muted);
+}
+
+[data-bs-theme="dark"] .ctx-seg button.active,
+[data-bs-theme="dark"] .ctx-seg-check .btn-check:checked + label {
+  background: #2c4270;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .ctx-ghost-btn,
+[data-bs-theme="dark"] .ctx-chip {
+  background: transparent;
+  border-color: var(--fi-dark-border);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .btn-check:checked + .ctx-chip {
+  background: rgba(143, 168, 216, 0.15);
+  border-color: var(--fi-dark-accent);
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-brand-btn {
+  background: #3b5a94;
+}
+
+[data-bs-theme="dark"] .ctx-header:not(.ctx-header--hero) .ctx-brand-btn:not(:disabled):hover {
+  background: #4a6cad;
+}
+
+/* ---------- Shared tables (context_table.css) ---------- */
+
+[data-bs-theme="dark"] .ctx-table-wrap {
+  background: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-table thead th,
+[data-bs-theme="dark"] .ctx-pagination {
+  background: var(--fi-dark-raised);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-table td {
+  color: var(--bs-body-color);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-row:hover,
+[data-bs-theme="dark"] .ctx-row.is-open,
+[data-bs-theme="dark"] .ctx-detail-row > td {
+  background: var(--fi-dark-raised);
+}
+
+[data-bs-theme="dark"] .ctx-detail {
+  background: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .ctx-name {
+  color: var(--bs-emphasis-color);
+}
+
+/* ---------- Case list, case view (core.css) ---------- */
+
+[data-bs-theme="dark"] .case-card {
+  background: var(--fi-dark-raised);
+  border-bottom-color: var(--fi-dark-border);
+  box-shadow: none;
+}
+
+[data-bs-theme="dark"] .case-title-index {
+  color: var(--bs-emphasis-color);
+}
+
+[data-bs-theme="dark"] .case-tags-style .link-style-first {
+  background: var(--fi-dark-raised);
+}
+
+[data-bs-theme="dark"] .case-tags-style .link-style-first .org-initial {
+  background: #2c4270;
+  color: #dbe4f3;
+}
+
+[data-bs-theme="dark"] #case-main-nav .nav-tabs>li>button,
+[data-bs-theme="dark"] #collapseTasks>.nav-tabs>li>button,
+[data-bs-theme="dark"] .section-title,
+[data-bs-theme="dark"] .section-title i {
+  color: var(--fi-dark-muted);
+}
+
+[data-bs-theme="dark"] #case-main-nav .nav-tabs>li>button.active,
+[data-bs-theme="dark"] #collapseTasks>.nav-tabs>li>button.active {
+  color: #9ec5fe;
+  border-bottom-color: #9ec5fe;
+}
+
+/* ---------- Text too dark on the navy background (found by the dark-mode audit) ---------- */
+
+[data-bs-theme="dark"] .ctx-section-title,
+[data-bs-theme="dark"] .fi-list-title,
+[data-bs-theme="dark"] .ctx-detail-title,
+[data-bs-theme="dark"] .ctx-detail-meta strong,
+[data-bs-theme="dark"] .ctx-usage-grid h6,
+[data-bs-theme="dark"] .ctx-sort.is-sorted {
+  color: var(--bs-emphasis-color);
+}
+
+[data-bs-theme="dark"] .case-meta-item .meta-label,
+[data-bs-theme="dark"] .ctx-section-title i,
+[data-bs-theme="dark"] legend.analyzer-select-case {
+  color: var(--fi-dark-muted);
+}
+
+[data-bs-theme="dark"] .show-more-btn,
+[data-bs-theme="dark"] .text-primary {
+  color: #6ea8fe !important;
+}
+
+[data-bs-theme="dark"] .text-success {
+  color: #75b798 !important;
+}
+
+/* ---------- Opened task, select2 ---------- */
+
+[data-bs-theme="dark"] .task-panel {
+  background-color: var(--fi-dark-page);
+}
+
+[data-bs-theme="dark"] .task-section {
+  background-color: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection,
+[data-bs-theme="dark"] .select2-selection {
+  background-color: var(--bs-body-bg);
+  border-color: var(--fi-dark-border);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .select2-dropdown,
+[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown {
+  background-color: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .select2-results__option--highlighted {
+  background-color: #2c4270 !important;
+  color: #fff !important;
+}
+
+/* ---------- Calendar (FullCalendar) ---------- */
+
+[data-bs-theme="dark"] #calendar {
+  background-color: var(--fi-dark-surface);
+  --fc-page-bg-color: var(--fi-dark-surface);
+  --fc-neutral-bg-color: var(--fi-dark-raised);
+  --fc-border-color: var(--fi-dark-border);
+  --fc-today-bg-color: rgba(143, 168, 216, 0.14);
+  --fc-list-event-hover-bg-color: var(--fi-dark-raised);
+}
+
+[data-bs-theme="dark"] #calendar a,
+[data-bs-theme="dark"] #calendar .fc-toolbar-title,
+[data-bs-theme="dark"] #calendar th {
+  color: var(--bs-body-color);
+  background-color: transparent;
+}
+
+/* ---------- Alert triage (alerting.css) ---------- */
+
+[data-bs-theme="dark"] .review-panel,
+[data-bs-theme="dark"] .config-panel {
+  background: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+/* ---------- Analyser ---------- */
+
+[data-bs-theme="dark"] fieldset.analyzer-select-case,
+[data-bs-theme="dark"] legend.analyzer-select-case {
+  background-color: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+/* ---------- Tag / taxonomy pills (context_table.css) ---------- */
+
+[data-bs-theme="dark"] .ctx-pill {
+  background: rgba(143, 168, 216, 0.14);
+  color: #cfdcf5;
+}
+
+[data-bs-theme="dark"] .ctx-pill-muted {
+  background: var(--fi-dark-raised);
+  color: var(--fi-dark-muted);
+}
+
+/* ---------- Statistics page (stat.css has its own variables) ---------- */
+
+[data-bs-theme="dark"] {
+  --stats-ink: #eaf0fb;
+  --stats-muted: #9fb0cf;
+  --stats-panel: var(--fi-dark-surface);
+  --stats-border: var(--fi-dark-border);
+  --stats-shadow: none;
+  --stats-accent-soft: #1d3157;
+  --stats-success-soft: #173a31;
+  --stats-warn-soft: #3a3217;
+  --stats-danger-soft: #3d1f24;
+}
+
+[data-bs-theme="dark"] .stats-filter-bar,
+[data-bs-theme="dark"] .stats-panel,
+[data-bs-theme="dark"] .stats-card,
+[data-bs-theme="dark"] .stats-modal-card {
+  background: var(--fi-dark-surface);
+  border-color: var(--fi-dark-border);
+}
+
+[data-bs-theme="dark"] .stats-card.soft-accent { background: linear-gradient(180deg, var(--stats-accent-soft), var(--fi-dark-surface)); }
+[data-bs-theme="dark"] .stats-card.soft-success { background: linear-gradient(180deg, var(--stats-success-soft), var(--fi-dark-surface)); }
+[data-bs-theme="dark"] .stats-card.soft-warning { background: linear-gradient(180deg, var(--stats-warn-soft), var(--fi-dark-surface)); }
+[data-bs-theme="dark"] .stats-card.soft-danger { background: linear-gradient(180deg, var(--stats-danger-soft), var(--fi-dark-surface)); }
+
+[data-bs-theme="dark"] .stats-tabs .nav-link {
+  background: var(--fi-dark-raised);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .stats-tabs .nav-link.active {
+  background: #3b5a94;
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .stats-detail-hero,
+[data-bs-theme="dark"] .stats-detail-list li {
+  background: var(--fi-dark-raised);
+  border-color: var(--fi-dark-border);
+}
+
+/* ---------- TEMPORARY safety net: light colours still written in inline style="" ----------
+   Inline styles beat any CSS rule, so they are forced here in dark mode only. Each one should
+   be replaced by a class (like .task-panel) as pages are cleaned; then this block goes away. */
+
+[data-bs-theme="dark"] [style*="background-color: whitesmoke"],
+[data-bs-theme="dark"] [style*="background-color:whitesmoke"],
+[data-bs-theme="dark"] [style*="background: whitesmoke"],
+[data-bs-theme="dark"] [style*="background-color: #fff;"],
+[data-bs-theme="dark"] [style*="background-color: white"],
+[data-bs-theme="dark"] [style*="background: #fff;"],
+[data-bs-theme="dark"] [style*="background-color: #f8f9fa"] {
+  background-color: var(--fi-dark-raised) !important;
+}
+
+[data-bs-theme="dark"] .alert-console {
+  color: var(--bs-body-color);
+}

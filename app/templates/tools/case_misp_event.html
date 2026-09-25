@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
 {{ super() }}
@@ -11,11 +12,7 @@
 
 {% block content %}
 
-    <div class="case-core-style" style="border-radius: 0">
-        <h5 class="mb-0"><i class="fa-solid fa-file-circle-plus me-2"></i>Create a case from a MISP Event</h5>
-    </div>
-
-    <hr class="fading-line-2 mt-4 mb-4">
+    {% call(section) page_header('Create a case from a MISP event', 'fa-solid fa-file-circle-plus', 'Pick a MISP event: its objects and attributes become a new case.') %}{% endcall %}
 
     {% if not can_use_misp %}
     <div class="container-fluid w-75">

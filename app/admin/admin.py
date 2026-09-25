@@ -463,7 +463,9 @@ def get_taxonomies_page():
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
     enabled = request.args.get('enabled', None, type=str)
-    return {"taxonomies": AdminModel.get_taxonomies_page(page, name=name, enabled=enabled)}
+    sort = request.args.get('sort', None, type=str)
+    order = request.args.get('order', 'asc', type=str)
+    return {"taxonomies": AdminModel.get_taxonomies_page(page, name=name, enabled=enabled, sort=sort, order=order)}
 
 @admin_blueprint.route("/nb_page_taxo", methods=['GET'])
 @login_required
@@ -540,7 +542,9 @@ def get_galaxies_page():
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
     enabled = request.args.get('enabled', None, type=str)
-    gal = AdminModel.get_galaxies_page(page, name=name, enabled=enabled)
+    sort = request.args.get('sort', None, type=str)
+    order = request.args.get('order', 'asc', type=str)
+    gal = AdminModel.get_galaxies_page(page, name=name, enabled=enabled, sort=sort, order=order)
     return {"galaxies": gal}
 
 @admin_blueprint.route("/nb_page_galaxies", methods=['GET'])
