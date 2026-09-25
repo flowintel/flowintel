@@ -15,7 +15,6 @@
         {% elif section == 'toolbar' %}
             {{ header_search('Search organisations by name') }}
             {% if current_user.is_admin() %}
-                <a class="ctx-ghost-btn ms-auto" href="/admin/add_user" title="Add a user"><i class="fa-solid fa-user-plus fa-sm"></i>New user</a>
                 {{ header_button('New organisation', href='/admin/add_org', title='Add organisation') }}
             {% endif %}
         {% endif %}
