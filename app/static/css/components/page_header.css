@@ -362,7 +362,62 @@ a.ctx-meta-item:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-/* Same look for native checkbox/radio toggles (<input class="btn-check"> + <label>) */
+/* Independent on/off filters (checkboxes): separate pills with a check mark when on.
+   Markup: <div class="ctx-chips"><input class="btn-check" type="checkbox" id="x"><label class="ctx-chip" for="x">..</label></div> */
+.ctx-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.ctx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  border: 1px solid #dee2e6;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  background: #fff;
+  color: #6c757d;
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ctx-chip:hover {
+  border-color: #adb5bd;
+  color: #212529;
+}
+
+.ctx-chip::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid #adb5bd;
+  border-radius: 3px;
+  background: #fff center / 0.6rem no-repeat;
+}
+
+.btn-check:checked + .ctx-chip {
+  border-color: #b6c6e3;
+  background: #F4F5FE;
+  color: #1f3763;
+}
+
+.btn-check:checked + .ctx-chip::before {
+  border-color: #1f3763;
+  background-color: #1f3763;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m3 8 3 3 7-7'/%3e%3c/svg%3e");
+}
+
+.btn-check:focus-visible + .ctx-chip {
+  outline: 2px solid #86b7fe;
+}
+
+/* One-of-several choice with native radios (<input class="btn-check" type="radio"> + <label>),
+   same look as header_segmented() */
 .ctx-seg-check label {
   margin: 0;
   border-radius: 999px;

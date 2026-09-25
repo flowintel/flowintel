@@ -44,16 +44,13 @@
             {{ header_button('Download calendar feed', icon='fa-solid fa-calendar-plus', title='Download an iCalendar feed of your cases and tasks', attrs='@click="downloadCalendarFeed"') }}
         {% elif section == 'toolbar' %}
             <span class="ctx-filter-label">Show</span>
-            <div class="ctx-seg ctx-seg-check" role="group" aria-label="Calendar item filters">
+            <div class="ctx-chips" role="group" aria-label="Calendar item filters">
                 <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
-                <label for="checkbox-case"><i class="fa-solid fa-folder-open fa-sm me-1"></i>Case</label>
+                <label class="ctx-chip" for="checkbox-case"><i class="fa-solid fa-folder-open fa-sm"></i>Case</label>
                 <input class="btn-check" checked type="checkbox" value="" id="checkbox-task" autocomplete="off" @change="selection_case_task(false, true, $event)">
-                <label for="checkbox-task"><i class="fa-solid fa-list-check fa-sm me-1"></i>Task</label>
-            </div>
-
-            <div class="ctx-seg ctx-seg-check" role="group" aria-label="Task filter">
+                <label class="ctx-chip" for="checkbox-task"><i class="fa-solid fa-list-check fa-sm"></i>Task</label>
                 <input class="btn-check" type="checkbox" value="" id="checkbox-task-assigned" autocomplete="off" @change="selection_assigned_tasks">
-                <label for="checkbox-task-assigned"><i class="fa-solid fa-user-check fa-sm me-1"></i>Assigned to me</label>
+                <label class="ctx-chip" for="checkbox-task-assigned"><i class="fa-solid fa-user-check fa-sm"></i>Assigned to me</label>
             </div>
 
             <span class="ctx-filter-label">Date</span>
