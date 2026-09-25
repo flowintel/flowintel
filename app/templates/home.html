@@ -3,38 +3,31 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/context_header.html' import context_header %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
-<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/page_header.css') }}">
 
 {{ super() }}
 {%endblock%}
 
 {% block content %}
     <!-- Welcome header -->
-    {% set welcome = 'Welcome back, ' ~ (current_user.first_name|vue_escape) ~ ' ' ~ (current_user.last_name|vue_escape) %}
-    {% call(section) context_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
+    {% set welcome = 'Welcome back, ' ~ current_user.first_name ~ ' ' ~ current_user.last_name %}
+    {% call(section) page_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
         {% if section == 'aside' %}
             <span class="ctx-version" v-if="version" title="Flowintel version"><i class="fa-solid fa-code-branch"></i>v[[ version ]]</span>
         {% elif section == 'stats' %}
-            <a v-if="home_stats" href="/case/" class="ctx-meta-item" title="Open cases you can access">
-                <i class="fa-solid fa-folder-open"></i><strong>[[ home_stats.open_cases ]]</strong>open [[ home_stats.open_cases === 1 ? 'case' : 'cases' ]]
-            </a>
-            <a v-if="home_stats" href="/my_assignment/" class="ctx-meta-item" title="Tasks assigned to you">
-                <i class="fa-solid fa-list-check"></i><strong>[[ home_stats.assigned_tasks ]]</strong>[[ home_stats.assigned_tasks === 1 ? 'task' : 'tasks' ]] assigned
-            </a>
-            <a v-if="home_stats" href="/notification/" class="ctx-meta-item" title="Unread notifications">
-                <i class="fa-solid fa-bell"></i><strong>[[ home_stats.notifications ]]</strong>[[ home_stats.notifications === 1 ? 'notification' : 'notifications' ]]
-                <span v-if="home_stats.notifications > 0" class="ctx-meta-alert" aria-label="Unread"></span>
-            </a>
-            <span v-if="!home_stats" class="ctx-meta-item"><span class="spinner-border spinner-border-sm"></span>Loading...</span>
+            {{ header_stat('fa-solid fa-folder-open', "[[ home_stats.open_cases ]]", "open [[ home_stats.open_cases === 1 ? 'case' : 'cases' ]]",
+                           href='/case/', title='Open cases you can access', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-list-check', "[[ home_stats.assigned_tasks ]]", "[[ home_stats.assigned_tasks === 1 ? 'task' : 'tasks' ]] assigned",
+                           href='/my_assignment/', title='Tasks assigned to you', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-bell', "[[ home_stats.notifications ]]", "[[ home_stats.notifications === 1 ? 'notification' : 'notifications' ]]",
+                           href='/notification/', title='Unread notifications', alert='home_stats.notifications > 0', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-spinner fa-spin', label='Loading...', attrs='v-if="!home_stats"') }}
         {% elif section == 'actions' %}
             {% if not current_user.read_only() %}
-                <a class="ctx-brand-btn" href="/case/create_case" title="Create a case">
-                    <i class="fa-solid fa-plus fa-sm"></i>New case
-                </a>
+                {{ header_button('New case', href='/case/create_case', title='Create a case') }}
             {% endif %}
         {% endif %}
     {% endcall %}

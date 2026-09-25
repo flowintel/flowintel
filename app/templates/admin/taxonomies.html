@@ -3,29 +3,27 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/context_header.html' import context_header %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
     {{ super() }}
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/page_header.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
 
 {% block content %}
-    {% call(section) context_header('Taxonomies', 'fa-solid fa-tag', 'MISP taxonomies whose tags can be applied to cases and tasks.') %}
+    {% call(section) page_header('Taxonomies', 'fa-solid fa-tag', 'MISP taxonomies whose tags can be applied to cases and tasks.') %}
         {% if section == 'stats' %}
             <template v-if="taxonomy_counts">
-                <span class="ctx-meta-item" title="Total taxonomies"><i class="fa-solid fa-layer-group"></i><strong>[[ taxonomy_counts.total ]]</strong>taxonomies</span>
-                <span class="ctx-meta-item" title="Enabled taxonomies"><i class="fa-solid fa-circle-check"></i><strong>[[ taxonomy_counts.enabled ]]</strong>enabled</span>
-                <span class="ctx-meta-item" title="Disabled taxonomies"><i class="fa-solid fa-ban"></i><strong>[[ taxonomy_counts.total - taxonomy_counts.enabled ]]</strong>disabled</span>
+                {{ header_stat('fa-solid fa-layer-group', '[[ taxonomy_counts.total ]]', 'taxonomies', title='Total taxonomies') }}
+                {{ header_stat('fa-solid fa-circle-check', '[[ taxonomy_counts.enabled ]]', 'enabled', title='Enabled taxonomies') }}
+                {{ header_stat('fa-solid fa-ban', '[[ taxonomy_counts.total - taxonomy_counts.enabled ]]', 'disabled', title='Disabled taxonomies') }}
             </template>
         {% elif section == 'toolbar' %}
-            <span class="ctx-filter-label">Show</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
-                <button type="button" class="btn" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all taxonomies">All</button>
-                <button type="button" class="btn" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled taxonomies">Enabled</button>
-                <button type="button" class="btn" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled taxonomies">Not enabled</button>
-            </div>
+            {{ header_segmented([
+                    {'value': 'all', 'label': 'All', 'title': 'Show all taxonomies'},
+                    {'value': 'enabled', 'label': 'Enabled', 'title': 'Show enabled taxonomies'},
+                    {'value': 'disabled', 'label': 'Not enabled', 'title': 'Show disabled taxonomies'},
+                ], active="current_filter === '{value}'", click="applyFilter('{value}')", label='Show') }}
             <div class="btn-group btn-group-sm" role="group" v-if="is_admin">
                 <button type="button" class="btn btn-outline-success" @click="bulkSetStatus(false)" title="Enable all taxonomies on this page">
                     <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable page
@@ -34,10 +32,7 @@
                     <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable page
                 </button>
             </div>
-            <div class="ctx-search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search taxonomies by name" aria-label="Search taxonomies by name">
-            </div>
+            {{ header_search('Search taxonomies by name') }}
         {% endif %}
     {% endcall %}
 

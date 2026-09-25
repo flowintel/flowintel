@@ -2,7 +2,7 @@
   page_header.css — Page header shared by the list pages (home, cases, custom tags,
   taxonomies, galaxies): one white card with the title, counters and filter bar,
   plus the larger "hero" variant used on the home page.
-  Markup comes from templates/macros/context_header.html.
+  Markup comes from templates/macros/page_header.html. Loaded by base.html.
 */
 
 :root {
@@ -74,6 +74,8 @@
 
 .ctx-header-title {
   margin: 0;
+  font-size: calc(1.275rem + 0.3vw);
+  line-height: 1.2;
   font-weight: 600;
   color: var(--ctx-brand-dark);
 }
@@ -430,6 +432,12 @@ a.ctx-meta-item:hover {
   background: #fff4db;
   color: #7a5200;
   font-size: 0.82rem;
+}
+
+@media (min-width: 1200px) {
+  .ctx-header-title {
+    font-size: 1.5rem;
+  }
 }
 
 @media (max-width: 767px) {

@@ -3,36 +3,29 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/context_header.html' import context_header %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
     {{ super() }}
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/page_header.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
 
 {% block content %}
-    {% call(section) context_header('Custom tags', 'fa-solid fa-user-tag', 'Tags defined by your team, with their own colour and icon.') %}
+    {% call(section) page_header('Custom tags', 'fa-solid fa-user-tag', 'Tags defined by your team, with their own colour and icon.') %}
         {% if section == 'stats' %}
-                <span class="ctx-meta-item" title="Total custom tags"><i class="fa-solid fa-layer-group"></i><strong>[[ custom_tag_config.length ]]</strong>custom tags</span>
-                <span class="ctx-meta-item" title="Active custom tags"><i class="fa-solid fa-circle-check"></i><strong>[[ nb_active ]]</strong>active</span>
-                <span class="ctx-meta-item" title="Custom tags used in cases, tasks or templates"><i class="fa-solid fa-link"></i><strong>[[ nb_in_use ]]</strong>in use</span>
+            {{ header_stat('fa-solid fa-layer-group', '[[ custom_tag_config.length ]]', 'custom tags', title='Total custom tags') }}
+            {{ header_stat('fa-solid fa-circle-check', '[[ nb_active ]]', 'active', title='Active custom tags') }}
+            {{ header_stat('fa-solid fa-link', '[[ nb_in_use ]]', 'in use', title='Custom tags used in cases, tasks or templates') }}
         {% elif section == 'toolbar' %}
-            <span class="ctx-filter-label">Show</span>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
-                <button type="button" class="btn" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'all'" title="Show all custom tags">All</button>
-                <button type="button" class="btn" :class="current_filter === 'active' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'active'" title="Show active custom tags">Active</button>
-                <button type="button" class="btn" :class="current_filter === 'inactive' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'inactive'" title="Show inactive custom tags">Inactive</button>
-                <button type="button" class="btn" :class="current_filter === 'unused' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'unused'" title="Show custom tags not used anywhere">Unused</button>
-            </div>
-            <div class="ctx-search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search custom tags" aria-label="Search custom tags">
-            </div>
+            {{ header_segmented([
+                    {'value': 'all', 'label': 'All', 'title': 'Show all custom tags'},
+                    {'value': 'active', 'label': 'Active', 'title': 'Show active custom tags'},
+                    {'value': 'inactive', 'label': 'Inactive', 'title': 'Show inactive custom tags'},
+                    {'value': 'unused', 'label': 'Unused', 'title': 'Show custom tags not used anywhere'},
+                ], active="current_filter === '{value}'", click="current_filter = '{value}'", label='Show') }}
+            {{ header_search('Search custom tags') }}
             {% if not current_user.read_only() %}
-                <a class="ctx-brand-btn" href="/custom_tags/add" title="Add a new custom tag">
-                    <i class="fa-solid fa-plus fa-sm"></i>New custom tag
-                </a>
+                {{ header_button('New custom tag', href='/custom_tags/add', title='Add a new custom tag') }}
             {% endif %}
         {% endif %}
     {% endcall %}

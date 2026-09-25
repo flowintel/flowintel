@@ -3,11 +3,10 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/context_header.html' import context_header %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
-<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/page_header.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
 <title>Cases - {{ config.APP_NAME }}</title>
@@ -16,26 +15,18 @@
 
 
 {% block content %}
-    {% call(section) context_header('Cases', 'fa-solid fa-folder-open', 'Investigations your organisation is taking part in.') %}
+    {% call(section) page_header('Cases', 'fa-solid fa-folder-open', 'Investigations your organisation is taking part in.') %}
         {% if section == 'stats' %}
-            <span class="ctx-meta-item" v-if="is_open_cases" title="Current view"><i class="fa-solid fa-folder-open"></i><strong>Open</strong>cases</span>
-            <span class="ctx-meta-item" v-else title="Current view"><i class="fa-solid fa-folder-closed"></i><strong>Finished</strong>cases</span>
-            <span class="ctx-meta-item" v-if="case_list && case_list.nb_pages" title="Pagination"><i class="fa-solid fa-book-open"></i>page<strong>[[ current_page ]]</strong>of [[ case_list.nb_pages ]]</span>
+            {{ header_stat('fa-solid fa-folder-open', 'Open', 'cases', title='Current view', attrs='v-if="is_open_cases"') }}
+            {{ header_stat('fa-solid fa-folder-closed', 'Finished', 'cases', title='Current view', attrs='v-else') }}
+            {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ case_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-if="case_list && case_list.nb_pages"') }}
         {% elif section == 'toolbar' %}
-            <!-- Search bar -->
-            <div class="ctx-search ctx-search-start">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search case by title" aria-label="Search case by title">
-            </div>
+            {{ header_search('Search case by title', start=True) }}
 
-            <div class="ctx-seg" role="group" aria-label="Case status">
-                <button type="button" :class="{active: is_open_cases}" @click="!is_open_cases && change_status_sort(true)" title="See open cases">
-                    <i class="fa-solid fa-folder-open fa-sm me-1"></i>Open
-                </button>
-                <button type="button" :class="{active: !is_open_cases}" @click="is_open_cases && change_status_sort(false)" title="See finished cases">
-                    <i class="fa-solid fa-folder-closed fa-sm me-1"></i>Finished
-                </button>
-            </div>
+            {{ header_segmented([
+                    {'value': 'true', 'label': 'Open', 'icon': 'fa-solid fa-folder-open', 'title': 'See open cases'},
+                    {'value': 'false', 'label': 'Finished', 'icon': 'fa-solid fa-folder-closed', 'title': 'See finished cases'},
+                ], active='is_open_cases === {value}', click='is_open_cases !== {value} && change_status_sort({value})', aria='Case status') }}
 
             <label class="ctx-select">
                 <span>Sort</span>
@@ -59,9 +50,7 @@
             </button>
 
             {% if not current_user.read_only() %}
-                <a class="ctx-brand-btn" href="/case/create_case" title="Create new case">
-                    <i class="fa-solid fa-plus fa-sm"></i>New case
-                </a>
+                {{ header_button('New case', href='/case/create_case', title='Create new case') }}
             {% endif %}
         {% endif %}
     {% endcall %}
