@@ -26,7 +26,7 @@
 
     Sections (all optional, an empty section is not rendered):
         stats    counters shown next to the title          -> header_stat()
-        actions  main button after the counters            -> header_button()
+        actions  main button after the counters            -> header_button(), header_link()
         aside    small info on the right of the title      -> e.g. <span class="ctx-version">
         toolbar  filter bar under a divider                -> header_search(), header_segmented(),
                                                               header_button(), or custom markup
@@ -90,6 +90,13 @@
 {% else %}
 <button type="button" class="ctx-brand-btn" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</button>
 {% endif %}
+{%- endmacro %}
+
+
+{#- Secondary action (grey outline), e.g. "Back to users" on a form page or an extra
+    shortcut next to the main button. -#}
+{% macro header_link(label, href, icon='fa-solid fa-arrow-left', title='', attrs='') -%}
+<a class="ctx-ghost-btn" href="{{ href }}" title="{{ title or label }}" {{ attrs|safe }}><i class="{{ icon }} fa-sm"></i>{{ label }}</a>
 {%- endmacro %}
 
 

@@ -2,22 +2,22 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}{{ super() }}<meta name="sidebar-active" content="/admin/orgs">{% endblock %}
 
 {% block content %}
     {% if not edit_mode %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-building-circle-arrow-right me-2"></i>Create an organisation</h5>
-        </div>
+        {% set header = ('Create an organisation', 'fa-solid fa-building-circle-arrow-right', 'Add an organisation that users and cases can belong to.') %}
     {% else %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-building-circle-check me-2"></i>Edit an organisation</h5>
-        </div>
+        {% set header = ('Edit an organisation', 'fa-solid fa-building-circle-check', 'Update the details of this organisation.') %}
     {% endif %}
-
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header(header[0], header[1], header[2]) %}
+        {% if section == 'actions' %}
+            {{ header_link('Organisations', '/admin/orgs', title='Back to the organisations list') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}

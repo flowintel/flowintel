@@ -2,36 +2,36 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}{{ super() }}<meta name="sidebar-active" content="/admin/users">{% endblock %}
 
 {% block content %}
     {% if not edit_mode %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-user-plus me-2"></i>Create an account</h5>
-        </div>
+        {% set header = ('Create an account', 'fa-solid fa-user-plus', 'Add a user and choose their organisation and role.') %}
     {% else %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-user-pen me-2"></i>Edit an account</h5>
-        </div>
+        {% set header = ('Edit an account', 'fa-solid fa-user-pen', 'Update the profile, organisation or role of this user.') %}
     {% endif %}
+    {% call(section) page_header(header[0], header[1], header[2]) %}
+        {% if section == 'actions' %}
+            {{ header_link('Users', '/admin/users', title='Back to the users list') }}
+        {% endif %}
+    {% endcall %}
 
     {% if edit_mode and from_notification %}
-        <div class="alert alert-info mt-3 mb-0" role="alert">
+        <div class="alert alert-info mb-3" role="alert">
             <i class="fa-solid fa-info-circle me-2"></i>
             <strong>Password reset request:</strong> Editing a user profile on request of the user
         </div>
     {% endif %}
 
     {% if edit_mode and from_notif_sso %}
-        <div class="alert alert-primary mt-3 mb-0" role="alert">
+        <div class="alert alert-primary mb-3" role="alert">
             <i class="fa-solid fa-user-shield me-2"></i>
             <strong>New SSO user:</strong> This user was provisioned via single sign-on. Review their role and organisation assignment.
         </div>
     {% endif %}
-
-    <hr class="fading-line-2 mb-4 mt-4">
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
