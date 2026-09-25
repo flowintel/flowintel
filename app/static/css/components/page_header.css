@@ -289,10 +289,16 @@ a.ctx-meta-item:hover {
   font-weight: 600;
 }
 
+/* The search is always the first item of the filter bar, whatever the markup order */
 .ctx-search {
   position: relative;
+  order: -1;
   flex: 1 1 16rem;
-  max-width: 26rem;
+  max-width: 22rem;
+}
+
+/* The main button goes to the right end of the bar (after Filters when there is one) */
+.ctx-filter-bar > .ctx-brand-btn:not(.ctx-ghost-btn ~ .ctx-brand-btn) {
   margin-left: auto;
 }
 
@@ -402,11 +408,6 @@ a.ctx-meta-item:hover {
   background: #0d6efd;
 }
 
-.ctx-search-start {
-  margin-left: 0;
-  max-width: 22rem;
-}
-
 .ctx-search i {
   position: absolute;
   left: 0.7rem;
@@ -460,7 +461,7 @@ a.ctx-meta-item:hover {
   }
 
   .ctx-search {
+    flex-basis: 100%;
     max-width: none;
-    margin-left: 0;
   }
 }

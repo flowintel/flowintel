@@ -93,9 +93,9 @@
 {%- endmacro %}
 
 
-{#- Search field. oninput is the Vue handler; start=True puts it first in the bar. -#}
-{% macro header_search(placeholder, oninput='onInput', start=False) -%}
-<div class="ctx-search{% if start %} ctx-search-start{% endif %}">
+{#- Search field, always shown first (left) in the filter bar. oninput is the Vue handler. -#}
+{% macro header_search(placeholder, oninput='onInput') -%}
+<div class="ctx-search">
     <i class="fa-solid fa-magnifying-glass"></i>
     <input autocomplete="off" @input="{{ oninput }}" type="search" class="form-control form-control-sm" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
 </div>

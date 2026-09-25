@@ -21,7 +21,7 @@
             {{ header_stat('fa-solid fa-folder-closed', 'Finished', 'cases', title='Current view', attrs='v-else') }}
             {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ case_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-if="case_list && case_list.nb_pages"') }}
         {% elif section == 'toolbar' %}
-            {{ header_search('Search case by title', start=True) }}
+            {{ header_search('Search case by title') }}
 
             {{ header_segmented([
                     {'value': 'true', 'label': 'Open', 'icon': 'fa-solid fa-folder-open', 'title': 'See open cases'},
