@@ -362,6 +362,32 @@ a.ctx-meta-item:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+/* Same look for native checkbox/radio toggles (<input class="btn-check"> + <label>) */
+.ctx-seg-check label {
+  margin: 0;
+  border-radius: 999px;
+  padding: 0.22rem 0.8rem;
+  color: #6c757d;
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ctx-seg-check label:hover {
+  color: #212529;
+}
+
+.ctx-seg-check .btn-check:checked + label {
+  background: #fff;
+  color: #212529;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ctx-seg-check .btn-check:focus-visible + label {
+  outline: 2px solid #86b7fe;
+}
+
 .ctx-seg-badge {
   display: inline-block;
   min-width: 1.1rem;
