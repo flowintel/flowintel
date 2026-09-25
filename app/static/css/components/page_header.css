@@ -395,6 +395,10 @@ a.ctx-meta-item:hover {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
+a.ctx-ghost-btn {
+  text-decoration: none;
+}
+
 .ctx-ghost-btn:hover,
 .ctx-ghost-btn.active {
   border-color: #adb5bd;

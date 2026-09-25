@@ -3,27 +3,24 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-building me-2"></i>Organisations</h5>
-                {% if current_user.is_admin() %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/admin/add_org" title="Add organisation"><i class="fa-solid fa-plus fa-sm"></i></a>
-                {% endif %}
-            </div>
+    {% call(section) page_header('Organisations', 'fa-solid fa-building', 'Organisations and the users that belong to them.') %}
+        {% if section == 'stats' %}
+            <template v-if="orgs_list">
+                {{ header_stat('fa-solid fa-building', '[[ orgs_list.orgs.length ]]', "[[ orgs_list.orgs.length === 1 ? 'organisation' : 'organisations' ]]", title='Organisations listed', attrs='v-if="orgs_list.nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ orgs_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search organisations by name') }}
+            {% if current_user.is_admin() %}
+                <a class="ctx-ghost-btn ms-auto" href="/admin/add_user" title="Add a user"><i class="fa-solid fa-user-plus fa-sm"></i>New user</a>
+                {{ header_button('New organisation', href='/admin/add_org', title='Add organisation') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Org by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-    </div>
-
-    <hr class="fading-line-2 mt-4 mb-4">
 
     <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="orgs_list && orgs_list.nb_pages > 1">
         <ul class="pagination">
@@ -42,10 +39,6 @@
     </nav>
 
     <div class="case-core-style">
-        {% if current_user.is_admin() %}
-            <a class="btn btn-outline-success" href="/admin/add_user" type="button" style="margin-bottom: 10px;">New user</a>
-        {% endif %}
-
         <template v-if="orgs_list">
             <template v-for="org in orgs_list.orgs">
                 <div class="list-group" style="margin-bottom: 10px;">
