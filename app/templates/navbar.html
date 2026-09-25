@@ -93,7 +93,7 @@
 
             <!-- Settings -->
             <li class="nav-item">
-                <a class="nav-link me-3 me-lg-0" href="/account" title="My profile">
+                <a class="nav-link me-3 me-lg-0" href="/account/settings" title="Settings">
                     <i class="fas fa-cog"></i>
                 </a>
             </li>
@@ -117,6 +117,7 @@
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="/account" id="account_id">My profile</a>
+                        <a class="dropdown-item" href="/account/settings">Settings</a>
                     </li>
                     {% if current_user.is_authenticated %}
                         <li>

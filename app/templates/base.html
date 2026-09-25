@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+{% set theme_pref = user_theme(current_user) %}
+<html data-theme-pref="{{ theme_pref }}" data-bs-theme="{{ 'dark' if theme_pref == 'dark' else 'light' }}" data-font="{{ user_font(current_user) }}">
     <head>
+        <script src="{{ url_for('static',filename='js/user_settings.js') }}"></script>
         {% block head %}
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -31,6 +33,7 @@
 
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/core.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/components/page_header.css') }}">
+            <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/theme-dark.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/sidebar.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/misp-icons.css') }}">
         {%endblock%}

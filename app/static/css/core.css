@@ -19,6 +19,15 @@
   --bs-body-font-family: "Rubik", sans-serif;
 }
 
+/* Site font chosen in the user settings (<html data-font="...">, UserSettings.font) */
+html[data-font="system"] {
+  --bs-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+}
+
+html[data-font="readable"] {
+  --bs-body-font-family: Verdana, Tahoma, "DejaVu Sans", sans-serif;
+}
+
 body {
   background-color: #fbfbfb;
 }
@@ -942,6 +951,17 @@ a.case-content:hover {
 }
 
 /* New task section styles (modern replacement for analyzer-select-case fieldsets) */
+/* Titles of list items (users, orgs, roles, repositories) */
+.fi-list-title {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Body of an opened task (tabs Main / Notes / Files ...) */
+.task-panel {
+  background-color: whitesmoke;
+}
+
 .task-section {
   background-color: #ffffff;
   border: 1px solid #e9ecef;

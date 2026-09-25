@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
+
+{% block head %}
+<title>Settings - {{ config.APP_NAME }}</title>
+{{ super() }}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/settings.css') }}">
+{% endblock %}
+
+{% block content %}
+    {% call(section) page_header('Settings', 'fa-solid fa-gear', 'Your personal preferences for Flowintel. They only apply to your account.') %}
+        {% if section == 'actions' %}
+            {{ header_link('My profile', '/account/', icon='fa-solid fa-user', title='Your account details') }}
+        {% endif %}
+    {% endcall %}
+
+    <section class="case-core-style settings-section">
+        <div class="settings-section-head">
+            <h2 class="settings-section-title"><i class="fa-solid fa-palette fa-sm me-2"></i>Appearance</h2>
+            <p class="settings-section-text">Choose how Flowintel looks. "System" follows the light or dark mode of your computer.</p>
+        </div>
+
+        <div class="settings-theme-grid" role="radiogroup" aria-label="Theme">
+            {% for value, label, icon in [('light', 'Light', 'fa-sun'), ('dark', 'Dark', 'fa-moon'), ('auto', 'System', 'fa-circle-half-stroke')] %}
+            <button type="button" class="settings-theme-option{% if settings.theme == value %} active{% endif %}" data-setting="theme" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.theme == value else 'false' }}">
+                <span class="settings-theme-preview settings-theme-preview--{{ value }}" aria-hidden="true">
+                    <span class="stp-sidebar"></span>
+                    <span class="stp-body">
+                        <span class="stp-bar"></span>
+                        <span class="stp-card"></span>
+                        <span class="stp-card stp-card--short"></span>
+                    </span>
+                </span>
+                <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }}</span>
+            </button>
+            {% endfor %}
+        </div>
+
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-font fa-sm me-2"></i>Font</h3>
+            <p class="settings-section-text">Font used everywhere in Flowintel.</p>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Font">
+                {% for value, label, hint in [('rubik', 'Rubik', 'Flowintel default'), ('system', 'System', 'Native font of your computer'), ('readable', 'Readable', 'Wide letters, easier to read')] %}
+                <button type="button" class="settings-theme-option settings-font-option{% if settings.font == value %} active{% endif %}" data-setting="font" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.font == value else 'false' }}">
+                    <span class="settings-font-sample settings-font-sample--{{ value }}" aria-hidden="true">
+                        <span class="settings-font-big">Aa</span>
+                        <span class="settings-font-line">Case #4 · Vulnerability exploitation</span>
+                    </span>
+                    <span class="settings-theme-label">{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+{% block script %}
+<script type="module">
+    const { createApp } = Vue
+    import {message_list} from '/static/js/toaster.js'
+
+    createApp({
+        delimiters: ['[[', ']]'],
+        setup() {
+            return { message_list }
+        }
+    }).mount('#main-container')
+</script>
+{% endblock %}

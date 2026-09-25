@@ -25,7 +25,7 @@
                         <!-- Normal view -->
                         <a v-if="editing_role !== role.id" @click="extend_collapse(role.id)" class="list-group-item list-group-item-action case-index-list">
                             <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                <h5 class="mb-1 fi-list-title">
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ role.id ]]- [[ role.name ]]
                                     <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
                                     <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>

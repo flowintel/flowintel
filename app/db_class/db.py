@@ -618,6 +618,30 @@ class Login_Event(db.Model):
     login_date = db.Column(db.DateTime, index=True)
 
 
+class UserSettings(db.Model):
+    """Per-user preferences (one row per user, created on first change).
+
+    Each preference is a column with a default; CHOICES lists the accepted values
+    (used to validate updates, see account/settings_core.py).
+    """
+    CHOICES = {
+        "theme": ("light", "dark", "auto"),
+        "font": ("rubik", "system", "readable"),
+    }
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    theme = db.Column(db.String(16), nullable=False, default="auto", server_default="auto")
+    font = db.Column(db.String(16), nullable=False, default="rubik", server_default="rubik")
+
+    def to_json(self):
+        return {
+            "user_id": self.user_id,
+            "theme": self.theme,
+            "font": self.font,
+        }
+
+
 class Case_Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer)
