@@ -14,7 +14,7 @@
 {%endblock%}
 
 {% block content %}
-    {% call(section) page_header('Edit case #' ~ case_id, 'fa-solid fa-folder-open', form.title.data or '') %}
+    {% call(section) page_header('Edit case #' ~ case_id ~ ' · ' ~ (form.title.data or ''), 'fa-solid fa-folder-open', 'Change the details, deadline and context of this case.') %}
         {% if section == 'actions' %}
             {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
         {% endif %}

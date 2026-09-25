@@ -6,7 +6,7 @@
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    {% call(section) page_header('Recurring case #' ~ case.id, 'fa-solid fa-repeat', case.title) %}
+    {% call(section) page_header('Recurring case', 'fa-solid fa-repeat', 'Case #' ~ case.id ~ ' · ' ~ case.title) %}
         {% if section == 'actions' %}
             {{ header_link('Case #' ~ case.id, '/case/' ~ case.id, title='Back to the case') }}
         {% endif %}

@@ -14,7 +14,7 @@
 {%endblock%}
 
 {% block content %}
-{% call(section) page_header('New task for case #' ~ case_id, 'fa-solid fa-list-check', case.title if case else '') %}
+{% call(section) page_header('New task', 'fa-solid fa-list-check', 'Case #' ~ case_id ~ ((' · ' ~ case.title) if case else '')) %}
     {% if section == 'actions' %}
         {{ header_link('From template', icon='fa-solid fa-file-import', title='From template', attrs='@click="hide_task_creation()" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate"') }}
         {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}

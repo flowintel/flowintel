@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-{% call(section) page_header('Bulk create tasks for case #' ~ case_id, 'fa-solid fa-layer-group', case.title if case else '') %}
+{% call(section) page_header('Bulk create tasks', 'fa-solid fa-layer-group', 'Case #' ~ case_id ~ ((' · ' ~ case.title) if case else '')) %}
     {% if section == 'actions' %}
         {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
     {% endif %}

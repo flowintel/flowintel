@@ -16,7 +16,7 @@
 
 {% block content %}
 
-    {% call(section) page_header('Edit task #' ~ task_id, 'fa-solid fa-list-check', 'Task of case #' ~ case_id) %}
+    {% call(section) page_header('Edit task #' ~ task_id ~ ' · ' ~ task_title, 'fa-solid fa-list-check', 'Case #' ~ case_id ~ ' · ' ~ case_title) %}
         {% if section == 'actions' %}
             {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
         {% endif %}
