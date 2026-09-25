@@ -82,6 +82,8 @@ def create_app():
     app.config['LOG_FILE'] = validate_log_file_name(app.config.get('LOG_FILE', 'record.log'))
     config_class.init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
+    from .utils.breadcrumb import build_breadcrumb
+    app.jinja_env.globals["build_breadcrumb"] = build_breadcrumb
 
     @app.after_request
     def set_security_headers(resp):
