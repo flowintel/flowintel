@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <title>Bulk create tasks - Case #{{ case_id }} - {{ config.APP_NAME }}</title>
@@ -6,11 +7,11 @@
 {% endblock %}
 
 {% block content %}
-<h5 class="mb-0 case-core-style" style="border-radius: 0;">
-    <i class="fa-solid fa-layer-group me-2"></i>Bulk create tasks for Case #{{ case_id }}
-</h5>
-
-<hr class="fading-line-2 mb-4 mt-4">
+{% call(section) page_header('Bulk create tasks for case #' ~ case_id, 'fa-solid fa-layer-group', case.title if case else '') %}
+    {% if section == 'actions' %}
+        {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
+    {% endif %}
+{% endcall %}
 
 {% if case.privileged_case %}
 <div class="alert alert-warning" role="alert">

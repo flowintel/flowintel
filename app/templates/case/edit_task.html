@@ -2,6 +2,7 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
@@ -15,8 +16,11 @@
 
 {% block content %}
 
-    <h5 class="mb-0 case-core-style" style="border-radius: 0;"><i class="fa-solid fa-list-check me-2"></i>Edit task #{{ task_id }} (Case #{{ case_id }})</h5>
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header('Edit task #' ~ task_id, 'fa-solid fa-list-check', 'Task of case #' ~ case_id) %}
+        {% if section == 'actions' %}
+            {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" id="form" class="case-core-style" novalidate>
         {{ form.hidden_tag() }}

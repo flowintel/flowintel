@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -13,14 +14,12 @@
 {%endblock%}
 
 {% block content %}
-<h5 class="mb-0 case-core-style" style="border-radius: 0;">
-    <i class="fa-solid fa-list-check me-2"></i>Create task for Case #{{ case_id }}
-    <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_task_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
-        Create from template
-    </button> 
-</h5>
-
-<hr class="fading-line-2 mb-4 mt-4">
+{% call(section) page_header('New task for case #' ~ case_id, 'fa-solid fa-list-check', case.title if case else '') %}
+    {% if section == 'actions' %}
+        {{ header_link('From template', icon='fa-solid fa-file-import', title='From template', attrs='@click="hide_task_creation()" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate"') }}
+        {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
+    {% endif %}
+{% endcall %}
 
 {% if case and case.privileged_case %}
 <div class="alert alert-warning" role="alert">

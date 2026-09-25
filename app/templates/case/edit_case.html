@@ -2,6 +2,7 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
@@ -13,9 +14,11 @@
 {%endblock%}
 
 {% block content %}
-    <h5 class="mb-0 case-core-style" style="border-radius: 0;"><i class="fa-solid fa-folder-open me-2"></i>Edit case #{{ case_id }}</h5>
-
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header('Edit case #' ~ case_id, 'fa-solid fa-folder-open', form.title.data or '') %}
+        {% if section == 'actions' %}
+            {{ header_link('Case #' ~ case_id, '/case/' ~ case_id, title='Back to the case') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" id="form" novalidate>
         {{ form.hidden_tag() }}

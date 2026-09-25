@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -13,21 +14,19 @@
 {%endblock%}
 
 {% block content %}
-<h5 class="mb-0 case-core-style" style="border-radius: 0;">
-    <i class="fa-solid fa-folder-open me-2"></i>Create case 
-    <button class="btn btn-outline-primary mt-1 mx-3" @click="hide_case_creation()" style="float: right" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
-        From template
-    </button> 
-</h5>
+{% call(section) page_header('Create a case', 'fa-solid fa-folder-open', 'Start a new investigation, from scratch or from a case template.') %}
+    {% if section == 'actions' %}
+        {{ header_link('From template', icon='fa-solid fa-file-import', title='From template', attrs='@click="hide_case_creation()" data-bs-toggle="collapse" data-bs-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate"') }}
+        {{ header_link('Cases', '/case/', title='Back to the cases') }}
+    {% endif %}
+{% endcall %}
 
 {% if config.SHOW_GDPR_NOTICE %}
-<div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
+<div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mb-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
     <i class="fa-solid fa-info-circle me-2"></i>
     <span>{{ config.GDPR_NOTICE }}</span>
 </div>
 {% endif %}
-
-<hr class="fading-line-2 mb-4 mt-4">
 
 <form action="" method="post" class="case-core-style" id="case_form">
     {{ form.hidden_tag() }}
