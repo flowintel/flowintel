@@ -3,156 +3,163 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/context_header.html' import context_header %}
+
+{% block head %}
+    {{ super() }}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/page_header.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
+{% endblock %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-user-tag me-2"></i>Custom tags</h5>
-                {% if not current_user.read_only() %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/custom_tags/add" title="Add a new custom tag"><i class="fa-solid fa-plus fa-sm"></i></a>
-                {% endif %}
+    {% call(section) context_header('Custom tags', 'fa-solid fa-user-tag', 'Tags defined by your team, with their own colour and icon.') %}
+        {% if section == 'stats' %}
+                <span class="ctx-meta-item" title="Total custom tags"><i class="fa-solid fa-layer-group"></i><strong>[[ custom_tag_config.length ]]</strong>custom tags</span>
+                <span class="ctx-meta-item" title="Active custom tags"><i class="fa-solid fa-circle-check"></i><strong>[[ nb_active ]]</strong>active</span>
+                <span class="ctx-meta-item" title="Custom tags used in cases, tasks or templates"><i class="fa-solid fa-link"></i><strong>[[ nb_in_use ]]</strong>in use</span>
+        {% elif section == 'toolbar' %}
+            <span class="ctx-filter-label">Show</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
+                <button type="button" class="btn" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'all'" title="Show all custom tags">All</button>
+                <button type="button" class="btn" :class="current_filter === 'active' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'active'" title="Show active custom tags">Active</button>
+                <button type="button" class="btn" :class="current_filter === 'inactive' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'inactive'" title="Show inactive custom tags">Inactive</button>
+                <button type="button" class="btn" :class="current_filter === 'unused' ? 'btn-primary' : 'btn-outline-secondary'" @click="current_filter = 'unused'" title="Show custom tags not used anywhere">Unused</button>
             </div>
-
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Custom tags' />
+            <div class="ctx-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search custom tags" aria-label="Search custom tags">
             </div>
-        </div>
-    </div>
-        <input type="hidden" id="can_edit_templates" value="{{ 'true' if current_user.is_admin() or current_user.is_template_editor() else 'false' }}">
-    
-    <hr class="fading-line-2 mt-4 mb-4">
+            {% if not current_user.read_only() %}
+                <a class="ctx-brand-btn" href="/custom_tags/add" title="Add a new custom tag">
+                    <i class="fa-solid fa-plus fa-sm"></i>New custom tag
+                </a>
+            {% endif %}
+        {% endif %}
+    {% endcall %}
+    <input type="hidden" id="can_edit_templates" value="{{ 'true' if current_user.is_admin() or current_user.is_template_editor() else 'false' }}">
 
-    <div class="case-core-style">
-        <template v-if="custom_tag_config">
-            <template v-for="custom_tag in custom_tag_config">
-                <div class="list-group" style="margin-bottom: 10px;">
-                    <div style="display:flex;" :style="{'border-top-left-radius': '15px', 'border-top-right-radius': '15px', 'border-bottom-left-radius': custom_tag.show_usage ? '0' : '15px', 'border-bottom-right-radius': custom_tag.show_usage ? '0' : '15px'}">
-                        <a class="list-group-item list-group-item-action case-index-list" @click="toggle_usage(custom_tag)" style="cursor: pointer;" :style="{'border-bottom-left-radius': custom_tag.show_usage ? '0' : '15px', 'border-bottom': custom_tag.show_usage ? 'none' : '1px solid rgba(0,0,0,0.125)'}">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
-                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;" :class="{'fa-angle-down': custom_tag.show_usage}"></i>[[custom_tag.name]]
-                                </h5>
-                                <div class="d-flex align-items-center">
-                                    {% if not current_user.read_only() %}
-                                        <input v-if="custom_tag.is_active || custom_tag.is_active == null" type="checkbox" class="form-check-input me-2" checked @click.stop="change_status(custom_tag)" title="Active">
-                                        <input v-else type="checkbox" class="form-check-input me-2" @click.stop="change_status(custom_tag)" title="Inactive">
-                                    {% else %}
-                                        <span v-if="custom_tag.is_active || custom_tag.is_active == null" class="badge bg-success me-2" title="Active">Active</span>
-                                        <span v-else class="badge bg-danger me-2" title="Inactive">Inactive</span>
-                                    {% endif %}
-                                    <span class="badge" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
-                                        <i v-if="custom_tag.icon" :class="custom_tag.icon + ' me-1'"></i>[[custom_tag.name]]
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between mt-2">
-                                <small class="text-muted">Color: [[custom_tag.color]]</small>
-                                <small v-if="custom_tag.icon" class="text-muted">Icon: [[custom_tag.icon]]</small>
-                            </div>
-                        </a>
-                        {% if not current_user.read_only() %}
-                            <div :style="{'border-bottom': custom_tag.show_usage ? 'none' : '1px solid rgba(0,0,0,0.125)'}">
-                                <div>
-                                    <button class="btn btn-primary" type="button" title="Edit the custom tag" @click="edit_custom_tag(custom_tag)">
-                                        <i class="fa-solid fa-pen-to-square fa-fw"></i>
-                                    </button>
-                                </div>
-                                <div>
-                                    <button v-if="custom_tag.in_use" class="btn btn-danger" type="button" title="Custom tag is in use and cannot be deleted" disabled>
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                    <button v-else class="btn btn-danger" type="button" title="Delete the custom tag" data-bs-toggle="modal" :data-bs-target="'#delete_custom_tag_modal_'+custom_tag.id">
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        {% endif %}
+    <context_table
+        :columns="columns"
+        :rows="filtered_custom_tags"
+        :loading="loading"
+        empty-text="No custom tag matches these filters"
+        :sort-key="sort_key"
+        :sort-order="sort_order"
+        @sort="(key, order) => { sort_key = key; sort_order = order }"
+        @row-open="load_usage">
+
+        <template #cell-tag="{ row }">
+            <tag_badge :label="row.name" :color="row.color" :icon-class="row.icon"></tag_badge>
+        </template>
+        <template #cell-color="{ row }">
+            <span class="ctx-mono"><span class="ctx-swatch" :style="{'background-color': row.color}"></span>[[ row.color ]]</span>
+        </template>
+        <template #cell-icon="{ row }">
+            <span v-if="row.icon" class="ctx-mono"><i :class="row.icon + ' me-1'"></i>[[ row.icon ]]</span>
+            <span v-else class="ctx-empty">None</span>
+        </template>
+        <template #cell-usage="{ row }">
+            <span v-if="row.in_use" class="ctx-pill"><i class="fa-solid fa-link"></i>In use</span>
+            <span v-else class="ctx-pill ctx-pill-muted">Unused</span>
+        </template>
+        <template #cell-status="{ row }">
+            {% if not current_user.read_only() %}
+                <div class="form-check form-switch mb-0" @click.stop>
+                    <input class="form-check-input" type="checkbox" role="switch" :checked="is_active(row)"
+                           @change="change_status(row)" :title="is_active(row) ? 'Deactivate this custom tag' : 'Activate this custom tag'"
+                           :aria-label="'Toggle ' + row.name">
+                </div>
+            {% else %}
+                <span :class="['ctx-status', is_active(row) ? 'ctx-status-on' : 'ctx-status-off']">[[ is_active(row) ? 'Active' : 'Inactive' ]]</span>
+            {% endif %}
+        </template>
+        <template #cell-actions="{ row }">
+            <div class="ctx-row-actions" @click.stop>
+                <button class="btn btn-outline-primary btn-sm" type="button" title="Edit the custom tag" @click="edit_custom_tag(row)">
+                    <i class="fa-solid fa-pen fa-fw"></i>
+                </button>
+                <span :title="row.in_use ? 'Custom tag is in use and cannot be deleted' : 'Delete the custom tag'">
+                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="row.in_use" @click="ask_delete(row)">
+                        <i class="fa-solid fa-trash fa-fw"></i>
+                    </button>
+                </span>
+            </div>
+        </template>
+
+        <template #detail="{ row }">
+            <div class="ctx-detail-meta">
+                <span><strong>Name</strong> [[ row.name ]]</span>
+                <span><strong>Color</strong> [[ row.color ]]</span>
+                <span v-if="row.icon"><strong>Icon</strong> [[ row.icon ]]</span>
+                <span><strong>UUID</strong> <span class="ctx-mono">[[ row.uuid ]]</span></span>
+            </div>
+            <div v-if="row.loading_usage" class="ctx-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading usage...</div>
+            <template v-else-if="row.usage_data">
+                <div v-if="usage_total(row)" class="ctx-usage-grid">
+                    <div v-if="row.usage_data.cases.length">
+                        <h6><i class="fa-solid fa-briefcase me-2"></i>Cases <span class="ctx-pill ms-1">[[ row.usage_data.cases.length ]]</span></h6>
+                        <ul>
+                            <li v-for="case_item in row.usage_data.cases" :key="'c'+case_item.id">
+                                <a :href="'/case/'+case_item.id" target="_blank" :title="case_item.description">
+                                    <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1"></i>[[ case_item.title ]]
+                                </a>
+                            </li>
+                        </ul>
                     </div>
-                    <div v-if="custom_tag.show_usage" class="list-group-item" style="padding: 15px; background-color: #f8f9fa; border-top: none; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
-                        <div v-if="custom_tag.loading_usage" class="text-center">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                        <div v-else>
-                            <div v-if="custom_tag.usage_data && (custom_tag.usage_data.cases.length > 0 || custom_tag.usage_data.tasks.length > 0 || custom_tag.usage_data.case_templates.length > 0 || custom_tag.usage_data.task_templates.length > 0)">
-                                <div v-if="custom_tag.usage_data.cases.length > 0" class="mb-3">
-                                    <h6 class="mb-2"><i class="fa-solid fa-briefcase me-2"></i>Cases ([[custom_tag.usage_data.cases.length]])</h6>
-                                    <ul class="list-group list-group-flush">
-                                        <li v-for="case_item in custom_tag.usage_data.cases" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
-                                            <a :href="'/case/'+case_item.id" target="_blank" class="text-decoration-none">
-                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
-                                                <strong>[[case_item.title]]</strong>
-                                            </a>
-                                            <small v-if="case_item.description" class="d-block text-muted ms-3">[[case_item.description]]</small>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div v-if="custom_tag.usage_data.tasks.length > 0">
-                                    <h6 class="mb-2"><i class="fa-solid fa-tasks me-2"></i>Tasks ([[custom_tag.usage_data.tasks.length]])</h6>
-                                    <ul class="list-group list-group-flush">
-                                        <li v-for="task_item in custom_tag.usage_data.tasks" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
-                                            <a :href="'/case/'+task_item.case_id+'?task_id='+task_item.id" target="_blank" class="text-decoration-none">
-                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
-                                                [[task_item.title]]
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div v-if="custom_tag.usage_data.case_templates.length > 0" class="mb-3">
-                                    <h6 class="mb-2"><i class="fa-solid fa-folder-tree me-2"></i>Case templates ([[custom_tag.usage_data.case_templates.length]])</h6>
-                                    <ul class="list-group list-group-flush">
-                                        <li v-for="case_template_item in custom_tag.usage_data.case_templates" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
-                                            <a :href="'/templating/case/'+case_template_item.id" target="_blank" class="text-decoration-none">
-                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
-                                                <strong>[[case_template_item.title]]</strong>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                <div v-if="custom_tag.usage_data.task_templates.length > 0" class="mb-3">
-                                    <h6 class="mb-2"><i class="fa-solid fa-diagram-project me-2"></i>Task templates ([[custom_tag.usage_data.task_templates.length]])</h6>
-                                    <ul class="list-group list-group-flush">
-                                        <li v-for="task_template_item in custom_tag.usage_data.task_templates" class="list-group-item" style="background-color: transparent; border: none; padding-left: 0;">
-                                            <a :href="taskTemplateUsageHref(task_template_item.id)" target="_blank" class="text-decoration-none">
-                                                <i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
-                                                [[task_template_item.title]]
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div v-else class="text-muted text-center">
-                                <i class="fa-solid fa-info-circle me-1"></i>This custom tag is not currently used in any cases, tasks, or templates.
-                            </div>
-                        </div>
+                    <div v-if="row.usage_data.tasks.length">
+                        <h6><i class="fa-solid fa-list-check me-2"></i>Tasks <span class="ctx-pill ms-1">[[ row.usage_data.tasks.length ]]</span></h6>
+                        <ul>
+                            <li v-for="task_item in row.usage_data.tasks" :key="'t'+task_item.id">
+                                <a :href="'/case/'+task_item.case_id+'?task_id='+task_item.id" target="_blank">
+                                    <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1"></i>[[ task_item.title ]]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div v-if="row.usage_data.case_templates.length">
+                        <h6><i class="fa-solid fa-folder-tree me-2"></i>Case templates <span class="ctx-pill ms-1">[[ row.usage_data.case_templates.length ]]</span></h6>
+                        <ul>
+                            <li v-for="case_template_item in row.usage_data.case_templates" :key="'ct'+case_template_item.id">
+                                <a :href="'/templating/case/'+case_template_item.id" target="_blank">
+                                    <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1"></i>[[ case_template_item.title ]]
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div v-if="row.usage_data.task_templates.length">
+                        <h6><i class="fa-solid fa-diagram-project me-2"></i>Task templates <span class="ctx-pill ms-1">[[ row.usage_data.task_templates.length ]]</span></h6>
+                        <ul>
+                            <li v-for="task_template_item in row.usage_data.task_templates" :key="'tt'+task_template_item.id">
+                                <a :href="taskTemplateUsageHref(task_template_item.id)" target="_blank">
+                                    <i class="fa-solid fa-arrow-up-right-from-square fa-xs me-1"></i>[[ task_template_item.title ]]
+                                </a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
-                <!-- Modal delete custom tag -->
-                {% if not current_user.read_only() %}
-                    <div class="modal fade" :id="'delete_custom_tag_modal_'+custom_tag.id" tabindex="-1" aria-labelledby="delete_custom_tag_modal" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="delete_custom_tag_modal">Delete '[[custom_tag.name]]' ?</h1>
-                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="button" class="btn btn-danger" @click="delete_custom_tag(custom_tag.id)" data-bs-dismiss="modal">Delete</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
+                <div v-else class="ctx-empty"><i class="fa-solid fa-circle-info me-1"></i>This custom tag is not currently used in any cases, tasks, or templates.</div>
             </template>
         </template>
-    </div>
+    </context_table>
 
-    <!-- Edit Modal -->
     {% if not current_user.read_only() %}
+        <!-- Delete Modal -->
+        <div class="modal fade" id="delete_custom_tag_modal" tabindex="-1" aria-labelledby="delete_custom_tag_modal_label" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="delete_custom_tag_modal_label">Delete '[[ delete_target ? delete_target.name : '' ]]' ?</h1>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-danger" @click="delete_custom_tag(delete_target.id)" data-bs-dismiss="modal">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
         <div class="modal fade" id="edit_custom_tag_modal" tabindex="-1" aria-labelledby="edit_custom_tag_modal_label" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -179,9 +186,7 @@
                         <div class="mb-3">
                             <label class="form-label">Preview:</label>
                             <div>
-                                <span class="badge" :style="{'background-color': edit_tag.color, 'color': getTextColor(edit_tag.color)}">
-                                    <i v-if="edit_tag.icon" :class="edit_tag.icon + ' me-1'"></i>[[edit_tag.name]]
-                                </span>
+                                <tag_badge :label="edit_tag.name || ' '" :color="edit_tag.color" :icon-class="edit_tag.icon"></tag_badge>
                             </div>
                         </div>
                     </div>
@@ -196,32 +201,85 @@
 {% endblock %}
 {% block script %}
     <script type="module">
-        const { createApp, ref } = Vue
+        const { createApp, ref, computed } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
-            const can_edit_templates = document.getElementById('can_edit_templates')?.value === 'true'
+        import context_table from '/static/js/components/context_table.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
+        const can_edit_templates = document.getElementById('can_edit_templates')?.value === 'true'
+        const read_only = {{ 'true' if current_user.read_only() else 'false' }}
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                context_table,
+                tag_badge
+            },
             setup() {
                 const custom_tag_config = ref([])
+                const loading = ref(true)
                 const edit_tag = ref({id: null, name: '', color: '#000000', icon: ''})
+                const delete_target = ref(null)
                 const search_query = ref('')
                 let searchTimer = null
                 let editModal = null
+                let deleteModal = null
+
+                const columns = [
+                    { key: 'tag', label: 'Tag', width: '26%', sortable: true, sortKey: 'name' },
+                    { key: 'color', label: 'Color', sortable: true, width: '8.5rem', class: 'ctx-hide-sm' },
+                    { key: 'icon', label: 'Icon', sortable: true, class: 'ctx-hide-sm' },
+                    { key: 'usage', label: 'Usage', width: '7rem', sortable: true, sortKey: 'in_use' },
+                    { key: 'status', label: 'Active', width: '6rem', sortable: true, sortKey: 'is_active' },
+                ]
+                if (!read_only) columns.push({ key: 'actions', label: 'Actions', width: '6.5rem', class: 'ctx-col-end' })
+
+                function is_active(custom_tag) {
+                    return custom_tag.is_active || custom_tag.is_active == null
+                }
+
+                const nb_active = computed(() => custom_tag_config.value.filter(is_active).length)
+                const nb_in_use = computed(() => custom_tag_config.value.filter(t => t.in_use).length)
+
+                const current_filter = ref('all')
+                const sort_key = ref('name')
+                const sort_order = ref('asc')
+
+                function sort_value(custom_tag, key) {
+                    if (key === 'is_active') return is_active(custom_tag) ? 1 : 0
+                    if (key === 'in_use') return custom_tag.in_use ? 1 : 0
+                    return (custom_tag[key] || '').toString().toLowerCase()
+                }
+
+                const filtered_custom_tags = computed(() => {
+                    let tags
+                    switch (current_filter.value) {
+                        case 'active': tags = custom_tag_config.value.filter(is_active); break
+                        case 'inactive': tags = custom_tag_config.value.filter(t => !is_active(t)); break
+                        case 'unused': tags = custom_tag_config.value.filter(t => !t.in_use); break
+                        default: tags = custom_tag_config.value.slice()
+                    }
+                    const dir = sort_order.value === 'desc' ? -1 : 1
+                    return tags.sort((a, b) => {
+                        const va = sort_value(a, sort_key.value), vb = sort_value(b, sort_key.value)
+                        return va < vb ? -dir : va > vb ? dir : 0
+                    })
+                })
 
                 async function query_custom_tags(q=''){
+                    loading.value = true
                     let url = "/custom_tags/list"
                     if(q) url += '?q='+encodeURIComponent(q)
                     let res = await fetch(url)
                     let loc = await res.json()
                     custom_tag_config.value = loc
+                    loading.value = false
                 }
                 query_custom_tags()
 
                 async function change_status(custom_tag){
                     let res = await fetch("/custom_tags/change_status?custom_tag_id="+custom_tag.id)
                     if(res.status == 200){
-                        custom_tag.is_active = !custom_tag.is_active
+                        custom_tag.is_active = !is_active(custom_tag)
                     }
                     display_toast(res)
                 }
@@ -286,6 +344,14 @@
                     display_toast(res)
                 }
 
+                function ask_delete(custom_tag){
+                    delete_target.value = custom_tag
+                    if(!deleteModal) {
+                        deleteModal = new bootstrap.Modal(document.getElementById('delete_custom_tag_modal'))
+                    }
+                    deleteModal.show()
+                }
+
                 async function delete_custom_tag(tag_id){
                     let res = await fetch("/custom_tags/"+tag_id+"/delete_custom_tag")
                     if(res.status == 200){
@@ -294,42 +360,34 @@
                     display_toast(res)
                 }
 
-                function getTextColor(bgColor) {
-                    if (!bgColor) return '#000000'
-                    const color = bgColor.charAt(0) === '#' ? bgColor.substring(1, 7) : bgColor
-                    const r = parseInt(color.substring(0, 2), 16)
-                    const g = parseInt(color.substring(2, 4), 16)
-                    const b = parseInt(color.substring(4, 6), 16)
-                    return (((r * 0.299) + (g * 0.587) + (b * 0.114)) > 186) ? '#000000' : '#FFFFFF'
+                async function load_usage(custom_tag) {
+                    if (custom_tag.usage_data) return
+                    custom_tag.loading_usage = true
+                    try {
+                        const res = await fetch('/custom_tags/' + custom_tag.id + '/usage')
+                        if (res.status == 200) {
+                            const usage_data = await res.json()
+                            custom_tag.usage_data = {
+                                cases: usage_data.cases || [],
+                                tasks: usage_data.tasks || [],
+                                case_templates: usage_data.case_templates || [],
+                                task_templates: usage_data.task_templates || []
+                            }
+                        } else {
+                            custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
+                            display_toast(res)
+                        }
+                    } catch (error) {
+                        console.error('Error fetching usage data:', error)
+                        custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
+                    } finally {
+                        custom_tag.loading_usage = false
+                    }
                 }
 
-                async function toggle_usage(custom_tag) {
-                    custom_tag.show_usage = !custom_tag.show_usage
-                    
-                    if (custom_tag.show_usage && !custom_tag.usage_data) {
-                        custom_tag.loading_usage = true
-                        
-                        try {
-                            const res = await fetch('/custom_tags/' + custom_tag.id + '/usage')
-                            if (res.status == 200) {
-                                const usage_data = await res.json()
-                                custom_tag.usage_data = {
-                                    cases: usage_data.cases || [],
-                                    tasks: usage_data.tasks || [],
-                                    case_templates: usage_data.case_templates || [],
-                                    task_templates: usage_data.task_templates || []
-                                }
-                            } else {
-                                custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
-                                display_toast(res)
-                            }
-                        } catch (error) {
-                            console.error('Error fetching usage data:', error)
-                            custom_tag.usage_data = { cases: [], tasks: [], case_templates: [], task_templates: [] }
-                        } finally {
-                            custom_tag.loading_usage = false
-                        }
-                    }
+                function usage_total(custom_tag) {
+                    const u = custom_tag.usage_data
+                    return u.cases.length + u.tasks.length + u.case_templates.length + u.task_templates.length
                 }
 
                 function taskTemplateUsageHref(task_template_id) {
@@ -338,15 +396,26 @@
 
                 return {
                     message_list,
+                    columns,
+                    loading,
                     custom_tag_config,
+                    current_filter,
+                    filtered_custom_tags,
+                    sort_key,
+                    sort_order,
+                    nb_active,
+                    nb_in_use,
+                    is_active,
                     edit_tag,
+                    delete_target,
                     edit_custom_tag,
                     save_custom_tag,
                     change_status,
                     onInput,
+                    ask_delete,
                     delete_custom_tag,
-                    getTextColor,
-                    toggle_usage,
+                    load_usage,
+                    usage_total,
                     taskTemplateUsageHref
                 }
             }

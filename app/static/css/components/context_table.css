@@ -1,0 +1,381 @@
+/*
+  context_table.css — Expandable table shared by the Context pages (custom tags,
+  taxonomies, galaxies). Used with static/js/components/context_table.js.
+  The page header lives in page_header.css.
+*/
+
+:root {
+  --ctx-ink: #2c3e50;
+  --ctx-muted: #6c757d;
+  --ctx-border: rgba(0, 0, 0, 0.08);
+  --ctx-divider: rgba(0, 0, 0, 0.06);
+  --ctx-hover: #f6f9fd;
+  --ctx-open: #eef6ff;
+  --ctx-detail-bg: #f8fafc;
+}
+
+/* ---------- Table ---------- */
+
+.ctx-table-wrap {
+  background: #fff;
+  border: 1px solid rgba(18, 37, 63, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(18, 37, 63, 0.06);
+  overflow: hidden;
+}
+
+.ctx-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ctx-table thead th {
+  padding: 0.7rem 0.75rem;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--ctx-divider);
+  color: var(--ctx-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.ctx-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.ctx-sort i {
+  opacity: 0.35;
+  font-size: 0.7rem;
+}
+
+.ctx-sort:hover,
+.ctx-sort.is-sorted {
+  color: #12253f;
+}
+
+.ctx-sort:hover i,
+.ctx-sort.is-sorted i {
+  opacity: 1;
+}
+
+.ctx-sort.is-sorted i {
+  color: #0d6efd;
+}
+
+.ctx-table th.ctx-col-end {
+  text-align: right;
+}
+
+.ctx-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--ctx-divider);
+  vertical-align: middle;
+  font-size: 0.88rem;
+  color: #343a40;
+  overflow-wrap: anywhere;
+}
+
+.ctx-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ctx-col-toggle {
+  width: 2.25rem;
+  text-align: center !important;
+  color: var(--ctx-muted);
+}
+
+.ctx-col-toggle i {
+  transition: transform 0.15s ease;
+}
+
+.ctx-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.ctx-row:hover {
+  background: var(--ctx-hover);
+}
+
+.ctx-row:focus-visible {
+  outline: 2px solid #86b7fe;
+  outline-offset: -2px;
+}
+
+.ctx-row.is-open {
+  background: var(--ctx-open);
+}
+
+.ctx-row.is-open td {
+  border-bottom-color: transparent;
+}
+
+.ctx-row.is-open .ctx-col-toggle i {
+  transform: rotate(90deg);
+  color: #0d6efd;
+}
+
+.ctx-detail-row > td {
+  padding: 0 !important;
+  background: var(--ctx-open);
+}
+
+.ctx-detail {
+  margin: 0 0.75rem 0.75rem 2.25rem;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border: 1px solid var(--ctx-border);
+  border-radius: 12px;
+}
+
+.ctx-table-state {
+  padding: 2rem !important;
+  text-align: center;
+  color: var(--ctx-muted);
+}
+
+/* Cell helpers */
+.ctx-name {
+  font-weight: 600;
+  color: var(--ctx-ink);
+}
+
+.ctx-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ctx-muted);
+  font-size: 0.83rem;
+}
+
+.ctx-mono {
+  font-family: var(--bs-font-monospace);
+  font-size: 0.78rem;
+  color: var(--ctx-muted);
+}
+
+.ctx-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  vertical-align: -2px;
+}
+
+.ctx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.ctx-status::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ctx-status-on {
+  color: #198754;
+}
+
+.ctx-status-off {
+  color: #adb5bd;
+}
+
+.ctx-table .form-switch .form-check-input {
+  cursor: pointer;
+}
+
+.ctx-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+/* ---------- Detail content ---------- */
+
+.ctx-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ctx-detail-title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.ctx-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--ctx-muted);
+}
+
+.ctx-detail-meta strong {
+  color: #495057;
+  font-weight: 600;
+}
+
+.ctx-detail-filter {
+  max-width: 16rem;
+}
+
+.ctx-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.ctx-cluster-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ctx-cluster-list li {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--ctx-divider);
+  border-radius: 10px;
+  background: var(--ctx-detail-bg);
+}
+
+.ctx-cluster-desc {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: #495057;
+}
+
+.ctx-cluster-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.ctx-usage-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.ctx-usage-grid h6 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.4rem;
+}
+
+.ctx-usage-grid ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ctx-usage-grid a {
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+
+.ctx-empty {
+  color: var(--ctx-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ---------- Pagination ---------- */
+
+.ctx-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-top: 1px solid var(--ctx-divider);
+  background: #fafbfc;
+}
+
+.ctx-pagination-info {
+  color: var(--ctx-muted);
+  font-size: 0.8rem;
+}
+
+/* Small counter / info pill used in the table and its detail rows */
+.ctx-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: #eef6ff;
+  color: #070D47;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ctx-pill-muted {
+  background: #f1f3f5;
+  color: var(--ctx-muted);
+}
+
+@media (max-width: 767px) {
+  .ctx-table-wrap {
+    border-radius: 16px;
+  }
+
+  .ctx-hide-sm {
+    display: none;
+  }
+
+  .ctx-table {
+    table-layout: auto;
+  }
+
+  .ctx-table th,
+  .ctx-table td {
+    width: auto !important;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .ctx-table .ctx-col-toggle {
+    width: 1.75rem !important;
+  }
+
+  .ctx-detail {
+    margin-left: 0.75rem;
+  }
+}

@@ -3,196 +3,160 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/context_header.html' import context_header %}
 
 {% block head %}
     {{ super() }}
-    <style>
-        .admin-wrap-text {
-            min-width: 0;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            white-space: normal;
-        }
-
-        .admin-detail-table {
-            width: 100%;
-            table-layout: fixed;
-        }
-
-        .admin-detail-table td {
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            white-space: normal;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/page_header.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-globe me-2"></i>Galaxies</h5>
+    {% call(section) context_header('Galaxies', 'fa-solid fa-globe', 'MISP galaxies whose clusters can be attached to cases and tasks.') %}
+        {% if section == 'stats' %}
+            <template v-if="galaxy_counts">
+                <span class="ctx-meta-item" title="Total galaxies"><i class="fa-solid fa-layer-group"></i><strong>[[ galaxy_counts.total ]]</strong>galaxies</span>
+                <span class="ctx-meta-item" title="Enabled galaxies"><i class="fa-solid fa-circle-check"></i><strong>[[ galaxy_counts.enabled ]]</strong>enabled</span>
+                <span class="ctx-meta-item" title="Disabled galaxies"><i class="fa-solid fa-ban"></i><strong>[[ galaxy_counts.total - galaxy_counts.enabled ]]</strong>disabled</span>
+            </template>
+        {% elif section == 'toolbar' %}
+            <span class="ctx-filter-label">Show</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
+                <button type="button" class="btn" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all galaxies">All</button>
+                <button type="button" class="btn" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled galaxies">Enabled</button>
+                <button type="button" class="btn" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled galaxies">Not enabled</button>
             </div>
-
-            <!-- Counts -->
-            <div class="col-auto" v-if="galaxy_counts">
-                <span class="text-muted" style="font-size: 0.85rem;">
-                    [[ galaxy_counts.total ]] galaxies, [[ galaxy_counts.enabled ]] enabled
-                </span>
+            <div class="btn-group btn-group-sm" role="group" v-if="is_admin">
+                <button type="button" class="btn btn-outline-success" @click="bulkSetStatus(false)" title="Enable all galaxies on this page">
+                    <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable page
+                </button>
+                <button type="button" class="btn btn-outline-danger" @click="bulkSetStatus(true)" title="Disable all galaxies on this page">
+                    <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable page
+                </button>
             </div>
-
-            <!-- Filter buttons -->
-            <div class="col-auto">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all galaxies">
-                        <i class="fa-solid fa-list fa-sm me-1"></i>All
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled galaxies">
-                        <i class="fa-solid fa-check fa-sm me-1"></i>Enabled
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled galaxies">
-                        <i class="fa-solid fa-xmark fa-sm me-1"></i>Not enabled
-                    </button>
-                </div>
-            </div>
-
-            <!-- Enable/Disable all -->
-            <div class="col-auto" v-if="is_admin">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-success" @click="bulkSetStatus(false)" title="Enable all on this page">
-                        <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable all
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" @click="bulkSetStatus(true)" title="Disable all on this page">
-                        <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable all
-                    </button>
-                </div>
-            </div>
-
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search galaxies by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-        {% if not current_user.is_admin() %}
-            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
-                You do not have the Admin permissions. You can view galaxies but cannot enable or disable them.
+            <div class="ctx-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search galaxies by name" aria-label="Search galaxies by name">
             </div>
         {% endif %}
-    </div>
+    {% endcall %}
 
-    <hr class="fading-line-2 mb-4 mt-4">
-    
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="galaxies_list && nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetchGalaxies(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
-                <button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    {% if not current_user.is_admin() %}
+        <div class="ctx-notice mb-3" role="alert">
+            <i class="fa-solid fa-circle-info"></i>You do not have the Admin permissions. You can view galaxies but cannot enable or disable them.
+        </div>
+    {% endif %}
 
-    <div class="case-core-style">
-        <template v-if="galaxies_list">
-            <template v-for="galaxy in galaxies_list.galaxies">
-                <div class="list-group" style="margin-bottom: 5px;">
-                    <div class="d-flex align-items-center">
-                        <template v-if="is_admin">
-                            <input v-if="galaxy.exclude" class="form-check-input me-2" type="checkbox" name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
-                            <input v-else class="form-check-input me-2" type="checkbox" checked name="activeGalaxies" id="activeGalaxies" @click="deactivate_galaxy(galaxy.id)" style="transform: scale(0.85);">
-                        </template>
-                        <a @click="extend_collapse(galaxy.id)" class="list-group-item list-group-item-action py-1">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-0 admin-wrap-text" style="font-size: 0.9rem;">[[galaxy.name]]</h6>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <small class="text-muted mb-0 admin-wrap-text" style="font-size: 0.8rem;">[[galaxy.description]]</small>
-                            </div>
-                        </a>
-                    </div>
+    <context_table
+        :columns="columns"
+        :rows="galaxies_list ? galaxies_list.galaxies : []"
+        :loading="!galaxies_list"
+        empty-text="No galaxy matches your search"
+        :current-page="current_page"
+        :nb-pages="nb_pages"
+        :sort-key="sort_key"
+        :sort-order="sort_order"
+        @sort="apply_sort"
+        @page="fetchGalaxies"
+        @row-open="load_clusters">
+
+        <template #cell-status="{ row }">
+            <div v-if="is_admin" class="form-check form-switch mb-0" @click.stop>
+                <input class="form-check-input" type="checkbox" role="switch" :checked="!row.exclude"
+                       @change="deactivate_galaxy(row)" :title="row.exclude ? 'Enable this galaxy' : 'Disable this galaxy'"
+                       :aria-label="'Toggle ' + row.name">
+            </div>
+            <span v-else :class="['ctx-status', row.exclude ? 'ctx-status-off' : 'ctx-status-on']">[[ row.exclude ? 'Disabled' : 'Enabled' ]]</span>
+        </template>
+        <template #cell-name="{ row }">
+            <tag_badge :label="row.name" :icon-name="row.icon" :title="row.description"></tag_badge>
+        </template>
+        <template #cell-type="{ row }">
+            <span class="ctx-mono">[[ row.type ]]</span>
+        </template>
+        <template #cell-description="{ row }">
+            <span class="ctx-clamp" :title="row.description">[[ row.description ]]</span>
+        </template>
+        <template #cell-version="{ row }">
+            <span class="ctx-mono">v[[ row.version ]]</span>
+        </template>
+
+        <template #detail="{ row }">
+            <div class="ctx-detail-meta">
+                <span><strong>Type</strong> [[ row.type ]]</span>
+                <span><strong>Version</strong> [[ row.version ]]</span>
+                <span><strong>UUID</strong> <span class="ctx-mono">[[ row.uuid ]]</span></span>
+            </div>
+            <template v-if="clusters_table[row.id] === undefined">
+                <div class="ctx-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading clusters...</div>
+            </template>
+            <template v-else-if="!clusters_table[row.id].length">
+                <div class="ctx-empty">This galaxy has no cluster.</div>
+            </template>
+            <template v-else>
+                <div class="ctx-detail-head">
+                    <h6 class="ctx-detail-title"><i class="misp-icon misp-icon-galaxy misp-simple me-1"></i>Clusters <span class="ctx-pill ms-1">[[ clusters_table[row.id].length ]]</span></h6>
+                    <input v-if="clusters_table[row.id].length > 10" v-model="cluster_filter[row.id]" type="search" class="form-control form-control-sm ctx-detail-filter" placeholder="Filter clusters" @click.stop>
                 </div>
-
-                <div class="collapse" :id="'collapse'+galaxy.id" style="margin-bottom: 20px;">
-                    <div class="card card-body" :id="'card-body_'+galaxy.id" style="background-color: whitesmoke;">
-                        <template v-if="clusters_table">
-                            <template v-if="clusters_table[galaxy.id]">
-                                <table class="admin-detail-table">
-                                    <template v-for="cluster in clusters_table[galaxy.id]">
-                                        <tr>
-                                            <td title="Cluster" class="admin-wrap-text">
-                                                [[cluster.tag]]
-                                                <ul>
-                                                    <li v-if="cluster.description" class="admin-wrap-text">Description: [[cluster.description]]</li>
-                                                    <li v-if="cluster.meta" class="admin-wrap-text">Metadata: [[JSON.parse(cluster.meta)]]</li>
-                                                </ul>
-                                                
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </table>
-                                
-                            </template>
-                            <template v-else>
-                                <i>No cluster</i>
-                            </template>
-                        </template>
-                        <template v-else>
-                            Loading...
-                        </template>
-                    </div>
+                <ul class="ctx-cluster-list">
+                    <li v-for="cluster in shown_clusters(row.id)" :key="cluster.id">
+                        <tag_badge :label="cluster.tag" :icon-name="cluster.icon" :title="cluster.description"></tag_badge>
+                        <div v-if="cluster.description" class="ctx-cluster-desc ctx-clamp" :title="plain_text(cluster.description)">[[ plain_text(cluster.description) ]]</div>
+                        <div class="ctx-cluster-meta" v-if="cluster_meta(cluster).length">
+                            <span v-for="item in cluster_meta(cluster)" :key="item.label + item.value" class="ctx-pill ctx-pill-muted" :title="item.label">
+                                <strong>[[ item.label ]]</strong> [[ item.value ]]
+                            </span>
+                        </div>
+                    </li>
+                </ul>
+                <div v-if="!filtered_clusters(row.id).length" class="ctx-empty">No cluster matches this filter.</div>
+                <div v-else-if="filtered_clusters(row.id).length > shown_clusters(row.id).length" class="text-center mt-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" @click.stop="cluster_limit[row.id] = (cluster_limit[row.id] || CLUSTER_PAGE) + CLUSTER_PAGE">
+                        Show more ([[ filtered_clusters(row.id).length - shown_clusters(row.id).length ]] remaining)
+                    </button>
                 </div>
             </template>
         </template>
-        <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
-    </div>
-
-    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="galaxies_list && nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetchGalaxies(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetchGalaxies(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
-                <button class="page-link" @click="fetchGalaxies(Math.min(current_page+1, nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    </context_table>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import context_table from '/static/js/components/context_table.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                context_table,
+                tag_badge
+            },
             setup() {
                 const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
+                const CLUSTER_PAGE = 50
                 const galaxies_list = ref(null)
                 const clusters_table = ref({})
+                const cluster_filter = ref({})
+                const cluster_limit = ref({})
                 const current_page = ref(1)
                 const nb_pages = ref(0)
                 const search_query = ref('')
                 const current_filter = ref('all')
                 const galaxy_counts = ref(null)
+                const sort_key = ref('')
+                const sort_order = ref('asc')
                 let searchTimer = null
+
+                const columns = [
+                    { key: 'status', label: 'Enabled', width: '6.5rem', sortable: true, sortKey: 'exclude' },
+                    { key: 'name', label: 'Name', sortable: true, width: '26%' },
+                    { key: 'type', label: 'Type', sortable: true, width: '18%', class: 'ctx-hide-sm' },
+                    { key: 'description', label: 'Description', sortable: true, class: 'ctx-hide-sm' },
+                    { key: 'version', label: 'Version', sortable: true, width: '6rem', class: 'ctx-hide-sm' },
+                ]
 
                 function buildFilterParam() {
                     if (current_filter.value === 'enabled') return '&enabled=true'
@@ -205,6 +169,7 @@
                     let url = 'get_galaxies_page?page='+page
                     if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
                     url += buildFilterParam()
+                    if (sort_key.value) url += '&sort='+sort_key.value+'&order='+sort_order.value
                     const res = await fetch(url)
                     let loc = await res.json()
                     galaxies_list.value = loc
@@ -233,6 +198,12 @@
                     galaxy_counts.value = await res.json()
                 }
 
+                function apply_sort(key, order) {
+                    sort_key.value = key
+                    sort_order.value = order
+                    fetchGalaxies(1)
+                }
+
                 function applyFilter(filter) {
                     current_filter.value = filter
                     fetchGalaxies(1)
@@ -254,16 +225,61 @@
                     await fetchGalaxies(current_page.value)
                 }
 
-                async function extend_collapse(galaxy_id){
-                    const res = await fetch('get_clusters?galaxy='+galaxy_id)
+                async function load_clusters(galaxy){
+                    if (clusters_table.value[galaxy.id] !== undefined) return
+                    const res = await fetch('get_clusters?galaxy='+galaxy.id)
+                    if (res.status !== 200) {
+                        clusters_table.value[galaxy.id] = []
+                        display_toast(res)
+                        return
+                    }
                     let loc = await res.json()
-
-                    clusters_table.value[galaxy_id] = loc["clusters"]
-
-                    const collapseElementList = document.querySelectorAll('#collapse'+galaxy_id)
-                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                    clusters_table.value[galaxy.id] = loc["clusters"]
                 }
 
+                function filtered_clusters(galaxy_id) {
+                    const clusters = clusters_table.value[galaxy_id] || []
+                    const q = (cluster_filter.value[galaxy_id] || '').toLowerCase()
+                    if (!q) return clusters
+                    return clusters.filter(c => (c.tag || '').toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q))
+                }
+
+                function shown_clusters(galaxy_id) {
+                    return filtered_clusters(galaxy_id).slice(0, cluster_limit.value[galaxy_id] || CLUSTER_PAGE)
+                }
+
+                // Cluster meta is stored JSON-encoded (sometimes twice): decode it and keep
+                // the short, useful fields as label/value pairs.
+                const meta_cache = new Map()
+                function cluster_meta(cluster) {
+                    if (meta_cache.has(cluster.id)) return meta_cache.get(cluster.id)
+                    let meta = cluster.meta
+                    for (let i = 0; i < 2 && typeof meta === 'string'; i++) {
+                        try { meta = JSON.parse(meta) } catch (e) { meta = null }
+                    }
+                    const items = []
+                    if (meta && typeof meta === 'object') {
+                        if (meta.external_id) items.push({ label: 'ID', value: [].concat(meta.external_id).join(', ') })
+                        if (meta.country) items.push({ label: 'Country', value: [].concat(meta.country).join(', ') })
+                        if (meta.synonyms && meta.synonyms.length) {
+                            const syn = [].concat(meta.synonyms)
+                            items.push({ label: 'Synonyms', value: syn.slice(0, 4).join(', ') + (syn.length > 4 ? ' +' + (syn.length - 4) : '') })
+                        }
+                        if (meta.refs && meta.refs.length) items.push({ label: 'Refs', value: [].concat(meta.refs).length })
+                    }
+                    meta_cache.set(cluster.id, items)
+                    return items
+                }
+
+                // Descriptions come from MISP as markdown: keep the link text, drop tags and citations
+                function plain_text(text) {
+                    return (text || '')
+                        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/\(Citation:[^)]*\)/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                }
 
                 function onInput(e){
                     clearTimeout(searchTimer)
@@ -271,51 +287,40 @@
                     searchTimer = setTimeout(() => fetchGalaxies(1), 300)
                 }
 
-
-                async function deactivate_galaxy(galaxy_id){
-                    const res = await fetch('galaxy_status?galaxy='+galaxy_id)
+                async function deactivate_galaxy(galaxy){
+                    const res = await fetch('galaxy_status?galaxy='+galaxy.id)
+                    if (res.status === 200) galaxy.exclude = !galaxy.exclude
                     display_toast(res)
                     await fetchCounts()
                 }
 
-                const visiblePages = computed(() => {
-                    const pages = []
-                    const total = nb_pages.value
-                    const current = current_page.value
-                    if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                        if (current <= 4) {
-                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
-                        } else if (current >= total - 3) {
-                            console.log("Over total-3");
-                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                        } else {
-                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
-                        }
-                    }
-                    return pages
-                })
-
-
                 fetchGalaxies(1)
 
-    
                 return {
                     message_list,
+                    CLUSTER_PAGE,
+                    columns,
                     galaxies_list,
                     clusters_table,
+                    cluster_filter,
+                    cluster_limit,
                     nb_pages,
-                    extend_collapse,
                     current_page,
                     fetchGalaxies,
+                    load_clusters,
+                    filtered_clusters,
+                    shown_clusters,
+                    cluster_meta,
+                    plain_text,
                     onInput,
                     deactivate_galaxy,
-                    visiblePages,
                     is_admin,
                     current_filter,
                     galaxy_counts,
                     applyFilter,
+                    sort_key,
+                    sort_order,
+                    apply_sort,
                     bulkSetStatus
                 }
             }

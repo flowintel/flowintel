@@ -1,0 +1,46 @@
+{#
+    Page header shared by the list pages (home, cases, custom tags, taxonomies, galaxies).
+    One white card: title, description and counters on top, then the filter bar under a divider.
+
+    Usage:
+        {% from 'macros/context_header.html' import context_header %}
+        {% call(section) context_header('Taxonomies', 'fa-solid fa-tag', 'MISP taxonomies available to tag cases and tasks.') %}
+            {% if section == 'stats' %} ...<span class="ctx-meta-item"> counters... {% endif %}
+            {% if section == 'actions' %} ...main button, right of the counters (optional)... {% endif %}
+            {% if section == 'aside' %} ...small info aligned right of the title (optional)... {% endif %}
+            {% if section == 'toolbar' %} ...filters / search... {% endif %}
+        {% endcall %}
+
+    variant='hero' gives the larger, gradient version used on the home page: the counters
+    then sit on their own row under the title.
+#}
+{% macro context_header(title, icon, description='', variant='') -%}
+<div class="ctx-shell">
+    <section class="ctx-header{% if variant %} ctx-header--{{ variant }}{% endif %}">
+        <div class="ctx-header-main">
+        <div class="ctx-header-top">
+        <div class="ctx-header-heading">
+            <span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>
+            <h4 class="ctx-header-title">{{ title }}</h4>
+            {% if description %}
+            <p class="ctx-header-description">{{ description }}</p>
+            {% endif %}
+        </div>
+        {% set aside = caller('aside') %}
+        {% if aside|trim %}<div class="ctx-header-aside">{{ aside }}</div>{% endif %}
+        </div>
+        {% set stats = caller('stats') %}
+        {% set actions = caller('actions') %}
+        {% if stats|trim or actions|trim %}
+        <div class="ctx-header-meta">
+            {{ stats }}
+            {% if actions|trim %}<div class="ctx-header-actions">{{ actions }}</div>{% endif %}
+        </div>
+        {% endif %}
+        </div>
+
+        {% set toolbar = caller('toolbar') %}
+        {% if toolbar|trim %}<div class="ctx-filter-bar">{{ toolbar }}</div>{% endif %}
+    </section>
+</div>
+{%- endmacro %}

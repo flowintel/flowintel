@@ -96,6 +96,26 @@ def _filter_items(items, name=None, enabled=None):
         items = [i for i in items if i.get('exclude', False)]
     return items
 
+_SORTABLE_KEYS = {'name', 'description', 'version', 'type', 'exclude'}
+
+def _sort_items(items, sort=None, order='asc'):
+    """Sort taxonomies/galaxies on one of their fields. Unknown keys keep the DB order."""
+    if sort not in _SORTABLE_KEYS:
+        return items
+
+    def key(item):
+        value = item.get(sort)
+        if sort == 'version':
+            try:
+                return (0, float(value), '')
+            except (TypeError, ValueError):
+                return (1, 0, str(value or ''))
+        if isinstance(value, bool):
+            return (0, int(value), '')
+        return (0, 0, str(value or '').lower())
+
+    return sorted(items, key=key, reverse=(order == 'desc'))
+
 def get_nb_page_taxo(name=None, enabled=None):
     """Return number of pages for taxonomies, optionally filtered by name and enabled status."""
     taxo_list = _filter_items(get_taxonomies(), name=name, enabled=enabled)
@@ -471,9 +491,10 @@ def delete_org_core(oid):
         return False
     
 
-def get_taxonomies_page(page, name=None, enabled=None):
+def get_taxonomies_page(page, name=None, enabled=None, sort=None, order='asc'):
     nb_taxo = 25
     taxo_list = _filter_items(get_taxonomies(), name=name, enabled=enabled)
+    taxo_list = _sort_items(taxo_list, sort=sort, order=order)
 
     to_give = nb_taxo * page
     if to_give > len(taxo_list):
@@ -499,9 +520,10 @@ def bulk_set_exclude(model, ids, exclude):
             item.exclude = exclude
     db.session.commit()
 
-def get_galaxies_page(page, name=None, enabled=None):
+def get_galaxies_page(page, name=None, enabled=None, sort=None, order='asc'):
     nb_galaxies = 25
     galaxies_list = _filter_items(get_galaxies(), name=name, enabled=enabled)
+    galaxies_list = _sort_items(galaxies_list, sort=sort, order=order)
 
     to_give = nb_galaxies * page
     if to_give > len(galaxies_list):

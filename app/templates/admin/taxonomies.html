@@ -3,206 +3,144 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/context_header.html' import context_header %}
 
 {% block head %}
     {{ super() }}
-    <style>
-        .admin-wrap-text {
-            min-width: 0;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            white-space: normal;
-        }
-
-        .admin-detail-table {
-            width: 100%;
-            table-layout: fixed;
-        }
-
-        .admin-detail-table td {
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            white-space: normal;
-        }
-
-        .admin-taxonomy-tag {
-            display: inline-flex;
-            align-items: center;
-            max-width: 100%;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-            white-space: normal;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/page_header.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-tag me-2"></i>Taxonomies</h5>
+    {% call(section) context_header('Taxonomies', 'fa-solid fa-tag', 'MISP taxonomies whose tags can be applied to cases and tasks.') %}
+        {% if section == 'stats' %}
+            <template v-if="taxonomy_counts">
+                <span class="ctx-meta-item" title="Total taxonomies"><i class="fa-solid fa-layer-group"></i><strong>[[ taxonomy_counts.total ]]</strong>taxonomies</span>
+                <span class="ctx-meta-item" title="Enabled taxonomies"><i class="fa-solid fa-circle-check"></i><strong>[[ taxonomy_counts.enabled ]]</strong>enabled</span>
+                <span class="ctx-meta-item" title="Disabled taxonomies"><i class="fa-solid fa-ban"></i><strong>[[ taxonomy_counts.total - taxonomy_counts.enabled ]]</strong>disabled</span>
+            </template>
+        {% elif section == 'toolbar' %}
+            <span class="ctx-filter-label">Show</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
+                <button type="button" class="btn" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all taxonomies">All</button>
+                <button type="button" class="btn" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled taxonomies">Enabled</button>
+                <button type="button" class="btn" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled taxonomies">Not enabled</button>
             </div>
-
-            <!-- Counts -->
-            <div class="col-auto" v-if="taxonomy_counts">
-                <span class="text-muted" style="font-size: 0.85rem;">
-                    [[ taxonomy_counts.total ]] taxonomies, [[ taxonomy_counts.enabled ]] enabled
-                </span>
+            <div class="btn-group btn-group-sm" role="group" v-if="is_admin">
+                <button type="button" class="btn btn-outline-success" @click="bulkSetStatus(false)" title="Enable all taxonomies on this page">
+                    <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable page
+                </button>
+                <button type="button" class="btn btn-outline-danger" @click="bulkSetStatus(true)" title="Disable all taxonomies on this page">
+                    <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable page
+                </button>
             </div>
-
-            <!-- Filter buttons -->
-            <div class="col-auto">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Filter options">
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('all')" title="Show all taxonomies">
-                        <i class="fa-solid fa-list fa-sm me-1"></i>All
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'enabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('enabled')" title="Show enabled taxonomies">
-                        <i class="fa-solid fa-check fa-sm me-1"></i>Enabled
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'disabled' ? 'btn-primary' : 'btn-outline-secondary'" @click="applyFilter('disabled')" title="Show disabled taxonomies">
-                        <i class="fa-solid fa-xmark fa-sm me-1"></i>Not enabled
-                    </button>
-                </div>
-            </div>
-
-            <!-- Enable/Disable all -->
-            <div class="col-auto" v-if="is_admin">
-                <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-sm btn-outline-success" @click="bulkSetStatus(false)" title="Enable all on this page">
-                        <i class="fa-solid fa-toggle-on fa-sm me-1"></i>Enable all
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger" @click="bulkSetStatus(true)" title="Disable all on this page">
-                        <i class="fa-solid fa-toggle-off fa-sm me-1"></i>Disable all
-                    </button>
-                </div>
-            </div>
-
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search taxonomies by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-        {% if not current_user.is_admin() %}
-            <div class="alert alert-warning py-1 px-2 mt-2 mb-0" role="alert">
-                You do not have the Admin permissions. You can view taxonomies but cannot enable or disable them.
+            <div class="ctx-search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm" placeholder="Search taxonomies by name" aria-label="Search taxonomies by name">
             </div>
         {% endif %}
-    </div>
+    {% endcall %}
 
-    <hr class="fading-line-2 mb-4 mt-4">
-    
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="taxonomies_list && nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetchTaxonomies(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
-                <button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    {% if not current_user.is_admin() %}
+        <div class="ctx-notice mb-3" role="alert">
+            <i class="fa-solid fa-circle-info"></i>You do not have the Admin permissions. You can view taxonomies but cannot enable or disable them.
+        </div>
+    {% endif %}
 
-    <div class="case-core-style">
-        <template v-if="taxonomies_list">
-            <template v-for="taxonomy in taxonomies_list.taxonomies">
-                <div class="list-group" style="margin-bottom: 5px;">
-                    <div class="d-flex align-items-center" style="border-radius: 10px;">
-                        <template v-if="is_admin">
-                            <input v-if="taxonomy.exclude" class="form-check-input me-2" type="checkbox" name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)" style="transform: scale(0.85);">
-                            <input v-else class="form-check-input me-2" type="checkbox" checked name="activeTaxonomies" id="activeTaxonomies" @click="deactivate_taxo(taxonomy.id)" style="transform: scale(0.85);">
-                        </template>
-                        <a @click="extend_collapse(taxonomy.id)" class="list-group-item list-group-item-action case-index-list py-1">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h6 class="mb-0 admin-wrap-text" style="font-size: 0.9rem;">[[taxonomy.name]]</h6>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <small class="text-muted mb-0 admin-wrap-text" style="font-size: 0.8rem;">[[taxonomy.description]]</small>
-                            </div>
-                        </a>
-                    </div>
+    <context_table
+        :columns="columns"
+        :rows="taxonomies_list ? taxonomies_list.taxonomies : []"
+        :loading="!taxonomies_list"
+        empty-text="No taxonomy matches your search"
+        :current-page="current_page"
+        :nb-pages="nb_pages"
+        :sort-key="sort_key"
+        :sort-order="sort_order"
+        @sort="apply_sort"
+        @page="fetchTaxonomies"
+        @row-open="load_tags">
+
+        <template #cell-status="{ row }">
+            <div v-if="is_admin" class="form-check form-switch mb-0" @click.stop>
+                <input class="form-check-input" type="checkbox" role="switch" :checked="!row.exclude"
+                       @change="deactivate_taxo(row)" :title="row.exclude ? 'Enable this taxonomy' : 'Disable this taxonomy'"
+                       :aria-label="'Toggle ' + row.name">
+            </div>
+            <span v-else :class="['ctx-status', row.exclude ? 'ctx-status-off' : 'ctx-status-on']">[[ row.exclude ? 'Disabled' : 'Enabled' ]]</span>
+        </template>
+        <template #cell-name="{ row }">
+            <span class="ctx-name">[[ row.name ]]</span>
+        </template>
+        <template #cell-description="{ row }">
+            <span class="ctx-clamp" :title="row.description">[[ row.description ]]</span>
+        </template>
+        <template #cell-version="{ row }">
+            <span class="ctx-mono">v[[ row.version ]]</span>
+        </template>
+
+        <template #detail="{ row }">
+            <div class="ctx-detail-meta">
+                <span><strong>Namespace</strong> [[ row.name ]]</span>
+                <span><strong>Version</strong> [[ row.version ]]</span>
+                <span><strong>UUID</strong> <span class="ctx-mono">[[ row.uuid ]]</span></span>
+            </div>
+            <template v-if="tags_table[row.id] === undefined">
+                <div class="ctx-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading tags...</div>
+            </template>
+            <template v-else-if="!tags_table[row.id].length">
+                <div class="ctx-empty">This taxonomy has no tags.</div>
+            </template>
+            <template v-else>
+                <div class="ctx-detail-head">
+                    <h6 class="ctx-detail-title"><i class="misp-icon misp-icon-tag misp-simple me-1"></i>Tags <span class="ctx-pill ms-1">[[ tags_table[row.id].length ]]</span></h6>
+                    <input v-if="tags_table[row.id].length > 15" v-model="tag_filter[row.id]" type="search" class="form-control form-control-sm ctx-detail-filter" placeholder="Filter tags" @click.stop>
                 </div>
-
-                <div class="collapse" :id="'collapse'+taxonomy.id" style="margin-bottom: 20px;">
-                    <div class="card card-body" :id="'card-body_'+taxonomy.id" style="background-color: whitesmoke;">
-                        <template v-if="tags_table">
-                            <template v-if="tags_table[taxonomy.id]">
-                                <table class="admin-detail-table">
-                                    <template v-for="tag in tags_table[taxonomy.id]">
-                                        <tr>
-                                            <td title="Tag">
-                                                <div class="tag admin-taxonomy-tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                                    <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                                    [[tag.name]]
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </table>
-                                <hr>
-                                
-                            </template>
-                            <template v-else>
-                                <i>No tags</i>
-                            </template>
-                        </template>
-                        <template v-else>
-                            Loading...
-                        </template>
-                    </div>
+                <div class="ctx-tag-cloud">
+                    <tag_badge v-for="tag in filtered_tags(row.id)" :key="tag.id"
+                               :label="tag.name" :color="tag.color" :title="tag.description"
+                               icon-class="misp-icon misp-icon-tag misp-simple"></tag_badge>
                 </div>
+                <div v-if="!filtered_tags(row.id).length" class="ctx-empty">No tag matches this filter.</div>
             </template>
         </template>
-        <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
-    </div>
-
-    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="taxonomies_list && nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetchTaxonomies(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetchTaxonomies(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == nb_pages}">
-                <button class="page-link" @click="fetchTaxonomies(Math.min(current_page+1, nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    </context_table>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
-        import {getTextColor, mapIcon} from '/static/js/utils.js'
+        import context_table from '/static/js/components/context_table.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: {
+                context_table,
+                tag_badge
+            },
             setup() {
 
                 const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
                 const taxonomies_list = ref(null)
                 const tags_table = ref({})
+                const tag_filter = ref({})
                 const current_page = ref(1)
                 const nb_pages = ref(0)
                 const search_query = ref('')
                 const current_filter = ref('all')
                 const taxonomy_counts = ref(null)
+                const sort_key = ref('')
+                const sort_order = ref('asc')
                 let searchTimer = null
+
+                const columns = [
+                    { key: 'status', label: 'Enabled', width: '6.5rem', sortable: true, sortKey: 'exclude' },
+                    { key: 'name', label: 'Name', sortable: true, width: '28%' },
+                    { key: 'description', label: 'Description', sortable: true, class: 'ctx-hide-sm' },
+                    { key: 'version', label: 'Version', sortable: true, width: '6rem', class: 'ctx-hide-sm' },
+                ]
 
                 function buildFilterParam() {
                     if (current_filter.value === 'enabled') return '&enabled=true'
@@ -215,6 +153,7 @@
                     let url = 'get_taxonomies_page?page='+page
                     if (search_query.value) url += '&name='+encodeURIComponent(search_query.value)
                     url += buildFilterParam()
+                    if (sort_key.value) url += '&sort='+sort_key.value+'&order='+sort_order.value
                     const res = await fetch(url)
                     let loc = await res.json()
                     taxonomies_list.value = loc
@@ -243,6 +182,12 @@
                     taxonomy_counts.value = await res.json()
                 }
 
+                function apply_sort(key, order) {
+                    sort_key.value = key
+                    sort_order.value = order
+                    fetchTaxonomies(1)
+                }
+
                 function applyFilter(filter) {
                     current_filter.value = filter
                     fetchTaxonomies(1)
@@ -264,15 +209,24 @@
                     await fetchTaxonomies(current_page.value)
                 }
 
-                async function extend_collapse(taxo_id){
-                    const res = await fetch('get_tags?taxonomy='+taxo_id)
+                async function load_tags(taxonomy){
+                    if (tags_table.value[taxonomy.id] !== undefined) return
+                    const res = await fetch('get_tags?taxonomy='+taxonomy.id)
+                    if (res.status !== 200) {
+                        tags_table.value[taxonomy.id] = []
+                        display_toast(res)
+                        return
+                    }
                     let loc = await res.json()
-                    tags_table.value[taxo_id] = loc["tags"]
-
-                    const collapseElementList = document.querySelectorAll('#collapse'+taxo_id)
-                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                    tags_table.value[taxonomy.id] = loc["tags"]
                 }
 
+                function filtered_tags(taxonomy_id) {
+                    const tags = tags_table.value[taxonomy_id] || []
+                    const q = (tag_filter.value[taxonomy_id] || '').toLowerCase()
+                    if (!q) return tags
+                    return tags.filter(t => t.name.toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q))
+                }
 
                 function onInput(e){
                     clearTimeout(searchTimer)
@@ -280,51 +234,34 @@
                     searchTimer = setTimeout(() => fetchTaxonomies(1), 300)
                 }
 
-
-                async function deactivate_taxo(taxonomy_id){
-                    const res = await fetch('taxonomy_status?taxonomy='+taxonomy_id)
+                async function deactivate_taxo(taxonomy){
+                    const res = await fetch('taxonomy_status?taxonomy='+taxonomy.id)
+                    if (res.status === 200) taxonomy.exclude = !taxonomy.exclude
                     display_toast(res)
                     await fetchCounts()
                 }
 
-
                 fetchTaxonomies(1)
 
-                const visiblePages = computed(() => {
-                    const pages = []
-                    const total = nb_pages.value
-                    const current = current_page.value
-                    if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                        if (current <= 4) {
-                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
-                        } else if (current >= total - 3) {
-                            console.log("Over total-3");
-                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                        } else {
-                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
-                        }
-                    }
-                    return pages
-                })
-
-    
                 return {
                     message_list,
+                    columns,
                     taxonomies_list,
                     tags_table,
+                    tag_filter,
                     nb_pages,
-                    extend_collapse,
                     current_page,
                     fetchTaxonomies,
+                    load_tags,
+                    filtered_tags,
                     onInput,
-                    getTextColor,
                     deactivate_taxo,
-                    visiblePages,
                     current_filter,
                     taxonomy_counts,
                     applyFilter,
+                    sort_key,
+                    sort_order,
+                    apply_sort,
                     bulkSetStatus,
                     is_admin
                 }
