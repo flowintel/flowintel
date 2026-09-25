@@ -28,9 +28,10 @@
         stats    counters shown next to the title          -> header_stat()
         actions  main button after the counters            -> header_button(), header_link()
         aside    small info on the right of the title      -> e.g. <span class="ctx-version">
-        toolbar  filter bar under a divider                -> header_search(), header_segmented(),
-                                                              header_filters(), header_link(),
-                                                              header_button(), or custom markup
+        toolbar  filter bar under a divider                -> header_search(), header_filters(),
+                                                              header_segmented(), header_select(),
+                                                              header_switch(), header_input(),
+                                                              header_link(), header_button()
 
     Always build sections with the helpers below rather than hand-written markup:
     the look of every page then changes from this file only.
@@ -115,16 +116,47 @@
 {%- endmacro %}
 
 
-{#- Search field, always shown first (left) in the filter bar. oninput is the Vue handler. -#}
-{% macro header_search(placeholder, oninput='onInput') -%}
+{#- Search field, always shown first (left) in the filter bar. Either oninput (Vue handler)
+    or model (a v-model target, e.g. 'filters.query'). -#}
+{% macro header_search(placeholder, oninput='onInput', model='') -%}
 <div class="ctx-search">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input autocomplete="off" @input="{{ oninput }}" type="search" class="form-control form-control-sm" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
+    <input autocomplete="off" {% if model %}v-model.trim="{{ model }}"{% else %}@input="{{ oninput }}"{% endif %} type="search" class="form-control form-control-sm" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}">
 </div>
 {%- endmacro %}
 
 
-{#- Segmented control. options: [{'value': 'all', 'label': 'All', 'icon': '', 'title': ''}, ...]
+{#- Select menu. options: [{'value': ..., 'label': ...}] and/or options_expr, a Vue array of
+    {value, label} objects rendered with v-for. model is a v-model target; use attrs instead
+    for a custom binding (e.g. ':value="x" @change="y($event.target.value)"'). -#}
+{% macro header_select(options=[], model='', label='', options_expr='', title='', attrs='') -%}
+<label class="ctx-select"{% if title %} title="{{ title }}"{% endif %}>
+    {% if label %}<span>{{ label }}</span>{% endif %}
+    <select class="form-select form-select-sm" aria-label="{{ label or title }}"{% if model %} v-model="{{ model }}"{% endif %} {{ attrs|safe }}>
+        {% if options_expr %}<option v-for="opt in {{ options_expr }}" :value="opt.value">[[ opt.label ]]</option>{% endif %}
+        {% for opt in options %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
+    </select>
+</label>
+{%- endmacro %}
+
+
+{#- Small switch. attrs carries the Vue bindings (':checked="..." @click="..."'). -#}
+{% macro header_switch(label, id, attrs='', title='') -%}
+<div class="form-check form-switch ctx-switch mb-0"{% if title %} title="{{ title }}"{% endif %}>
+    <input class="form-check-input" type="checkbox" role="switch" id="{{ id }}" {{ attrs|safe }}>
+    <label class="form-check-label" for="{{ id }}">{{ label }}</label>
+</div>
+{%- endmacro %}
+
+
+{#- Small text/number field bound with v-model, e.g. a "case ID" filter. -#}
+{% macro header_input(model, placeholder, type='text', title='', attrs='') -%}
+<input class="form-control form-control-sm ctx-input" type="{{ type }}" v-model="{{ model }}" placeholder="{{ placeholder }}" aria-label="{{ placeholder }}"{% if title %} title="{{ title }}"{% endif %} {{ attrs|safe }}>
+{%- endmacro %}
+
+
+{#- Segmented control. options: [{'value': 'all', 'label': 'All', 'icon': '', 'title': '', 'badge': ''}, ...]
+    badge is an optional Vue expression shown as a small red counter when truthy.
     active and click are Vue expressions where {value} is replaced by each option value,
     e.g. active="current_filter === '{value}'", click="applyFilter('{value}')". -#}
 {% macro header_segmented(options, active, click, label='', aria='') -%}
@@ -133,6 +165,7 @@
     {% for opt in options %}
     <button type="button" :class="{active: {{ active|replace('{value}', opt.value) }}}" @click="{{ click|replace('{value}', opt.value) }}"{% if opt.title %} title="{{ opt.title }}"{% endif %}>
         {%- if opt.icon %}<i class="{{ opt.icon }} fa-sm me-1"></i>{% endif %}{{ opt.label }}
+        {%- if opt.badge %}<span v-if="{{ opt.badge }}" class="ctx-seg-badge">[[ {{ opt.badge }} ]]</span>{% endif %}
     </button>
     {% endfor %}
 </div>

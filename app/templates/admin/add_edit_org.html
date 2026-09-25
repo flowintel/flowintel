@@ -11,7 +11,7 @@
     {% if not edit_mode %}
         {% set header = ('Create an organisation', 'fa-solid fa-building-circle-arrow-right', 'Add an organisation that users and cases can belong to.') %}
     {% else %}
-        {% set header = ('Edit an organisation', 'fa-solid fa-building-circle-check', 'Update the details of this organisation.') %}
+        {% set header = ('Edit organisation · ' ~ (form.name.data or ''), 'fa-solid fa-building-circle-check', 'Update the details of this organisation.') %}
     {% endif %}
     {% call(section) page_header(header[0], header[1], header[2]) %}
         {% if section == 'actions' %}

@@ -13,7 +13,7 @@
 {%endblock%}
 
 {% block content %}
-    {% call(section) page_header('Edit a task template', 'fa-solid fa-list-check', 'Change the title, description and context of this task template.') %}
+    {% call(section) page_header('Edit task template #' ~ request.view_args.tid ~ ' · ' ~ (form.title.data or ''), 'fa-solid fa-list-check', 'Change the title, description and context of this task template.') %}
         {% if section == 'actions' %}
             {{ header_link('Case template' if case_id else 'Task templates', ('/templating/case/' ~ case_id) if case_id else '/templating/tasks', title='Back') }}
         {% endif %}

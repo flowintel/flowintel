@@ -13,7 +13,7 @@
 {%endblock%}
 
 {% block content %}
-    {% call(section) page_header('Edit a case template', 'fa-solid fa-folder-open', 'Change the title, description and context of this case template.') %}
+    {% call(section) page_header('Edit case template #' ~ request.view_args.cid ~ ' · ' ~ (form.title.data or ''), 'fa-solid fa-folder-open', 'Change the title, description and context of this case template.') %}
         {% if section == 'actions' %}
             {{ header_link('Case templates', '/templating/cases', title='Back to the case templates') }}
         {% endif %}

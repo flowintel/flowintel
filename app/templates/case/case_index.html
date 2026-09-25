@@ -3,7 +3,7 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented, header_filters %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented, header_filters, header_select, header_switch %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -28,21 +28,13 @@
                     {'value': 'false', 'label': 'Finished', 'icon': 'fa-solid fa-folder-closed', 'title': 'See finished cases'},
                 ], active='is_open_cases === {value}', click='is_open_cases !== {value} && change_status_sort({value})', aria='Case status') }}
 
-            <label class="ctx-select">
-                <span>Sort</span>
-                <select class="form-select form-select-sm" aria-label="Sort cases"
-                        :value="current_filter === 'my_org' ? 'last_modif' : current_filter"
-                        @change="sort_by_filter($event.target.value)">
-                    <option value="last_modif">Last modified</option>
-                    <option value="title">Title</option>
-                    <option value="id">ID</option>
-                </select>
-            </label>
+            {{ header_select([
+                    {'value': 'last_modif', 'label': 'Last modified'},
+                    {'value': 'title', 'label': 'Title'},
+                    {'value': 'id', 'label': 'ID'},
+                ], label='Sort', attrs=':value="current_filter === \'my_org\' ? \'last_modif\' : current_filter" @change="sort_by_filter($event.target.value)"') }}
 
-            <div class="form-check form-switch ctx-switch mb-0">
-                <input class="form-check-input" type="checkbox" role="switch" id="topCheckMyOrg" @click="sort_by_filter(current_filter === 'my_org' ? 'last_modif' : 'my_org')" :checked="current_filter === 'my_org'">
-                <label class="form-check-label" for="topCheckMyOrg">My org</label>
-            </div>
+            {{ header_switch('My org', 'topCheckMyOrg', attrs=':checked="current_filter === \'my_org\'" @click="sort_by_filter(current_filter === \'my_org\' ? \'last_modif\' : \'my_org\')"') }}
 
             {{ header_filters('#modalCaseFilter', active='has_active_filters') }}
 

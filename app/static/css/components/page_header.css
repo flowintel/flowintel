@@ -362,6 +362,25 @@ a.ctx-meta-item:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+.ctx-seg-badge {
+  display: inline-block;
+  min-width: 1.1rem;
+  margin-left: 0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.ctx-input {
+  width: 9rem;
+  border-radius: 999px;
+  font-size: 0.83rem;
+}
+
 .ctx-select {
   display: inline-flex;
   align-items: center;

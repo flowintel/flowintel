@@ -9,7 +9,7 @@
 {%endblock%}
 
 {% block content %}
-    {% call(section) page_header('Edit a note template', 'fa-solid fa-note-sticky', 'Change the title, description and content of this note template.') %}
+    {% call(section) page_header('Edit note template #' ~ note_template.id ~ ' · ' ~ note_template.title, 'fa-solid fa-note-sticky', 'Change the title, description and content of this note template.') %}
         {% if section == 'actions' %}
             {{ header_link('Note template', '/tools/note_template_view/' ~ note_template.id, title='Back to the note template') }}
         {% endif %}

@@ -11,7 +11,7 @@
     {% if not edit_mode %}
         {% set header = ('Create an account', 'fa-solid fa-user-plus', 'Add a user and choose their organisation and role.') %}
     {% else %}
-        {% set header = ('Edit an account', 'fa-solid fa-user-pen', 'Update the profile, organisation or role of this user.') %}
+        {% set header = ('Edit account · ' ~ (form.first_name.data or '') ~ ' ' ~ (form.last_name.data or ''), 'fa-solid fa-user-pen', 'Update the profile, organisation or role of this user.') %}
     {% endif %}
     {% call(section) page_header(header[0], header[1], header[2]) %}
         {% if section == 'actions' %}
