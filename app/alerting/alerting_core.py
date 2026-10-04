@@ -503,7 +503,8 @@ def ingest_alert(payload, identity):
         ).first()
 
     if existing:
-        existing.occurrence_count = (existing.occurrence_count or 1) + 1
+        # Increment in SQL so concurrent ingests of the same alert do not overwrite each other.
+        existing.occurrence_count = db.func.coalesce(ExternalAlert.occurrence_count, 1) + 1
         existing.last_seen = normalized["last_seen"]
         existing.raw_payload = normalized["raw_payload"]
         existing.observables = normalized["observables"]
