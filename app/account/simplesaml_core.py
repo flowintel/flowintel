@@ -167,6 +167,19 @@ def _first(attributes: dict, key: str, default: str = '') -> str:
     return vals[0] if vals else default
 
 
+def _create_notif(
+    email: str, username:str, matched_group:str, target_role_name:str, notify_admin:bool
+    )-> tuple[str]:
+    return (
+        f"SimpleSAML user '{email}' (login: {username}) is a member of '{matched_group}' "
+        f"and has been provisioned with the '{target_role_name}' role. "
+        + (
+            "Please promote them to Admin if appropriate."
+            if notify_admin else
+            "Please review their organisation assignment."
+        )
+    )
+
 # ---------------------------------------------------------------------------
 # User provisioning — same group-priority logic as Keycloak core
 # ---------------------------------------------------------------------------
@@ -243,6 +256,20 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
             ):
             user.role_id = target_role.id
             db.session.commit()
+
+            msg = _create_notif(
+            email=email,
+            username=username,
+            matched_group=matched_group,
+            target_role_name=target_role.name,
+            notify_admin=notify_admin)
+
+            NotifModel.create_notification_for_admins(
+                message=msg,
+                html_icon="fa-solid fa-user-shield",
+                user_id_for_redirect=user.id,
+            )
+
         return user, None
 
     # Name: single 'cn' field split on first space
@@ -278,15 +305,13 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
 
     logger.info("Provisioned new SimpleSAML user: %s (role: %s)", email, target_role.name)
 
-    msg = (
-        f"SimpleSAML user '{email}' (login: {username}) is a member of '{matched_group}' "
-        f"and has been provisioned with the '{target_role.name}' role. "
-        + (
-            "Please promote them to Admin if appropriate."
-            if notify_admin else
-            "Please review their organisation assignment."
-        )
-    )
+    msg = _create_notif(
+        email=email,
+        username=username,
+        matched_group=matched_group,
+        target_role_name=target_role.name,
+        notify_admin=notify_admin)
+
     NotifModel.create_notification_for_admins(
         message=msg,
         html_icon="fa-solid fa-user-shield",
