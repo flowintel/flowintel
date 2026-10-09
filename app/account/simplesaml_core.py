@@ -42,46 +42,31 @@ def _sync_role_on_login():
 
 def _group_admin():
     # Editor by default, Admin will be notified thanks to True argument, then Admin can promote new Admin
-    return (
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_ADMIN"),
         "Editor",
         True
-    )
+    )]
 
 def _group_editor():
-    return (
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_EDITOR"),
         "Editor",
         False
-    )
+    )]
 
-def _group_case_admin():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_CASE_ADMIN"),
-        current_app.config.get("SIMPLESAML_ROLE_CASE_ADMIN"),
-        False
-    )
-
-def _group_queue_admin():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_QUEUE_ADMIN"),
-        current_app.config.get("SIMPLESAML_ROLE_QUEUE_ADMIN"),
-        False
-    )
-
-def _group_queuer():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_QUEUER"),
-        current_app.config.get("SIMPLESAML_ROLE_QUEUER"),
-        False
-    )
+def _group_mapped():
+    mapped_list = current_app.config.get("SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY")
+    return [
+        (item["group"], item["role"], False) for item in mapped_list
+    ]
 
 def _group_readonly():
-    return (
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_READONLY"),
         "Read Only", 
         False
-    )
+    )]
 
 def _group_aliases():
     return current_app.config.get("SIMPLESAML_GROUP_ALIASES", {})
@@ -206,12 +191,10 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
 
     # Which role stays on top if present in multiple groups mapping different privilege roles
     priority_list = [
-        _group_admin(),
-        _group_case_admin(),
-        _group_queue_admin(),
-        _group_editor(),
-        _group_queuer(),
-        _group_readonly(),
+        *_group_admin(),
+        *_group_mapped(),
+        *_group_editor(),
+        *_group_readonly(),
     ]
 
     configured_groups = [e[0] for e in priority_list]
