@@ -152,6 +152,8 @@ class Config():
     # Only change these if Valkey runs on a different host.
     VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
+    VALKEY_USERNAME = "default" # For the sake of simplicity we rely on "default" user and simply apply a password
+    VALKEY_PASSWORD = os.getenv('VALKEY_PASSWORD') or None
     SESSION_TYPE = "redis" # Can be overridden in dev/test/prod class
     
     # =============================================================================

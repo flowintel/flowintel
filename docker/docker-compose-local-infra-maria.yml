@@ -3,6 +3,7 @@
 services:
   mariadb:
     container_name: mariadb
+    # In production, do not forget to pin to a scanned sha256 pinned image
     image: mariadb:12
     # TODO
     # https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/mariadb-server-docker-official-image-environment-variables#using-_file-environment-variables-for-secrets
@@ -14,6 +15,9 @@ services:
       - db:/var/lib/mysql
       - ./init-infra-maria.sql:/docker-entrypoint-initdb.d/init.sql:ro
     environment:
+      # If the .env is used to load secrets (only) in prod from file, this variables can be replaced
+      # by a /run/secret file using classical Docker mechanism
+      # This applies to all MYSQL_*_PASSWORD instances in this block
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-flowintel}
       - MYSQL_USER=${DB_USER:-flowintel}
       - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
@@ -24,16 +28,40 @@ services:
 
   valkey:
     container_name: valkey
+    # In production, do not forget to pin to a scanned sha256 pinned image
     image: valkey/valkey
     # We need to expose to host because Flowintel is not containerised
     ports:
       - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
       - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
-    #
+    environment:
+      # If the .env is used to load secrets (only) in prod from file, this variables can be replaced
+      # by a /run/secret file using classical Docker mechanism
+      # This applies to all VALKEY_PASSWORD instances in this block
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-your_secure_valkey_password_here}
     volumes:
       - valkey-data:/data
     networks:
       - net
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}"]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          valkey-cli -a "$$VALKEY_PASSWORD" --no-auth-warning ping | grep -qx PONG;
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    # Docker hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    restart: unless-stopped
 
 volumes:
   db:

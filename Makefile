@@ -320,8 +320,6 @@ full_run_postgres: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_maria: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -331,8 +329,6 @@ full_run_maria: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_mysql: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -342,8 +338,6 @@ full_run_mysql: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-mysql.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_official_postgres: configure_repo_dev
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -373,25 +367,37 @@ endif
 
 # Various Helpers
 dev_localinfra_postgres_run:
+	cp -f .env.postgres.custom docker/.env
 	docker compose -f docker/docker-compose-local-infra-postgres.yml up
 
 dev_localinfra_maria_run:
+	cp -f .env.maria.custom docker/.env
 	docker compose -f docker/docker-compose-local-infra-maria.yml up
 
 dev_localinfra_postgres_stop:
 	docker compose -f docker/docker-compose-local-infra-postgres.yml down
+	sleep 1
+	rm docker/.env
 
 dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-infra-maria.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_postgres_stop:
 	docker compose -f docker/docker-compose-local-full-postgres.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-full-maria.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_mysql_stop:
 	docker compose -f docker/docker-compose-local-full-mysql.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_official_postgres_stop:
 	docker compose -f docker/docker-compose.yml down

@@ -3,6 +3,7 @@
 services:
   mariadb:
     container_name: mariadb
+    # In production, do not forget to pin to a scanned sha256 pinned image
     image: mariadb:12
     # TODO
     # https://mariadb.com/docs/server/server-management/automated-mariadb-deployment-and-administration/docker-and-mariadb/mariadb-server-docker-official-image-environment-variables#using-_file-environment-variables-for-secrets
@@ -13,6 +14,9 @@ services:
     volumes:
       - db:/var/lib/mysql
     environment:
+      # If the .env is used to load secrets (only) in prod from file, this variables can be replaced
+      # by a /run/secret file using classical Docker mechanism
+      # This applies to all MYSQL_*_PASSWORD instances in this block
       - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-mysql}
       - MYSQL_USER=${DB_USER:-flowintel}
       - MYSQL_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
@@ -23,18 +27,47 @@ services:
 
   valkey:
     container_name: valkey
+    # In production, do not forget to pin to a scanned sha256 pinned image
     image: valkey/valkey
     ports:
       - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
       - "[::1]:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
+    environment:
+      # If the .env is used to load secrets (only) in prod from file, this variables can be replaced
+      # by a /run/secret file using classical Docker mechanism
+      # This applies to all VALKEY_PASSWORD instances in this block
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-your_secure_valkey_password_here}
     volumes:
       - valkey-data:/data
     networks:
       - net
-
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}"]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          valkey-cli -a "$$VALKEY_PASSWORD" --no-auth-warning ping | grep -qx PONG;
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 10s
+    # Docker hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    restart: unless-stopped
 
   flowintel:
+    # Generally, the locally built image is used in these examples. Less important to pin to sha256 as these artefact
+    # should be completely controlled, pinning and scanning the build is still important depending on the governance
+    # used on for production and registries. The pull_policy applied here would prevent to retrieve a missing local
+    # image.
     image: flowintel:latest
+    pull_policy: never
     container_name: flowintel
     command: bash -i ./launch.sh -ld
     ports:
@@ -55,6 +88,7 @@ services:
     # env_file: "./.env"
     #
     environment:
+      # If the .env is used to load secrets (only) in prod from file, all passwords can be suppressed in this block
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
       - DB_HOST=${DB_HOST:-mariadb}
@@ -66,6 +100,8 @@ services:
       - DB_DRIVER=${DB_DRIVER:-pymysql}
       #
       - VALKEY_IP=${VALKEY_IP:-valkey}
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-your_secure_valkey_password_here}
+      #
       - ADMIN_FIRST_NAME=${ADMIN_FIRST_NAME:-admin}
       - ADMIN_LAST_NAME=${ADMIN_LAST_NAME:-admin}
       - ADMIN_MAIL=${ADMIN_MAIL:-admin@admin.admin}
@@ -81,8 +117,11 @@ services:
     networks:
       - net
     depends_on:
-      - mariadb
-      - valkey
+      mariadb:
+        condition: service_started      # or service_healthy if mariadb has a healthcheck
+      valkey:
+        condition: service_healthy
+        restart: true
     volumes:
       - flowintel-data:/var/lib/flowintel
       # Instead of including config at Docker build stage, we prefer to decouple and mount it as a volume
@@ -94,6 +133,23 @@ services:
       #   - in production, bypass dotenv by simply not mounting the file
       # - ./.env:/home/flowintel/app/.env
       #
+    healthcheck:
+      # TODO implement a /health endpoint in Flowintel ?
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:7006/', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Docker hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
 
 volumes:
   db:
