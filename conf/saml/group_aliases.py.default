@@ -6,6 +6,7 @@ SIMPLESAML_GROUP_ALIASES    = {
 
 # This one should contain only custom group / roles priority listing (no Flowintel System roles, no Flowintel "Base" roles)
 # The Flowintel Base roles are already included in the base priority list alongside system roles
+# The saml user will get the upper role defined in priority list
 SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY = [
     {'group': "your_other_saml_group", 'role': "your_flowintel_custom_role",},
 ]

@@ -42,6 +42,7 @@ def _sync_role_on_login():
 
 def _group_admin():
     # Editor by default, Admin will be notified thanks to True argument, then Admin can promote new Admin
+    # Because we check if the role drifted, it basically mean that a user cannot stay system admin when connecting through saml
     return [(
         current_app.config.get("SIMPLESAML_GROUP_ADMIN"),
         "Editor",
@@ -186,6 +187,17 @@ def _create_notif(
 def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str | None]:
     """
     Resolve/Provision a Flowintel user from a validated python3-saml auth object.
+    
+    The Flowintel role is assigned to the User at creation time.
+    - If it means "Admin" Flowintel System role, the current Admin is notified to make
+    the exact permission change. This notification happens only at creation stage,
+    when it happens an synching role, there is no notification.
+    - If SIMPLESAML_SYNC_ROLE_ON_LOGIN is True (default), at each login, the user is
+    reassigned its expected role. The collateral impact is that it is not possible to
+    make a User coming from Saml world and "Admin" Flowintel System role.
+    This is intentionnal behavior at current stage and it is aligned, yet more explicit,
+    than with Keycloak and EntraID behavior where it was more an implicit consequence.
+
     Returns (user, None) or (None, error_message).
     """
     # First get the attributes from SAML
@@ -197,7 +209,7 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
 
     raw_groups = attrs.get(_attr_groups(), [])
     aliases = _group_aliases()
-    groups = [aliases.get(group, group) for group in raw_groups]
+    groups = [aliases.get(group) for group in raw_groups]
 
     full_name = _first(attrs, _attr_name())
     username  = _first(attrs, _attr_username(), default=email.split('@')[0])
