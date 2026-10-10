@@ -131,6 +131,22 @@ Examples of usage:
 4. ***Still experimental*** Run the application in it own Python local Virtual Environment alongside the datastack local Development infrastructure with MariaDB: ```make run_maria```
 5. Initial the repository installing locally the Python Virtual Environment and deriving default config: ```make first_install```
 
+The Makefile helper provides also targets that facilitate the dependencies management with uv:
+1. `sync`: after clone, git pull or switching branches. Installs exactly uv.lock (dev group included) into .venv.
+   Never edits uv.lock; fails if it is stale.
+2. `lock`: after editing dependencies or requires-python in pyproject.toml.
+   Minimal re-resolve; commit the resulting uv.lock.
+3. `lock_upgrade`: scheduled dependency refresh, or to pick up a security fix. Run on a branch, read the uv.lock diff,
+   then run tests and audit.
+4. `lock_check`: CI and pre-commit. Fails if uv.lock does not match pyproject.toml. Changes nothing.
+5. `export_requirements`: after any lock change, before building Docker images or installing with pip.
+   Or to align the requirements for a release.
+   Regenerates requirements.txt (prod) and requirements-dev.txt. Runs audit first; needs network.
+6. `audit`: before a release and in CI. Scans locked production dependencies for known vulnerabilities.
+   Git dependencies are excluded and need manual review. In some cases, it may be necessary to exclude for package when
+   these ones are not yet patched against a vulnerability, yet an upgrade of requirements is still necessary for a
+   release. Appropriate mitigation shall be applied for Production.
+
 ## Dockerised deployment
 The deployment can be conducted using Docker in Development, Testing and Production environment. Different flavors of the
 software architecture can be spawned with different Docker Composition files that can be found in ```docker``` folder.
