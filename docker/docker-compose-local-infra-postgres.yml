@@ -5,11 +5,13 @@ services:
     container_name: postgres
     # In production, do not forget to pin to a scanned sha256 pinned image
     image: postgres:17
+    # Adapt to your needs
+    # pull_policy: never
     ports:
       - "127.0.0.1:${DB_PORT:-5432}:${DB_PORT:-5432}"
       - "[::1]:${DB_PORT:-5432}:${DB_PORT:-5432}"
     volumes:
-      - db:/var/lib/postgresql/data
+      - db:/var/lib/postgresql/data:rw
     environment:
       # If the .env is used to load secrets (only) in prod from file, this variables can be replaced
       # by a /run/secret file using classical Docker mechanism
@@ -18,13 +20,19 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-your_secure_password_here}
       - POSTGRES_DB=${DB_NAME:-flowintel}
     networks:
+# to delete if we define specific network
       - net
+# to add if we define specific network
+#      backend:
+#        ipv4_address: 172.18.0.6
     restart: unless-stopped
 
   valkey:
     container_name: valkey
     # In production, do not forget to pin to a scanned sha256 pinned image
     image: valkey/valkey
+    # Adapt to your needs
+    # pull_policy: never
     # We need to expose to host because Flowintel is not containerised
     ports:
       - "127.0.0.1:${VALKEY_PORT:-6379}:${VALKEY_PORT:-6379}"
@@ -34,12 +42,23 @@ services:
       # by a /run/secret file using classical Docker mechanism
       # This applies to all VALKEY_PASSWORD instances in this block
       - VALKEY_PASSWORD=${VALKEY_PASSWORD:-your_secure_valkey_password_here}
-    volumes:
-      - valkey-data:/data
     networks:
+# to delete if specific network is needed
       - net
+# to add if specific network is needed
+#     backend:
+#      ipv4_address: 172.18.0.5
+    volumes:
+      - valkey-data:/data:rw
+    # Choose according to needs in Production - See above
+    # command: ["valkey-server", "--requirepass", "/run/secrets/valkey_password"]
     command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}"]
     healthcheck:
+      # Choose according to needs in Production - See above
+      # test:
+      #   - CMD-SHELL
+      #   - >-
+      #     valkey-cli -a /run/secrets/valkey_password --no-auth-warning ping | grep -qx PONG;
       test:
         - CMD-SHELL
         - >-
@@ -71,3 +90,8 @@ networks:
       config:
         - subnet: 10.0.0.0/24
         - subnet: fd31:50:0:1::/64
+
+# Choose according to needs in Production - See above
+# secrets:
+#   valkey_password:
+#     file: /etc/flowintel/secrets/valkey_password

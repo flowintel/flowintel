@@ -2,14 +2,13 @@
 # For example, they support systematic testing of database schema changes across all supported database backends.
 services:
   flowintel:
+    container_name: flowintel
     # Generally, the locally built image is used in these examples. Less important to pin to sha256 as these artefact
     # should be completely controlled, pinning and scanning the build is still important depending on the governance
     # used on for production and registries. The pull_policy applied here would prevent to retrieve a missing local
-    # image.
+    # image. Adapt accordingly to your needs.
     image: flowintel:latest
     pull_policy: never
-    container_name: flowintel
-    command: bash -i ./launch.sh -ld
     ports:
       # If Flowintel needs to be reached from exterior (SimpleSaml IdP for example)
       # And not reverse proxy in Dev
@@ -56,9 +55,15 @@ services:
       - FLOWINTEL_APP_HOST=${FLOWINTEL_APP_HOST:-0.0.0.0}
     #
     networks:
+# to delete if we define specific network
       - net
+# to add if we define specific network
+#      backend:
+#        ipv4_address: 172.18.0.4
     volumes:
-      - flowintel-data:/var/lib/flowintel
+      # data
+      - flowintel-data:/var/lib/flowintel:rw
+      - flowintel-data-uploads:/home/flowintel/app/uploads:rw
       # Instead of including config at Docker build stage, we prefer to decouple and mount it as a volume
       - ../conf/config_module.py:/home/flowintel/app/conf/config_module.py:ro
       - ../conf/config.py:/home/flowintel/app/conf/config.py:ro
@@ -68,6 +73,11 @@ services:
       #   - in production, bypass dotenv by simply not mounting the file
       # - ./.env:/home/flowintel/app/.env
       #
+      # Logs
+      - flowintel-logs/:/home/flowintel/app/logs:rw
+      # History
+      - flowintel-history/:/home/flowintel/app/history:rw
+    command: bash -i ./launch.sh -ld
     healthcheck:
       # TODO implement a /health endpoint in Flowintel ?
       test:
@@ -84,13 +94,15 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    restart: unless-stopped
     # Further hardening for production
     # read_only: true      # needs also writable volumes for uploads/, logs/ and history/, plus tmpfs for /tmp as optional in Production
-
+    restart: unless-stopped
 
 volumes:
+  flowintel-logs:
   flowintel-data:
+  flowintel-data-uploads:
+  flowintel-history:
 
 networks:
   net:
