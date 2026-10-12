@@ -49,6 +49,7 @@ services:
       - BOT_MAIL=${BOT_MAIL:-neo@admin.admin}
       #
       # By default, we use production config because the docker compose owns a database service
+      # This one does not appear in config.py, but is read by App factory
       - FLOWINTEL_APP_ENV=${FLOWINTEL_APP_ENV:-production}
       #
       - FLOWINTEL_APP_PORT=${FLOWINTEL_APP_PORT:-7006}
@@ -84,6 +85,8 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
+    # Further hardening for production
+    # read_only: true      # needs also writable volumes for uploads/, logs/ and history/, plus tmpfs for /tmp as optional in Production
 
 volumes:
   flowintel-data:
