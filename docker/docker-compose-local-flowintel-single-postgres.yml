@@ -74,9 +74,9 @@ services:
       # - ./.env:/home/flowintel/app/.env
       #
       # Logs
-      - flowintel-logs/:/home/flowintel/app/logs:rw
+      - flowintel-logs:/home/flowintel/app/logs:rw
       # History
-      - flowintel-history/:/home/flowintel/app/history:rw
+      - flowintel-history:/home/flowintel/app/history:rw
     command: bash -i ./launch.sh -ld
     healthcheck:
       # TODO implement a /health endpoint in Flowintel ?

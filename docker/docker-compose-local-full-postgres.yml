@@ -151,9 +151,9 @@ services:
       #- ./.env.docker:/home/flowintel/app/.env
       #
       # Logs
-      - flowintel-logs/:/home/flowintel/app/logs:rw
+      - flowintel-logs:/home/flowintel/app/logs:rw
       # History
-      - flowintel-history/:/home/flowintel/app/history:rw
+      - flowintel-history:/home/flowintel/app/history:rw
     depends_on:
       postgresql:
         condition: service_started      # or service_healthy if mariadb has a healthcheck
