@@ -235,6 +235,12 @@ RUN set -eux \
     && chown -R flowintel:flowintel /home/flowintel/.pandoc \
     && ln -s /opt/flowintel-venv /home/flowintel/venv;
 
+RUN install -d -o flowintel -g flowintel -m 0750 \
+      /home/flowintel/app/logs \
+      /home/flowintel/app/history \
+      /home/flowintel/app/uploads \
+      /var/lib/flowintel;
+
 # Some people may want this hardening as a 1st step towards distroless image (before even a noshell variant)
 # But this will blind the Vulnerability scanners...
 # Might be acceptable with the SBOM output proposed in the Makefile
