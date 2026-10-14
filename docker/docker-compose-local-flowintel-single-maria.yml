@@ -24,10 +24,12 @@ services:
     # and is not findable by Docker, but this means the list of environment variables below must be made
     # consistent with the targeted config in production
     # For some reason, docker compose accept only the default ".env" -> tricky with the dotenv() of Python BTW !
+    # Cannot be combined with secrets section loading the .env !
     # env_file: "./.env"
     #
     environment:
-      # If the .env is used to load secrets (only) in prod from file, all passwords can be suppressed in this block
+      # If the .env is used to load secrets (only) in prod from file, all passwords can be suppressed in this block.
+      # See secrets section below.
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
       - DB_HOST=${DB_HOST:-mariadb}
@@ -60,6 +62,10 @@ services:
 # to add if we define specific network
 #      backend:
 #        ipv4_address: 172.18.0.4
+    # If using the .env to mount secrets.
+    # secrets:
+    #   - source: flowintel_dot_env
+    #     target: /home/flowintel/app/.env
     volumes:
       # data
       - flowintel-data:/var/lib/flowintel:rw
@@ -71,6 +77,7 @@ services:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
       #   - in production, bypass dotenv by simply not mounting the file
+      # Cannot be combined with secrets section loading the .env !
       # - ./.env:/home/flowintel/app/.env
       #
       # Logs
@@ -112,3 +119,8 @@ networks:
       config:
         - subnet: 10.0.0.0/24
         - subnet: fd31:50:0:1::/64
+
+# Choose according to needs in Production - See above
+# secrets:
+#   flowintel_dot_env:
+#    file: /etc/flowintel/.env

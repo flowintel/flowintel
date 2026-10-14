@@ -48,17 +48,24 @@ services:
 # to add if specific network is needed
 #     backend:
 #      ipv4_address: 172.18.0.5
+    user: "999:999"
+    # Do not forget to mount the secrets if using the /run/secrets file mechanism
+    # secrets:
+    #   - valkey_password
+    #
     volumes:
       - valkey-data:/data:rw
     # Choose according to needs in Production - See above
-    # command: ["valkey-server", "--requirepass", "/run/secrets/valkey_password"]
+    # command:
+    #   - sh
+    #   - -c
+    #   - 'exec valkey-server --requirepass "$$(cat /run/secrets/valkey_password)"'
     command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}"]
     healthcheck:
       # Choose according to needs in Production - See above
       # test:
       #   - CMD-SHELL
-      #   - >-
-      #     valkey-cli -a /run/secrets/valkey_password --no-auth-warning ping | grep -qx PONG;
+      #   - 'valkey-cli -a "$$(cat /run/secrets/valkey_password)" --no-auth-warning ping | grep -qx PONG';
       test:
         - CMD-SHELL
         - >-
@@ -72,9 +79,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - SETUID
-      - SETGID
     restart: unless-stopped
 
 
@@ -95,3 +99,5 @@ networks:
 # secrets:
 #   valkey_password:
 #     file: /etc/flowintel/secrets/valkey_password
+#   flowintel_dot_env:
+#    file: /etc/flowintel/.env

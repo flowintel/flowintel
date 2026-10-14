@@ -49,17 +49,24 @@ services:
 # to add if specific network is needed
 #     backend:
 #      ipv4_address: 172.18.0.5
+    user: "999:999"
+    # Do not forget to mount the secrets if using the /run/secrets file mechanism
+    # secrets:
+    #   - valkey_password
+    #
     volumes:
       - valkey-data:/data:rw
     # Choose according to needs in Production - See above
-    # command: ["valkey-server", "--requirepass", "/run/secrets/valkey_password"]
+    # command:
+    #   - sh
+    #   - -c
+    #   - 'exec valkey-server --requirepass "$$(cat /run/secrets/valkey_password)"'
     command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}"]
     healthcheck:
-      # Choose according to needs in Production - See above
-      # test:
-      #   - CMD-SHELL
-      #   - >-
-      #     valkey-cli -a /run/secrets/valkey_password --no-auth-warning ping | grep -qx PONG;
+    # Choose according to needs in Production - See above
+    # test:
+    #   - CMD-SHELL
+    #   - 'valkey-cli -a "$$(cat /run/secrets/valkey_password)" --no-auth-warning ping | grep -qx PONG';
       test:
         - CMD-SHELL
         - >-
@@ -73,9 +80,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - SETUID
-      - SETGID
     restart: unless-stopped
 
   flowintel:
@@ -101,10 +105,12 @@ services:
     # and is not findable by Docker, but this means the list of environment variables below must be made
     # consistent with the targeted config in production
     # For some reason, docker compose accept only the default ".env" -> tricky with the dotenv() of Python BTW !
+    # Cannot be combined with secrets section loading the .env !
     # env_file: "./.env"
     #
     environment:
-      # If the .env is used to load secrets (only) in prod from file, all passwords can be suppressed in this block
+      # If the .env is used to load secrets (only) in prod from file, all passwords can be suppressed in this block.
+      # See secrets section below.
       - SECRET_KEY=${SECRET_KEY:-SECRET_KEY_ENV_VAR_NOT_SET}
       #
       - DB_HOST=${DB_HOST:-postgresql}
@@ -137,6 +143,10 @@ services:
 # to add if we define specific network
 #      backend:
 #        ipv4_address: 172.18.0.4
+    # If using the .env to mount secrets.
+    # secrets:
+    #   - source: flowintel_dot_env
+    #     target: /home/flowintel/app/.env
     volumes:
       # data
       - flowintel-data:/var/lib/flowintel:rw
@@ -148,6 +158,7 @@ services:
       # Creates the missing varenv above thanks to dotenv in python3:
       #   - dotenv does not override existing variables by default
       #   - in production, bypass dotenv by simply not mounting the file
+      # Cannot be combined with secrets section loading the .env !
       #- ./.env.docker:/home/flowintel/app/.env
       #
       # Logs
@@ -202,3 +213,5 @@ networks:
 # secrets:
 #   valkey_password:
 #     file: /etc/flowintel/secrets/valkey_password
+#   flowintel_dot_env:
+#    file: /etc/flowintel/.env
