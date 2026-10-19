@@ -1,7 +1,7 @@
 """add user settings table
 
 Revision ID: 68f9cafb88eb
-Revises: 4f62a1b8c9d0
+Revises: a6c8e2f091bd
 Create Date: 2026-09-25 11:59:39.885618
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '68f9cafb88eb'
-down_revision = '4f62a1b8c9d0'
+down_revision = 'a6c8e2f091bd'
 branch_labels = None
 depends_on = None
 

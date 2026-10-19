@@ -1,7 +1,7 @@
 """Add a unique constraint on external alert de-duplication key
 
 Revision ID: c4d8e2f1a9b7
-Revises: 4f62a1b8c9d0
+Revises: ddcd67403ee0
 Create Date: 2026-10-04 00:00:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = 'c4d8e2f1a9b7'
-down_revision = '4f62a1b8c9d0'
+down_revision = 'ddcd67403ee0'
 branch_labels = None
 depends_on = None
 

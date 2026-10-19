@@ -95,22 +95,24 @@
         {% if section == 'actions' %}
             {{ header_button('Download calendar feed', icon='fa-solid fa-calendar-plus', title='Download an iCalendar feed of your cases and tasks', attrs='@click="downloadCalendarFeed"') }}
             {% if not current_user.read_only() %}
-              {{ header_button('Add event', icon='fa-solid fa-plus', title='Add an event not linked to cases or tasks', attrs='@click="openEventModal"') }}
+              {{ header_button('Add event', icon='fa-solid fa-plus', title='Add an event not linked to cases or tasks', attrs='@click="openEventModal()"') }}
             {% endif %}
-    {% elif section == 'toolbar' %}
+        {% elif section == 'toolbar' %}
             <span class="ctx-filter-label">Show</span>
-            <div class="ctx-chips" role="group" aria-label="Calendar item filters">
-                <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
-                <label class="ctx-chip" for="checkbox-case"><i class="fa-solid fa-folder-open fa-sm"></i>Case</label>
-                <input class="btn-check" checked type="checkbox" value="" id="checkbox-task" autocomplete="off" @change="selection_case_task(false, true, $event)">
-                <label class="ctx-chip" for="checkbox-task"><i class="fa-solid fa-list-check fa-sm"></i>Task</label>
-                <input class="btn-check" type="checkbox" id="checkbox-event" autocomplete="off" v-model="showManualEvents" @change="onDateChange">
-                <label class="btn btn-outline-calendar-event" for="checkbox-event">
-                    <i class="fa-solid fa-calendar-day"></i> Event
-                </label>
-                <input class="btn-check" type="checkbox" value="" id="checkbox-task-assigned" autocomplete="off" @change="selection_assigned_tasks">
-                <label class="ctx-chip" for="checkbox-task-assigned"><i class="fa-solid fa-user-check fa-sm"></i>Assigned to me</label>
-            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Calendar item filters">
+                    <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
+                    <label class="btn btn-outline-primary" for="checkbox-case">
+                        <i class="fa-solid fa-folder-open"></i> Case
+                    </label>
+                    <input class="btn-check" checked type="checkbox" value="" id="checkbox-task" autocomplete="off" @change="selection_case_task(false, true, $event)">
+                    <label class="btn btn-outline-success" for="checkbox-task">
+                        <i class="fa-solid fa-list-check"></i> Task
+                    </label>
+                    <input class="btn-check" type="checkbox" id="checkbox-event" autocomplete="off" v-model="showManualEvents" @change="onDateChange">
+                    <label class="btn btn-outline-calendar-event" for="checkbox-event">
+                        <i class="fa-solid fa-calendar-day"></i> Event
+                    </label>
+                </div>
 
             <span class="ctx-filter-label">Date</span>
             <div class="ctx-seg ctx-seg-check" role="group" aria-label="Calendar date filter">
