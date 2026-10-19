@@ -988,8 +988,18 @@ def create_case_from_alert(alert, user, payload=None):
     if error:
         return error, status_code
 
+    # Link the alert only if no concurrent request linked it in the meantime.
+    claimed = ExternalAlert.query.filter(
+        ExternalAlert.id == alert.id,
+        ExternalAlert.case_id.is_(None),
+    ).update({"case_id": case.id}, synchronize_session=False)
+    db.session.commit()
+    if claimed != 1:
+        db.session.refresh(alert)
+        CaseModel.delete_case(case.id, user)
+        return {"message": "Alert already linked to a case", "case_id": alert.case_id}, 400
+
     imported = import_misp_event_to_case(alert, case, user)
-    alert.case_id = case.id
     alert.review_status = "case_created"
     alert.reviewed_by_id = user.id
     alert.reviewed_at = utcnow()
