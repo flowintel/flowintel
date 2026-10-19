@@ -1,0 +1,93 @@
+/*
+  themes/default.css — Flowintel colours (light and dark themes), and the reference
+  list of colour tokens.
+
+  Bootstrap's mode is <html data-bs-theme>, the chosen theme is <html data-theme-pref>
+  (utils/themes.py). This file only uses [data-bs-theme], so it is the base every theme
+  starts from. Another theme only overrides the tokens it wants to change, under
+  [data-theme-pref="<key>"] (higher specificity with data-bs-theme, see christmas.css).
+
+  Tokens, same names in both modes:
+    --fi-page             page background
+    --fi-surface          cards, navbar and footer in dark mode, Bootstrap body background in dark mode
+    --fi-raised           raised elements (hover, inputs, secondary backgrounds)
+    --fi-border           borders
+    --fi-muted            secondary text
+    --fi-accent           accent colour (selected items, links in dark mode)
+    --fi-navbar           top bar background
+    --fi-navbar-border    line under the top bar
+    --fi-sidebar          sidebar background
+    --fi-sidebar-submenu  sidebar submenus
+    --fi-sidebar-hover    sidebar submenu item hover
+    --fi-sidebar-active   sidebar submenu item pressed
+  Dark mode only (theme-dark.css):
+    --fi-selected         selected item background (active segment, highlighted option)
+    --fi-strong           strong buttons and active tabs
+    --fi-strong-hover     the same, hovered
+    --fi-text-soft        soft emphasised text (labels, pills)
+    --fi-link             active tab text and underline
+    --fi-tint-rgb         r, g, b of the light tint laid over surfaces (meta items, pills)
+    --fi-accent-soft      soft accent background (statistics cards)
+    --fi-ink              strongest text (statistics)
+
+  A theme can also set the page header colours (--ctx-brand, --ctx-brand-dark,
+  --ctx-brand-tint, defined in components/page_header.css).
+
+  In dark mode, Bootstrap's own variables (--bs-body-bg, --bs-body-color...) are set
+  here too. Those ending in -rgb hold plain numbers, so a dark-based theme that changes
+  --fi-surface, --fi-raised or the text colour must also give the matching -rgb values.
+*/
+
+[data-bs-theme="light"] {
+  --fi-page: #fbfbfb;
+  --fi-surface: #ffffff;
+  --fi-raised: #F4F5FE;
+  --fi-border: #e9ecef;
+  --fi-muted: #6c757d;
+  --fi-accent: #1f3763;
+  --fi-navbar: #F4F5FE;
+  --fi-navbar-border: #070D47;
+  --fi-sidebar: #1f3763;
+  --fi-sidebar-submenu: #456297;
+  --fi-sidebar-hover: #91a7cf;
+  --fi-sidebar-active: #728cbd;
+}
+
+/* Flowintel dark theme is navy, not black: a darker family of the sidebar blue (#1f3763) */
+[data-bs-theme="dark"] {
+  --fi-page: #0d1629;
+  --fi-surface: #13203a;
+  --fi-raised: #1b2b4b;
+  --fi-border: #2a3d63;
+  --fi-muted: #9fb0cf;
+  --fi-accent: #8fa8d8;
+  --fi-navbar: #13203a;
+  --fi-navbar-border: #070D47;
+  --fi-sidebar: #1f3763;
+  --fi-sidebar-submenu: #456297;
+  --fi-sidebar-hover: #91a7cf;
+  --fi-sidebar-active: #728cbd;
+  --fi-selected: #2c4270;
+  --fi-strong: #3b5a94;
+  --fi-strong-hover: #4a6cad;
+  --fi-text-soft: #cfdcf5;
+  --fi-link: #9ec5fe;
+  --fi-tint-rgb: 143, 168, 216;
+  --fi-accent-soft: #1d3157;
+  --fi-ink: #eaf0fb;
+
+  /* Bootstrap components (modals, dropdowns, inputs, tables...) use the same navy */
+  --bs-body-bg: var(--fi-surface);
+  --bs-body-bg-rgb: 19, 32, 58;
+  --bs-body-color: #dbe4f3;
+  --bs-body-color-rgb: 219, 228, 243;
+  --bs-emphasis-color: #ffffff;
+  --bs-secondary-color: rgba(219, 228, 243, 0.7);
+  --bs-tertiary-color: rgba(219, 228, 243, 0.5);
+  --bs-secondary-bg: var(--fi-raised);
+  --bs-secondary-bg-rgb: 27, 43, 75;
+  --bs-tertiary-bg: #172642;
+  --bs-tertiary-bg-rgb: 23, 38, 66;
+  --bs-border-color: var(--fi-border);
+  --bs-border-color-translucent: rgba(143, 168, 216, 0.18);
+}

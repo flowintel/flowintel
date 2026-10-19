@@ -87,6 +87,12 @@ def create_app():
     from .account.settings_core import get_theme, get_font
     app.jinja_env.globals["user_theme"] = get_theme
     app.jinja_env.globals["user_font"] = get_font
+    from .utils.themes import THEMES, theme_base, theme_styled
+    app.jinja_env.globals["themes"] = THEMES
+    app.jinja_env.globals["theme_base"] = theme_base
+    app.jinja_env.globals["theme_styled"] = theme_styled
+    app.jinja_env.globals["theme_bases"] = {key: theme["base"] for key, theme in THEMES.items()}
+    app.jinja_env.globals["themes_styled"] = [key for key, theme in THEMES.items() if theme.get("styled")]
 
     @app.after_request
     def set_security_headers(resp):

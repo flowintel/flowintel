@@ -29,7 +29,7 @@ html[data-font="readable"] {
 }
 
 body {
-  background-color: #fbfbfb;
+  background-color: var(--fi-page);
 }
 
 /* Sticky footer: the page is a column at least as tall as the window, main takes the

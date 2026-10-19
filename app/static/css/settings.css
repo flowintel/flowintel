@@ -116,6 +116,14 @@
 .settings-theme-preview--auto .stp-bar { background: linear-gradient(110deg, #F4F5FE 50%, #13203a 50%); }
 .settings-theme-preview--auto .stp-card { background: linear-gradient(110deg, #fff 50%, #1b2b4b 50%); }
 
+/* Themes with their own stylesheet (utils/themes.py): the preview carries
+   data-theme-pref + data-bs-theme, so it is drawn with the theme's own tokens
+   (static/css/themes/), and the theme's stylesheet can decorate it too. */
+.settings-theme-preview[data-theme-pref] .stp-sidebar { background: var(--fi-sidebar); }
+.settings-theme-preview[data-theme-pref] .stp-body { background: var(--fi-page); }
+.settings-theme-preview[data-theme-pref] .stp-bar { background: var(--fi-navbar); border-bottom: 2px solid var(--fi-navbar-border); }
+.settings-theme-preview[data-theme-pref] .stp-card { background: var(--fi-surface); border: 1px solid var(--fi-border); }
+
 /* ---------- Font ---------- */
 
 .settings-subsection {

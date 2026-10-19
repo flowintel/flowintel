@@ -1,0 +1,85 @@
+/*
+  themes/linen.css — "Linen" theme (light). Warm paper tones and an espresso sidebar,
+  soft on the eyes in daylight.
+
+  Colour tokens (themes/default.css) and shape / text tokens (themes/styled.css).
+*/
+
+[data-theme-pref="linen"][data-bs-theme="light"] {
+  --fi-page: #f6f1e7;
+  --fi-surface: #fffdf8;
+  --fi-raised: #efe7d8;
+  --fi-border: #e3d8c4;
+  --fi-muted: #7a6f5e;
+  --fi-accent: #8b5e34;
+  --fi-navbar: #fbf7ef;
+  --fi-navbar-border: #8b5e34;
+  --fi-sidebar: #3b2f25;
+  --fi-sidebar-submenu: #57463a;
+  --fi-sidebar-hover: #a08670;
+  --fi-sidebar-active: #86705c;
+
+  --bs-link-color: #8b5e34;
+  --bs-link-color-rgb: 139, 94, 52;
+
+  /* Page headers (components/page_header.css): icon badge and main buttons */
+  --ctx-brand: #6b4a2b;
+  --ctx-brand-dark: #3b2f25;
+  --ctx-brand-tint: #efe7d8;
+
+  /* Look (Printed paper: serif headings, cream cards instead of white, warm soft shadows.) — themes/styled.css */
+  --fi-text: #3d342b;
+  --fi-heading-color: #2b211a;
+  --fi-page-backdrop: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.27 0 0 0 0 0.18 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    var(--fi-page);   /* a faint paper grain */
+  --fi-surface-glass: var(--fi-surface);
+  --fi-backdrop: none;
+  --fi-radius: 10px;
+  --fi-radius-sm: 6px;
+  --fi-border-width: 1px;
+  --fi-shadow: 0 1px 2px rgba(80, 55, 30, 0.06), 0 6px 18px rgba(80, 55, 30, 0.07);
+  --fi-heading-font: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --fi-heading-weight: 700;
+  --fi-heading-spacing: 0;
+  --fi-heading-transform: none;
+  --fi-heading-glow: none;
+  --bs-body-bg-rgb: 255, 253, 248;
+  --bs-body-color-rgb: 61, 52, 43;
+  --bs-secondary-color: rgba(61, 52, 43, 0.7);
+  --bs-secondary-bg-rgb: 239, 231, 216;
+  --bs-tertiary-bg-rgb: 239, 231, 216;
+  --fi-hover-shadow: 0 2px 4px rgba(80, 55, 30, 0.08), 0 10px 26px rgba(80, 55, 30, 0.1);
+}
+
+/* ---------- Signature: printed paper ----------
+   a faint paper grain, letterpress headings, a thin double rule under page
+   titles, ink-underlined links, italic serif subtitles, a stitched sidebar edge */
+
+[data-theme-pref="linen"] :is(h1, h2, .ctx-header-title) {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme-pref="linen"] .ctx-header-title {
+  width: fit-content;          /* the rule follows the text, not the whole card */
+  padding-bottom: 0.2rem;
+  border-bottom: 3px double #d8c9ae;
+}
+
+[data-theme-pref="linen"] .ctx-header-subtitle {
+  font-family: var(--fi-heading-font);
+  font-style: italic;
+}
+
+[data-theme-pref="linen"] main a:not(.btn):not(.nav-link):not(.ctx-breadcrumb-link) {
+  text-decoration: underline;
+  text-decoration-color: rgba(139, 94, 52, 0.4);
+  text-underline-offset: 3px;
+}
+
+[data-theme-pref="linen"] .sidebar {
+  box-shadow: inset -4px 0 0 -2px rgba(255, 255, 255, 0.08), 2px 0 0 rgba(59, 47, 37, 0.15);
+  border-right: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+[data-theme-pref="linen"] ::selection { background: rgba(139, 94, 52, 0.25); }
+[data-theme-pref="linen"] { scrollbar-color: #c9b89a #f6f1e7; }

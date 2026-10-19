@@ -1,0 +1,143 @@
+/*
+  themes/neon.css — "Neon" theme (dark). An esports HUD on a soft slate night: electric lime and orange, cut corners,
+  a neon line running along the top of the cards.
+
+  Colour tokens (themes/default.css) and shape / text tokens (themes/styled.css).
+*/
+
+[data-theme-pref="neon"][data-bs-theme="dark"] {
+  --fi-page: #1a1f2c;
+  --fi-surface: #222939;
+  --fi-raised: #2b3347;
+  --fi-border: #3a4560;
+  --fi-muted: #a5afc6;
+  --fi-accent: #b6ff3b;
+  --fi-navbar: #1e2433;
+  --fi-navbar-border: #b6ff3b;
+  --fi-sidebar: #161b27;
+  --fi-sidebar-submenu: #26304a;
+  --fi-sidebar-hover: #4a5878;
+  --fi-sidebar-active: #3a4762;
+  --fi-selected: #33402a;
+  --fi-strong: #5e8c12;
+  --fi-strong-hover: #6fa316;
+  --fi-text-soft: #dfe5f2;
+  --fi-link: #c8ff6b;
+  --fi-tint-rgb: 182, 255, 59;
+  --fi-accent-soft: #26301c;
+  --fi-ink: #ffffff;
+
+  /* Bootstrap's own colours; the -rgb ones are plain numbers */
+  --bs-body-bg-rgb: 34, 41, 57;
+  --bs-body-color-rgb: 223, 229, 242;
+  --bs-secondary-color: rgba(223, 229, 242, 0.7);
+  --bs-tertiary-color: rgba(223, 229, 242, 0.5);
+  --bs-secondary-bg-rgb: 43, 51, 71;
+  --bs-tertiary-bg-rgb: 43, 51, 71;
+  --bs-border-color-translucent: rgba(182, 255, 59, 0.16);
+  --bs-link-color: #c8ff6b;
+  --bs-link-color-rgb: 200, 255, 107;
+  --bs-link-hover-color: #ff7a1a;
+  --bs-link-hover-color-rgb: 255, 122, 26;
+  --bs-tertiary-bg: #1e2433;
+  --bs-body-color: #dfe5f2;
+
+  /* Page headers (components/page_header.css): icon badge and main buttons */
+  --ctx-brand: #5e8c12;
+
+  /* Look — themes/styled.css */
+  --fi-text: #dfe5f2;
+  --fi-heading-color: #ffffff;
+  --fi-page-backdrop:
+    linear-gradient(rgba(182, 255, 59, 0.045) 1px, transparent 1px) 0 0 / 44px 44px,
+    linear-gradient(90deg, rgba(182, 255, 59, 0.045) 1px, transparent 1px) 0 0 / 44px 44px,
+    radial-gradient(70% 45% at 50% 110%, rgba(255, 122, 26, 0.1), transparent 70%),
+    var(--fi-page);
+  --fi-surface-glass: rgba(34, 41, 57, 0.88);
+  --fi-backdrop: blur(6px);
+  --fi-radius: 0;
+  --fi-radius-sm: 0;
+  --fi-border-width: 1px;
+  --fi-shadow: none;
+  --fi-heading-font: Bahnschrift, "DIN Alternate", "DIN Condensed", Eurostile, "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --fi-heading-weight: 800;
+  --fi-heading-spacing: 0.12em;
+  --fi-heading-transform: uppercase;
+  --fi-heading-glow: 0 0 10px rgba(182, 255, 59, 0.25);
+  --fi-card-edge: linear-gradient(90deg, #b6ff3b, #ff7a1a, #b6ff3b);
+  --fi-card-edge-motion: xfi-edge-slide 6s linear infinite alternate;
+  --fi-card-clip: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  --fi-hover-transform: translateY(-3px);
+  --fi-hover-border: #b6ff3b;
+  --fi-btn-transform: uppercase;
+  --fi-btn-spacing: 0.1em;
+  --fi-btn-weight: 700;
+}
+
+/* ---------- Signature: a gaming HUD ----------
+   an XP bar under the top bar, faint scan lines over the page, a glitch on the
+   page title under the mouse, HUD brackets in the corners of the page header,
+   cut-corner buttons, main buttons with a slow pulse, a neon sidebar hover */
+
+[data-theme-pref="neon"] .navbar {
+  border-bottom: 0;
+  background-image: linear-gradient(90deg, #b6ff3b 0 62%, rgba(182, 255, 59, 0.18) 62%);
+  background-size: 100% 3px;
+  background-position: bottom;
+  background-repeat: no-repeat;
+}
+
+[data-theme-pref="neon"] body::after {
+  content: "";
+  position: fixed; inset: 0;
+  z-index: 2000;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 3px);
+}
+
+[data-theme-pref="neon"] .ctx-header-title:hover {
+  animation: xfi-glitch-neon 0.6s steps(2) 2;
+}
+
+@keyframes xfi-glitch-neon {
+  0%   { text-shadow: 2px 0 #ff7a1a, -2px 0 #b6ff3b; }
+  25%  { text-shadow: -3px 1px #ff7a1a, 3px -1px #b6ff3b; transform: translateX(1px); }
+  50%  { text-shadow: 3px -1px #ff7a1a, -3px 1px #b6ff3b; transform: translateX(-1px); }
+  100% { transform: none; }
+}
+
+[data-theme-pref="neon"] .ctx-header:not(.ctx-header--hero) {
+  background:
+    linear-gradient(#b6ff3b, #b6ff3b) right 10px top 10px / 16px 2px no-repeat,
+    linear-gradient(#b6ff3b, #b6ff3b) right 10px top 10px / 2px 16px no-repeat,
+    linear-gradient(#ff7a1a, #ff7a1a) left 10px bottom 10px / 16px 2px no-repeat,
+    linear-gradient(#ff7a1a, #ff7a1a) left 10px bottom 10px / 2px 16px no-repeat,
+    var(--fi-surface-glass);
+}
+
+[data-theme-pref="neon"] :is(.btn, .ctx-brand-btn, .ctx-ghost-btn) {
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+[data-theme-pref="neon"] .ctx-brand-btn {
+  background: linear-gradient(90deg, #b6ff3b, #ff7a1a);
+  color: #11150c;
+  animation: xfi-pulse-neon 3s ease-in-out infinite;
+}
+
+@keyframes xfi-pulse-neon {
+  50% { filter: drop-shadow(0 0 8px rgba(255, 122, 26, 0.5)); }
+}
+
+[data-theme-pref="neon"] .sidebar .nav-item .nav-link:hover {
+  box-shadow: inset 3px 0 0 #ff7a1a;
+  text-shadow: 0 0 8px rgba(182, 255, 59, 0.7);
+}
+
+[data-theme-pref="neon"] :is(.form-control, .form-select):focus {
+  border-color: #b6ff3b;
+  box-shadow: 0 0 0 2px rgba(182, 255, 59, 0.2), 0 0 14px rgba(182, 255, 59, 0.25);
+}
+
+[data-theme-pref="neon"] ::selection { background: rgba(255, 122, 26, 0.4); color: #fff; }
+[data-theme-pref="neon"] { scrollbar-color: #3a4762 #1a1f2c; }

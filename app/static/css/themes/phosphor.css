@@ -1,0 +1,104 @@
+/*
+  themes/phosphor.css — "Phosphor" theme (dark). Black and phosphor green, a quiet nod
+  to the terminal.
+
+  Colour tokens (themes/default.css) and shape / text tokens (themes/styled.css).
+*/
+
+[data-theme-pref="phosphor"][data-bs-theme="dark"] {
+  --fi-page: #070b08;
+  --fi-surface: #0c120e;
+  --fi-raised: #131c16;
+  --fi-border: #1f3324;
+  --fi-muted: #8fb59a;
+  --fi-accent: #46b874;
+  --fi-navbar: #0c120e;
+  --fi-navbar-border: #2f8a55;
+  --fi-sidebar: #0a1a10;
+  --fi-sidebar-submenu: #12301d;
+  --fi-sidebar-hover: #2f6b45;
+  --fi-sidebar-active: #22533a;
+  --fi-selected: #133a22;
+  --fi-strong: #1d6b3c;
+  --fi-strong-hover: #238046;
+  --fi-text-soft: #c3dccb;
+  --fi-link: #8fd3a8;
+  --fi-tint-rgb: 70, 184, 116;
+  --fi-accent-soft: #0f2a19;
+  --fi-ink: #e7fbee;
+
+  /* Bootstrap's own colours; the -rgb ones are plain numbers */
+  --bs-body-bg-rgb: 12, 18, 14;
+  --bs-body-color: #d6ecdd;
+  --bs-body-color-rgb: 214, 236, 221;
+  --bs-secondary-color: rgba(214, 236, 221, 0.7);
+  --bs-tertiary-color: rgba(214, 236, 221, 0.5);
+  --bs-secondary-bg-rgb: 19, 28, 22;
+  --bs-tertiary-bg: #0f1712;
+  --bs-tertiary-bg-rgb: 15, 23, 18;
+  --bs-border-color-translucent: rgba(70, 184, 116, 0.14);
+  --bs-link-color: #8fd3a8;
+  --bs-link-color-rgb: 143, 211, 168;
+  --bs-link-hover-color: #c8f5d6;
+  --bs-link-hover-color-rgb: 200, 245, 214;
+
+  /* Page headers (components/page_header.css): icon badge and main buttons */
+  --ctx-brand: #1d7a42;
+
+  /* Look (A quiet old terminal: monospace headings with a faint green glow, crisp square
+     cards, barely visible scan lines.) — themes/styled.css */
+  --fi-text: #bfd4c6;
+  --fi-heading-color: #8fd3a8;
+  --fi-page-backdrop: repeating-linear-gradient(0deg, rgba(70, 184, 116, 0.012) 0 1px, transparent 1px 3px),
+    var(--fi-page);
+  --fi-surface-glass: var(--fi-surface);
+  --fi-backdrop: none;
+  --fi-radius: 2px;
+  --fi-radius-sm: 2px;
+  --fi-border-width: 1px;
+  --fi-shadow: 0 0 0 1px rgba(70, 184, 116, 0.06);
+  --fi-heading-font: "JetBrains Mono", "Fira Code", "Cascadia Code", "DejaVu Sans Mono", ui-monospace, Menlo, Consolas, monospace;
+  --fi-heading-weight: 600;
+  --fi-heading-spacing: 0.02em;
+  --fi-heading-transform: none;
+  --fi-heading-glow: 0 0 6px rgba(70, 184, 116, 0.22);
+  --fi-hover-border: #2f8a55;
+}
+
+/* ---------- Signature: a quiet terminal ----------
+   "> " prompt before page titles and a blinking cursor after them, monospace
+   tables and badges, [bracketed] main buttons, green caret in inputs */
+
+[data-theme-pref="phosphor"] .ctx-header-title::before {
+  content: "> ";
+  color: #46b874;
+}
+
+[data-theme-pref="phosphor"] .ctx-header-title::after {
+  content: "_";
+  margin-left: 0.15rem;
+  color: #46b874;
+  animation: xfi-cursor 1.1s steps(1) infinite;
+}
+
+@keyframes xfi-cursor { 50% { opacity: 0; } }
+
+[data-theme-pref="phosphor"] :is(table, .ctx-table, .badge, code, .fi-mono) {
+  font-family: var(--fi-heading-font);
+  font-size: 0.92em;
+}
+
+[data-theme-pref="phosphor"] .ctx-brand-btn::before { content: "["; margin-right: 0.3rem; opacity: 0.7; }
+[data-theme-pref="phosphor"] .ctx-brand-btn::after { content: "]"; margin-left: 0.3rem; opacity: 0.7; }
+
+[data-theme-pref="phosphor"] :is(.form-control, textarea) {
+  caret-color: #46b874;
+}
+
+[data-theme-pref="phosphor"] .sidebar .nav-item .nav-link:hover span::before {
+  content: "$ ";
+  color: #46b874;
+}
+
+[data-theme-pref="phosphor"] ::selection { background: rgba(70, 184, 116, 0.35); color: #e7fbee; }
+[data-theme-pref="phosphor"] { scrollbar-color: #22533a #070b08; }

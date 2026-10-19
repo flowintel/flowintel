@@ -1,0 +1,118 @@
+/*
+  themes/aurora.css — "Aurora" theme (dark). Deep polar teal with mint and violet
+  highlights, like northern lights over the night.
+
+  Colour tokens (themes/default.css) and shape / text tokens (themes/styled.css).
+*/
+
+[data-theme-pref="aurora"][data-bs-theme="dark"] {
+  --fi-page: #0a1416;
+  --fi-surface: #0f1d20;
+  --fi-raised: #16292d;
+  --fi-border: #22403f;
+  --fi-muted: #95b8b3;
+  --fi-accent: #5eead4;
+  --fi-navbar: #0f1d20;
+  --fi-navbar-border: #8b5cf6;
+  --fi-sidebar: #0d2a2c;
+  --fi-sidebar-submenu: #144044;
+  --fi-sidebar-hover: #2f7a74;
+  --fi-sidebar-active: #23635e;
+  --fi-selected: #15403d;
+  --fi-strong: #1f6f68;
+  --fi-strong-hover: #258178;
+  --fi-text-soft: #c9f2ea;
+  --fi-link: #7ff0dd;
+  --fi-tint-rgb: 94, 234, 212;
+  --fi-accent-soft: #11312f;
+  --fi-ink: #eafaf7;
+
+  /* Bootstrap's own colours; the -rgb ones are plain numbers */
+  --bs-body-bg-rgb: 15, 29, 32;
+  --bs-body-color: #dcefec;
+  --bs-body-color-rgb: 220, 239, 236;
+  --bs-secondary-color: rgba(220, 239, 236, 0.7);
+  --bs-tertiary-color: rgba(220, 239, 236, 0.5);
+  --bs-secondary-bg-rgb: 22, 41, 45;
+  --bs-tertiary-bg: #122326;
+  --bs-tertiary-bg-rgb: 18, 35, 38;
+  --bs-border-color-translucent: rgba(94, 234, 212, 0.16);
+  --bs-link-color: #7ff0dd;
+  --bs-link-color-rgb: 127, 240, 221;
+  --bs-link-hover-color: #c9f2ea;
+  --bs-link-hover-color-rgb: 201, 242, 234;
+
+  /* Page headers (components/page_header.css): icon badge and main buttons */
+  --ctx-brand: #1f7a72;
+
+  /* Look (Frosted glass cards over a slow aurora in the night sky, big round corners,
+     a soft mint glow.) — themes/styled.css */
+  --fi-text: #d5ece8;
+  --fi-heading-color: #effffb;
+  --fi-page-backdrop: radial-gradient(1200px 500px at 15% -10%, rgba(94, 234, 212, 0.18), transparent 60%),
+    radial-gradient(900px 450px at 85% 0%, rgba(139, 92, 246, 0.2), transparent 60%),
+    var(--fi-page);
+  --fi-surface-glass: rgba(15, 29, 32, 0.72);
+  --fi-backdrop: blur(14px) saturate(1.2);
+  --fi-radius: 18px;
+  --fi-radius-sm: 10px;
+  --fi-border-width: 1px;
+  --fi-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(94, 234, 212, 0.06);
+  --fi-heading-font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+  --fi-heading-weight: 600;
+  --fi-heading-spacing: 0.01em;
+  --fi-heading-transform: none;
+  --fi-heading-glow: 0 0 18px rgba(94, 234, 212, 0.35);
+  --fi-hover-transform: translateY(-2px);
+  --fi-hover-shadow: 0 14px 34px rgba(0, 0, 0, 0.4), 0 0 22px rgba(94, 234, 212, 0.14);
+  --fi-hover-border: rgba(94, 234, 212, 0.35);
+  --fi-card-edge: linear-gradient(90deg, transparent, rgba(94, 234, 212, 0.6), rgba(139, 92, 246, 0.6), transparent);
+}
+
+/* ---------- Signature: northern lights ----------
+   the aurora in the background drifts slowly, page titles shimmer from mint to
+   violet, pill buttons with a gradient, glowing focus rings, glass sidebar */
+
+[data-theme-pref="aurora"] body::before {
+  content: "";
+  position: fixed; inset: -20%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 20% 10%, rgba(94, 234, 212, 0.16), transparent 70%),
+    radial-gradient(35% 28% at 80% 5%, rgba(139, 92, 246, 0.18), transparent 70%),
+    radial-gradient(30% 25% at 55% 20%, rgba(56, 189, 248, 0.1), transparent 70%);
+  animation: xfi-aurora-drift 40s ease-in-out infinite alternate;
+}
+
+@keyframes xfi-aurora-drift {
+  from { transform: translate3d(-3%, 0, 0) scale(1); }
+  to   { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+
+[data-theme-pref="aurora"] .ctx-header-title {
+  background: linear-gradient(90deg, #a7f3e4, #5eead4 40%, #b9a2ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+[data-theme-pref="aurora"] .ctx-brand-btn {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1f7a72, #5b3fb8);
+  box-shadow: 0 0 16px rgba(94, 234, 212, 0.25);
+}
+
+[data-theme-pref="aurora"] :is(.form-control, .form-select, .btn):focus {
+  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.25), 0 0 18px rgba(94, 234, 212, 0.25);
+  border-color: #5eead4;
+}
+
+[data-theme-pref="aurora"] .sidebar {
+  background: linear-gradient(180deg, rgba(13, 42, 44, 0.92), rgba(23, 18, 48, 0.92));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+[data-theme-pref="aurora"] ::selection { background: rgba(139, 92, 246, 0.45); color: #fff; }
+[data-theme-pref="aurora"] { scrollbar-color: #23635e #0a1416; }

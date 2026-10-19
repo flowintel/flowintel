@@ -12,6 +12,7 @@ from flask_login import  UserMixin, AnonymousUserMixin
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from app.extensions import db, login_manager
+from app.utils.themes import THEMES
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
@@ -652,7 +653,7 @@ class UserSettings(db.Model):
     (used to validate updates, see account/settings_core.py).
     """
     CHOICES = {
-        "theme": ("light", "dark", "auto"),
+        "theme": tuple(THEMES),
         "font": ("rubik", "system", "readable"),
     }
 
