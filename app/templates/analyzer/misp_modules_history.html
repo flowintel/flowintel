@@ -3,10 +3,17 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_link %}
 
 {% block content %}
-    <hr>
-    <br>
+    {% call(section) page_header('Analyser history', 'fa-solid fa-clock-rotate-left', 'Previous analyser runs and their results.') %}
+        {% if section == 'stats' %}
+            {{ header_stat('fa-solid fa-clock-rotate-left', '[[ history.history.length ]]', "[[ history.history.length === 1 ? 'run' : 'runs' ]]", title='Analyser runs listed', attrs='v-if="!loading && history.history && history.nb_pages <= 1"') }}
+            {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ history.nb_pages ]]', 'pages', title='Pagination', attrs='v-if="!loading && history.nb_pages > 1"') }}
+        {% elif section == 'actions' %}
+            {{ header_link('Analyser', '/analyzer/misp-modules', title='Back to the analyser') }}
+        {% endif %}
+    {% endcall %}
     <!-- pagination -->
     <nav aria-label="Page navigation" class="nav-pagination" v-if="history && history.nb_pages > 1">
         <ul class="pagination">
@@ -25,7 +32,15 @@
     </nav>
     <!-- pagination -->
     
-    <div v-if="history">
+    <div v-if="loading" class="case-core-style text-center text-muted py-5">
+        <span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading history...
+    </div>
+    <div v-else-if="!history.history || !history.history.length" class="case-core-style text-center text-muted py-5">
+        <i class="fa-solid fa-clock-rotate-left fa-2x mb-3 d-block"></i>
+        <p class="mb-3">No analyser run yet. Results of the MISP modules you run will be listed here.</p>
+        <a href="/analyzer/misp-modules" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-puzzle-piece me-1"></i>Run the analyser</a>
+    </div>
+    <div v-else>
         <template v-for="h in history.history">
             <div class="list-group">
                 <div class="mb-3 d-flex" style="margin-bottom: 20px; border-radius: 10px;">
@@ -102,12 +117,18 @@
         setup() {
             const history = ref({})
             const current_page = ref(1)
+            const loading = ref(true)
 
             async function get_history(page){
-                let res = await fetch("/analyzer/misp-modules/history_data?page=" + page)
-                let loc = await res.json()
-                history.value = loc
-                current_page.value = page
+                loading.value = true
+                try {
+                    let res = await fetch("/analyzer/misp-modules/history_data?page=" + page)
+                    let loc = await res.json()
+                    history.value = loc
+                    current_page.value = page
+                } finally {
+                    loading.value = false
+                }
             }
             get_history(1)
 
@@ -148,6 +169,7 @@
             return {
                 message_list,
                 history,
+                loading,
                 current_page,
                 visiblePages,
                 get_history,

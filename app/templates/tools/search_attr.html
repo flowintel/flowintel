@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
 <style>
@@ -42,10 +43,7 @@ button#scan:hover {
 
 {% block content %}
 
-<div class="case-core-style" style="border-radius: 0">
-    <h5 class="mb-0"><i class="fa-solid fa-magnifying-glass me-2"></i>Search for Attribute value</h5>
-</div>
-<hr class="fading-line-2 mt-4 mb-5">
+{% call(section) page_header('Search attribute value', 'fa-solid fa-magnifying-glass', 'Find an attribute value across the MISP objects of your cases.') %}{% endcall %}
 
 <div id="searchbox">
     <input type="text" id="search-value" v-model="attribute_value" placeholder="Enter an attribute value" autofocus>

@@ -2,6 +2,7 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}
@@ -12,11 +13,11 @@
 {%endblock%}
 
 {% block content %}
-    <div class="case-core-style d-flex">
-        <h5 class="mb-0 ms-2"><i class="fa-solid fa-folder-open me-2"></i>Create a case template</h5>
-    </div>
-
-        <hr class="fading-line-2 mt-4 mb-4">
+    {% call(section) page_header('Create a case template', 'fa-solid fa-folder-open', 'A reusable case, with the tasks it should start with.') %}
+        {% if section == 'actions' %}
+            {{ header_link('Case templates', '/templating/cases', title='Back to the case templates') }}
+        {% endif %}
+    {% endcall %}
 
         <form action="" method="post" class="case-core-style" id="case_template_form">
             {{ form.hidden_tag() }}

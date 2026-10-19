@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
@@ -13,9 +14,11 @@
 
 
 {% block content %}
-    <h5 class="mb-0"><i class="fa-solid fa-puzzle-piece me-2"></i>Analyser - MISP modules</h5>
-    <i>Select the target case and task for the analyser results</i>
-    <hr>
+    {% call(section) page_header('Send results to a case', 'fa-solid fa-puzzle-piece', 'Select the target case and task for the analyser results.') %}
+        {% if section == 'actions' %}
+            {{ header_link('Analyser', '/analyzer/misp-modules', title='Back to the analyser') }}
+        {% endif %}
+    {% endcall %}
 
     {% set active_phase = 3 %}
     {% include 'analyzer/misp_modules_phase_indicator.html' %}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -8,35 +9,17 @@
 {%endblock%}
 
 {% block content %}
-<div class="case-core-style" style="border-radius: 0">
-    <div class="row align-items-center">
-        <div class="col-auto d-flex align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-code-branch me-2"></i>Central repository of templates</h5>
-            <button class="btn btn-primary btn-sm ms-3" type="button"
-                    title="Add a repository" data-bs-toggle="modal" data-bs-target="#repoFormModal"
-                    @click="openAdd">
-                <i class="fa-solid fa-plus fa-sm"></i>
-            </button>
-            <button class="btn btn-outline-secondary btn-sm ms-2" type="button"
-                    title="Scan modules/repositories for cloned repositories"
-                    @click="scanRepositories">
-                <i class="fa-solid fa-magnifying-glass-location fa-sm me-1"></i>Scan
-            </button>
-            <button class="btn btn-outline-secondary btn-sm ms-2" type="button"
-                    title="What does manifest.json look like?" data-bs-toggle="modal" data-bs-target="#manifestModal">
-                <i class="fa-solid fa-file-code fa-sm me-1"></i>manifest.json
-            </button>
-        </div>
-        <div class="col input-group w-auto">
-            <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-            <input autocomplete="off" @input="onInput" type="search"
-                   class="form-control form-control-sm rounded"
-                   placeholder="Search by name or URL" />
-        </div>
-    </div>
-</div>
+{% call(section) page_header('Template repositories', 'fa-solid fa-code-branch', 'Central repositories of case and task templates to import from.') %}
+    {% if section == 'stats' %}
+        {{ header_stat('fa-solid fa-code-branch', '[[ repos.length ]]', "[[ repos.length === 1 ? 'repository' : 'repositories' ]]", title='Registered repositories', attrs='v-if="!loading"') }}
+    {% elif section == 'toolbar' %}
+        {{ header_search('Search by name or URL') }}
+        {{ header_link('Scan', icon='fa-solid fa-magnifying-glass-location', title='Scan modules/repositories for cloned repositories', attrs='@click="scanRepositories"') }}
+        {{ header_link('manifest.json', icon='fa-solid fa-file-code', title='What does manifest.json look like?', attrs='data-bs-toggle="modal" data-bs-target="#manifestModal"') }}
+        {{ header_button('New repository', title='Add a repository', attrs='data-bs-toggle="modal" data-bs-target="#repoFormModal" @click="openAdd"') }}
+    {% endif %}
+{% endcall %}
 
-<hr class="fading-line-2 mt-4 mb-4">
 
 <div class="mb-4">
     <a class="text-muted small text-decoration-none d-inline-flex align-items-center gap-1 mb-2"
@@ -151,7 +134,7 @@
                    }"
                    @click="toggleExpand(repo)">
                     <div class="d-flex w-100 justify-content-between align-items-start">
-                        <h5 class="mb-1 fw-semibold" style="color: #2c3e50;">
+                        <h5 class="mb-1 fi-list-title">
                             <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"
                                :class="{'fa-angle-down': expanded.has(repo.id)}"></i>
                             [[repo.name]]

@@ -3,13 +3,10 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <h5 class="mb-0"><i class="fa-solid fa-file-export me-2"></i>Exporter</h5>
-    </div>
-
-    <hr class="fading-line mt-4 mb-4">
+    {% call(section) page_header('Exporter', 'fa-solid fa-file-export', 'Bulk export of several cases in JSON, CSV or XML.') %}{% endcall %}
 
     <div class="case-core-style">
         <div class="alert alert-info py-2 px-3 mb-3" role="alert">

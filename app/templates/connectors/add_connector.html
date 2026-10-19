@@ -2,16 +2,20 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
     {% if edit_mode %}
-        <h5 class="mb-0 case-core-style" style="border-radius: 0;"><i class="fa-solid fa-plug me-2"></i>Edit a connector</h5>
-    {%else%}
-        <h5 class="mb-0 case-core-style" style="border-radius: 0;"><i class="fa-solid fa-plug me-2"></i>Add a connector</h5>
-    {%endif%}
-
-    <hr class="fading-line-2 mb-4 mt-4">
+        {% set header = ('Edit connector · ' ~ (form.name.data or ''), 'Change the name, icon and description of this connector.') %}
+    {% else %}
+        {% set header = ('New connector', 'Register an external tool; its instances are added afterwards.') %}
+    {% endif %}
+    {% call(section) page_header(header[0], 'fa-solid fa-plug', header[1]) %}
+        {% if section == 'actions' %}
+            {{ header_link('Connectors', '/connectors/', title='Back to the connectors') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}

@@ -162,6 +162,10 @@
   body.sidebar-toggled main {
     padding-left: 6.5rem;
   }
+  /* the collapsed sidebar is still 6.5rem wide: keep the footer next to it, like main */
+  body.sidebar-toggled footer.site-footer {
+    margin-left: 6.5rem;
+  }
   :root {
     --sidebar: 13rem;
   }
@@ -296,9 +300,6 @@
 .sidebar-dark.toggled #sidebarToggle:after {
   color: #ffffff80;
 }
-body.sidebar-toggled footer.site-footer {
-  margin-left: 0;
-}
 footer.site-footer {
   background-color: #F4F5FE;
   padding: 0.75rem 0;
@@ -323,6 +324,9 @@ footer.sticky-footer .copyright {
 @media (max-width: 767px) {
   body.sidebar-toggled main {
     padding-left: 0rem;
+  }
+  body.sidebar-toggled footer.site-footer {
+    margin-left: 0;
   }
 }
 .bg-gradient-primary {

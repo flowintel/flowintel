@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -12,11 +13,7 @@
 {%endblock%}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <h5 class="mb-0"><i class="fa-solid fa-file-import me-2"></i>Importer</h5>
-    </div>
-
-    <hr class="fading-line mt-4 mb-4">
+    {% call(section) page_header('Importer', 'fa-solid fa-file-import', 'Import cases or templates from a Flowintel JSON export.') %}{% endcall %}
 
     <div class="case-core-style">
         <div class="d-flex justify-content-between align-items-center mb-3">

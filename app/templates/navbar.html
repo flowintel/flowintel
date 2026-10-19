@@ -9,6 +9,22 @@
             <i class="fa fa-bars"></i>
         </button>
 
+        <!-- Breadcrumb built from the URL (app/utils/breadcrumb.py) -->
+        {% set trail = build_breadcrumb(request.path) %}
+        {% if trail %}
+        <nav class="ctx-breadcrumb d-none d-md-flex" aria-label="Breadcrumb">
+            <a href="/" class="ctx-breadcrumb-home" title="Home"><i class="fa-solid fa-house"></i></a>
+            {% for crumb in trail %}
+            <span class="ctx-breadcrumb-sep" aria-hidden="true">/</span>
+            {% if crumb.href %}
+            <a href="{{ crumb.href }}" class="ctx-breadcrumb-link"{% if loop.last %} aria-current="page" title="Reload this page"{% endif %}>{{ crumb.label|vue_escape }}</a>
+            {% else %}
+            <span class="ctx-breadcrumb-item">{{ crumb.label|vue_escape }}</span>
+            {% endif %}
+            {% endfor %}
+        </nav>
+        {% endif %}
+
         <!-- Search form -->
         <div id="search-form" class="d-none position-relative">
             <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-input-wrap">
@@ -77,7 +93,7 @@
 
             <!-- Settings -->
             <li class="nav-item">
-                <a class="nav-link me-3 me-lg-0" href="/account" title="My profile">
+                <a class="nav-link me-3 me-lg-0" href="/account/settings" title="Settings">
                     <i class="fas fa-cog"></i>
                 </a>
             </li>
@@ -101,6 +117,7 @@
                     <li><hr class="dropdown-divider"></li>
                     <li>
                         <a class="dropdown-item" href="/account" id="account_id">My profile</a>
+                        <a class="dropdown-item" href="/account/settings">Settings</a>
                     </li>
                     {% if current_user.is_authenticated %}
                         <li>

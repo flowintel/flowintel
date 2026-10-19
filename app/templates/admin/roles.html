@@ -1,25 +1,21 @@
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Roles</h5>
-                {% if current_user.is_admin() %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/admin/add_role" title="Add role"><i class="fa-solid fa-plus fa-sm"></i></a>
-                {% endif %}
-            </div>
+    {% call(section) page_header('Roles', 'fa-solid fa-user-shield', 'Permission sets given to users.') %}
+        {% if section == 'stats' %}
+            <template v-if="roles_list">
+                {{ header_stat('fa-solid fa-user-shield', '[[ roles_list.roles.length ]]', "[[ roles_list.roles.length === 1 ? 'role' : 'roles' ]]", title='Roles listed', attrs='v-if="roles_list.nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ roles_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search roles by name') }}
+            {% if current_user.is_admin() %}
+                {{ header_button('New role', href='/admin/add_role', title='Add role') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Role by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-    </div>
-
-    <hr class="fading-line-2 mt-4 mb-4">
 
     <div class="case-core-style">
         <template v-if="roles_list">
@@ -29,7 +25,7 @@
                         <!-- Normal view -->
                         <a v-if="editing_role !== role.id" @click="extend_collapse(role.id)" class="list-group-item list-group-item-action case-index-list">
                             <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1" style="font-weight: 600; color: #2c3e50;">
+                                <h5 class="mb-1 fi-list-title">
                                     <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ role.id ]]- [[ role.name ]]
                                     <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
                                     <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>

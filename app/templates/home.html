@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
@@ -11,60 +12,32 @@
 {%endblock%}
 
 {% block content %}
-    <!-- Welcome Header Notification -->
-    <div class="case-core-style mb-4" style="background: linear-gradient(135deg, #A2AAF7 0%, #4758EB 100%); border-radius: 8px; color: white;">
-        <div class="p-3">
-            <div class="d-flex align-items-center justify-content-between flex-wrap">
-                <div class="d-flex align-items-center">
-                    <i class="fa-solid fa-hand-wave fa-lg me-3"></i>
-                    <h5 class="mb-0" v-if="home_stats">Welcome to Flowintel, <strong>[[home_stats.user.first_name]] [[home_stats.user.last_name]]</strong></h5>
-                    <h5 class="mb-0" v-else>Welcome to Flowintel</h5>
-                </div>
-                <small style="opacity: 0.8;">
-                    <i class="fa-solid fa-code-branch me-1"></i>Version: [[version]]
-                </small>
-            </div>
-            <div class="d-flex flex-wrap gap-3 mt-3">
-                <a v-if="home_stats" href="/case/" class="badge bg-light text-dark px-3 py-2 text-decoration-none">
-                    <i class="fa-solid fa-folder-open me-1"></i>
-                    <strong>[[home_stats.open_cases]]</strong> open [[ home_stats.open_cases === 1 ? 'case' : 'cases' ]]
-                </a>
-                <span class="badge bg-light text-dark px-3 py-2" v-else>
-                    <i class="fa-solid fa-folder-open me-1"></i>
-                    Loading...
-                </span>
-                
-                <template v-if="home_stats">
-                    <a v-if="home_stats.assigned_tasks > 0" href="/my_assignment/" class="badge bg-warning text-dark px-3 py-2 text-decoration-none">
-                        <i class="fa-solid fa-list-check me-1"></i>
-                        You have <strong>[[home_stats.assigned_tasks]]</strong> tasks assigned
-                    </a>
-                    <span v-else class="badge bg-success text-white px-3 py-2">
-                        <i class="fa-solid fa-check me-1"></i>
-                        No tasks assigned to you
-                    </span>
-                    <a v-if="home_stats.notifications > 0" href="/notification/" class="badge bg-danger text-white px-3 py-2 text-decoration-none">
-                        <i class="fa-solid fa-bell me-1"></i>
-                        You have <strong>[[home_stats.notifications]]</strong> notifications
-                    </a>
-                    <span v-else class="badge bg-light text-dark px-3 py-2">
-                        <i class="fa-solid fa-bell-slash me-1"></i>
-                        No waiting notifications
-                    </span>
-                </template>
-
-                {% if not current_user.read_only() %}
-                <a href="/case/create_case" class="badge bg-primary text-white px-3 py-2 text-decoration-none">
-                    <i class="fa-solid fa-plus me-1"></i>Create a case
-                </a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
+    <!-- Welcome header -->
+    {% set welcome = 'Welcome back, ' ~ current_user.first_name ~ ' ' ~ current_user.last_name %}
+    {% call(section) page_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
+        {% if section == 'aside' %}
+            <span class="ctx-version" v-if="version" title="Flowintel version"><i class="fa-solid fa-code-branch"></i>v[[ version ]]</span>
+        {% elif section == 'stats' %}
+            {{ header_stat('fa-solid fa-folder-open', "[[ home_stats.open_cases ]]", "open [[ home_stats.open_cases === 1 ? 'case' : 'cases' ]]",
+                           href='/case/', title='Open cases you can access', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-list-check', "[[ home_stats.assigned_tasks ]]", "[[ home_stats.assigned_tasks === 1 ? 'task' : 'tasks' ]] assigned",
+                           href='/my_assignment/', title='Tasks assigned to you', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-bell', "[[ home_stats.notifications ]]", "[[ home_stats.notifications === 1 ? 'notification' : 'notifications' ]]",
+                           href='/notification/', title='Unread notifications', alert='home_stats.notifications > 0', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-spinner fa-spin', label='Loading...', attrs='v-if="!home_stats"') }}
+        {% elif section == 'actions' %}
+            {% if not current_user.read_only() %}
+                {{ header_button('New case', href='/case/create_case', title='Create a case') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
     <!-- Last Modifications Section -->
     <div class="case-core-style">
-        <h5 class="mb-3"><i class="fa-solid fa-clock-rotate-left me-2"></i>Last modifications</h5>
+        <div class="ctx-section-head">
+            <h5 class="ctx-section-title"><i class="fa-solid fa-clock-rotate-left fa-sm me-2"></i>Last modifications</h5>
+            <a href="/case/" class="ctx-section-link">View all cases <i class="fa-solid fa-arrow-right fa-xs ms-1"></i></a>
+        </div>
 
         <div style="margin-left: 0;">
             <template v-if="case_list">

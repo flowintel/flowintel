@@ -1,0 +1,173 @@
+/* Settings page (templates/account/settings.html). Colours come from Bootstrap
+   variables so the page follows the light / dark theme. */
+
+.settings-section {
+  margin-bottom: 1.25rem;
+}
+
+.settings-section-head {
+  margin-bottom: 1.1rem;
+}
+
+.settings-section-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--bs-emphasis-color);
+}
+
+.settings-section-title i {
+  color: var(--bs-secondary-color);
+}
+
+.settings-section-text {
+  margin: 0;
+  color: var(--bs-secondary-color);
+  font-size: 0.9rem;
+}
+
+.settings-theme-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 240px));
+}
+
+.settings-theme-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  border: 2px solid var(--bs-border-color);
+  border-radius: 14px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-theme-option:hover {
+  border-color: #728cbd;
+}
+
+.settings-theme-option.active {
+  border-color: #1f3763;
+  box-shadow: 0 0 0 3px rgba(31, 55, 99, 0.18);
+}
+
+[data-bs-theme="dark"] .settings-theme-option.active {
+  border-color: #8fa8d8;
+  box-shadow: 0 0 0 3px rgba(143, 168, 216, 0.25);
+}
+
+.settings-theme-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0 0.2rem 0.1rem;
+}
+
+/* Mini preview of the interface: sidebar + top bar + two cards */
+.settings-theme-preview {
+  display: flex;
+  height: 92px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.stp-sidebar {
+  width: 22%;
+  background: #1f3763;
+}
+
+.stp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.stp-bar {
+  height: 9px;
+  border-radius: 4px;
+}
+
+.stp-card {
+  flex: 1;
+  border-radius: 5px;
+}
+
+.stp-card--short {
+  flex: 0.6;
+}
+
+.settings-theme-preview--light .stp-body { background: #fbfbfb; }
+.settings-theme-preview--light .stp-bar { background: #F4F5FE; }
+.settings-theme-preview--light .stp-card { background: #fff; border: 1px solid #e9ecef; }
+
+.settings-theme-preview--dark .stp-body { background: #0d1629; }
+.settings-theme-preview--dark .stp-bar { background: #13203a; }
+.settings-theme-preview--dark .stp-card { background: #1b2b4b; border: 1px solid #2a3d63; }
+
+/* System: half light, half dark */
+.settings-theme-preview--auto .stp-body {
+  background: linear-gradient(110deg, #fbfbfb 50%, #0d1629 50%);
+}
+.settings-theme-preview--auto .stp-bar { background: linear-gradient(110deg, #F4F5FE 50%, #13203a 50%); }
+.settings-theme-preview--auto .stp-card { background: linear-gradient(110deg, #fff 50%, #1b2b4b 50%); }
+
+/* ---------- Font ---------- */
+
+.settings-subsection {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.settings-subsection-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bs-emphasis-color);
+}
+
+.settings-subsection .settings-theme-grid {
+  margin-top: 0.9rem;
+}
+
+.settings-font-sample {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 92px;
+  padding: 0 0.75rem;
+  border-radius: 9px;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-emphasis-color);
+}
+
+.settings-font-big {
+  font-size: 1.9rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.settings-font-line {
+  font-size: 0.8rem;
+  color: var(--bs-secondary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Same stacks as html[data-font] in core.css */
+.settings-font-sample--rubik { font-family: "Rubik", sans-serif; }
+.settings-font-sample--system { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif; }
+.settings-font-sample--readable { font-family: Verdana, Tahoma, "DejaVu Sans", sans-serif; }
+
+.settings-font-hint {
+  display: block;
+  font-weight: 400;
+  color: var(--bs-secondary-color);
+}

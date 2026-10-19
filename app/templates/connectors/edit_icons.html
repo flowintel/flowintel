@@ -2,12 +2,15 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h2 class="ui dividing header case-core-style" style="border-radius: 0;">Add an Icon</h2>
-
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header('Edit connector icon', 'fa-solid fa-icons', 'Change the name or image of this connector icon.') %}
+        {% if section == 'actions' %}
+            {{ header_link('Icons', '/connectors/connectors_icons', title='Back to the connector icons') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" enctype="multipart/form-data" class="case-core-style">
         {{ form.hidden_tag() }}

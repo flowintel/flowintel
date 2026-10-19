@@ -3,28 +3,23 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_link %}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
-                {% if current_user.is_admin() %}
-                    <a class="btn btn-primary btn-sm ms-3" href="/connectors/add_connector" title="Add connector"><i class="fa-solid fa-plus fa-sm"></i></a>
-                {% endif %}
-            </div>
-
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-magnifying-glass fa-sm"></i></button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search Connector by name' />
-            </div>
-            <!-- Search bar -->
-        </div>
-    </div>
-
-    <hr class="fading-line-2 mt-4 mb-4">
-    <a class="btn btn-outline-success" href="/connectors/connectors_icons" type="button" style="margin-bottom: 10px;">See icons</a>
+    {% call(section) page_header('Connectors', 'fa-solid fa-plug', 'External tools (MISP, AIL, ...) and their instances linked to cases and tasks.') %}
+        {% if section == 'stats' %}
+            <template v-if="connectors_list && connectors_list.connectors">
+                {{ header_stat('fa-solid fa-plug', '[[ connectors_list.connectors.length ]]', "[[ connectors_list.connectors.length === 1 ? 'connector' : 'connectors' ]]", title='Connectors listed', attrs='v-if="nb_pages <= 1"') }}
+                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            </template>
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search connectors by name') }}
+            {{ header_link('Icons', '/connectors/connectors_icons', icon='fa-solid fa-icons', title='See the connector icons') }}
+            {% if current_user.is_admin() %}
+                {{ header_button('New connector', href='/connectors/add_connector', title='Add connector') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
     <template v-if="connectors_list">
         <template v-for="connector in connectors_list.connectors">
@@ -406,6 +401,8 @@
                     cases_modal_loading,
                     cases_modal_page,
                     cases_modal_nb_pages,
+                    nb_pages,
+                    current_page,
                     cases_modal_total,
                     cases_modal_private_count,
                 }

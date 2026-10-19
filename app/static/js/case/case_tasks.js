@@ -538,7 +538,7 @@ export default {
 
 	<!-- Collapse Part -->
 	<div class="collapse" :id="'collapse'+task.id">
-		<div class="card card-body" style="background-color: whitesmoke;">
+		<div class="card card-body task-panel">
 
 			<ul class="nav nav-tabs" style="margin-bottom: 10px;">
 				<li class="nav-item">

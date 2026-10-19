@@ -1,20 +1,22 @@
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block head %}{{ super() }}<meta name="sidebar-active" content="/admin/roles">{% endblock %}
 
 {% block content %}
     {% if not edit_mode %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>Create a role</h5>
-        </div>
+        {% set header = ('Create a role', 'Choose which permissions users with this role get.') %}
+    {% elif is_system_role %}
+        {% set header = ('View a role', 'Built-in role: its permissions cannot be changed.') %}
     {% else %}
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-user-shield me-2"></i>{% if is_system_role %}View{% else %}Edit{% endif %} a role</h5>
-        </div>
+        {% set header = ('Edit a role', 'Change the permissions given by this role.') %}
     {% endif %}
-
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header(header[0], 'fa-solid fa-user-shield', header[1]) %}
+        {% if section == 'actions' %}
+            {{ header_link('Roles', '/admin/roles', title='Back to the roles list') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}

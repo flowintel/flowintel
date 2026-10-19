@@ -212,7 +212,8 @@ def bulk_create_tasks(cid):
 @task_case_bound_required
 def edit_task(cid, tid):
     """Edit the task"""
-    if CommonModel.get_case(cid):
+    case = CommonModel.get_case(cid)
+    if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             form = TaskEditForm()
             task_modif = CommonModel.get_task(tid)
@@ -232,14 +233,14 @@ def edit_task(cid, tid):
                     flowintel_log("audit", 200, "Task edited", User=current_user.email, CaseId=cid, TaskId=tid)
                     flash("Task edited", "success")
                     return redirect(f"/case/{cid}")
-                return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid)
+                return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid, case_title=case.title, task_title=task_modif.title)
             else:
                 form.title.data = task_modif.title
                 form.time_required.data = task_modif.time_required
                 form.deadline_date.data = task_modif.deadline
                 form.deadline_time.data = task_modif.deadline
             
-            return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid)
+            return render_template("case/edit_task.html", form=form, description=task_modif.description, case_id=cid, task_id=tid, case_title=case.title, task_title=task_modif.title)
         else:
             flowintel_log("audit", 403, "Task edited: Access denied", User=current_user.email, CaseId=cid, TaskId=tid)
             flash("Access denied", "error")

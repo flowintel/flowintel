@@ -2,10 +2,15 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <h5 class="mb-0 case-core-style" style="border-radius: 0;">Recurring case</h5>
+    {% call(section) page_header('Recurring case', 'fa-solid fa-repeat', 'Case #' ~ case.id ~ ' · ' ~ case.title) %}
+        {% if section == 'actions' %}
+            {{ header_link('Case #' ~ case.id, '/case/' ~ case.id, title='Back to the case') }}
+        {% endif %}
+    {% endcall %}
 
     <form action="" method="post" class="case-core-style" @submit="validate_recurring">
         {{ form.hidden_tag() }}

@@ -1,17 +1,8 @@
 {% extends "base.html" %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block content %}
-<div class="case-core-style" style="border-radius: 0">
-    <div class="row align-items-center">
-        <div class="col-auto d-flex align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-robot me-2"></i>Chatbot</h5>
-            <i class="fa-solid fa-circle-question text-muted ms-2" data-bs-toggle="tooltip" data-bs-placement="right"
-               title="AI-powered assistant for Flowintel"></i>
-        </div>
-    </div>
-</div>
-
-<hr class="fading-line-2 mt-4 mb-4">
+{% call(section) page_header('Chatbot', 'fa-solid fa-robot', 'AI-powered assistant for Flowintel.') %}{% endcall %}
 
 <div class="row" style="height: calc(100vh - 180px); min-height: 400px;">
     <!-- Sidebar: conversation history -->
