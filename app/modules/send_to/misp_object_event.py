@@ -467,7 +467,7 @@ def _sync_report_event_reports(misp, event, objects):
             er.name = name
             er.content = content
             try:
-                res = misp.update_event_report(er, event_id)
+                res = misp.update_event_report(er)
                 logger.info("Updated MISP event report %s on event %s: %s", target_uuid, event_id, _summarize_misp_result(res))
             except Exception as exc:
                 logger.warning("Could not update MISP event report %s: %s", target_uuid, exc)

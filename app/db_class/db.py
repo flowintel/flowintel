@@ -721,6 +721,9 @@ class Alert(db.Model):
 
 class ExternalAlert(db.Model):
     __tablename__ = "external_alert"
+    __table_args__ = (
+        db.UniqueConstraint('connector_instance_id', 'deduplication_key', name='uq_external_alert_connector_dedup_key'),
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
