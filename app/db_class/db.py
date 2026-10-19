@@ -155,6 +155,33 @@ class AnonymousUser(AnonymousUserMixin):
         return False
 
 
+class Calendar_Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False, index=True)
+    org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"), index=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, default='')
+    start = db.Column(db.DateTime, nullable=False, index=True)
+    end = db.Column(db.DateTime)
+    all_day = db.Column(db.Boolean, nullable=False, default=True)
+
+    def to_json(self):
+        def format_date(value):
+            if value is None:
+                return None
+            return value.date().isoformat() if self.all_day else value.isoformat() + 'Z'
+
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "start": format_date(self.start),
+            "end": format_date(self.end),
+            "all_day": self.all_day,
+            "visibility": "organisation" if self.org_id is not None else "private",
+        }
+
+
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True)
