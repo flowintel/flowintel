@@ -1,6 +1,8 @@
 from flask import Blueprint, render_template, request, Response
 from flask_login import login_required, current_user
-from app.db_class.db import Case, Task, File, Case_Misp_Object, Misp_Attribute
+from app.db_class.db import Case, Task, File, Case_Misp_Object, Misp_Attribute, Calendar_Event
+from app.extensions import db
+from app.decorators import editor_required
 from ..case.common_core import get_present_in_case
 
 from . import calendar_core as CalendarModel
@@ -18,6 +20,65 @@ calendar_blueprint = Blueprint(
 def calendar():
     """Calendar view"""
     return render_template("calendar/calendar.html")
+
+
+def _event_json(event):
+    data = event.to_json()
+    data['can_edit'] = event.user_id == current_user.id and not current_user.read_only()
+    return data
+
+
+@calendar_blueprint.route('/events', methods=['GET'])
+@login_required
+def get_events():
+    try:
+        events = CalendarModel.get_manual_events(request.args.get('start'), request.args.get('end'), current_user)
+    except ValueError as exc:
+        return {'message': str(exc)}, 400
+    return {'events': [_event_json(event) for event in events]}
+
+
+@calendar_blueprint.route('/events', methods=['POST'])
+@login_required
+@editor_required
+def create_event():
+    try:
+        event = CalendarModel.create_manual_event(request.get_json(silent=True), current_user)
+    except ValueError as exc:
+        return {'message': str(exc)}, 400
+    return {'event': _event_json(event)}, 201
+
+
+@calendar_blueprint.route('/events/<int:event_id>', methods=['PUT', 'DELETE'])
+@login_required
+@editor_required
+def update_event(event_id):
+    event = Calendar_Event.query.filter_by(id=event_id, user_id=current_user.id).first()
+    if event is None:
+        return {'message': 'Event not found'}, 404
+    if request.method == 'DELETE':
+        db.session.delete(event)
+        db.session.commit()
+        return {'message': 'Event deleted'}
+    try:
+        values = CalendarModel.validate_manual_event(request.get_json(silent=True), current_user)
+    except ValueError as exc:
+        return {'message': str(exc)}, 400
+    for name, value in values.items():
+        setattr(event, name, value)
+    db.session.commit()
+    return {'event': _event_json(event)}
+
+
+@calendar_blueprint.route('/download_event_ics/<int:event_id>', methods=['GET'])
+@login_required
+def download_event_ics(event_id):
+    event = CalendarModel.manual_events_for_user(current_user).filter_by(id=event_id).first()
+    if event is None:
+        return {'message': 'Event not found'}, 404
+    response = Response(CalendarModel.generate_ics_for_manual_event(event), mimetype='text/calendar')
+    response.headers['Content-Disposition'] = f'attachment; filename=event_{event_id}.ics'
+    return response
 
 
 @calendar_blueprint.route("/get_task_month", methods=['GET'])
@@ -118,7 +179,9 @@ def calendar_feed():
     cases_list = CalendarModel.get_all_cases_for_user(current_user)
     tasks_list = CalendarModel.get_all_tasks_for_user(current_user)
 
-    ics_content = CalendarModel.generate_full_calendar_feed(cases_list, tasks_list, request.host_url)
+    ics_content = CalendarModel.generate_full_calendar_feed(
+        cases_list, tasks_list, request.host_url, CalendarModel.manual_events_for_user(current_user).all()
+    )
 
     response = Response(ics_content, mimetype='text/calendar')
     response.headers['Content-Disposition'] = 'attachment; filename=flowintel_calendar.ics'

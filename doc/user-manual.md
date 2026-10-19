@@ -1175,9 +1175,40 @@ Clicking an event opens a summary panel with the title, status, dates, tags, clu
 
 The calendar defaults to a monthly grid. If you prefer a flat list, click the **List** button in the top-right corner of the calendar to switch to a list view that shows all events for the current month in chronological order.
 
+## Manual events
+
+Click **Add event** or an empty day in the calendar to create an event with a title, optional description, and dates or times. Manual events stand on their own without a case or task. An all-day event's end date includes that day; timed events use your local timezone.
+
+Choose **Only me** to keep the event private or **My organisation** to share it with your organisation. The creator can click the event to edit or delete it. Other members can view shared events. Read-only users can view events but cannot create or change them.
+
+Manual events appear in purple. Use the **Event** filter to show or hide them. The deadline/creation and task assignment filters apply to cases and tasks; manual events always use their scheduled dates.
+
+### Creating manual events through the API
+
+Send `POST /api/calendar/events` with an editor or administrator's API key in the `X-API-KEY` header and a JSON body. The API key owner becomes the event's creator. No browser session or CSRF token is needed.
+
+```bash
+curl -X POST 'https://<your-host>/api/calendar/events' \
+  -H 'X-API-KEY: YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "Team planning",
+    "description": "Review upcoming work",
+    "start": "2026-10-01",
+    "all_day": true,
+    "visibility": "organisation"
+  }'
+```
+
+Only `title` and `start` are required. `visibility` defaults to `private` (**Only me**); use `organisation` for **My organisation**. `all_day` defaults to `true`. For a timed event, set `all_day` to `false` and include a timezone in `start` and `end`, such as `2026-10-01T09:00:00+02:00`.
+
+The API's optional `end` is **exclusive**: an all-day event covering October 1 and 2 has `"end": "2026-10-03"`. Omitting `end` or setting it to `null` creates a one-day all-day event or a one-hour timed event. The calendar form converts its inclusive end date to this format automatically.
+
+Success returns `201 Created` with `{"event": {...}}`, including the saved event's `id`. Timed dates are returned in UTC. Invalid data returns `400`; an invalid key or a read-only account returns `403`. API-created events appear in the calendar and its exports using the selected visibility.
+
 ## Downloading calendar data
 
-Each individual event has a download button that exports it as an ICS file, so you can add it to your personal calendar application. To export everything at once, click **Download Calendar Feed** in the toolbar. This produces a single ICS file containing all your cases and tasks.
+Each individual event has a download button that exports it as an ICS file, so you can add it to your personal calendar application. To export everything at once, click **Download Calendar Feed** in the toolbar. This produces a single ICS file containing all your cases, tasks, and visible manual events.
 
 The same feed is available through the REST API at `/api/calendar/feed`, which is useful for integrating Flowintel deadlines into external calendar tools or dashboards.
 
@@ -1225,7 +1256,7 @@ The API is organised into services, each grouping related endpoints under a comm
 | **Templating** | `/api/templating` | Manage case and task templates, including ordering, subtasks, connector bindings, and creating cases from templates. |
 | **Importer** | `/api/importer` | Import cases or case templates from JSON. Accepts the same format as the template and case export. |
 | **Case from MISP** | `/api/case_from_misp` | Create a Flowintel case directly from a MISP event, specifying the MISP instance and event identifier. |
-| **Calendar** | `/api/calendar` | Download the full calendar feed in ICS format for integration with external calendar tools. |
+| **Calendar** | `/api/calendar` | Create manual calendar events and download the full calendar feed in ICS format. |
 
 ## Key services in detail
 

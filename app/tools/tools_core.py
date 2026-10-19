@@ -548,12 +548,64 @@ def days_cutoff(days):
     return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
 
 
-def filter_cases_by_date(cases, cutoff):
-    if cutoff is None:
-        return cases
-    return [c for c in cases if c.creation_date and c.creation_date >= cutoff]
+def stats_date_bounds(days=None, date_from=None, date_to=None):
+    """Return inclusive/exclusive datetime bounds for statistics filters."""
+    start = None
+    end = None
 
-def stats_core(cases):
+    if date_from:
+        try:
+            start = datetime.datetime.strptime(date_from, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            pass
+    elif days:
+        start = days_cutoff(days)
+
+    if date_to:
+        try:
+            # Use an exclusive upper bound so the selected end date is included.
+            end = datetime.datetime.strptime(date_to, "%Y-%m-%d") + datetime.timedelta(days=1)
+        except (TypeError, ValueError):
+            pass
+
+    return start, end
+
+
+def normalize_stats_status(value):
+    return value if value in {"open", "closed"} else "all"
+
+
+def filter_cases_for_stats(cases, start=None, end=None, status="all"):
+    status = normalize_stats_status(status)
+    filtered = []
+    for case in cases:
+        if start is not None and (not case.creation_date or case.creation_date < start):
+            continue
+        if end is not None and (not case.creation_date or case.creation_date >= end):
+            continue
+        if status == "open" and case.completed:
+            continue
+        if status == "closed" and not case.completed:
+            continue
+        filtered.append(case)
+    return filtered
+
+
+def filter_cases_by_date(cases, cutoff):
+    """Backward-compatible date-only statistics filter."""
+    return filter_cases_for_stats(cases, start=cutoff)
+
+
+def filter_tasks_for_stats(tasks, status="all"):
+    status = normalize_stats_status(status)
+    if status == "open":
+        return [task for task in tasks if not task.completed]
+    if status == "closed":
+        return [task for task in tasks if task.completed]
+    return list(tasks)
+
+
+def stats_core(cases, task_status="all"):
     cases_opened_month = {month: 0 for month in calendar.month_name if month}
     cases_opened_year = {}
     cases_closed_month = {month: 0 for month in calendar.month_name if month}
@@ -609,7 +661,7 @@ def stats_core(cases):
             if case.deadline and case.deadline < now:
                 overdue_cases += 1
 
-        case_tasks = list(case.tasks)
+        case_tasks = filter_tasks_for_stats(case.tasks, task_status)
         case_open_tasks = 0
         case_closed_tasks = 0
 
@@ -647,7 +699,11 @@ def stats_core(cases):
                     elif task.deadline <= upcoming_cutoff:
                         due_soon_tasks += 1
 
-        task_count = case.nb_tasks if case.nb_tasks is not None else len(case_tasks)
+        task_count = (
+            case.nb_tasks
+            if normalize_stats_status(task_status) == "all" and case.nb_tasks is not None
+            else len(case_tasks)
+        )
         if task_count not in tasks_per_case:
             tasks_per_case[task_count] = 0
         tasks_per_case[task_count] += 1
@@ -703,9 +759,10 @@ def stats_core(cases):
             "due_soon_tasks": due_soon_tasks,
             "top_cases_by_tasks": top_cases_by_tasks[:5]}
 
-def get_case_by_tags(current_user, cutoff=None):
+def get_case_by_tags(current_user, cutoff=None, end=None, case_status="all", task_status="all"):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     dict_case_tag = {}
     dict_case_cluster_tag = {}
     dict_case_custom_tag = {}
@@ -732,7 +789,7 @@ def get_case_by_tags(current_user, cutoff=None):
                 dict_case_cluster_tag[cl.tag] = 0
             dict_case_cluster_tag[cl.tag] += 1
 
-        for task in case.tasks:
+        for task in filter_tasks_for_stats(case.tasks, task_status):
             custom = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all()
             for c in custom:
                 if not c.name in dict_task_custom_tag:
@@ -760,9 +817,10 @@ def get_case_by_tags(current_user, cutoff=None):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
-def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
+def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None, end=None, case_status="all", task_status="all"):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
 
     case_tag_map = {}
     case_cluster_map = {}
@@ -787,7 +845,7 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
             e["count"] += 1
             e["cases"].append(case_info)
 
-        for task in case.tasks:
+        for task in filter_tasks_for_stats(case.tasks, task_status):
             task_info = {"id": task.id, "title": task.title, "case_id": task.case_id}
 
             for c in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all():
@@ -817,11 +875,11 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     }
 
 
-def get_misp_stats(current_user, cutoff=None, limit=10):
+def get_misp_stats(current_user, cutoff=None, end=None, case_status="all", limit=10):
     """Aggregate visible MISP objects and standalone attributes for the stats UI."""
     cases = Case.query.join(Case_Org, Case_Org.case_id == Case.id).where(Case_Org.org_id == current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [case.id for case in cases]
 
     if not case_ids:
@@ -1562,14 +1620,15 @@ def get_community_stats():
 # Operational task widgets #
 ############################
 
-def get_overdue_tasks(current_user, limit=20):
+def get_overdue_tasks(current_user, limit=20, cutoff=None, end=None, case_status="all", task_status="all"):
     """Open tasks past their deadline for cases the user can see."""
     now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
         .where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [c.id for c in cases]
-    if not case_ids:
+    if not case_ids or normalize_stats_status(task_status) == "closed":
         return {"count": 0, "tasks": []}
 
     q = Task.query.filter(Task.case_id.in_(case_ids))\
@@ -1590,13 +1649,14 @@ def get_overdue_tasks(current_user, limit=20):
     }
 
 
-def get_unassigned_tasks(current_user, limit=20):
+def get_unassigned_tasks(current_user, limit=20, cutoff=None, end=None, case_status="all", task_status="all"):
     """Open tasks with no assignee for cases the user can see."""
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
         .where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [c.id for c in cases]
-    if not case_ids:
+    if not case_ids or normalize_stats_status(task_status) == "closed":
         return {"count": 0, "tasks": []}
 
     assigned_ids = db.session.query(Task_User.task_id).distinct().subquery()
@@ -1621,20 +1681,36 @@ def get_unassigned_tasks(current_user, limit=20):
 # Admin extra #
 ###############
 
-def get_admin_extra_stats(days=90):
+def get_admin_extra_stats(days=90, cutoff=None, end=None, custom_range=False):
     """Notification backlog + login activity per day for the last `days` days."""
     notif_backlog = Notification.query.filter_by(is_read=False).count()
     total_notifications = Notification.query.count()
 
-    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
-    rows = db.session.query(
+    if not custom_range:
+        cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+
+    query = db.session.query(
         db.func.date(Login_Event.login_date).label('day'),
         db.func.count(Login_Event.id).label('count'),
-    ).filter(Login_Event.login_date >= cutoff)\
-     .group_by('day')\
-     .order_by('day')\
-     .all()
+    )
+    if cutoff is not None:
+        query = query.filter(Login_Event.login_date >= cutoff)
+    if end is not None:
+        query = query.filter(Login_Event.login_date < end)
+    rows = query.group_by('day').order_by('day').all()
     activity = [{"calendar": str(r.day), "count": r.count} for r in rows]
+
+    if custom_range:
+        if cutoff and end:
+            period_label = f"from {cutoff:%Y-%m-%d} through {(end - datetime.timedelta(days=1)):%Y-%m-%d}"
+        elif cutoff:
+            period_label = f"since {cutoff:%Y-%m-%d}"
+        elif end:
+            period_label = f"through {(end - datetime.timedelta(days=1)):%Y-%m-%d}"
+        else:
+            period_label = "across all time"
+    else:
+        period_label = f"during the last {days} days"
 
     return {
         "notification_backlog": notif_backlog,
@@ -1642,6 +1718,7 @@ def get_admin_extra_stats(days=90):
         "login_activity": activity,
         "recent_login_count": sum(row["count"] for row in activity),
         "login_activity_days": days,
+        "login_activity_period": period_label,
     }
 
 
