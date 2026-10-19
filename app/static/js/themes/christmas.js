@@ -734,7 +734,7 @@
                 stay(Math.abs(gave - start) / 60, end, dir, u => ({
                     hidden: true,
                     david: { x: gave + (start - gave) * u, mode: 'walk', dir: -dir },
-                    say: { david: u < 0.25 ? "Fine. I'll take the bus." : '' },
+                    say: { david: u < 0.25 ? "Fine. I'll take the bus." : u < 0.55 ? "...and then I'll go annoy Christian." : '' },
                 })),
             ]
         },
