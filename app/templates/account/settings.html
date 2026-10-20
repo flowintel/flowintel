@@ -21,9 +21,10 @@
         </div>
 
         <div class="settings-theme-grid" role="radiogroup" aria-label="Theme">
-            {% for value, label, icon in [('light', 'Light', 'fa-sun'), ('dark', 'Dark', 'fa-moon'), ('auto', 'System', 'fa-circle-half-stroke')] %}
+            {% for value, theme in themes.items() %}
             <button type="button" class="settings-theme-option{% if settings.theme == value %} active{% endif %}" data-setting="theme" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.theme == value else 'false' }}">
-                <span class="settings-theme-preview settings-theme-preview--{{ value }}" aria-hidden="true">
+                {# Themes with their own stylesheet are previewed with their real colours and decorations #}
+                <span class="settings-theme-preview settings-theme-preview--{{ value }}"{% if theme.stylesheet %} data-theme-pref="{{ value }}" data-bs-theme="{{ theme_base(value) }}"{% if theme.styled %} data-theme-styled{% endif %}{% endif %} aria-hidden="true">
                     <span class="stp-sidebar"></span>
                     <span class="stp-body">
                         <span class="stp-bar"></span>
@@ -31,7 +32,7 @@
                         <span class="stp-card stp-card--short"></span>
                     </span>
                 </span>
-                <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }}</span>
+                <span class="settings-theme-label"><i class="fa-solid {{ theme.icon }} fa-fw me-1"></i>{{ theme.label }}</span>
             </button>
             {% endfor %}
         </div>

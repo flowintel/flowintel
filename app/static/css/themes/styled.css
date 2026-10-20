@@ -1,0 +1,197 @@
+/*
+  themes/styled.css — Shape and text layer of the "styled" themes (utils/themes.py,
+  "styled": True). Only applies while <html data-theme-styled>: Light, Dark, System
+  and the others are untouched.
+
+  It replaces the hard-coded whites and the default shapes of the main components with
+  tokens, which each styled theme sets in its own stylesheet (together with the colour
+  tokens of themes/default.css):
+
+    --fi-text             body text
+    --fi-heading-color    headings
+    --fi-page-backdrop    page background (a colour, or gradients over a colour)
+    --fi-surface-glass    card background (can be translucent, see --fi-backdrop)
+    --fi-backdrop         backdrop-filter of the cards (none, or blur(...) for glass)
+    --fi-radius           radius of cards and panels
+    --fi-radius-sm        radius of buttons, inputs, badges
+    --fi-border-width     border of cards and panels
+    --fi-shadow           shadow of cards and panels
+    --fi-heading-font     font of the headings (the body keeps the user's font setting)
+    --fi-heading-weight / --fi-heading-spacing / --fi-heading-transform
+    --fi-heading-glow     text-shadow of the headings (none, or a glow)
+  Optional (defaults below), for themes that want more:
+    --fi-card-edge        an image layer over the top of the cards (e.g. a neon line)
+    --fi-card-edge-motion animation of that layer (none, or xfi-edge-slide)
+    --fi-card-clip        clip-path of the cards (none, or cut corners)
+    --fi-hover-transform / --fi-hover-shadow / --fi-hover-border   cards under the mouse
+    --fi-btn-transform / --fi-btn-spacing / --fi-btn-weight        button labels
+*/
+
+/* Defaults of the optional tokens; one attribute only, so a theme's own block
+   ([data-theme-pref][data-bs-theme], two attributes) always wins */
+[data-theme-styled] {
+  --fi-card-edge: none;
+  --fi-card-edge-motion: none;
+  --fi-card-clip: none;
+  --fi-hover-transform: none;
+  --fi-hover-shadow: var(--fi-shadow);
+  --fi-hover-border: var(--fi-border);
+  --fi-btn-transform: none;
+  --fi-btn-spacing: normal;
+  --fi-btn-weight: inherit;
+}
+
+/* Bootstrap's components follow the theme too (inputs, modals, dropdowns, tables...) */
+:root[data-theme-styled] {
+  --bs-body-bg: var(--fi-surface);
+  --bs-body-color: var(--fi-text);
+  --bs-emphasis-color: var(--fi-heading-color);
+  --bs-heading-color: var(--fi-heading-color);
+  --bs-secondary-bg: var(--fi-raised);
+  --bs-tertiary-bg: var(--fi-raised);
+  --bs-border-color: var(--fi-border);
+  --bs-border-radius: var(--fi-radius-sm);
+  --bs-border-radius-sm: var(--fi-radius-sm);
+  --bs-border-radius-lg: var(--fi-radius);
+  --bs-border-radius-xl: var(--fi-radius);
+}
+
+/* ---------- Page and text ---------- */
+
+[data-theme-styled] body {
+  background: var(--fi-page-backdrop);
+  background-attachment: fixed;
+  color: var(--fi-text);
+}
+
+[data-theme-styled] :is(h1, h2, h3, h4, h5, h6, .ctx-header-title, .card-title, .section-title,
+  .settings-section-title, .settings-subsection-title, .stats-title, .fi-list-title) {
+  font-family: var(--fi-heading-font);
+  font-weight: var(--fi-heading-weight);
+  letter-spacing: var(--fi-heading-spacing);
+  text-transform: var(--fi-heading-transform);
+  color: var(--fi-heading-color);
+  text-shadow: var(--fi-heading-glow);
+}
+
+[data-theme-styled] .text-muted,
+[data-theme-styled] .ctx-header-subtitle {
+  color: var(--fi-muted) !important;
+}
+
+/* ---------- Cards and panels ---------- */
+
+[data-theme-styled] :is(.card, .case-core-style, .case-tags-style, .case-header-card, .card-stats,
+  .ctx-header:not(.ctx-header--hero), .ctx-table-wrap, .case-card, .task-section, .review-panel,
+  .config-panel, .stats-panel, .stats-card, .stats-filter-bar, .stats-modal-card, .modal-content,
+  .settings-theme-option) {
+  background: var(--fi-card-edge), var(--fi-surface-glass);
+  background-size: 300% 2px, auto;
+  background-repeat: no-repeat;
+  background-position: 0 0, 0 0;
+  border: var(--fi-border-width) solid var(--fi-border);
+  border-radius: var(--fi-radius);
+  box-shadow: var(--fi-shadow);
+  animation: var(--fi-card-edge-motion);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* Glass, cut corners and the hover lift only on cards holding no modal and no
+   dropdown: backdrop-filter, clip-path and transform make the card the container of
+   its position: fixed children (a modal would be stuck and cut inside the card) and
+   clip-path cuts dropdown menus. Without :has() support this rule is just skipped. */
+[data-theme-styled] :is(.card, .case-core-style, .case-tags-style, .case-header-card, .card-stats,
+  .ctx-header:not(.ctx-header--hero), .ctx-table-wrap, .case-card, .task-section, .review-panel,
+  .config-panel, .stats-panel, .stats-card, .stats-filter-bar, .stats-modal-card, .modal-content,
+  .settings-theme-option):not(:has(.modal, .dropdown-menu, .offcanvas)) {
+  -webkit-backdrop-filter: var(--fi-backdrop);
+  backdrop-filter: var(--fi-backdrop);
+  clip-path: var(--fi-card-clip);
+}
+
+[data-theme-styled] :is(.card, .case-core-style, .case-card, .stats-card, .card-stats, .settings-theme-option,
+  .task-section):not(:has(.modal, .dropdown-menu, .offcanvas)):hover {
+  transform: var(--fi-hover-transform);
+}
+
+[data-theme-styled] :is(.card, .case-core-style, .case-card, .stats-card, .card-stats, .settings-theme-option, .task-section):hover {
+  box-shadow: var(--fi-hover-shadow);
+  border-color: var(--fi-hover-border);
+}
+
+@keyframes xfi-edge-slide {
+  from { background-position: 0% 0, 0 0; }
+  to   { background-position: 100% 0, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme-styled] * { animation: none !important; transition: none !important; }
+}
+
+/* raised parts inside cards */
+[data-theme-styled] :is(.task-panel, .ctx-seg, .ctx-pill-muted, .stats-detail-hero, .stats-detail-list li,
+  .settings-font-sample, .alert-item:hover, .log-entry:nth-child(odd)) {
+  background: var(--fi-raised);
+}
+
+[data-theme-styled] .list-group-item {
+  background: transparent;
+  border-color: var(--fi-border);
+  color: var(--fi-text);
+}
+
+[data-theme-styled] .dropdown-menu {
+  background: var(--fi-surface);
+  border-color: var(--fi-border);
+  border-radius: var(--fi-radius-sm);
+  box-shadow: var(--fi-shadow);
+}
+
+[data-theme-styled] .table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--fi-text);
+  --bs-table-border-color: var(--fi-border);
+}
+
+[data-theme-styled] .ctx-table td {
+  background: transparent;
+}
+
+/* ---------- Buttons, inputs, badges ---------- */
+
+[data-theme-styled] :is(.btn, .form-control, .form-select, .input-group-text, .ctx-chip, .ctx-ghost-btn,
+  .ctx-brand-btn, .badge, .select2-selection) {
+  border-radius: var(--fi-radius-sm);
+}
+
+[data-theme-styled] :is(.btn, .ctx-brand-btn, .ctx-ghost-btn) {
+  text-transform: var(--fi-btn-transform);
+  letter-spacing: var(--fi-btn-spacing);
+  font-weight: var(--fi-btn-weight);
+}
+
+[data-theme-styled] :is(.form-control, .form-select, .select2-selection) {
+  background-color: var(--fi-raised);
+  border-color: var(--fi-border);
+  color: var(--fi-text);
+}
+
+/* ---------- Top bar and footer ---------- */
+
+[data-theme-styled] footer.site-footer {
+  background: var(--fi-navbar);
+  border-top: var(--fi-border-width) solid var(--fi-border);
+}
+
+/* ---------- Settings page preview of a styled theme ---------- */
+
+.settings-theme-preview[data-theme-styled] .stp-body { background: var(--fi-page-backdrop); }
+.settings-theme-preview[data-theme-styled] .stp-card {
+  background: var(--fi-card-edge), var(--fi-surface);
+  background-size: 300% 2px, auto;
+  background-repeat: no-repeat;
+  border-radius: calc(var(--fi-radius) / 3);
+  box-shadow: var(--fi-shadow);
+  clip-path: var(--fi-card-clip);
+  animation: var(--fi-card-edge-motion);
+}

@@ -591,7 +591,9 @@ def simplesaml_metadata():
 def logout():
     user_email = current_user.email
     flowintel_log("audit", 200, "User logout", Email=user_email)
-    logout_user()
+    # Clear the session first: logout_user() leaves a flag in it telling Flask-Login to
+    # delete the "remember me" cookie, which session.clear() afterwards would wipe out
     session.clear()
+    logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))

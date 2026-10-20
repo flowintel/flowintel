@@ -3,7 +3,8 @@
  *
  * Loaded synchronously in <head> (base.html) so the saved theme and font are applied
  * before the first paint. The server writes the saved values on <html>:
- *   data-theme-pref="light|dark|auto"   ("auto" follows the operating system)
+ *   data-theme-pref="<theme>"           (light, dark, auto, christmas... see utils/themes.py;
+ *                                        "auto" follows the operating system)
  *   data-font="rubik|system|readable"
  *
  * Any element with data-setting="<name>" data-value="<value>" changes that setting on
@@ -16,9 +17,13 @@
     // How each setting is applied to the page
     const APPLY = {
         theme(value) {
-            const resolved = value === 'dark' || value === 'light' ? value : (media && media.matches ? 'dark' : 'light')
+            // Bootstrap mode the theme is drawn on (window.FI_THEME_BASES, set in base.html)
+            const base = (window.FI_THEME_BASES || {})[value] || value
+            const resolved = base === 'dark' || base === 'light' ? base : (media && media.matches ? 'dark' : 'light')
             root.setAttribute('data-theme-pref', value)
             root.setAttribute('data-bs-theme', resolved)
+            // shape and text layer of some themes (css/themes/styled.css)
+            root.toggleAttribute('data-theme-styled', (window.FI_THEMES_STYLED || []).includes(value))
         },
         font(value) {
             root.setAttribute('data-font', value)

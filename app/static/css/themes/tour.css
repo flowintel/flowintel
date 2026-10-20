@@ -1,0 +1,143 @@
+/*
+  themes/tour.css — "Yellow Jersey" theme (light), on the great summer bike race.
+  A clean light look with yellow-jersey accents and an asphalt sidebar. Decorations
+  by static/js/themes/tour.js: mountains, a road with fans and a peloton riding by.
+
+  Colour tokens (themes/default.css) and shape / text tokens (themes/styled.css).
+*/
+
+[data-theme-pref="tour"][data-bs-theme="light"] {
+  --fi-page: #fffbea;
+  --fi-surface: #ffffff;
+  --fi-raised: #fff6cc;
+  --fi-border: #efe2a6;
+  --fi-muted: #6b6450;
+  --fi-accent: #f2c200;
+  --fi-navbar: #ffffff;
+  --fi-navbar-border: #f2c200;
+  --fi-sidebar: #26282c;
+  --fi-sidebar-submenu: #3a3d43;
+  --fi-sidebar-hover: #5c6068;
+  --fi-sidebar-active: #4a4e55;
+
+  /* Bootstrap's own colours; the -rgb ones are plain numbers */
+  --bs-body-bg-rgb: 255, 255, 255;
+  --bs-body-color-rgb: 38, 36, 30;
+  --bs-secondary-color: rgba(38, 36, 30, 0.7);
+  --bs-tertiary-color: rgba(38, 36, 30, 0.5);
+  --bs-secondary-bg-rgb: 255, 246, 204;
+  --bs-tertiary-bg-rgb: 255, 246, 204;
+  --bs-border-color-translucent: rgba(242, 194, 0, 0.25);
+  --bs-link-color: #a07800;
+  --bs-link-color-rgb: 160, 120, 0;
+  --bs-link-hover-color: #d4262c;
+  --bs-link-hover-color-rgb: 212, 38, 44;
+
+  /* Page headers (components/page_header.css): icon badge and main buttons */
+  --ctx-brand: #26282c;
+  --ctx-brand-dark: #1a1b1e;
+  --ctx-brand-tint: #fff6cc;
+
+  /* Look — themes/styled.css */
+  --fi-text: #26241e;
+  --fi-heading-color: #1a1b1e;
+  --fi-page-backdrop: var(--fi-page);
+  --fi-surface-glass: var(--fi-surface);
+  --fi-backdrop: none;
+  --fi-radius: 10px;
+  --fi-radius-sm: 6px;
+  --fi-border-width: 1px;
+  --fi-shadow: 0 6px 18px rgba(80, 64, 0, 0.07);
+  --fi-heading-font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial, sans-serif;
+  --fi-heading-weight: 700;
+  --fi-heading-spacing: -0.01em;
+  --fi-heading-transform: none;
+  --fi-heading-glow: none;
+  --fi-card-edge: linear-gradient(90deg, #f2c200, #f2c200);
+  --fi-hover-transform: translateY(-2px);
+  --fi-hover-shadow: 0 10px 24px rgba(80, 64, 0, 0.12);
+  --fi-hover-border: #f2c200;
+  --fi-btn-weight: 600;
+}
+
+/* ---------- Signature: understated race colours ----------
+   a thin yellow rule under the top bar and before page titles, yellow main
+   buttons, a yellow marker on the sidebar hover, yellow selection */
+
+[data-theme-pref="tour"] .navbar {
+  border-bottom: 3px solid #f2c200;
+}
+
+[data-theme-pref="tour"] .ctx-header-title::before {
+  content: "";
+  display: inline-block;
+  width: 4px; height: 0.9em;
+  margin-right: 0.55rem;
+  vertical-align: -0.05em;
+  border-radius: 2px;
+  background: #f2c200;
+}
+
+[data-theme-pref="tour"] .ctx-brand-btn {
+  background: #f2c200;
+  color: #1a1b1e;
+  border: 0;
+}
+
+[data-theme-pref="tour"] .ctx-brand-btn:not(:disabled):hover {
+  background: #ffd21f;
+  color: #1a1b1e;
+}
+
+[data-theme-pref="tour"] .ctx-header-icon {
+  color: #f2c200;
+}
+
+[data-theme-pref="tour"] .sidebar .nav-item .nav-link:hover {
+  box-shadow: inset 3px 0 0 #f2c200;
+}
+
+[data-theme-pref="tour"] ::selection { background: rgba(242, 194, 0, 0.45); color: #1a1b1e; }
+[data-theme-pref="tour"] { scrollbar-color: #d9b100 #fffbea; }
+
+/* ── The race band above the footer (tour.js): mountains, the road, fans and
+   the peloton. In the page flow, next to the sidebar like the footer. ─────── */
+.tour-road {
+    position: relative;
+    height: 300px;
+    margin-top: 1rem;
+    margin-left: var(--sidebar);
+    margin-bottom: -1px;
+    pointer-events: none;
+    flex-shrink: 0;
+}
+.tour-road + footer.site-footer { margin-top: 0; }
+@media (min-width: 768px) {
+    body.sidebar-toggled .tour-road { margin-left: 6.5rem; }
+}
+@media (max-width: 767px) {
+    body.sidebar-toggled .tour-road { margin-left: 0; }
+}
+.tour-road svg { display: block; width: 100%; height: 100%; }
+
+/* fans' flags waving, the flamme rouge swinging a little */
+.tour-flag { transform-box: fill-box; transform-origin: 0 100%; animation: tour-wave 1.6s ease-in-out infinite alternate; }
+.tour-fan { transform-box: fill-box; transform-origin: 50% 100%; animation: tour-cheer 0.9s ease-in-out infinite alternate; }
+.tour-banner { transform-box: fill-box; transform-origin: 50% 0; animation: tour-swing 3s ease-in-out infinite alternate; }
+@keyframes tour-wave { from { transform: skewY(-6deg) scaleX(0.92); } to { transform: skewY(6deg) scaleX(1); } }
+@keyframes tour-cheer { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@keyframes tour-swing { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .tour-flag, .tour-fan, .tour-banner { animation: none; }
+}
+
+/* ── Settings page preview: a bit of road at the bottom ─────── */
+.settings-theme-preview[data-theme-pref="tour"] .stp-body { position: relative; }
+.settings-theme-preview[data-theme-pref="tour"] .stp-body::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px;
+    background:
+        repeating-linear-gradient(90deg, #ffffff 0 6px, transparent 6px 12px) 0 5px / 100% 2px no-repeat,
+        #4a4d52;
+}
+.settings-theme-preview[data-theme-pref="tour"] .stp-card { position: relative; z-index: 1; flex: 0 0 34%; }

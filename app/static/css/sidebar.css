@@ -18,8 +18,8 @@
 }
 .navbar {
   box-shadow: 0 2px 5px #0000000d,0 2px 10px #0000000d;
-  background-color: #F4F5FE;
-  border-bottom: 3px solid #070D47;
+  background-color: var(--fi-navbar);
+  border-bottom: 3px solid var(--fi-navbar-border);
 }
 .search-result {
   left: 50%;
@@ -67,13 +67,13 @@
 .sidebar .nav-item .collapsing {
   display: none;
   transition: none;
-  background-color: #456297;
+  background-color: var(--fi-sidebar-submenu);
   border-radius: .35rem;
 }
 .sidebar .nav-item .collapse .collapse-inner {
   border-radius: .35rem;
   box-shadow: 0 .15rem 1.75rem #3a3b4526;
-  background-color: #456297;
+  background-color: var(--fi-sidebar-submenu);
 }
 .sidebar .nav-item .collapsing {
   display: none;
@@ -97,11 +97,11 @@
 }
 .sidebar .nav-item .collapse .collapse-inner .collapse-item:hover,
 .sidebar .nav-item .collapsing .collapse-inner .collapse-item:hover {
-  background-color: #91a7cf;
+  background-color: var(--fi-sidebar-hover);
 }
 .sidebar .nav-item .collapse .collapse-inner .collapse-item:active,
 .sidebar .nav-item .collapsing .collapse-inner .collapse-item:active {
-  background-color: #728cbd;
+  background-color: var(--fi-sidebar-active);
 }
 .sidebar #sidebarToggle {
   width: 2.5rem;
@@ -330,7 +330,7 @@ footer.sticky-footer .copyright {
   }
 }
 .bg-gradient-primary {
-  background-color: #1f3763;
+  background-color: var(--fi-sidebar);
   background-size: cover;
 }
 .custom-sidebar-header {

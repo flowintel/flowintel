@@ -1,6 +1,7 @@
 """Per-user settings (UserSettings): interface theme and font for now."""
 from ..db_class.db import UserSettings
 from ..extensions import db
+from ..utils.themes import THEMES
 
 DEFAULTS = {"theme": "auto", "font": "rubik"}
 
@@ -14,7 +15,9 @@ def get_settings(user):
 
 
 def get_theme(user):
-    return get_settings(user).theme or DEFAULTS["theme"]
+    """Saved theme, or the default one when it is unset or no longer exists."""
+    theme = get_settings(user).theme
+    return theme if theme in THEMES else DEFAULTS["theme"]
 
 
 def get_font(user):
