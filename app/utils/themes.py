@@ -28,6 +28,7 @@ THEMES = {
     "neon": {"base": "dark", "label": "Neon", "icon": "fa-gamepad", "stylesheet": True, "styled": True},
     "arena": {"base": "light", "label": "Arena", "icon": "fa-trophy", "stylesheet": True, "styled": True},
     "linen": {"base": "light", "label": "Linen", "icon": "fa-scroll", "stylesheet": True, "styled": True},
+    "tour": {"base": "light", "label": "Yellow Jersey", "icon": "fa-person-biking", "stylesheet": True, "styled": True, "script": True},
     "christmas": {"base": "dark", "label": "Christmas", "icon": "fa-tree", "stylesheet": True, "script": True},
 }
 
