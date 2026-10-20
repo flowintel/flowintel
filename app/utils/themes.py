@@ -25,8 +25,6 @@ THEMES = {
     "auto": {"base": "auto", "label": "System", "icon": "fa-circle-half-stroke"},
     "light": {"base": "light", "label": "Light", "icon": "fa-sun"},
     "dark": {"base": "dark", "label": "Dark", "icon": "fa-moon"},
-    "aurora": {"base": "dark", "label": "Aurora", "icon": "fa-wand-magic-sparkles", "stylesheet": True, "styled": True},
-    "phosphor": {"base": "dark", "label": "Phosphor", "icon": "fa-terminal", "stylesheet": True, "styled": True},
     "neon": {"base": "dark", "label": "Neon", "icon": "fa-gamepad", "stylesheet": True, "styled": True},
     "arena": {"base": "light", "label": "Arena", "icon": "fa-trophy", "stylesheet": True, "styled": True},
     "linen": {"base": "light", "label": "Linen", "icon": "fa-scroll", "stylesheet": True, "styled": True},
