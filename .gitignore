@@ -43,6 +43,7 @@ __pycache__/
 .env
 .env.docker
 .env.local
+.env.build
 tmp/
 /logs
 
