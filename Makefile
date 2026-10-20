@@ -175,12 +175,13 @@ configure_repo_dev:
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
 
-first_install: configure_repo_dev
+first_install: configure_repo_dev reinit_submodules
 	echo
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	read wait_for_me
 	uv venv --allow-existing
 	uv pip install -r requirements.txt
+	git submodule init && git submodule update
 
 ##
 # Kept for legacy as comments and future adaption when running the app local in virtualenv (no Docker except dev infra)
@@ -367,7 +368,19 @@ full_run_official_postgres: configure_repo_dev
 
 # Test 🧪, Build 🌍 , Publish  🌬️ and Release 🔥
 test: first_install
-	VENV_DIR=".venv" ./launch.sh -t
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -t
+
+test_new: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tn
+
+test_new_non_random: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tnnr
+
+test_parallel: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tp
+
+test_new_parallel: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tnp
 
 build_latest_local: nuke
 ifeq ($(rebuild),1)

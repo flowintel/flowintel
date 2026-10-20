@@ -21,6 +21,89 @@ jobs:
         python -m pip install --upgrade pip
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         git submodule init && git submodule update
-    - name: Test
+
+####
+#    - name: New Test Stress - Sequential
+#      run: |
+#        ./launch.sh -tns
+#
+#    - name: Upload debug logs (New Test Stress - Sequential)
+#      if: always()
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: test-logs-newstress-sequential-${{ github.run_id }}
+#        path: tests_master.log
+#        if-no-files-found: ignore
+####
+    - name: New Test - Parallel
+      run: |
+        ./launch.sh -tnp
+
+    - name: Upload debug logs (New Test - Parallel)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-new-parallel-${{ github.run_id }}
+        path: newtests_gw*.log
+        if-no-files-found: ignore
+
+    - name: New Test - Sequential
+      run: |
+        ./launch.sh -tn
+
+    - name: Upload debug logs (New Test - Sequential)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-new-sequential-${{ github.run_id }}
+        path: newtests_master.log
+        if-no-files-found: ignore
+
+    - name: New Test - Sequential (Non Random)
+      run: |
+        ./launch.sh -tnnr
+
+    - name: Upload debug logs (New Test - Sequential - Non Random)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-new-sequential-non-random-${{ github.run_id }}
+        path: newtests_master.log
+        if-no-files-found: ignore
+####
+
+####
+    - name: Legacy Test - Parallel
+      run: |
+        ./launch.sh -tp
+
+    - name: Upload debug logs (Legacy Test - Parallel)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-legacy-parallel-${{ github.run_id }}
+        path: tests_gw*.log
+        if-no-files-found: ignore
+
+#    - name: Debug via tmate (parallel failure)
+#      if: failure()
+#      uses: mxschmitt/action-tmate@v3
+#      timeout-minutes: 15
+
+    - name: Legacy Test - Sequential
       run: |
         ./launch.sh -t
+
+    - name: Upload debug logs (Legacy Test - Sequential)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-legacy-sequential-${{ github.run_id }}
+        path: tests_master.log
+        if-no-files-found: ignore
+
+#    - name: Debug via tmate (parallel failure)
+#      if: failure()
+#      uses: mxschmitt/action-tmate@v3
+#      timeout-minutes: 15
+####

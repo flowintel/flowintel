@@ -6,8 +6,8 @@
 instance/*
 
 # Ignore history directory contents
-history/*
-history_test/*
+*history/*
+*history_test/*
 
 # Ignore uploads directory contents
 uploads/*
@@ -78,3 +78,5 @@ dump.rdb
 
 *.custom
 CLAUDE.md
+
+.coverage*

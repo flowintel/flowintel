@@ -4,11 +4,16 @@ name = "flowintel"
 version = "3.1.0"
 description = "Open-source case management platform for security analysts"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+]
 
 [project.optional-dependencies]
+# for later, not yet usable with the hybrid "fast uv pip init / deps in requirements.*"
 dev = [
     "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-randomly",
 ]
 
 [tool.uv.sources]
