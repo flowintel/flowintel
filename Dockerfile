@@ -4,7 +4,7 @@ FROM ubuntu:noble
 # Needed to prevent tzdata to be interactive
 RUN ln -fs /usr/share/zoneinfo/Europe/Luxembourg /etc/localtime
 
-RUN apt update && apt install -y \
+RUN apt update && apt install -y --no-install-recommends \
     sudo moreutils software-properties-common \
     git screen libolm-dev librsvg2-bin wget vim curl gnupg python3-venv python3-pip \
     texlive texlive-xetex texlive-fonts-extra # Pandoc dependencies
@@ -24,14 +24,14 @@ RUN groupadd --gid 10000 flowintel && useradd --uid 10000 --gid 10000 -m -g flow
 WORKDIR /home/flowintel/app
 
 # Copy on top only files that affect dependency resolution
-COPY requirements.txt requirements.in /home/flowintel/app/
+COPY requirements.txt pyproject.toml /home/flowintel/app/
 
 ## Keep the virtual env untouchable by the non privileged user
 # Install Python dependencies in a virtualenv
 RUN python3 -m venv /home/flowintel/venv
 ENV PATH="/home/flowintel/venv/bin:${PATH}"
 RUN pip install --upgrade pip && \
-    pip install -r requirements.txt --timeout 240
+    pip install -r requirements.txt --timeout 240 --no-deps
 
 # Switch to the non-root user
 USER flowintel
@@ -72,6 +72,11 @@ RUN mkdir -p /home/flowintel/app
 
 # Set proper ownership
 RUN chown -R flowintel:flowintel /home/flowintel/app
+
+# Partial mitigation for diskcache PYSEC-2026-2447
+ENV DSPY_CACHEDIR=/home/flowintel/.dspy_cache
+RUN install -d -m 0700 -o flowintel -g flowintel "$DSPY_CACHEDIR"
+# End partial mitigation
 
 # We finally switch to the non-root user
 USER flowintel

@@ -36,6 +36,10 @@ GREEN := \033[1;32m
 RED := \033[31m
 BOLD_GREEN := \033[1;32m
 
+UV_VERSION :=
+UV ?= uv
+export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
+
 ########################################################################################
 # PREAMBLE - OS AND DEPENDENCY CHECKS
 ########################################################################################
@@ -78,13 +82,12 @@ else
 endif
 
 # Check for uv
-ifeq (,$(shell command -v uv 2> /dev/null))
+ifeq (,$(shell command -v $(UV) 2> /dev/null))
     $(error ❌ uv not found. Please install uv, ideally with your package manager, or from https://github.com/astral-sh/uv)
 else
-    UV_VERSION := $(shell uv --version 2>/dev/null)
+    UV_VERSION := $(shell $(UV) --version 2>/dev/null)
     $(info ✅ uv found: $(UV_VERSION))
 endif
-UV_VERSION :=
 
 
 ########################################################################################
@@ -105,7 +108,9 @@ rebuild := 1
 # RULES
 ########################################################################################
 
+# So we do not need the @ to avoid Make print command
 .SILENT:
+#
 .PHONY: configure_repo_dev \
 		first_install \
 		database_init \
@@ -171,9 +176,10 @@ configure_repo_dev:
 first_install: configure_repo_dev
 	echo
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	read wait_for_me
-	uv venv --allow-existing
-	uv pip install -r requirements.txt
+	read -r wait_for_me
+	$(UV) venv --allow-existing
+	#$(UV) pip install -r requirements.txt
+	$(UV) sync --locked
 
 ##
 # Kept for legacy as comments and future adaption when running the app local in virtualenv (no Docker except dev infra)
@@ -400,7 +406,7 @@ full_dev_localinfra_official_postgres_stop:
 # Housekeeping #
 ################
 format_and_lint:
-	uv run pre-commit run --all-files --show-diff-on-failure --verbose;
+	$(UV) run pre-commit run --all-files --show-diff-on-failure --verbose;
 
 bump_version: version
 ifeq (${version_repo},"0.0.0")
@@ -413,35 +419,42 @@ else
 		exit 1; \
 	fi
 
+	test -z "$$(git status --porcelain)" || { echo "❌ Working directory is dirty. Commit or stash first."; exit 1; }
+
+	git rev-parse -q --verify "refs/tags/$(version_repo)" >/dev/null && { echo "❌ Tag $(version_repo) already exists"; exit 1; } || true
+
 	echo "🔄 Pulling latest changes..."
-	git pull
+	git pull --ff-only
 
 	echo "📝 Bumping repo to version ${version_repo}"
 	echo ${version_repo} > version
-	sed -i "s/.*version =.*/version = \"${version_repo}\"/" "pyproject.toml"
+	# GNU sed only:
+	# #sed -i "s/.*version =.*/version = \"${version_repo}\"/" "pyproject.toml"
+	# Should be compatible with GNU sed (Linux) and BSD sed (MacOS)
+	# sed -i '0,/^version = ".*"/s//version = "$(version_repo)"/' pyproject.toml
+	# Works with recent uv versions and is portable
+	$(UV) version $(version_repo)
 
-	echo "🔒 Updating uv.lock..."
-	uv lock
+	$(MAKE) lock
+	$(MAKE) lock_check export_requirements
 
 	echo "📦 Staging changes..."
-	git add version
-	git add "pyproject.toml"
-	git add uv.lock
+	git add version pyproject.toml uv.lock requirements.txt
 
 	echo "💾 Committing changes..."
-	git commit -m "BUMP to version ${version_repo}"
+	git commit -m "chores(release): BUMP to version ${version_repo}"
 
 	echo "🏷️  Creating tag ${version_repo}..."
-	git tag ${version_repo} -m "${tag_message}"
+	git tag -a ${version_repo} -m "${tag_message}"
 
 	echo "🚀 Pushing to remote..."
-	git push
-	git push --tags
+	git push --atomic origin HEAD "refs/tags/$(version_repo)"
 
 	echo "✅ Version bumped to ${version_repo}"
 endif
 
 clean:
+	- rm -rf .venv .pytest_cache
 	- find . -name __pycache__ -print0 | xargs -0 rm -rf
 	- find . -name "*.pyc" -print0 | xargs -0 rm -rf
 	- find . -name "*.egg-info" -print0 | xargs -0 rm -rf
@@ -463,8 +476,8 @@ testclean:
 nuke: clean distclean testclean coverageclean
 
 nuke_volume:
-	@echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
-	@echo "💣 DO NOT RUN IN DEV IF YOU NEED TO KEEP YOUR DEV DATABASE DATA !!! Press Enter to continue or Ctrl+C to exit"
+	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
+	echo "💣 DO NOT RUN IN DEV IF YOU NEED TO KEEP YOUR DEV DATABASE DATA !!! Press Enter to continue or Ctrl+C to exit"
 	read wait_for_me
 	docker volume rm flowintel_db -f
 	docker volume rm flowintel_flowintel-data -f
@@ -473,6 +486,43 @@ nuke_volume:
 reinit_submodules:
 	git submodule sync
 	git submodule update --init
+
+
+# Dev environment from the lockfile (strict)
+sync:
+	$(UV) sync --locked
+
+# Re-resolve after editing pyproject.toml
+lock:
+	echo "🔒 Updating uv.lock..."
+	$(UV) lock
+
+# Upgrade all dependencies (review the diff!)
+lock_upgrade:
+	echo "🔒 Upgrading uv.lock..."
+	$(UV) lock --upgrade
+
+# CI gate: fail if uv.lock is stale
+lock_check:
+	echo "🔒 Checking uv.lock..."
+	$(UV) lock --check
+
+# requirements.txt for legacy installs/Docker
+export_requirements: audit
+	echo "🔒 Exporting uv.lock to requirements.txt ..."
+	$(UV) export --locked --no-dev --no-emit-project --no-hashes --format requirements-txt -o requirements.txt
+	$(UV) export --locked --only-group dev --no-emit-project --no-hashes --format requirements-txt -o requirements-dev.txt
+
+# Vulnerability scan of locked deps
+audit:
+	echo "🔒 Auditing uv.lock..."
+	$(UV) export --locked --no-dev --no-emit-project --no-header \
+	--no-emit-package flowintel-mcp --no-emit-package pandoc-mermaid-filter \
+	--no-emit-package fastmcp --no-emit-package diskcache \
+	--format requirements-txt -o /tmp/flowintel-req-audit.txt
+	AUDIT_IGNORE ?= --ignore-vuln PYSEC-2026-2447
+	$(UV) run --no-project --with pip-audit pip-audit -r /tmp/flowintel-req-audit.txt --no-deps --disable-pip $(AUDIT_IGNORE)
+
 
 ########################################################################################
 
@@ -486,13 +536,13 @@ help :
 	echo -e "${BLUE}${BOLD}### I am your quick and dirty Help file :) ###${RESET}"
 	echo ""
 	echo -e "${GREEN}${BOLD}# Run make with targets like:${RESET}"
-	echo "make target someparameter=\"somevalue\""
+	echo "make target someparameter=\"somevalue\" $(version_repo)"
 	echo ""
 	echo -e "${GREEN}# Available combinations arguments/targets/description:${RESET}"
 	echo ""
 	echo -e "${BOLD}🛠️  Initialize local dev environment:${RESET}"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "configure_repo_dev" "/" "Configure local .env files"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_deb then initialize Python venv"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "first_install" "/" "configure_repo_dev, then create .venv and install locked dependencies (uv sync --locked)"
 	echo ""
 	echo -e "${BOLD}📦 Development lifecycle:${RESET}"
 	printf "  %-20s %s %-20s %s %s\n" "[None]" "/" "new_migration_postgres" "/"  "Create a new migration file, Postgresql running as Dockerised Dev Infrastructure"
@@ -508,20 +558,27 @@ help :
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_run" "/"  "Manual Run Dev Infrastructure (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_maria_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, Postgres stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_maria_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MariaDB stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_mysql_stop" "/"  "Manual Stop Dev Full Infrastructure when things gone stuck (docker-compose, MySQL stack)"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "full_dev_localinfra_official_postgres_stop" "/"  "Manual Stop Dev Full Infrastructure based on Official Docker image when things gone stuck (docker-compose, Postgres stack)"
 	echo ""
+	echo -e "${BOLD}🐍 Dependencies management with uv:${RESET}"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "sync" "/" "Install locked dependencies into ./.venv (uv sync --locked). Use after clone/pull. Never edits uv.lock"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "lock" "/" "Re-resolve dependencies after editing pyproject.toml (uv lock); commit uv.lock afterwards"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "lock_upgrade" "/" "Upgrade all dependencies to latest allowed in uv.lock (review the diff, test, audit !)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "lock_check" "/" "CI gate: faail if uv.lock is out of date (CI gate)"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "export_requirements" "/" "Export production requirements.txt from uv.lock (no dev group); runs audit in 2nd step; needs network"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "audit" "/" "Scan locked production dependencies for known vulnerabilities (pip-audit)"
+	echo ""
 	echo -e "${BOLD}🧪 Test, 🔥 Build, 🌬️  Publish and 🚀 Release (TODO)${RESET}"
 	echo ""
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "build_latest_local" "/"  "Build the database agnostic Docker Image (Dockerfile)"
-	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "test" "/"  "Launch locally the test leveraging the local virtual environment and default SQLite"
+	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "test" "/"  "Run the tests with laumch.sh that leverages the uv-maintained environment, defaults to SQLite for DB"
 	echo ""
 	echo -e "${BOLD}🧹 Housekeeping:${RESET}"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "format_and_lint" "/" "Run the formatter and linter our of pre-commit hooks"
-	printf "  %-20s %s %-20s %s %s\n" "[version_repo=X.Y.Z]" "/" "bump_version" "/" "Bump version + tag (use version_repo=X.Y.Z)"
+	printf "  %-20s %s %-20s %s %s\n" "[version_repo=X.Y.Z]" "/" "bump_version" "/" "Bump version (version file + pyproject.toml), refresh uv.lock, commit, tag and push"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "clean" "/" "Clean Python artifacts"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "coverageclean" "/" "Clean Coverage test artifacts"
 	printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "distclean" "/" "Clean Build and Dist artifacts"
@@ -550,7 +607,6 @@ help :
 	echo "- \"Legacy\" Docker"
 	echo "{"
 	echo "  \"ipv6\": true,"
-	echo "  \"ip6tables\": true,"
 	echo "  \"ip6tables\": true,"
 	echo "  \"fixed-cidr-v6\": \"fd00::/80\","
 	echo "  \"experimental\": true"

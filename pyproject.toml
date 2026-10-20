@@ -3,16 +3,55 @@
 name = "flowintel"
 version = "3.1.0"
 description = "Open-source case management platform for security analysts"
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "dspy",
+    "email-validator",
+    "flask",
+    "flask-migrate",
+    "flask-login",
+    "flask-restx",
+    "flask-sqlalchemy",
+    "flask-session",
+    "Flask-wtf",
+    "gunicorn",
+    "jsonschema",
+    "matrix-nio[e2e]",
+    "misp-modules[minimal]",
+    "msal",
+    "psycopg2-binary",
+    "python-dateutil",
+    "python-dotenv",
+    "python-gnupg",
+    "python3-saml",
+    "pymisp",
+    "pymispgalaxies",
+    "pymysql",
+    "pytaxonomies",
+    "redis",
+    "requests",
+    "schedule",
+    "sqlalchemy",
+    "Werkzeug",
+    "wtforms",
+    "pandoc-mermaid-filter",
+    "flowintel-mcp",
+]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
 ]
 
+[tool.uv]
+# Flask app, not an installable library: don't build/install the project itself
+package = false
+default-groups = ["dev"]
+
 [tool.uv.sources]
-# No custom sources for now
+pandoc-mermaid-filter = { git = "https://github.com/DavidCruciani/pandoc-mermaid-filter", rev = "435e1c8e5a7834648b18470bcb795e8eac802465" }
+flowintel-mcp = { git = "https://github.com/flowintel/flowintel-mcp", rev = "4de28c57fe44eca15d4eba0cd2b020ae43b182ab" }
+
 
 [tool.pytest.ini_options]
 filterwarnings = [
