@@ -378,8 +378,8 @@ class Config():
             SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY as _SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY,
         )
         SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY = [
+            *_SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY,
             *SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY,
-            *_SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY
         ]
 
     # =============================================================================
