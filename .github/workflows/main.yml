@@ -48,6 +48,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: New Test - Sequential
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tn
 
@@ -60,6 +61,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: New Test - Sequential (Non Random)
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tnnr
 
@@ -73,7 +75,8 @@ jobs:
 ####
 
 ####
-    - name: Legacy Test - Parallel
+    - name: Legacy Test - Parallel (Non Random)
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tp
 
@@ -91,6 +94,7 @@ jobs:
 #      timeout-minutes: 15
 
     - name: Legacy Test - Sequential
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -t
 
