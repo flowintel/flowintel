@@ -245,6 +245,27 @@
   color: var(--bs-body-color);
 }
 
+[data-bs-theme="dark"] th,
+[data-theme-pref="christmas"] th,
+[data-bs-theme="dark"] .bg-light,
+[data-theme-pref="christmas"] .bg-light {
+  --bs-table-bg: transparent;
+  --bs-table-accent-bg: transparent;
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] th,
+[data-theme-pref="christmas"] th,
+[data-bs-theme="dark"] .text-dark,
+[data-theme-pref="christmas"] .text-dark {
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .select2-selection__rendered,
+[data-theme-pref="christmas"] .select2-selection__rendered {
+  color: #fff !important;
+}
+
 [data-bs-theme="dark"] .select2-dropdown,
 [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown {
   background-color: var(--fi-surface);

@@ -326,3 +326,7 @@ html[data-theme-pref="christmas"] body { background-color: transparent; }
 }
 /* A shorter card, so the landscape shows under it */
 .settings-theme-preview[data-theme-pref="christmas"] .stp-card { position: relative; z-index: 1; flex: 0 0 34%; }
+
+/* "New attribute" form (case page): labels were grey and hard to read on the night sky */
+html[data-theme-pref="christmas"] .sa-new-attr .form-label,
+html[data-theme-pref="christmas"] .sa-new-attr .form-check-label { color: #f3f6fb; }
