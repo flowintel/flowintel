@@ -61,6 +61,43 @@ def pytest_configure(config):
     )
 
 
+def pytest_collection_modifyitems(config, items):
+    """
+    Exclude tests that require the legacy per-test database fixture.
+
+    These tests depend on database changes made during a test being visible
+    to subsequent Flask requests. The experimental session-scoped fixture
+    does not currently guarantee that cross-request transactional visibility.
+    """
+# Alternative to provide a reason for skiping a test
+#    for item in items:
+#        if "concurrent_db" in item.keywords:
+#            item.add_marker(
+#                pytest.mark.skip(
+#                    reason="Concurrency test requires the legacy per-test database fixture"
+#                )
+#            )
+#        if "legacy_db" in item.keywords:
+#            item.add_marker(
+#                pytest.mark.skip(
+#                    reason="This test requires the legacy per-test database fixture"
+#                )
+#            )
+#
+    selected = []
+    deselected = []
+
+    for item in items:
+        if "legacy_db" in item.keywords or "concurrent_db" in item.keywords:
+            deselected.append(item)
+        else:
+            selected.append(item)
+
+    if deselected:
+        config.hook.pytest_deselected(items=deselected,)
+        items[:] = selected
+
+
 @pytest.fixture(scope="session")
 def app():
     """

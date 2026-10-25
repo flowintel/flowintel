@@ -160,7 +160,8 @@ function test {
         -p no:randomly \
         --cov=./app \
         --cov-report=term-missing \
-        --durations=0
+        --durations=0 \
+       -m "concurrent_db or legacy_db"
 
     pytest_exit_code=$?
     set -e

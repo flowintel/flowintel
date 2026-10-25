@@ -1,6 +1,7 @@
 import copy
 import threading
 import uuid
+import pytest
 
 from app.alerting import alerting_core as AlertingCore
 from app.db_class.db import ExternalAlert
@@ -48,7 +49,7 @@ def ingest(app):
         json=copy.deepcopy(EVENT),
     )
 
-
+@pytest.mark.concurrent_db
 def test_concurrent_first_ingests_create_a_single_alert(client, app, monkeypatch):
     setup_source(client)
 

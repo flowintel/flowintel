@@ -57,6 +57,7 @@ def test_create_edit_delete_standalone_event(client, app):
     assert client.get(f"/calendar/download_event_ics/{event['id']}").status_code == 404
 
 
+@pytest.mark.legacy_db
 def test_events_shared_with_org_but_only_editable_by_creator(client, app):
     login(client, app)
     private = client.post('/calendar/events', json={**EVENT, 'title': 'Private planning'}).json['event']
@@ -86,6 +87,7 @@ def test_events_shared_with_org_but_only_editable_by_creator(client, app):
     assert client.get('/calendar/events', query_string=SEPTEMBER).json['events'] == []
 
 
+@pytest.mark.legacy_db
 def test_read_only_user_can_view_shared_events_but_cannot_write(client, app):
     login(client, app)
     event = client.post('/calendar/events', json={**EVENT, 'visibility': 'organisation'}).json['event']
@@ -174,6 +176,7 @@ def test_timed_event_normalizes_timezone_and_exports_utc(client, app):
     assert 'DTEND:20260930T233000Z' in ics
 
 
+@pytest.mark.legacy_db
 def test_manual_events_in_web_and_api_feeds_respect_visibility(client, app):
     login(client, app)
     private = client.post('/calendar/events', json={**EVENT, 'title': 'Private event'}).json['event']
@@ -255,6 +258,7 @@ def test_api_create_manual_event_without_session_or_csrf(client, app):
     assert f"UID:event-{event['id']}@flowintel" in feed
 
 
+@pytest.mark.legacy_db
 @pytest.mark.parametrize('visibility', ['private', 'organisation'])
 def test_api_event_visibility_and_ownership_follow_api_key(client, app, visibility):
     admin_id = login(client, app, 'admin_api_key')
