@@ -19,12 +19,18 @@ def login(client, app, api_key='editor_api_key'):
     return user_id
 
 
-def share_org(app, api_key):
+def share_org(client, app, api_key):
     with app.app_context():
         owner = User.query.filter_by(api_key='editor_api_key').one()
         colleague = User.query.filter_by(api_key=api_key).one()
-        colleague.org_id = owner.org_id
-        db.session.commit()
+    
+    response = client.post(
+        f"/api/admin/edit_user/{colleague.id}",
+        content_type='application/json',
+        headers={"X-API-KEY": "admin_api_key"},
+        json={"org": owner.org_id},
+    )
+    assert response.status_code == 200
 
 
 def test_create_edit_delete_standalone_event(client, app):
@@ -72,7 +78,7 @@ def test_events_shared_with_org_but_only_editable_by_creator(client, app):
         assert client.put(f'/calendar/events/{event_id}', json=EVENT).status_code == 404
         assert client.delete(f'/calendar/events/{event_id}').status_code == 404
 
-    share_org(app, 'orgadmin_api_key')
+    share_org(client, app, 'orgadmin_api_key')
     login(client, app, 'orgadmin_api_key')
     visible = client.get('/calendar/events', query_string=SEPTEMBER).json['events']
     assert [event['id'] for event in visible] == [shared['id']]
@@ -91,7 +97,7 @@ def test_events_shared_with_org_but_only_editable_by_creator(client, app):
 def test_read_only_user_can_view_shared_events_but_cannot_write(client, app):
     login(client, app)
     event = client.post('/calendar/events', json={**EVENT, 'visibility': 'organisation'}).json['event']
-    share_org(app, 'read_api_key')
+    share_org(client, app, 'read_api_key')
     login(client, app, 'read_api_key')
     assert client.get('/calendar/events', query_string=SEPTEMBER).json['events'][0]['can_edit'] is False
     assert client.post('/calendar/events', json=EVENT).status_code == 403
@@ -196,7 +202,7 @@ def test_manual_events_in_web_and_api_feeds_respect_visibility(client, app):
         feed = client.get(url, headers=headers).get_data(as_text=True)
         assert f"UID:event-{private['id']}@flowintel" in feed
         assert f"UID:event-{shared['id']}@flowintel" in feed
-    share_org(app, 'read_api_key')
+    share_org(client, app, 'read_api_key')
     login(client, app, 'read_api_key')
     for url, headers in [('/calendar/calendar_feed', {}), ('/api/calendar/feed', {'X-API-KEY': 'read_api_key'})]:
         feed = client.get(url, headers=headers).get_data(as_text=True)
@@ -275,7 +281,7 @@ def test_api_event_visibility_and_ownership_follow_api_key(client, app, visibili
         assert saved.user_id == owner.id
         assert saved.org_id == (owner.org_id if visibility == 'organisation' else None)
     assert client.get('/calendar/events', query_string=SEPTEMBER).json['events'] == []
-    share_org(app, 'read_api_key')
+    share_org(client, app, 'read_api_key')
     login(client, app, 'read_api_key')
     visible = client.get('/calendar/events', query_string=SEPTEMBER).json['events']
     assert visible == ([{**event, 'can_edit': False}] if visibility == 'organisation' else [])
