@@ -221,10 +221,10 @@ def test_bad_range_and_missing_events(client, app):
     assert client.get('/calendar/download_event_ics/999').status_code == 404
 
 
-def test_manual_event_mutations_require_csrf(client, app):
+def test_manual_event_mutations_require_csrf(client, app, monkeypatch):
     login(client, app)
     event = client.post('/calendar/events', json=EVENT).json['event']
-    app.config['WTF_CSRF_ENABLED'] = True
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     assert client.post('/calendar/events', json=EVENT).status_code == 400
     assert client.put(f"/calendar/events/{event['id']}", json=EVENT).status_code == 400
     assert client.delete(f"/calendar/events/{event['id']}").status_code == 400
@@ -239,8 +239,8 @@ def test_calendar_page_renders_manual_event_controls(client, app):
 
 
 
-def test_api_create_manual_event_without_session_or_csrf(client, app):
-    app.config['WTF_CSRF_ENABLED'] = True
+def test_api_create_manual_event_without_session_or_csrf(client, app, monkeypatch):
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', True)
     response = client.post('/api/calendar/events', headers={'X-API-KEY': 'editor_api_key'}, json={
         'title': '  API planning  ', 'start': '2026-09-25', 'description': 'Created by automation',
     })

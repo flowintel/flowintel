@@ -10,7 +10,10 @@ TEMPLATE_EDITOR_KEY = "template_editor_api_key"
 
 
 @pytest.fixture(autouse=True)
-def enforce_privileged(app):
+def enforce_privileged(app, monkeypatch):
+    # To be checked. It seems to assume that initial value was False
+    # Here also, might be better to do:
+    # monkeypatch.setitem(app.config, "ENFORCE_PRIVILEGED_CASE", True)
     app.config["ENFORCE_PRIVILEGED_CASE"] = True
     yield
     app.config["ENFORCE_PRIVILEGED_CASE"] = False
