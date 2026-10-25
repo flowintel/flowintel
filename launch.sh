@@ -160,6 +160,35 @@ function test {
         -p no:randomly \
         --cov=./app \
         --cov-report=term-missing \
+        --durations=0
+
+    pytest_exit_code=$?
+    set -e
+
+    # Clean up only on success
+    if [ $pytest_exit_code -eq 0 ]; then
+        rm -rf "$HISTORY_DIR"
+        rm -f instance/flowintel_test_*
+    else
+        echo "[WARN] Tests failed ($pytest_exit_code). History preserved in $HISTORY_DIR for debugging" >&2
+        echo "[WARN] Test databases preserved for inspection:" >&2
+        ls -lh instance/flowintel_test_* 2>/dev/null || true
+    fi
+    
+    return $pytest_exit_code
+}
+
+function test_skipped {
+    prepare_app_run
+    export FLOWINTEL_APP_ENV="testing"
+    export HISTORY_DIR=$history_dir/history_test
+    
+    set +e
+    # worth noting that now we try to use coverage, with the src pattern it would much clear to cover
+    python3 -m pytest -n 0 \
+        -p no:randomly \
+        --cov=./app \
+        --cov-report=term-missing \
         --durations=0 \
        -m "concurrent_db or legacy_db"
 
@@ -568,6 +597,7 @@ if [ "$1" ]; then
         -tns | --test-new-stress )      test_new_stress;;
         -tnp | --test-new-parallel )    test_new_parallel;;
         -t | --test )                   test;;
+        -ts | --test-skipped )          test_skipped;; # Test with legacy sequential approach the new session based incompatible tests
         -tp | --test-parallel )         test_parallel;;
         -ks | --killscript )            killscript;;
         -tg | --taxo_galaxy )           taxo_galaxy_update;;
