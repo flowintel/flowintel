@@ -48,6 +48,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: New Test - Sequential
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tn
 
@@ -60,6 +61,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: New Test - Sequential (Non Random)
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tnnr
 
@@ -73,11 +75,30 @@ jobs:
 ####
 
 ####
-    - name: Legacy Test - Parallel
+    - name: Legacy Test - Sequential (Non Random on deselected tests)
+      if: ${{ !cancelled() }}
+      run: |
+        ./launch.sh -ts
+
+    - name: Upload debug logs (Legacy Test - Sequential - Non Random on deselected tests)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-legacy-sequential-${{ github.run_id }}
+        path: tests_master.log
+        if-no-files-found: ignore
+
+#    - name: Debug via tmate (parallel failure)
+#      if: failure()
+#      uses: mxschmitt/action-tmate@v3
+#      timeout-minutes: 15
+
+    - name: Legacy Test - Parallel (Non Random on all tests)
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -tp
 
-    - name: Upload debug logs (Legacy Test - Parallel)
+    - name: Upload debug logs (Legacy Test - Parallel - Non Random on all tests)
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -90,11 +111,12 @@ jobs:
 #      uses: mxschmitt/action-tmate@v3
 #      timeout-minutes: 15
 
-    - name: Legacy Test - Sequential
+    - name: Legacy Test - Sequential (Non Random on all tests)
+      if: ${{ !cancelled() }}
       run: |
         ./launch.sh -t
 
-    - name: Upload debug logs (Legacy Test - Sequential)
+    - name: Upload debug logs (Legacy Test - Sequential - Non Random on all tests)
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -106,4 +128,5 @@ jobs:
 #      if: failure()
 #      uses: mxschmitt/action-tmate@v3
 #      timeout-minutes: 15
+
 ####
