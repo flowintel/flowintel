@@ -1,4 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
+import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, nextTick } = Vue
@@ -225,6 +226,14 @@ export default {
             await display_toast(res)
         }
 
+        // Optional picker next to the free-text date field (see
+        // timeline_date_picker.js); the date is applied on "Validate".
+        function open_date_picker(event) {
+            open_timeline_date_picker(event.currentTarget, new_date_text.value, value => {
+                new_date_text.value = value
+            })
+        }
+
         function event_label(ev) {
             return ev.date_text + ' — ' + (ev.description.length > 50 ? ev.description.substring(0, 50) + '…' : ev.description)
         }
@@ -239,6 +248,7 @@ export default {
             show_add_event,
             show_add_link,
             new_date_text,
+            open_date_picker,
             new_description,
             new_additional_note,
             link_source,
@@ -280,8 +290,13 @@ export default {
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Date / Time</label>
-                        <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30...">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control form-control-sm" v-model="new_date_text"
+                                   placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30...">
+                            <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event)" title="Pick a date (optional)" aria-label="Pick a date">
+                                <i class="fa-regular fa-calendar"></i>
+                            </button>
+                        </div>
                         <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
