@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented, header_filters, header_select, header_switch %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -14,59 +15,34 @@
 
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0;">
-        <div class="row align-items-center">
-            <div class="col-auto d-flex align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-folder-open me-2"></i>Cases</h5>
-                {% if not current_user.read_only() %}
-                <a type="button" class="btn btn-primary btn-sm ms-3" href="/case/create_case" title="Create new case">
-                    <i class="fa-solid fa-plus fa-sm"></i>
-                </a>
-                {% endif %}
-            </div>
+    {% call(section) page_header('Cases', 'fa-solid fa-folder-open', 'Investigations your organisation is taking part in.') %}
+        {% if section == 'stats' %}
+            {{ header_stat('fa-solid fa-folder-open', 'Open', 'cases', title='Current view', attrs='v-if="is_open_cases"') }}
+            {{ header_stat('fa-solid fa-folder-closed', 'Finished', 'cases', title='Current view', attrs='v-else') }}
+            {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ case_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-if="case_list && case_list.nb_pages"') }}
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search case by title') }}
 
-            <div class="col-auto">
-                <button v-if="is_open_cases" class="btn btn-outline-danger btn-sm" @click="change_status_sort(false)" title="See finished cases">
-                    <i class="fa-solid fa-folder-closed fa-sm me-1"></i> Finished cases
-                </button>
-                <button v-else class="btn btn-outline-success btn-sm" @click="change_status_sort(true)" title="See open cases">
-                    <i class="fa-solid fa-folder-open fa-sm me-1"></i> Open cases
-                </button>
-            </div>
+            {{ header_segmented([
+                    {'value': 'true', 'label': 'Open', 'icon': 'fa-solid fa-folder-open', 'title': 'See open cases'},
+                    {'value': 'false', 'label': 'Finished', 'icon': 'fa-solid fa-folder-closed', 'title': 'See finished cases'},
+                ], active='is_open_cases === {value}', click='is_open_cases !== {value} && change_status_sort({value})', aria='Case status') }}
 
+            {{ header_select([
+                    {'value': 'last_modif', 'label': 'Last modified'},
+                    {'value': 'title', 'label': 'Title'},
+                    {'value': 'id', 'label': 'ID'},
+                ], label='Sort', attrs=':value="current_filter === \'my_org\' ? \'last_modif\' : current_filter" @change="sort_by_filter($event.target.value)"') }}
 
-            <!-- Search bar -->
-            <div class="col input-group w-auto">
-                <button type="button" class="btn btn-sm" :class="has_active_filters ? 'btn-filter-active' : 'btn-outline-primary'" data-bs-toggle="modal" data-bs-target="#modalCaseFilter" :title="has_active_filters ? 'Filter applied - click to edit' : 'Filter cases'">
-                    <i class="fa-solid fa-filter fa-sm"></i>
-                </button>
-                <input autocomplete="off" @input="onInput" type="search" class="form-control form-control-sm rounded" placeholder='Search case by title' />
-            </div>
-            <!-- Search bar -->
+            {{ header_switch('My org', 'topCheckMyOrg', attrs=':checked="current_filter === \'my_org\'" @click="sort_by_filter(current_filter === \'my_org\' ? \'last_modif\' : \'my_org\')"') }}
 
-            <!-- Sort buttons -->
-            <div class="col-auto">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Sort options">
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'last_modif' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('last_modif')" title="Sort by date">
-                        <i class="fa-solid fa-calendar fa-sm me-1"></i>Date
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'title' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('title')" title="Sort by title">
-                        <i class="fa-solid fa-font fa-sm me-1"></i>Title
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="current_filter === 'id' ? 'btn-primary' : 'btn-outline-secondary'" @click="sort_by_filter('id')" title="Sort by ID">
-                        <i class="fa-solid fa-hashtag fa-sm me-1"></i>ID
-                    </button>
-                </div>
-            </div>
-            <div class="col-auto">
-                <div class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" id="topCheckMyOrg" @click="sort_by_filter(current_filter === 'my_org' ? 'last_modif' : 'my_org')" :checked="current_filter === 'my_org'">
-                    <label class="form-check-label" for="topCheckMyOrg"><i class="fa-solid fa-building fa-sm me-1"></i>My org</label>
-                </div>
-            </div>
-            <!-- Sort buttons -->
-        </div>
-    </div>
+            {{ header_filters('#modalCaseFilter', active='has_active_filters') }}
+
+            {% if not current_user.read_only() %}
+                {{ header_button('New case', href='/case/create_case', title='Create new case') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
     <div class="modal fade" id="modalCaseFilter" tabindex="-1" aria-labelledby="modalCaseFilterLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
@@ -116,78 +92,7 @@
                     </div>
                     <hr>
                     <div>Filter by context:</div>
-                    <div>Taxonomies:</div>
-                    <div class="d-flex w-100 justify-content-center">
-                        <div style="display:flex">
-                            <span style="margin-right: 10px">OR</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false,true)">
-                                <label class="form-check-label" for="switchOperator">AND</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex;">
-                        <template v-if="taxonomies">
-                            <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                                <template v-for="taxonomy, key in taxonomies">
-                                    <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                                </template>
-                            </select>
-                        </template>
-                        
-                        <template v-if="tags_list">
-                            <select data-placeholder="Tags" class="select2-select form-control" multiple name="tags_select" id="tags_select" >
-                                <template v-for="(tags, taxo) in tags_list">
-                                    <optgroup :label="[[taxo]]">
-                                        <option :value="[[tag.name]]" v-for="tag in tags">[[tag.name]]</option>
-                                    </optgroup>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
-                    <hr>
-
-                    <div>Galaxies:</div>
-                    <div class="d-flex w-100 justify-content-center">
-                        <div style="display:flex">
-                            <span style="margin-right: 10px">OR</span>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" id="switchOperator" @click="change_switch_check(false, false, true)">
-                                <label class="form-check-label" for="switchOperator">AND</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex;">
-                        <template v-if="galaxies">
-                            <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                                <template v-for="galaxy, key in galaxies">
-                                    <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                                </template>
-                            </select>
-                        </template>
-                        
-                        <template v-if="cluster_list">
-                            <select data-placeholder="Cluster" class="select2-select form-control" multiple name="clusters_select" id="clusters_select" >
-                                <template v-for="(clusters, galaxy) in cluster_list">
-                                    <optgroup :label="[[galaxy]]">
-                                        <option :value="[[cluster.name]]" :title="cluster.description" v-for="cluster in clusters">[[cluster.tag]]</option>
-                                    </optgroup>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
-                    <hr>
-
-                    <div>Custom Tags:</div>
-                    <div>
-                        <template v-if="custom_tags">
-                            <select data-placeholder="Custom tags" class="select2-select form-control" multiple name="custom_tags_select" id="custom_tags_select" >
-                                <template v-for="custom_tag, key in custom_tags">
-                                    <option :value="[[custom_tag.name]]">[[custom_tag.name]]</option>
-                                </template>
-                            </select>
-                        </template>
-                    </div>
+                    <tag_filter scope="case" @change="on_tag_filter_change"></tag_filter>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -196,7 +101,6 @@
         </div>
     </div>
 
-    <hr class="fading-line-2 mt-4 mb-4">
 
     <!-- pagination -->
     <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1" v-cloak>
@@ -387,17 +291,19 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted, computed, nextTick} = Vue
+        const { createApp, ref, computed} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import tag_filter from '/static/js/components/tag_filter.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 smart_render,
-                tag_badge
+                tag_badge,
+                tag_filter
             },
             setup() {
                 const case_list = ref([])
@@ -407,33 +313,23 @@
 
                 let asc_desc = true
                 let temp_case_list = []
-                let or_and_taxo = true
-                let or_and_galaxies = true
 
                 const is_open_cases = ref(true)
                 const search_query = ref('')
 
-                const taxonomies = ref([])
-                const tags_list = ref([])
-                const selected_taxo = ref([])
-                const selected_tags = ref([])
-
-                const galaxies = ref([])
-                const cluster_list = ref([])
-                const selected_galaxies = ref([])
-                const selected_clusters = ref([])
-
-                const custom_tags = ref([])
-                const selected_custom_tags = ref([])
+                // Populated by <tag_filter>'s @change — see on_tag_filter_change.
+                const tag_filter_state = ref({ tags: [], taxonomies: [], clusters: [], galaxies: [], custom_tags: [], or_and_taxo: false, or_and_galaxies: false })
+                function on_tag_filter_change(payload){
+                    tag_filter_state.value = payload
+                    fetch_sorted_cases(1)
+                }
 
                 const has_active_filters = computed(() => {
                     return (
                         (search_query.value || '').length > 0 ||
-                        selected_tags.value.length > 0 ||
-                        selected_taxo.value.length > 0 ||
-                        selected_galaxies.value.length > 0 ||
-                        selected_clusters.value.length > 0 ||
-                        selected_custom_tags.value.length > 0 ||
+                        tag_filter_state.value.tags.length > 0 ||
+                        tag_filter_state.value.clusters.length > 0 ||
+                        tag_filter_state.value.custom_tags.length > 0 ||
                         current_filter.value === 'my_org'
                     )
                 })
@@ -497,11 +393,8 @@
                     is_open_cases.value = status
                     await fetch_sorted_cases(1)
                 }
-                function change_switch_check(change=false, changeOperator=false, changeOperatorGalaxies=false){
+                function change_switch_check(change=false){
                     if (change) asc_desc = !asc_desc
-                    if (changeOperator) or_and_taxo = !or_and_taxo
-                    if (changeOperatorGalaxies) or_and_galaxies = !or_and_galaxies
-
                     fetch_sorted_cases(1)
                 }
 
@@ -509,19 +402,19 @@
                     let loc_page = `page=${page}`
                     let loc_filter = `&filter=${current_filter.value}`
                     let loc_status = `&status=${!is_open_cases.value}`
-                    let loc_or_and_taxo = `&or_and_taxo=${or_and_taxo}`
-                    let loc_or_and_galaxies = `&or_and_galaxies=${or_and_galaxies}`
+                    let loc_or_and_taxo = `&or_and_taxo=${tag_filter_state.value.or_and_taxo}`
+                    let loc_or_and_galaxies = `&or_and_galaxies=${tag_filter_state.value.or_and_galaxies}`
 
                     let tags = ""
                     let taxo = ""
                     let galax = ""
                     let clusters = ""
                     let custom_tg = ""
-                    if(selected_tags.value.length) tags = "&tags=" + JSON.stringify(selected_tags.value)
-                    if(selected_taxo.value.length) taxo = "&taxonomies=" + JSON.stringify(selected_taxo.value)
-                    if(selected_galaxies.value.length) galax = "&galaxies=" + JSON.stringify(selected_galaxies.value)
-                    if(selected_clusters.value.length) clusters = "&clusters=" + JSON.stringify(selected_clusters.value)
-                    if(selected_custom_tags.value.length) custom_tg = "&custom_tags=" + JSON.stringify(selected_custom_tags.value)
+                    if(tag_filter_state.value.tags.length) tags = "&tags=" + JSON.stringify(tag_filter_state.value.tags)
+                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + JSON.stringify(tag_filter_state.value.taxonomies)
+                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + JSON.stringify(tag_filter_state.value.galaxies)
+                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + JSON.stringify(tag_filter_state.value.clusters)
+                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + JSON.stringify(tag_filter_state.value.custom_tags)
 
                     let loc_q = ''
                     if (search_query.value) loc_q = '&q=' + encodeURIComponent(search_query.value)
@@ -619,79 +512,6 @@
                     debouncedCaseSearch(q || '')
                 }
 
-                async function fetch_taxonomies(){
-                    const res = await fetch("/case/get_taxonomies")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        taxonomies.value = loc["taxonomies"]
-                    }
-                }
-                fetch_taxonomies()
-
-                async function fetch_galaxies(){
-                    const res = await fetch("/case/get_galaxies")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        galaxies.value = loc["galaxies"]
-                    }
-                }
-                fetch_galaxies()
-
-                async function fetch_tags(){
-                    const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(selected_taxo.value))
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        tags_list.value = loc["tags"]
-
-                        // Drop selected tags whose taxonomy is no longer selected
-                        const available_tags = new Set()
-                        for(const taxo in tags_list.value){
-                            for(const tag of tags_list.value[taxo]) available_tags.add(tag.name)
-                        }
-                        selected_tags.value = selected_tags.value.filter(t => available_tags.has(t))
-
-                        // Wait for the option list to reflect tags_list before syncing select2
-                        await nextTick()
-                        $('#tags_select').val(selected_tags.value).trigger('change');
-                    }
-                }
-                async function fetch_cluster(){
-                    const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(selected_galaxies.value))
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        cluster_list.value = loc["clusters"]
-
-                        // Drop selected clusters whose galaxy is no longer selected
-                        const available_clusters = new Set()
-                        for(const galaxy in cluster_list.value){
-                            for(const cluster of cluster_list.value[galaxy]) available_clusters.add(cluster.name)
-                        }
-                        selected_clusters.value = selected_clusters.value.filter(c => available_clusters.has(c))
-
-                        // Wait for the option list to reflect cluster_list before syncing select2
-                        await nextTick()
-                        $('#clusters_select').val(selected_clusters.value).trigger('change');
-                    }
-                }
-
-                async function fetch_custom_tags(){
-                    const res = await fetch("/custom_tags/list")
-                    if(await res.status==400 ){
-                        display_toast(res)
-                    }else{
-                        let loc = await res.json()
-                        custom_tags.value = loc
-                    }                    
-                }
-                fetch_custom_tags()
 
                 const visiblePages = computed(() => {
                     const pages = []
@@ -712,35 +532,6 @@
                     return pages
                 })
 
-                onMounted(() => {
-                    $('.select2-select').select2({
-                        theme: 'bootstrap-5',
-                        width: '50%',
-                        closeOnSelect: false
-                    })
-
-                    $('#taxonomies_select').on('change.select2', function (e) {
-                        selected_taxo.value = $(this).select2('data').map(item => item.id);
-                        fetch_tags()
-                    })
-                    $('#tags_select').on('change.select2', function (e) {
-                        selected_tags.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                    $('#galaxies_select').on('change.select2', function (e) {
-                        selected_galaxies.value = $(this).select2('data').map(item => item.id);
-                        fetch_cluster()
-                    })
-                    $('#clusters_select').on('change.select2', function (e) {
-                        selected_clusters.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                    $('#custom_tags_select').on('change.select2', function (e) {
-                        selected_custom_tags.value = $(this).select2('data').map(item => item.id);
-                        fetch_sorted_cases(1)
-                    })
-                })
-
                 return {
                     message_list,
                     dayjs,
@@ -753,11 +544,8 @@
                     case_list,
                     has_active_filters,
                     status_info,
-                    taxonomies,
-                    tags_list,
-                    galaxies,
-                    cluster_list,
-                    custom_tags,
+                    on_tag_filter_change,
+
                     current_page,
                     expandedCases,
                     expandedTags,
@@ -772,8 +560,8 @@
                     onInput,
                     change_status_sort,
                     change_switch_check,
-                    fetch_sorted_cases
-                    ,deadlineSoon
+                    fetch_sorted_cases,
+                    deadlineSoon,
                 }
             }
         }).mount('#main-container')

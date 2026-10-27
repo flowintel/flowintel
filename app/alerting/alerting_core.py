@@ -4,6 +4,8 @@ import secrets
 from urllib.parse import urlparse
 import uuid
 
+from sqlalchemy.exc import IntegrityError
+
 from app import db
 from app.case import validation_api as CaseValidation
 from app.case.CaseCore import CaseModel
@@ -490,37 +492,44 @@ def normalize_alert_payload(payload, identity):
     }, None
 
 
+def _find_existing_alert(normalized):
+    if not normalized["deduplication_key"]:
+        return None
+    return ExternalAlert.query.filter_by(
+        connector_instance_id=normalized["connector_instance_id"],
+        deduplication_key=normalized["deduplication_key"],
+    ).first()
+
+
+def _update_existing_alert(existing, normalized):
+    existing.occurrence_count = (existing.occurrence_count or 1) + 1
+    existing.last_seen = normalized["last_seen"]
+    existing.raw_payload = normalized["raw_payload"]
+    existing.observables = normalized["observables"]
+    existing.assets = normalized["assets"]
+    existing.external_references = normalized["external_references"]
+    existing.mitre_attack = normalized["mitre_attack"]
+    existing.recommended_actions = normalized["recommended_actions"]
+    existing.tags = normalized["tags"]
+    if existing.review_status not in TERMINAL_REVIEW_STATUSES:
+        for key in [
+            "title", "description", "message", "severity", "confidence", "category",
+            "tlp", "source", "source_ref", "source_url", "event_time"
+        ]:
+            setattr(existing, key, normalized[key])
+        existing.is_read = False
+    db.session.commit()
+    return existing, False, None
+
+
 def ingest_alert(payload, identity):
     normalized, error = normalize_alert_payload(payload, identity)
     if error:
         return None, False, error
 
-    existing = None
-    if normalized["deduplication_key"]:
-        existing = ExternalAlert.query.filter_by(
-            connector_instance_id=normalized["connector_instance_id"],
-            deduplication_key=normalized["deduplication_key"],
-        ).first()
-
+    existing = _find_existing_alert(normalized)
     if existing:
-        existing.occurrence_count = (existing.occurrence_count or 1) + 1
-        existing.last_seen = normalized["last_seen"]
-        existing.raw_payload = normalized["raw_payload"]
-        existing.observables = normalized["observables"]
-        existing.assets = normalized["assets"]
-        existing.external_references = normalized["external_references"]
-        existing.mitre_attack = normalized["mitre_attack"]
-        existing.recommended_actions = normalized["recommended_actions"]
-        existing.tags = normalized["tags"]
-        if existing.review_status not in TERMINAL_REVIEW_STATUSES:
-            for key in [
-                "title", "description", "message", "severity", "confidence", "category",
-                "tlp", "source", "source_ref", "source_url", "event_time"
-            ]:
-                setattr(existing, key, normalized[key])
-            existing.is_read = False
-        db.session.commit()
-        return existing, False, None
+        return _update_existing_alert(existing, normalized)
 
     alert = ExternalAlert(
         uuid=str(uuid.uuid4()),
@@ -552,7 +561,16 @@ def ingest_alert(payload, identity):
         tags=normalized["tags"],
     )
     db.session.add(alert)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # A concurrent ingest stored the same alert after our lookup:
+        # count this one as a duplicate of it.
+        db.session.rollback()
+        existing = _find_existing_alert(normalized)
+        if not existing:
+            raise
+        return _update_existing_alert(existing, normalized)
     notify_external_alert_received(alert)
     return alert, True, None
 
@@ -970,8 +988,18 @@ def create_case_from_alert(alert, user, payload=None):
     if error:
         return error, status_code
 
+    # Link the alert only if no concurrent request linked it in the meantime.
+    claimed = ExternalAlert.query.filter(
+        ExternalAlert.id == alert.id,
+        ExternalAlert.case_id.is_(None),
+    ).update({"case_id": case.id}, synchronize_session=False)
+    db.session.commit()
+    if claimed != 1:
+        db.session.refresh(alert)
+        CaseModel.delete_case(case.id, user)
+        return {"message": "Alert already linked to a case", "case_id": alert.case_id}, 400
+
     imported = import_misp_event_to_case(alert, case, user)
-    alert.case_id = case.id
     alert.review_status = "case_created"
     alert.reviewed_by_id = user.id
     alert.reviewed_at = utcnow()

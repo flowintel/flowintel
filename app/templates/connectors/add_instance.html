@@ -2,18 +2,20 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
-    <div class="case-core-style d-flex align-items-center" style="border-radius: 0;">
-        {% if edit_mode %}
-            <h5 class="mb-0"><i class="fa-solid fa-pen-to-square me-2"></i>Edit instance</h5>
-        {% else %}
-            <h5 class="mb-0"><i class="fa-solid fa-plug-circle-plus me-2"></i>Add instance</h5>
+    {% if edit_mode %}
+        {% set header = ('Edit instance · ' ~ (form.name.data or ''), 'fa-solid fa-pen-to-square', 'Change the URL, credentials or type of this instance.') %}
+    {% else %}
+        {% set header = ('New instance', 'fa-solid fa-plug-circle-plus', 'Add a server of this connector that cases and tasks can use.') %}
+    {% endif %}
+    {% call(section) page_header(header[0], header[1], header[2]) %}
+        {% if section == 'actions' %}
+            {{ header_link('Connectors', '/connectors/', title='Back to the connectors') }}
         {% endif %}
-    </div>
-
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% endcall %}
 
     <form action="" method="post" class="case-core-style">
         {{ form.hidden_tag() }}

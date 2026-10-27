@@ -438,6 +438,17 @@ def get_task_by_case(cid):
     return {"tasks": []}
 
 
+@templating_blueprint.route("/task/<tid>/case_templates", methods=['GET'])
+@login_required
+def get_case_templates_using_task_template(tid):
+    """Return case templates using a task template."""
+    if CommonModel.get_task_template(tid):
+        return {
+            "case_templates": TaskModel.get_case_templates_using_task_template(tid)
+        }, 200
+    return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
+
+
 @templating_blueprint.route("/case/<cid>/remove_task/<tid>", methods=['GET'])
 @login_required
 @template_editor_required
@@ -649,6 +660,87 @@ def get_custom_tags_task(cid):
     if task:
         return {"custom_tags": CommonModel.get_task_custom_tags_json(task.id)}, 200
     return {"message": "Task Not found", 'toast_class': "danger-subtle"}, 404
+
+
+##########################################
+# Used-on-templates variants (for the    #
+# case/task template list filters)       #
+##########################################
+
+@templating_blueprint.route("/get_used_taxonomies_case_template", methods=['GET'])
+@login_required
+def get_used_taxonomies_case_template():
+    """Get taxonomies that have at least one tag applied to a case template"""
+    return {"taxonomies": CommonCaseModel.get_used_taxonomies_case_template()}, 200
+
+@templating_blueprint.route("/get_used_tags_case_template", methods=['GET'])
+@login_required
+def get_used_tags_case_template():
+    """Get, for the given taxonomies, only the tags applied to at least one case template"""
+    data_dict = dict(request.args)
+    if "taxonomies" in data_dict:
+        taxos = json.loads(data_dict["taxonomies"])
+        return {"tags": CommonCaseModel.get_used_tags_case_template(taxos)}, 200
+    return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@templating_blueprint.route("/get_used_galaxies_case_template", methods=['GET'])
+@login_required
+def get_used_galaxies_case_template():
+    """Get galaxies that have at least one cluster applied to a case template"""
+    return {"galaxies": CommonCaseModel.get_used_galaxies_case_template()}, 200
+
+@templating_blueprint.route("/get_used_clusters_case_template", methods=['GET'])
+@login_required
+def get_used_clusters_case_template():
+    """Get, for the given galaxies, only the clusters applied to at least one case template"""
+    if "galaxies" in request.args:
+        galaxies = json.loads(request.args.get("galaxies"))
+        return {"clusters": CommonCaseModel.get_used_clusters_galaxy_case_template(galaxies)}, 200
+    return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@templating_blueprint.route("/get_used_custom_tags_case_template", methods=['GET'])
+@login_required
+def get_used_custom_tags_case_template():
+    """Get custom tags applied to at least one case template"""
+    return CommonCaseModel.get_used_custom_tags_case_template(), 200
+
+
+@templating_blueprint.route("/get_used_taxonomies_task_template", methods=['GET'])
+@login_required
+def get_used_taxonomies_task_template():
+    """Get taxonomies that have at least one tag applied to a task template"""
+    return {"taxonomies": CommonCaseModel.get_used_taxonomies_task_template()}, 200
+
+@templating_blueprint.route("/get_used_tags_task_template", methods=['GET'])
+@login_required
+def get_used_tags_task_template():
+    """Get, for the given taxonomies, only the tags applied to at least one task template"""
+    data_dict = dict(request.args)
+    if "taxonomies" in data_dict:
+        taxos = json.loads(data_dict["taxonomies"])
+        return {"tags": CommonCaseModel.get_used_tags_task_template(taxos)}, 200
+    return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@templating_blueprint.route("/get_used_galaxies_task_template", methods=['GET'])
+@login_required
+def get_used_galaxies_task_template():
+    """Get galaxies that have at least one cluster applied to a task template"""
+    return {"galaxies": CommonCaseModel.get_used_galaxies_task_template()}, 200
+
+@templating_blueprint.route("/get_used_clusters_task_template", methods=['GET'])
+@login_required
+def get_used_clusters_task_template():
+    """Get, for the given galaxies, only the clusters applied to at least one task template"""
+    if "galaxies" in request.args:
+        galaxies = json.loads(request.args.get("galaxies"))
+        return {"clusters": CommonCaseModel.get_used_clusters_galaxy_task_template(galaxies)}, 200
+    return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
+
+@templating_blueprint.route("/get_used_custom_tags_task_template", methods=['GET'])
+@login_required
+def get_used_custom_tags_task_template():
+    """Get custom tags applied to at least one task template"""
+    return CommonCaseModel.get_used_custom_tags_task_template(), 200
 
 
 ############
@@ -969,8 +1061,12 @@ def _scan_local_entries(repo):
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     upserted = []
 
-    for tpl_type in ("case", "task"):
-        type_dir = os.path.join(base, tpl_type)
+    folder_types = {"case": "case", "cases": "case", "task": "task", "tasks": "task"}
+    for folder_name in sorted(os.listdir(base)):
+        tpl_type = folder_types.get(folder_name.lower())
+        if tpl_type is None:
+            continue
+        type_dir = os.path.join(base, folder_name)
         if not os.path.isdir(type_dir):
             continue
 
@@ -992,7 +1088,7 @@ def _scan_local_entries(repo):
             title_ = (tpl.get("title") or tpl.get("name") or filename.replace(".json", "")).strip()
             description_ = (tpl.get("description") or "")[:500]
             version_ = tpl.get("version")
-            relative_path = f"{tpl_type}/{filename}"
+            relative_path = f"{folder_name}/{filename}"
             file_sha = hashlib.sha1(raw_bytes).hexdigest()
 
             entry = Template_Repository_Entry.query.filter_by(

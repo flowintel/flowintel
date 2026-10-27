@@ -73,6 +73,45 @@
   font-size: 0.92rem;
 }
 
+.stats-filter-heading {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 150px;
+}
+
+.stats-filter-controls {
+  display: flex;
+  flex: 1 1 680px;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.stats-filter-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 142px;
+}
+
+.stats-filter-field label {
+  color: var(--stats-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.stats-filter-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.stats-filter-error {
+  flex-basis: 100%;
+  color: #a52834;
+  font-size: 0.88rem;
+  text-align: right;
+}
+
 .stats-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -427,5 +466,21 @@
   .stats-section-intro,
   .stats-hero-meta {
     align-items: stretch;
+  }
+
+  .stats-filter-controls {
+    justify-content: flex-start;
+  }
+
+  .stats-filter-field {
+    flex: 1 1 145px;
+  }
+
+  .stats-filter-actions {
+    flex-basis: 100%;
+  }
+
+  .stats-filter-error {
+    text-align: left;
   }
 }

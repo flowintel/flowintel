@@ -70,6 +70,37 @@ def load_saml_into_app_config(app):
         saml_settings.get("sp", {}).get("x509cert")
     )
 
+def configure_valkey_session(app):
+    raw_port = app.config.get("VALKEY_PORT")
+    try:
+        valkey_port = int(raw_port)
+        if not 1 <= valkey_port <= 65535:
+            raise ValueError("Valkey port out of range")
+    except (TypeError, ValueError) as e:
+        raise RuntimeError(f"Invalid VALKEY_PORT: {raw_port!r}") from e
+
+    valkey_host = (app.config.get("VALKEY_IP") or "").strip()
+    if not valkey_host:
+        # We should also catch the different case when VALKEY_IP is an ip or a string like for Docker service name
+        # Better config validation is anyway to be conducted a bit everywhere
+        raise RuntimeError("VALKEY_IP is not set")
+
+    valkey_username = app.config.get("VALKEY_USERNAME") or None
+    valkey_password = app.config.get("VALKEY_PASSWORD") or None
+    if valkey_username and not valkey_password:
+        app.logger.warning("VALKEY_USERNAME set without VALKEY_PASSWORD; ignoring VALKEY_USERNAME")
+        valkey_username = None
+
+    app.config["SESSION_REDIS"] = redis.Redis(
+        host=valkey_host, port=valkey_port,
+        username=valkey_username, password=valkey_password,
+        socket_connect_timeout=3, socket_timeout=3, health_check_interval=30,
+    )
+    app.logger.info("Valkey session store: %s:%s auth=%s user=%s",
+                    valkey_host, valkey_port, bool(valkey_password), bool(valkey_username))
+    session.init_app(app)
+
+
 def create_app():
     app = Flask(__name__)
     config_name = os.environ.get("FLOWINTEL_APP_ENV", "development").strip().lower()
@@ -82,6 +113,17 @@ def create_app():
     app.config['LOG_FILE'] = validate_log_file_name(app.config.get('LOG_FILE', 'record.log'))
     config_class.init_app(app)
     app.jinja_env.filters["vue_escape"] = vue_escape
+    from .utils.breadcrumb import build_breadcrumb
+    app.jinja_env.globals["build_breadcrumb"] = build_breadcrumb
+    from .account.settings_core import get_theme, get_font
+    app.jinja_env.globals["user_theme"] = get_theme
+    app.jinja_env.globals["user_font"] = get_font
+    from .utils.themes import THEMES, theme_base, theme_styled
+    app.jinja_env.globals["themes"] = THEMES
+    app.jinja_env.globals["theme_base"] = theme_base
+    app.jinja_env.globals["theme_styled"] = theme_styled
+    app.jinja_env.globals["theme_bases"] = {key: theme["base"] for key, theme in THEMES.items()}
+    app.jinja_env.globals["themes_styled"] = [key for key, theme in THEMES.items() if theme.get("styled")]
 
     @app.after_request
     def set_security_headers(resp):
@@ -158,9 +200,9 @@ def create_app():
                 cur.execute('PRAGMA journal_mode=WAL')
                 cur.execute('PRAGMA busy_timeout=30000')
                 cur.close()
-    if not config_name == 'testing':
-        app.config["SESSION_REDIS"] = redis.from_url(f'redis://{app.config.get("VALKEY_IP")}:{app.config.get("VALKEY_PORT")}')
-        session.init_app(app)
+    if config_name != 'testing':
+        configure_valkey_session(app)
+
     login_manager.login_view = "account.login"
     login_manager.init_app(app)
 

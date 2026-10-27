@@ -1,177 +1,209 @@
-import {display_toast} from '../toaster.js'
-import {message_list} from '/static/js/toaster.js'
-import {getTextColor, mapIcon} from '/static/js/utils.js'
-const { ref, nextTick, onMounted, watch } = Vue
+import { display_toast } from '../toaster.js'
+import picker_pane from '/static/js/components/picker_pane.js'
+import namespace_accordion from '/static/js/components/namespace_accordion.js'
+const { ref, computed } = Vue
 export default {
     delimiters: ['[[', ']]'],
-    props:{type_object: String, object_id: Number},
-	emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
-	setup(props, {emit}) {
-		const taxonomies = ref([])
+    props: {
+        type_object: String,
+        object_id: Number,
+        // Pre-seed the picker with a previously-picked selection restored
+        // from a failed submit (server-side validation error re-renders the
+        // whole page, which would otherwise silently drop everything the
+        // user had picked). Always used in create mode (no object_id). In
+        // edit mode (object_id set) it's only used when hasDraft is true,
+        // which also skips the normal DB fetch so the restored draft isn't
+        // immediately overwritten by the object's actual saved selection.
+        initialTags: { type: Array, default: () => [] },
+        initialClusters: { type: Array, default: () => [] },
+        initialGalaxies: { type: Array, default: () => [] },
+        initialCustomTags: { type: Array, default: () => [] },
+        hasDraft: { type: Boolean, default: false },
+    },
+    emits: ['st', 'sc', 'sct', 'sg', "delete_st", "delete_sc", "delete_sg", "delete_sct"],
+    components: { picker_pane, namespace_accordion },
+    setup(props, { emit }) {
+        const taxonomies = ref([])
         const galaxies = ref([])
-        const tags_list = ref([])
-        const cluster_list = ref([])
+        const tags_list = ref({})
+        const cluster_list = ref({})
         const custom_tags = ref([])
 
-        const selected_taxo = ref([])
-        const selected_tags = ref([])
-        const selected_galaxies = ref([])
-        const selected_clusters = ref([])
-        const selected_custom_tags = ref([])
+        // Taxonomies have no standalone "marker" concept (only the tags picked
+        // inside them are ever persisted) so browsing them is a pure, single,
+        // collapsible UI concern: at most one taxonomy expanded at a time.
+        const expanded_taxo = ref(null)
 
+        // Galaxies DO have a standalone marker concept: a galaxy can be tagged
+        // on a task even with no cluster picked from it (see TaskCore.edit_task_core
+        // / Task_Galaxy, driven by the 'sg'/'delete_sg' events some consumers of
+        // this component still listen for — e.g. edit_task.html). So here,
+        // "expanding" a galaxy IS "selecting" it, same as the pre-refactor
+        // select2 behaviour, and several galaxies can be expanded/selected at once.
+        const use_initial = !props.object_id || props.hasDraft
+        const selected_galaxies = ref(use_initial ? [...props.initialGalaxies] : [])
 
-        async function fetch_taxonomies(){
+        const selected_tags = ref(use_initial ? [...props.initialTags] : [])
+        const selected_clusters = ref(use_initial ? [...props.initialClusters] : [])
+        const selected_custom_tags = ref(use_initial ? [...props.initialCustomTags] : [])
+
+        // Mirror the seeded selection back to the caller so its own copy
+        // (used to build the hidden inputs on submit) starts in sync too.
+        if (use_initial) {
+            if (selected_tags.value.length) emit('st', selected_tags.value)
+            if (selected_clusters.value.length) emit('sc', selected_clusters.value)
+            if (selected_galaxies.value.length) emit('sg', selected_galaxies.value)
+            if (selected_custom_tags.value.length) emit('sct', selected_custom_tags.value)
+        }
+
+        const loading_tags = ref(false)
+        const loading_clusters = ref(false)
+
+        async function fetch_taxonomies() {
             const res = await fetch("/case/get_taxonomies")
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 taxonomies.value = loc["taxonomies"]
             }
-        }fetch_taxonomies()
+        }
+        fetch_taxonomies()
 
-        async function fetch_galaxies(){
+        async function fetch_galaxies() {
             const res = await fetch("/case/get_galaxies")
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 galaxies.value = loc["galaxies"]
             }
-        }fetch_galaxies()
+        }
+        fetch_galaxies()
 
-        async function fetch_tags(s_taxo){
-            tags_list.value = []
-            const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify(s_taxo))
-            if(await res.status==400 ){
+        async function fetch_tags(taxo_name) {
+            loading_tags.value = true
+            tags_list.value = {}
+            const res = await fetch("/case/get_tags?taxonomies=" + JSON.stringify([taxo_name]))
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 tags_list.value = loc["tags"]
-
-                await nextTick()
-                $('#tags_select').trigger('change');
             }
+            loading_tags.value = false
         }
 
-        async function fetch_cluster(s_galaxies){
-            cluster_list.value = []
-            const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(s_galaxies))
-            if(await res.status==400 ){
-                display_toast(res)
-            }else{
-                let loc = await res.json()
-                cluster_list.value = loc["clusters"]
-                
-                await nextTick()
-                $('#clusters_select').change();
+        async function fetch_clusters() {
+            loading_clusters.value = true
+            cluster_list.value = {}
+            const galaxy_names = selected_galaxies.value.map(g => g.name)
+            if (galaxy_names.length) {
+                const res = await fetch("/case/get_clusters?galaxies=" + JSON.stringify(galaxy_names))
+                if (await res.status == 400) {
+                    display_toast(res)
+                } else {
+                    let loc = await res.json()
+                    cluster_list.value = loc["clusters"]
+                }
             }
+            loading_clusters.value = false
         }
 
-        async function fetch_custom_tags(){
+        async function fetch_custom_tags() {
             const res = await fetch("/custom_tags/list")
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 custom_tags.value = loc
             }
-        }fetch_custom_tags()
-        
+        }
+        fetch_custom_tags()
 
-        async function fetch_taxonomies_case_task(){
+
+        async function fetch_taxonomies_case_task() {
+            // No object yet (creation form), or a restored draft already
+            // seeded the selection — nothing to preload from the DB.
+            if (!props.object_id || props.hasDraft) return
             let url
 
-            if(props.type_object == "case"){
-                url = "/case/get_taxonomies_case/" +props.object_id
+            if (props.type_object == "case") {
+                url = "/case/get_taxonomies_case/" + props.object_id
             }
-            else if(props.type_object == "task"){
-                url = "/case/get_taxonomies_task/" +props.object_id
+            else if (props.type_object == "task") {
+                url = "/case/get_taxonomies_task/" + props.object_id
             }
-            else if(props.type_object == "case_template"){
-                url = "/templating/get_taxonomies_case/" +props.object_id
+            else if (props.type_object == "case_template") {
+                url = "/templating/get_taxonomies_case/" + props.object_id
             }
-            else if(props.type_object == "task_template"){
-                url = "/templating/get_taxonomies_task/" +props.object_id
+            else if (props.type_object == "task_template") {
+                url = "/templating/get_taxonomies_task/" + props.object_id
             }
 
             const res = await fetch(url)
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 selected_tags.value = loc["tags"]
-                selected_taxo.value = loc["taxonomies"]
-                
                 emit('st', loc["tags"])
-            }
-            
-            if(selected_taxo.value.length > 0){
-                let loc_list_name = []
-                $.each(selected_taxo.value, function (index, value) {
-                    loc_list_name.push(value)
-                });
-                fetch_tags(loc_list_name)
             }
         }
         fetch_taxonomies_case_task()
 
-        async function fetch_galaxies_case_task(){
-            let url 
-            if(props.type_object == "case"){
-                url = "/case/get_galaxies_case/" +props.object_id
+        async function fetch_galaxies_case_task() {
+            if (!props.object_id || props.hasDraft) return
+            let url
+            if (props.type_object == "case") {
+                url = "/case/get_galaxies_case/" + props.object_id
             }
-            else if(props.type_object == "task"){
-                url = "/case/get_galaxies_task/" +props.object_id
+            else if (props.type_object == "task") {
+                url = "/case/get_galaxies_task/" + props.object_id
             }
-            else if(props.type_object == "case_template"){
-                url = "/templating/get_galaxies_case/" +props.object_id
+            else if (props.type_object == "case_template") {
+                url = "/templating/get_galaxies_case/" + props.object_id
             }
-            else if(props.type_object == "task_template"){
-                url = "/templating/get_galaxies_task/" +props.object_id
+            else if (props.type_object == "task_template") {
+                url = "/templating/get_galaxies_task/" + props.object_id
             }
 
             const res = await fetch(url)
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 selected_clusters.value = loc["clusters"]
-                selected_galaxies.value = loc["galaxies"]
                 emit('sc', loc["clusters"])
-                emit('sg', loc["galaxies"])
-            }
-            if(selected_galaxies.value.length > 0){
-                let loc_list_name = []
-                $.each(selected_galaxies.value, function (index, value) {
-                    loc_list_name.push(value.name)
-                });
-                
-                fetch_cluster(loc_list_name)
+                // Note: galaxy *markers* (as opposed to the clusters picked
+                // inside them) aren't returned by this endpoint, so we don't
+                // pre-populate selected_galaxies/emit 'sg' here, matching the
+                // pre-refactor behaviour.
             }
         }
         fetch_galaxies_case_task()
 
-        async function fetch_custom_tags_case_task(){
+        async function fetch_custom_tags_case_task() {
+            if (!props.object_id || props.hasDraft) return
             let url
 
-            if(props.type_object == "case"){
-                url = "/case/get_custom_tags_case/" +props.object_id
+            if (props.type_object == "case") {
+                url = "/case/get_custom_tags_case/" + props.object_id
             }
-            else if(props.type_object == "task"){
-                url = "/case/get_custom_tags_task/" +props.object_id
+            else if (props.type_object == "task") {
+                url = "/case/get_custom_tags_task/" + props.object_id
             }
-            else if(props.type_object == "case_template"){
-                url = "/templating/get_custom_tags_case/" +props.object_id
+            else if (props.type_object == "case_template") {
+                url = "/templating/get_custom_tags_case/" + props.object_id
             }
-            else if(props.type_object == "task_template"){
-                url = "/templating/get_custom_tags_task/" +props.object_id
+            else if (props.type_object == "task_template") {
+                url = "/templating/get_custom_tags_task/" + props.object_id
             }
 
             const res = await fetch(url)
-            if(await res.status==400 ){
+            if (await res.status == 400) {
                 display_toast(res)
-            }else{
+            } else {
                 let loc = await res.json()
                 selected_custom_tags.value = loc["custom_tags"]
                 emit('sct', loc["custom_tags"])
@@ -180,427 +212,244 @@ export default {
         fetch_custom_tags_case_task()
 
 
-        function delete_galaxy_select(galax_uuid){
-            let loc
-            for(let i in selected_galaxies.value){
-                if(galax_uuid == selected_galaxies.value[i].uuid){
-                    loc = i
-                    break
-                }
+        // ---- normalize backend data into the shape the picker components expect ----
+        // { id, label, color?, iconClass?, iconName?, title?, disabled?, group?, raw }
+
+        function to_tag_display(tag, group) {
+            return { id: tag.name, label: tag.name, color: tag.color, title: tag.description, group: group, raw: tag }
+        }
+        function to_cluster_display(cluster, group) {
+            return {
+                id: cluster.uuid,
+                label: cluster.tag,
+                iconName: cluster.icon,
+                title: 'Description: ' + cluster.description + (cluster.meta ? ('\nMetadata: ' + cluster.meta) : ''),
+                group: group,
+                raw: cluster
             }
-            selected_galaxies.value.splice(loc, 1)
-            emit("delete_sg", loc)
-
-            let loc_list_name = []
-            $.each(selected_galaxies.value, function (index, value) {
-                loc_list_name.push(value.name)
-            });
-            fetch_cluster(loc_list_name)
         }
-        function delete_cluster_select(cluster_uuid){
-            let loc
-            for(let i in selected_clusters.value){
-                if(cluster_uuid == selected_clusters.value[i].uuid){
-                    loc = i
-                    break
-                }
+
+        const custom_tag_items = computed(() => custom_tags.value.map(tag => ({
+            id: tag.name,
+            label: tag.name,
+            color: tag.color,
+            iconClass: tag.icon,
+            disabled: !tag.is_active,
+            raw: tag
+        })))
+        const selected_custom_tag_ids = computed(() => selected_custom_tags.value.map(t => t.name))
+
+        const taxonomy_items = computed(() => taxonomies.value.map(taxo => ({
+            id: taxo,
+            label: taxo,
+            raw: taxo
+        })))
+
+        // tags_list only ever holds the (single) currently-expanded taxonomy's tags
+        const tag_items = computed(() => {
+            const out = []
+            for (const taxo in tags_list.value) {
+                for (const tag of tags_list.value[taxo]) out.push(to_tag_display(tag, taxo))
             }
-            selected_clusters.value.splice(loc, 1)
-            emit("delete_sc", loc)
-        }
-
-        function delete_taxo_select(taxo_name){
-            let loc
-            for(let i in selected_taxo.value){
-                if(taxo_name == selected_taxo.value[i].uuid){
-                    loc = i
-                    break
-                }
-            }
-            selected_taxo.value.splice(loc, 1)
-
-            let loc_list_name = []
-            $.each(selected_taxo.value, function (index, value) {
-                loc_list_name.push(value.name)
-            });
-            fetch_tags(loc_list_name)
-        }
-
-        function delete_tag_select(tag_name){
-            let loc
-            for(let i in selected_tags.value){
-                if(tag_name == selected_tags.value[i].name){
-                    loc = i
-                    break
-                }
-            }
-            selected_tags.value.splice(loc, 1)
-            emit("delete_st", loc)
-        }
-
-        function delete_custom_tag_select(custom_tag){
-            let loc
-            for(let i in selected_custom_tags.value){
-                if(custom_tag == selected_custom_tags.value[i].name){
-                    loc = i
-                    break
-                }
-            }
-            selected_custom_tags.value.splice(loc, 1)
-            emit("delete_sct", loc)
-        }
-        
-        // Disable already-selected options in dropdowns
-        function updateTagsDropdown() {
-            const selected_names = selected_tags.value.map(tag => tag.name)
-            $('#tags_select option').each(function() {
-                const $option = $(this)
-                $option.prop('disabled', selected_names.includes($option.val()))
-            })
-        }
-
-        function updateClustersDropdown() {
-            const selected_uuids = selected_clusters.value.map(cluster => cluster.uuid)
-            $('#clusters_select option').each(function() {
-                const $option = $(this)
-                $option.prop('disabled', selected_uuids.includes($option.val()))
-            })
-        }
-
-        function updateGalaxiesDropdown() {
-            const selected_names = selected_galaxies.value.map(galaxy => galaxy.name)
-            $('#galaxies_select option').each(function() {
-                const $option = $(this)
-                $option.prop('disabled', selected_names.includes($option.val()))
-            })
-        }
-
-        function updateCustomTagsDropdown() {
-            const selected_names = selected_custom_tags.value.map(tag => tag.name)
-            $('#custom_select option').each(function() {
-                const $option = $(this)
-                const tag_name = $option.val()
-                const tag = custom_tags.value.find(t => t.name === tag_name)
-                // Disable if selected OR if not active
-                $option.prop('disabled', selected_names.includes(tag_name) || (tag && !tag.is_active))
-            })
-        }
-
-        // Watch for changes in selected items and update dropdowns
-        watch(selected_tags, () => {
-            nextTick(() => updateTagsDropdown())
-        }, { deep: true })
-
-        watch(selected_clusters, () => {
-            nextTick(() => updateClustersDropdown())
-        }, { deep: true })
-
-        watch(selected_galaxies, () => {
-            nextTick(() => updateGalaxiesDropdown())
-        }, { deep: true })
-
-        watch(selected_custom_tags, () => {
-            nextTick(() => updateCustomTagsDropdown())
-        }, { deep: true })
-
-        watch(tags_list, () => {
-            nextTick(() => updateTagsDropdown())
-        }, { deep: true })
-
-        watch(cluster_list, () => {
-            nextTick(() => updateClustersDropdown())
-        }, { deep: true })
-        
-        watch(custom_tags, () => {
-            nextTick(() => updateCustomTagsDropdown())
-        }, { deep: true })
-        
-
-        onMounted(() => {
-            $('.select2-select').select2({
-                theme: 'bootstrap-5',
-                closeOnSelect: false
-            })
-
-            $('#taxonomies_select').on('select2:selecting', function (e) {
-                e.preventDefault()
-                
-                let loc_name = e.params.args.data.id
-                
-                if(!selected_taxo.value.includes(loc_name) ){
-                    selected_taxo.value.push(loc_name)
-
-                    let loc_list_name = []
-                    $.each(selected_taxo.value, function (index, value) {                        
-                        loc_list_name.push(value)
-                    });
-                    fetch_tags(loc_list_name)
-                }
-            })
-
-            $('#tags_select').on('select2:selecting', function (e) {
-                e.preventDefault()
-                
-                let loc_name = e.params.args.data.id
-                let flag = false
-                
-                for(let i in selected_tags.value){
-                    if(selected_tags.value[i].name == loc_name){
-                        flag = true
-                        break
-                    }
-                }
-                if(!flag){
-                    for( let c in tags_list.value){
-                        for (let k in tags_list.value[c]){
-                            if(tags_list.value[c][k].name == loc_name){
-                                selected_tags.value.push(tags_list.value[c][k])
-                                emit("st", tags_list.value[c][k])
-                                break
-                            }
-                        }
-                    }
-                }
-            })
-
-            $('#galaxies_select').on('select2:selecting', function (e) {
-                e.preventDefault()
-                
-                let loc_name = e.params.args.data.id
-                
-                for( let c in galaxies.value){
-                    if(galaxies.value[c].name == loc_name){
-                        if(!selected_galaxies.value.includes(galaxies.value[c]) ){
-                            selected_galaxies.value.push(galaxies.value[c])
-                            emit("sg", galaxies.value[c])
-                            break
-                        }
-                    }
-                }
-                let loc_list_name = []
-                $.each(selected_galaxies.value, function (index, value) {
-                    loc_list_name.push(value.name)
-                });
-                fetch_cluster(loc_list_name)
-            })
-
-            $('#clusters_select').on('select2:selecting', function (e) {
-                e.preventDefault()
-                
-                let loc_uuid = e.params.args.data.id
-                
-                for( let c in cluster_list.value){
-                    for (let k in cluster_list.value[c]){
-                        if(cluster_list.value[c][k].uuid == loc_uuid){
-                            if(!selected_clusters.value.includes(cluster_list.value[c][k]) ){
-                                selected_clusters.value.push(cluster_list.value[c][k])
-                                emit("sc", cluster_list.value[c][k])
-                                break
-                            }
-                        }
-                    }
-                }
-            })
-
-            $('#custom_select').on('select2:selecting', function (e) {
-                e.preventDefault()
-                
-                let loc_name = e.params.args.data.id
-
-                for( let c in custom_tags.value){
-                    if(custom_tags.value[c].name == loc_name){
-                        if(!selected_custom_tags.value.includes(custom_tags.value[c]) ){
-                            selected_custom_tags.value.push(custom_tags.value[c])                            
-                            emit("sct", custom_tags.value[c])
-                            break
-                        }
-                    }
-                }
-            })
+            return out
         })
+        const selected_tag_ids = computed(() => selected_tags.value.map(t => t.name))
+        const selected_tag_display_items = computed(() => selected_tags.value.map(t => to_tag_display(t)))
 
-		return {
-            message_list,
-            getTextColor,
-            mapIcon,
+        const galaxy_items = computed(() => galaxies.value.map(galaxy => ({
+            id: galaxy.uuid,
+            label: galaxy.name,
+            iconName: galaxy.icon,
+            title: galaxy.description,
+            raw: galaxy
+        })))
+        const expanded_galaxy_ids = computed(() => selected_galaxies.value.map(g => g.uuid))
 
-            taxonomies,
-            galaxies,
-            tags_list,
-            cluster_list,
-            custom_tags,
+        // cluster_list can hold entries for several expanded galaxies at once
+        const cluster_items = computed(() => {
+            const out = []
+            for (const galaxy in cluster_list.value) {
+                for (const cluster of cluster_list.value[galaxy]) out.push(to_cluster_display(cluster, galaxy))
+            }
+            return out
+        })
+        const selected_cluster_ids = computed(() => selected_clusters.value.map(c => c.uuid))
+        const selected_cluster_display_items = computed(() => selected_clusters.value.map(c => to_cluster_display(c)))
 
-            selected_taxo,
-            selected_tags,
-            selected_galaxies,
-            selected_clusters,
-            selected_custom_tags,
 
-            delete_galaxy_select,
-            delete_cluster_select,
-            delete_taxo_select,
-            delete_tag_select,
-            delete_custom_tag_select
-		}
+        // ---- search-driven auto-expand: typing/pasting a full tag jumps
+        // straight to its namespace (see resolveNamespaceId in namespace_accordion.js) ----
+
+        function resolve_taxo_for_query(query) {
+            // Case-insensitive ("DML:", "dml:", "Dml:" are all the same
+            // taxonomy) — but return the taxonomy's real stored casing, since
+            // that's what taxonomy_items' id actually is.
+            const colon_idx = query.indexOf(':')
+            if (colon_idx === -1) return null
+            const prefix = query.slice(0, colon_idx).toLowerCase()
+            const match = taxonomies.value.find(t => t.toLowerCase() === prefix)
+            return match || null
+        }
+
+        function resolve_galaxy_for_query(query) {
+            // Galaxy cluster tags always look like: misp-galaxy:<galaxy-type>="<value>"
+            const m = query.match(/^misp-galaxy:([^=]+)=/i)
+            if (!m) return null
+            const type_query = m[1].toLowerCase()
+            const galaxy = galaxies.value.find(g => (g.type || '').toLowerCase() === type_query)
+            return galaxy ? galaxy.uuid : null
+        }
+
+        // When a namespace is opened, pre-fill the search bar with its prefix
+        // so typing straight away narrows down within it.
+        function taxo_search_prefix(ns) {
+            return ns.raw + ':'
+        }
+        function galaxy_search_prefix(ns) {
+            return 'misp-galaxy:' + (ns.raw.type || '') + '='
+        }
+
+
+        // ---- toggle handlers ----
+
+        function toggle_custom_tag(item) {
+            const tag = item.raw
+            const idx = selected_custom_tags.value.findIndex(t => t.name === tag.name)
+            if (idx > -1) {
+                selected_custom_tags.value.splice(idx, 1)
+                emit("delete_sct", idx)
+            } else {
+                selected_custom_tags.value.push(tag)
+                emit("sct", tag)
+            }
+        }
+
+        function toggle_taxo(ns) {
+            const taxo_name = ns.raw
+            if (expanded_taxo.value === taxo_name) {
+                expanded_taxo.value = null
+                tags_list.value = {}
+            } else {
+                expanded_taxo.value = taxo_name
+                fetch_tags(taxo_name)
+            }
+        }
+
+        function toggle_tag(item) {
+            const tag = item.raw
+            const idx = selected_tags.value.findIndex(t => t.name === tag.name)
+            if (idx > -1) {
+                selected_tags.value.splice(idx, 1)
+                emit("delete_st", idx)
+            } else {
+                selected_tags.value.push(tag)
+                emit("st", tag)
+            }
+        }
+
+        function toggle_galaxy(ns) {
+            const galaxy = ns.raw
+            const idx = selected_galaxies.value.findIndex(g => g.uuid === galaxy.uuid)
+            if (idx > -1) {
+                selected_galaxies.value.splice(idx, 1)
+                emit("delete_sg", idx)
+            } else {
+                selected_galaxies.value.push(galaxy)
+                emit("sg", galaxy)
+            }
+            fetch_clusters()
+        }
+
+        function toggle_cluster(item) {
+            const cluster = item.raw
+            const idx = selected_clusters.value.findIndex(c => c.uuid === cluster.uuid)
+            if (idx > -1) {
+                selected_clusters.value.splice(idx, 1)
+                emit("delete_sc", idx)
+            } else {
+                selected_clusters.value.push(cluster)
+                emit("sc", cluster)
+            }
+        }
+
+        return {
+            expanded_taxo,
+            expanded_galaxy_ids,
+
+            custom_tag_items,
+            selected_custom_tag_ids,
+            taxonomy_items,
+            tag_items,
+            selected_tag_ids,
+            selected_tag_display_items,
+            galaxy_items,
+            cluster_items,
+            selected_cluster_ids,
+            selected_cluster_display_items,
+
+            loading_tags,
+            loading_clusters,
+
+            resolve_taxo_for_query,
+            resolve_galaxy_for_query,
+            taxo_search_prefix,
+            galaxy_search_prefix,
+
+            toggle_custom_tag,
+            toggle_taxo,
+            toggle_tag,
+            toggle_galaxy,
+            toggle_cluster,
+        }
     },
-	template: `
-    <div class="row">
-        <div v-if="custom_tags" class="col-6">
-            <h5>Custom tags</h5>
-            <select data-placeholder="Custom Tags" class="select2-select form-control" multiple id="custom_select" >
-                <template v-for="c_t in custom_tags">
-                    <option :value="[[c_t.name]]" :disabled="!c_t.is_active">[[c_t.name]]</option>
-                </template>
-            </select>
-        </div>
-        <div class="col-6 card">
-            <b>Selected custom tags</b>
-            <table class="table">
-                <tbody>
-                    <tr v-for="custom_tag in selected_custom_tags">
-                        <td>
-                            <div class="tag" :style="{'background-color':custom_tag.color, 'color': getTextColor(custom_tag.color)}">
-                                <i :class="[[custom_tag.icon]]"></i> [[custom_tag.name]]
-                            </div>
-                        </td> 
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @click="delete_custom_tag_select(custom_tag.name)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td> 
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    template: `
+    <picker_pane
+        title="Custom tags"
+        :items="custom_tag_items"
+        :selected-ids="selected_custom_tag_ids"
+        empty-text="No custom tags defined."
+        search-placeholder="Search custom tags..."
+        @toggle="toggle_custom_tag">
+    </picker_pane>
     <hr>
 
     <h5>Taxonomies:</h5>
-    <div class="row">
-        <div class="col-6">
-            <template v-if="taxonomies">
-                <select data-placeholder="Taxonomies" class="select2-select form-control" multiple name="taxonomies_select" id="taxonomies_select" >
-                    <template v-for="taxonomy in taxonomies">
-                        <option :value="[[taxonomy]]">[[taxonomy]]</option>
-                    </template>
-                </select>
-            </template>
-        </div>
-        
-        <div class="col-6">
-            <template v-if="tags_list">
-                <select data-placeholder="Tags" class="select2-select form-control" multiple id="tags_select" >
-                    <template v-for="(tags, taxo) in tags_list">
-                        <optgroup :label="[[taxo]]">
-                            <template v-for="tag in tags">
-                                <option :value="[[tag.name]]" :title="tag.description">[[tag.name]]</option>
-                            </template>
-                        </optgroup>
-                    </template>
-                </select>
-            </template>
-        </div>
-    </div>
-    <div class="row p-2">
-        <div class="col-6 card" >
-            <b>Selected taxonomies</b>
-            <table class="table">
-                <tbody>
-                    <tr v-for="taxo in selected_taxo">
-                        <td>[[taxo]]</td> 
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @click="delete_taxo_select(taxo.uuid)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td> 
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="col-6 card">
-            <b>Selected tags</b>
-            <table class="table" v-if="selected_tags.length">
-                <tbody>
-                    <tr v-for="tag in selected_tags">
-                        <td> 
-                            <div class="tag" :style="{'background-color':tag.color, 'color': getTextColor(tag.color)}">
-                                <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>[[tag.name]]
-                            </div>
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @click="delete_tag_select(tag.name)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td> 
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <namespace_accordion
+        title="Taxonomies"
+        :namespaces="taxonomy_items"
+        :items="tag_items"
+        :expanded-ids="expanded_taxo ? [expanded_taxo] : []"
+        :selected-items="selected_tag_display_items"
+        :selected-item-ids="selected_tag_ids"
+        :loading-items="loading_tags"
+        :resolve-namespace-id="resolve_taxo_for_query"
+        :namespace-search-prefix="taxo_search_prefix"
+        namespace-empty-text="No taxonomy found."
+        item-empty-text="No tag in this taxonomy."
+        no-selection-text="No tag selected yet."
+        search-placeholder="Search taxonomies or tags..."
+        @toggle-namespace="toggle_taxo"
+        @toggle-item="toggle_tag">
+    </namespace_accordion>
     <hr>
 
     <h5>Galaxies:</h5>
-    <div class="row">
-        <div class="col-6">
-            <template v-if="galaxies">
-                <select data-placeholder="Galaxies" class="select2-select form-control" multiple name="galaxies_select" id="galaxies_select" >
-                    <template v-for="galaxy, key in galaxies">
-                        <option :value="[[galaxy.name]]">[[galaxy.name]]</option>
-                    </template>
-                </select>
-            </template>
-        </div>
-        
-        <div class="col-6">
-            <template v-if="cluster_list">
-                <select data-placeholder="Cluster" class="select2-select form-control" multiple id="clusters_select" >
-                    <template v-for="(clusters, galaxy) in cluster_list">
-                        <optgroup :label="[[galaxy]]">
-                            <template v-for="cluster in clusters">
-                                <option :value="[[cluster.uuid]]" :title="cluster.description">[[cluster.tag]]</option>
-                            </template>
-                        </optgroup>
-                    </template>
-                </select>
-            </template>
-        </div>
-    </div>
-    <div class="row p-2">
-        <div class="col-6 card" >
-            <b>Selected galaxies</b>
-            <table class="table" >
-                <tbody>
-                    <tr v-for="galax in selected_galaxies">
-                        <td>[[galax.name]]</td> 
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @click="delete_galaxy_select(galax.uuid)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td> 
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="col-6 card">
-            <b>Selected clusters</b>
-            <table class="table">
-                <tbody>
-                    <tr v-for="clus in selected_clusters">
-                        <td>
-                            <span class="cluster">
-                                <span v-html="mapIcon(clus.icon)"></span>
-                                [[clus.tag]]
-                            </span>
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm" @click="delete_cluster_select(clus.uuid)">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td> 
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <namespace_accordion
+        title="Galaxies"
+        :namespaces="galaxy_items"
+        :items="cluster_items"
+        :expanded-ids="expanded_galaxy_ids"
+        :selected-items="selected_cluster_display_items"
+        :selected-item-ids="selected_cluster_ids"
+        :loading-items="loading_clusters"
+        :resolve-namespace-id="resolve_galaxy_for_query"
+        :namespace-search-prefix="galaxy_search_prefix"
+        namespace-empty-text="No galaxy found."
+        item-empty-text="No cluster in this galaxy."
+        no-selection-text="No cluster selected yet."
+        search-placeholder="Search galaxies or clusters..."
+        @toggle-namespace="toggle_galaxy"
+        @toggle-item="toggle_cluster">
+    </namespace_accordion>
     `
 }

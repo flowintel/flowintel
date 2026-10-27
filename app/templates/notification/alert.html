@@ -1,48 +1,23 @@
-{% macro styles() %}
-<style>
-    .notification-tabs .btn {
-        min-width: 124px;
-    }
-</style>
-{% endmacro %}
+{% from 'macros/page_header.html' import header_stat, header_link, header_segmented %}
+
+{% macro styles() %}{% endmacro %}
 
 {% macro header_badges() %}
-<span v-if="active_tab === 'case-alerts'" class="badge bg-secondary ms-2">
-    [[ caseAlerts.length ]] case/webhook
-</span>
+{{ header_stat('fa-solid fa-plug', '[[ caseAlerts.length ]]', 'case/webhook alerts', attrs='v-if="active_tab === \'case-alerts\'"') }}
 {% endmacro %}
 
 {% macro tab_buttons() %}
-<div class="col-auto">
-    <div class="btn-group btn-group-sm notification-tabs" role="group" aria-label="Notification pages">
-        <button type="button" class="btn" :class="active_tab === 'notifications' ? 'btn-primary' : 'btn-outline-secondary'" @click="set_active_tab('notifications')">
-            <i class="fa-solid fa-inbox me-1"></i>Inbox
-        </button>
-        <button type="button" class="btn" :class="active_tab === 'case-alerts' ? 'btn-primary' : 'btn-outline-secondary'" @click="set_active_tab('case-alerts')">
-            <i class="fa-solid fa-plug me-1"></i>Case/webhook
-            <span v-if="caseAlertUnreadCount" class="badge text-bg-danger ms-1">[[ caseAlertUnreadCount ]]</span>
-        </button>
-    </div>
-</div>
+{{ header_segmented([
+        {'value': 'notifications', 'label': 'Inbox', 'icon': 'fa-solid fa-inbox'},
+        {'value': 'case-alerts', 'label': 'Case/webhook', 'icon': 'fa-solid fa-plug', 'badge': 'caseAlertUnreadCount'},
+    ], active="active_tab === '{value}'", click="set_active_tab('{value}')", aria='Notification pages') }}
 {% endmacro %}
 
 {% macro header_actions() %}
 <template v-if="active_tab === 'case-alerts'">
-    <div class="col-auto">
-        <button class="btn btn-sm btn-outline-success" @click="markAllCaseAlertsRead" :disabled="caseAlertUnreadCount === 0">
-            <i class="fa-solid fa-check-double me-1"></i>Mark all as read
-        </button>
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-sm btn-outline-danger" @click="deleteReadCaseAlerts" :disabled="caseAlertReadCount === 0">
-            <i class="fa-solid fa-trash me-1"></i>Remove read alerts
-        </button>
-    </div>
-    <div class="col-auto">
-        <button class="btn btn-outline-secondary btn-sm" @click="loadCaseAlerts" title="Refresh case alerts">
-            <i class="fa-solid fa-rotate"></i>
-        </button>
-    </div>
+    {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh case alerts', attrs='@click="loadCaseAlerts"') }}
+    {{ header_link('Mark all as read', icon='fa-solid fa-check-double', attrs='@click="markAllCaseAlertsRead" :disabled="caseAlertUnreadCount === 0"') }}
+    {{ header_link('Remove read alerts', icon='fa-solid fa-trash', attrs='@click="deleteReadCaseAlerts" :disabled="caseAlertReadCount === 0"') }}
 </template>
 {% endmacro %}
 

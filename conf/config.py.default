@@ -69,23 +69,26 @@ def build_db_uri(DB, env_name):
     """
     dialect = DB['DIALECT']
     driver = DB['DRIVER']
+    name = DB['NAME']
 
     if not dialect:
         if env_name in ("development", "testing"):
-            return f"sqlite:///flowintel-{env_name}.sqlite"
+            filename = DB.get('NAME') or f"flowintel-{env_name}"
+            sqlite_dir = os.getenv("SQLITE_PATH", "")
+            return f"sqlite:///{os.path.join(sqlite_dir, f'{filename}.sqlite')}"
         raise ValueError("DB_DIALECT must be set explicitely when running outside development and testing")
 
     validate_db_config(dialect, driver, env_name)
 
     if dialect == "sqlite":
-        db_path = os.getenv("SQLITE_PATH", "flowintel.sqlite")
-        return f"sqlite:///{db_path}"
+        filename = DB.get('NAME') or f"flowintel-{env_name}"
+        sqlite_dir = os.getenv("SQLITE_PATH", "")
+        return f"sqlite:///{os.path.join(sqlite_dir, f'{filename}.sqlite')}"
 
     user = DB['USER']
     password = DB['PASSWORD']
     host = DB['HOST']
     port = DB['PORT']
-    name = DB['NAME']
 
     if not port:
         if dialect == "postgresql":
@@ -152,6 +155,8 @@ class Config():
     # Only change these if Valkey runs on a different host.
     VALKEY_IP = os.getenv('VALKEY_IP', '127.0.0.1')
     VALKEY_PORT = os.getenv('VALKEY_PORT', '6379')
+    VALKEY_USERNAME = "default" # For the sake of simplicity we rely on "default" user and simply apply a password
+    VALKEY_PASSWORD = os.getenv('VALKEY_PASSWORD') or None
     SESSION_TYPE = "redis" # Can be overridden in dev/test/prod class
     
     # =============================================================================
@@ -323,37 +328,59 @@ class Config():
     # =============================================================================
     # SIMPLESAML PHP
     # =============================================================================
-    SIMPLESAML_ENABLED        = env_bool('SIMPLESAML_ENABLED', default=False)
+    SIMPLESAML_ENABLED             = env_bool('SIMPLESAML_ENABLED', default=False)
     SIMPLESAML_TRUST_PROXY_HEADERS = env_bool('SIMPLESAML_TRUST_PROXY_HEADERS', default=True)
     # Standard approach for config for python3-saml
     # Note: in settings for Saml, acs is probably analag to redirect in keycloak
-    SIMPLESAML_PYTHON3_SAML_PATH = os.getenv('SIMPLESAML_PYTHON3_SAML_PATH', '/home/flowintel/app/conf/saml')
+    SIMPLESAML_PYTHON3_SAML_PATH   = os.getenv('SIMPLESAML_PYTHON3_SAML_PATH', '/home/flowintel/app/conf/saml')
     #
-    SIMPLESAML_METADATA_FILE     = os.getenv('SIMPLESAML_METADATA_FILE', 'saml2_metadata.xml')
+    SIMPLESAML_METADATA_FILE      = os.getenv('SIMPLESAML_METADATA_FILE', 'saml2_metadata.xml')
+    # This should be handled with care when promoting users to the system Admin role because this would erase the promotion
     SIMPLESAML_SYNC_ROLE_ON_LOGIN = env_bool('SIMPLESAML_SYNC_ROLE_ON_LOGIN', default=True)
     
     # Attribute mapping — SimpleSAMLphp OID URN defaults, override if your IdP uses friendly names
     SIMPLESAML_ATTR_EMAIL      = os.getenv('SIMPLESAML_ATTR_EMAIL', 'urn:oid:0.9.2342.19200300.100.1.3') # 'mail'
-    SIMPLESAML_ATTR_FIRST_NAME     = os.getenv('SIMPLESAML_ATTR_NAME', 'urn:oid:2.5.4.42')               # 'givenName'
-    SIMPLESAML_ATTR_LAST_NAME     = os.getenv('SIMPLESAML_ATTR_NAME', 'urn:oid:2.5.4.4')                 # 'sn'
+    SIMPLESAML_ATTR_FIRST_NAME = os.getenv('SIMPLESAML_ATTR_NAME', 'urn:oid:2.5.4.42')               # 'givenName'
+    SIMPLESAML_ATTR_LAST_NAME  = os.getenv('SIMPLESAML_ATTR_NAME', 'urn:oid:2.5.4.4')                 # 'sn'
     # or custom attr like like "memberOf":
     SIMPLESAML_ATTR_GROUPS     = os.getenv('SIMPLESAML_ATTR_GROUPS', 'urn:oid:1.3.6.1.4.1.23735.100.1')
 
     # Group → Role mapping (same pattern as Keycloak)
-    SIMPLESAML_GROUP_ADMIN      = os.getenv('SIMPLESAML_GROUP_ADMIN', 'FlowintelAdmin')
-    SIMPLESAML_GROUP_EDITOR     = os.getenv('SIMPLESAML_GROUP_EDITOR', 'FlowintelEditor')
-    SIMPLESAML_GROUP_READONLY   = os.getenv('SIMPLESAML_GROUP_READONLY', 'FlowintelReadOnly')
-    SIMPLESAML_GROUP_CASE_ADMIN = os.getenv('SIMPLESAML_GROUP_CASE_ADMIN', 'FlowintelCaseAdmin')
-    SIMPLESAML_ROLE_CASE_ADMIN   = os.getenv('SIMPLESAML_ROLE_CASE_ADMIN',   'CaseAdmin')
+    # Flowintel "System" roles
+    SIMPLESAML_GROUP_ADMIN       = os.getenv('SIMPLESAML_GROUP_ADMIN', 'FlowintelAdmin')
+    SIMPLESAML_ROLE_ADMIN        = os.getenv('SIMPLESAML_ROLE_ADMIN', 'Admin')
+    SIMPLESAML_GROUP_EDITOR      = os.getenv('SIMPLESAML_GROUP_EDITOR', 'FlowintelEditor')
+    SIMPLESAML_ROLE_EDITOR       = os.getenv('SIMPLESAML_ROLE_EDITOR', 'Editor')
+    SIMPLESAML_GROUP_READONLY    = os.getenv('SIMPLESAML_GROUP_READONLY', 'FlowintelReadOnly')
+    SIMPLESAML_ROLE_READONLY     = os.getenv('SIMPLESAML_ROLE_READONLY', 'Read Only')
+    # Flowintel "Base" roles
+    SIMPLESAML_GROUP_CASE_ADMIN  = os.getenv('SIMPLESAML_GROUP_CASE_ADMIN', 'FlowintelCaseAdmin')
+    SIMPLESAML_ROLE_CASE_ADMIN   = os.getenv('SIMPLESAML_ROLE_CASE_ADMIN', 'CaseAdmin')
     SIMPLESAML_GROUP_QUEUE_ADMIN = os.getenv('SIMPLESAML_GROUP_QUEUE_ADMIN', 'FlowintelQueueAdmin')
-    SIMPLESAML_ROLE_QUEUE_ADMIN  = os.getenv('SIMPLESAML_ROLE_QUEUE_ADMIN',  'QueueAdmin')
-    SIMPLESAML_GROUP_QUEUER      = os.getenv('SIMPLESAML_GROUP_QUEUER',      'FlowintelQueuer')
-    SIMPLESAML_ROLE_QUEUER       = os.getenv('SIMPLESAML_ROLE_QUEUER',       'Queuer')
-
-    # A dictionnary of alias in between Saml definitions and Flowintel roles
-    SIMPLESAML_GROUP_ALIASES    = {
-        "your_saml_group": "FlowintelEditor",   # lowercase — must match exactly what IdP sends
-    }
+    SIMPLESAML_ROLE_QUEUE_ADMIN  = os.getenv('SIMPLESAML_ROLE_QUEUE_ADMIN', 'QueueAdmin')
+    SIMPLESAML_GROUP_QUEUER      = os.getenv('SIMPLESAML_GROUP_QUEUER', 'FlowintelQueuer')
+    SIMPLESAML_ROLE_QUEUER       = os.getenv('SIMPLESAML_ROLE_QUEUER', 'Queuer')
+    # A dictionnary of alias in between Saml Groups and Flowintel roles definitions
+    SIMPLESAML_GROUP_ALIASES: dict[str, str] = {}
+    if SIMPLESAML_ENABLED:
+        from conf.saml.group_aliases import (
+            SIMPLESAML_GROUP_ALIASES as _SIMPLESAML_GROUP_ALIASES,
+        )
+        SIMPLESAML_GROUP_ALIASES = _SIMPLESAML_GROUP_ALIASES
+    # This list helps to choose the resolved role when a user is part of different SAML groups
+    SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY = [
+        {'group': SIMPLESAML_GROUP_CASE_ADMIN, 'role': SIMPLESAML_ROLE_CASE_ADMIN,},
+        {'group': SIMPLESAML_GROUP_QUEUE_ADMIN, 'role': SIMPLESAML_ROLE_QUEUE_ADMIN,},
+        {'group': SIMPLESAML_GROUP_QUEUER, 'role': SIMPLESAML_ROLE_QUEUER,},
+    ]
+    if SIMPLESAML_ENABLED:
+        from conf.saml.group_aliases import (
+            SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY as _SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY,
+        )
+        SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY = [
+            *_SIMPLESAML_MAPPER_GROUPS_ROLES_CUSTOM_PRIORITY,
+            *SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY,
+        ]
 
     # =============================================================================
     # MISP INTEGRATION

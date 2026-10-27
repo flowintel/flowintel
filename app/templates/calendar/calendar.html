@@ -1,5 +1,6 @@
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_button %}
 
 {% block head %}
 <title>Calendar - {{ config.APP_NAME }}</title>
@@ -37,12 +38,68 @@
         </div>
     </div>
 
+    <div class="modal fade" id="modal_manual_event" tabindex="-1" aria-labelledby="manual_event_label" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <form class="modal-content" @submit.prevent="saveManualEvent">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manual_event_label">[[ eventForm.id ? 'Manual event' : 'Add event' ]]</h5>
+                    <button type="button" class="btn-close" aria-label="Close" :disabled="eventSaving" @click="closeEventModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div v-if="eventError" class="alert alert-danger" role="alert">[[ eventError ]]</div>
+                    <fieldset :disabled="eventSaving || !eventForm.can_edit">
+                        <div class="mb-3">
+                            <label class="form-label" for="event_title">Title</label>
+                            <input id="event_title" class="form-control" v-model="eventForm.title" required maxlength="255">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="event_description">Description</label>
+                            <textarea id="event_description" class="form-control" v-model="eventForm.description" rows="3"></textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input id="event_all_day" class="form-check-input" type="checkbox" v-model="eventForm.all_day" @change="changeEventAllDay">
+                            <label class="form-check-label" for="event_all_day">All day</label>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label" for="event_start">[[ eventForm.all_day ? 'Start date' : 'Start time' ]]</label>
+                                <input id="event_start" class="form-control" :type="eventForm.all_day ? 'date' : 'datetime-local'" v-model="eventForm.start" required>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label" for="event_end">[[ eventForm.all_day ? 'End date (inclusive)' : 'End time' ]]</label>
+                                <input id="event_end" class="form-control" :type="eventForm.all_day ? 'date' : 'datetime-local'" v-model="eventForm.end" :min="eventForm.start">
+                                <div class="form-text">[[ eventForm.all_day ? 'Optional; defaults to the start date.' : 'Optional; defaults to one hour after the start.' ]]</div>
+                            </div>
+                        </div>
+                        <p v-if="!eventForm.all_day" class="text-muted small">Times use your local timezone.</p>
+                        <div class="mb-3">
+                            <label class="form-label" for="event_visibility">Visible to</label>
+                            <select id="event_visibility" class="form-select" v-model="eventForm.visibility">
+                                <option value="private">Only me</option>
+                                <option value="organisation">My organisation</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                    <p v-if="!eventForm.can_edit" class="text-muted mb-0">You have view-only access to this event.</p>
+                </div>
+                <div class="modal-footer">
+                    <button v-if="eventForm.id && eventForm.can_edit" type="button" class="btn btn-outline-danger me-auto" :disabled="eventSaving" @click="deleteManualEvent">Delete event</button>
+                    <button type="button" class="btn btn-secondary" :disabled="eventSaving" @click="closeEventModal">Close</button>
+                    <button v-if="eventForm.can_edit" type="submit" class="btn btn-primary" :disabled="eventSaving">[[ eventSaving ? 'Saving…' : 'Save event' ]]</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <div class="calendar-filter-bar bg-white d-flex flex-wrap align-items-end justify-content-between p-3 mb-2">
-        <div class="d-flex flex-wrap align-items-end gap-3">
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Show</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Calendar item filters">
+    {% call(section) page_header('Calendar', 'fa-solid fa-calendar-days', 'Deadlines and creation dates of your cases and tasks.') %}
+        {% if section == 'actions' %}
+            {{ header_button('Download calendar feed', icon='fa-solid fa-calendar-plus', title='Download an iCalendar feed of your cases and tasks', attrs='@click="downloadCalendarFeed"') }}
+            {% if not current_user.read_only() %}
+              {{ header_button('Add event', icon='fa-solid fa-plus', title='Add an event not linked to cases or tasks', attrs='@click="openEventModal()"') }}
+            {% endif %}
+        {% elif section == 'toolbar' %}
+            <span class="ctx-filter-label">Show</span>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Calendar item filters">
                     <input class="btn-check" checked type="checkbox" value="" id="checkbox-case" autocomplete="off" @change="selection_case_task(true, false, $event)">
                     <label class="btn btn-outline-primary" for="checkbox-case">
                         <i class="fa-solid fa-folder-open"></i> Case
@@ -51,39 +108,21 @@
                     <label class="btn btn-outline-success" for="checkbox-task">
                         <i class="fa-solid fa-list-check"></i> Task
                     </label>
-                </div>
-            </div>
-
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Tasks</span>
-                <input class="btn-check" type="checkbox" value="" id="checkbox-task-assigned" autocomplete="off" @change="selection_assigned_tasks">
-                <label class="btn btn-sm btn-outline-secondary" for="checkbox-task-assigned">
-                    <i class="fa-solid fa-user-check"></i> Assigned to me
-                </label>
-            </div>
-
-            <div class="calendar-filter-group">
-                <span class="calendar-filter-label">Date</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Calendar date filter">
-                    <input class="btn-check" type="radio" name="radioOther" id="radioDeadLine" autocomplete="off" @change="select_dead_filter()" checked>
-                    <label class="btn btn-outline-dark" for="radioDeadLine">
-                        <i class="fa-solid fa-hourglass-half"></i> Deadline
-                    </label>
-                    <input class="btn-check" type="radio" name="radioOther" id="radioCreation" autocomplete="off" @change="select_creation_filter()">
-                    <label class="btn btn-outline-dark" for="radioCreation">
-                        <i class="fa-solid fa-calendar-day"></i> Creation
+                    <input class="btn-check" type="checkbox" id="checkbox-event" autocomplete="off" v-model="showManualEvents" @change="onDateChange">
+                    <label class="btn btn-outline-calendar-event" for="checkbox-event">
+                        <i class="fa-solid fa-calendar-day"></i> Event
                     </label>
                 </div>
-            </div>
-        </div>
 
-        <div class="calendar-filter-group">
-            <span class="calendar-filter-label">Export</span>
-            <button class="btn btn-sm btn-primary" @click="downloadCalendarFeed">
-                <i class="fa-solid fa-calendar-plus"></i> Download Calendar Feed
-            </button>
-        </div>
-    </div>
+            <span class="ctx-filter-label">Date</span>
+            <div class="ctx-seg ctx-seg-check" role="group" aria-label="Calendar date filter">
+                <input class="btn-check" type="radio" name="radioOther" id="radioDeadLine" autocomplete="off" @change="select_dead_filter()" checked>
+                <label for="radioDeadLine"><i class="fa-solid fa-hourglass-half fa-sm me-1"></i>Deadline</label>
+                <input class="btn-check" type="radio" name="radioOther" id="radioCreation" autocomplete="off" @change="select_creation_filter()">
+                <label for="radioCreation"><i class="fa-solid fa-calendar-day fa-sm me-1"></i>Creation</label>
+            </div>
+        {% endif %}
+    {% endcall %}
 
     <input id="monthPicker" class="form-control start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
 
@@ -95,8 +134,8 @@
 
 {% block script %}
 <script type="module">
-    const { createApp, ref, nextTick, onMounted } = Vue
-    import {message_list} from '/static/js/toaster.js'
+    const { createApp, ref, onMounted } = Vue
+    import {message_list, display_toast} from '/static/js/toaster.js'
     import { getTextColor, mapIcon } from '/static/js/utils.js'
     createApp({
         delimiters: ['[[', ']]'],
@@ -109,16 +148,26 @@
             let flag_dead_creation = true
             let show_only_assigned_tasks = false
             let modal_task = null
+            let modal_manual_event = null
+            let calendarRange = null
+            let calendarRequest = 0
+            const canCreateEvent = {{ (not current_user.read_only()) | tojson }}
+            const showManualEvents = ref(true)
+            const eventForm = ref({can_edit: canCreateEvent, all_day: true, visibility: 'private'})
+            const eventError = ref('')
+            const eventSaving = ref(false)
 
             var calendar
 
 
-            async function fetch_task_calendar(current_month, flag_dead_creation_loc=true) {
+            async function fetch_task_calendar(current_month, flag_dead_creation_loc, requestId) {
                 tasks.value = null
                 const res = await fetch(
                     'get_task_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc + "&assigned_only=" + show_only_assigned_tasks
                 )
                 let loc = await res.json()
+                if (!res.ok) throw new Error(loc.message || 'Unable to load tasks')
+                if (requestId !== calendarRequest) return
                 tasks.value = loc["tasks"]
 
                 let loc_var
@@ -127,7 +176,7 @@
                     else loc_var = tasks.value[i]["creation_date"]
 
                     calendar.addEvent({
-                        id: tasks.value[i]["id"],
+                        id: 'task-' + tasks.value[i]["id"],
                         start: date_parser(loc_var, true),
                         allDay: true,
                         color: "rgb(32, 181, 32)",
@@ -139,12 +188,14 @@
                 }
             }
 
-            async function fetch_case_calendar(current_month, flag_dead_creation_loc=true){
+            async function fetch_case_calendar(current_month, flag_dead_creation_loc, requestId){
                 cases.value = null
                 const res = await fetch(
                     'get_case_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc
                 )
                 let loc = await res.json()
+                if (!res.ok) throw new Error(loc.message || 'Unable to load cases')
+                if (requestId !== calendarRequest) return
                 cases.value = loc["cases"]
 
                 let loc_var
@@ -153,7 +204,7 @@
                     else loc_var = cases.value[i]["creation_date"]
 
                     calendar.addEvent({
-                        id: cases.value[i]["id"],
+                        id: 'case-' + cases.value[i]["id"],
                         start: date_parser(loc_var, true),
                         allDay: true,
                         color: "#3788d8",
@@ -162,6 +213,115 @@
                             toJson: cases.value[i]
                         }
                     })
+                }
+            }
+
+            async function fetchManualEvents(requestId) {
+                if (!calendarRange) return
+                const res = await fetch('/calendar/events?' + new URLSearchParams(calendarRange))
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.message || 'Unable to load events')
+                if (requestId !== calendarRequest) return
+                for (const event of data.events) {
+                    calendar.addEvent({
+                        id: 'event-' + event.id,
+                        title: event.title,
+                        start: event.start,
+                        end: event.end,
+                        allDay: event.all_day,
+                        color: '#7952b3',
+                        extendedProps: {kind: 'manual', toJson: event}
+                    })
+                }
+            }
+
+            function shiftDay(value, days) {
+                const date = new Date(value + 'T12:00:00')
+                date.setDate(date.getDate() + days)
+                return date_parser(date, true)
+            }
+
+            function localDateTime(value) {
+                if (!value) return ''
+                const date = new Date(value)
+                return date_parser(date, true) + 'T' + String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0')
+            }
+
+            function openEventModal(event=null, date=null) {
+                if (!event && !canCreateEvent) return
+                eventError.value = ''
+                eventForm.value = event ? {
+                    ...event,
+                    start: event.all_day ? event.start : localDateTime(event.start),
+                    end: event.end ? (event.all_day ? shiftDay(event.end, -1) : localDateTime(event.end)) : ''
+                } : {
+                    id: null, title: '', description: '', all_day: true,
+                    start: date || date_parser(calendar.getDate(), true), end: '',
+                    visibility: 'private', can_edit: true
+                }
+                modal_manual_event.show()
+            }
+
+            function closeEventModal() {
+                if (!eventSaving.value) modal_manual_event.hide()
+            }
+
+            function changeEventAllDay() {
+                const form = eventForm.value
+                for (const field of ['start', 'end']) {
+                    if (form[field]) form[field] = form.all_day ? form[field].slice(0, 10) : form[field] + (field === 'start' ? 'T09:00' : 'T10:00')
+                }
+            }
+
+            async function eventRequest(url, method, data) {
+                const res = await fetch(url, {
+                    method,
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById('csrf_token').value},
+                    body: data ? JSON.stringify(data) : undefined
+                })
+                const result = await res.json().catch(() => ({}))
+                if (!res.ok) throw new Error(result.message || 'Unable to save event. Please try again.')
+                return result
+            }
+
+            async function saveManualEvent() {
+                if (eventSaving.value || !eventForm.value.can_edit) return
+                eventError.value = ''
+                eventSaving.value = true
+                const form = eventForm.value
+                try {
+                    const payload = {
+                        title: form.title, description: form.description, all_day: form.all_day,
+                        visibility: form.visibility,
+                        start: form.all_day ? form.start : new Date(form.start).toISOString(),
+                        end: form.end ? (form.all_day ? shiftDay(form.end, 1) : new Date(form.end).toISOString()) : null
+                    }
+                    await eventRequest('/calendar/events' + (form.id ? '/' + form.id : ''), form.id ? 'PUT' : 'POST', payload)
+                    eventSaving.value = false
+                    modal_manual_event.hide()
+                    showManualEvents.value = true
+                    calendar.gotoDate(form.start)
+                    onDateChange()
+                } catch (error) {
+                    eventError.value = error.message
+                } finally {
+                    eventSaving.value = false
+                }
+            }
+
+            async function deleteManualEvent() {
+                if (eventSaving.value || !eventForm.value.can_edit || !window.confirm('Delete this event?')) return
+                eventSaving.value = true
+                eventError.value = ''
+                try {
+                    await eventRequest('/calendar/events/' + eventForm.value.id, 'DELETE')
+                    eventSaving.value = false
+                    modal_manual_event.hide()
+                    onDateChange()
+                } catch (error) {
+                    eventError.value = error.message
+                } finally {
+                    eventSaving.value = false
                 }
             }
 
@@ -202,44 +362,39 @@
             }
 
             function selection_case_task(is_case, is_task, event=null){
-                calendar.removeAllEvents();
                 if (is_case) is_case_selected = event ? event.target.checked : !is_case_selected
                 if (is_task) is_task_selected = event ? event.target.checked : !is_task_selected
-
-                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                onDateChange()
             }
 
             function selection_assigned_tasks(event){
                 show_only_assigned_tasks = event.target.checked
-                calendar.removeAllEvents();
-
-                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                onDateChange()
             }
 
             function select_dead_filter(){
-                calendar.removeAllEvents();
-
-                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), true)
-                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), true)
                 flag_dead_creation = true
+                onDateChange()
             }
 
             function select_creation_filter(){
-                calendar.removeAllEvents();
-
-                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), false)
-                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), false)
                 flag_dead_creation = false
+                onDateChange()
             }
             
             
-            function onDateChange() {
+            async function onDateChange() {
+                const requestId = ++calendarRequest
                 calendar.removeAllEvents();
-            
-                if(is_case_selected) fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation)
-                if(is_task_selected) fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation)
+                const requests = []
+                if(is_case_selected) requests.push(fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId))
+                if(is_task_selected) requests.push(fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId))
+                if(showManualEvents.value) requests.push(fetchManualEvents(requestId))
+                const results = await Promise.allSettled(requests)
+                if (requestId !== calendarRequest) return
+                for (const result of results) {
+                    if (result.status === 'rejected') display_toast({message: result.reason.message, toast_class: 'danger-subtle'})
+                }
             }
 
             function downloadCalendarFeed() {
@@ -250,6 +405,10 @@
                 fetchStatus()
 
                 modal_task = new bootstrap.Modal('#modal_task', {})
+                modal_manual_event = new bootstrap.Modal('#modal_manual_event', {backdrop: 'static'})
+                document.getElementById('modal_manual_event').addEventListener('hide.bs.modal', (event) => {
+                    if (eventSaving.value) event.preventDefault()
+                })
 
                 calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                     initialView: 'dayGridMonth',
@@ -274,6 +433,7 @@
                         titleEl.classList.add('fc-event-title')
                         titleEl.style.cssText = 'flex: 1; font-size: 0.88rem; margin-left: 4px;'
                         titleEl.textContent = arg.event.title || ''
+                        if (!arg.event.allDay && arg.timeText) titleEl.textContent = arg.timeText + ' ' + titleEl.textContent
 
                         let downloadEl = document.createElement('a')
                         downloadEl.classList.add('fc-event-download')
@@ -284,7 +444,9 @@
                         downloadEl.appendChild(downloadIcon)
 
                         if (arg.event.extendedProps && arg.event.extendedProps.toJson) {
-                            if (arg.event.extendedProps.toJson.case_id) {
+                            if (arg.event.extendedProps.kind === 'manual') {
+                                downloadEl.href = '/calendar/download_event_ics/' + arg.event.extendedProps.toJson.id
+                            } else if (arg.event.extendedProps.toJson.case_id) {
                                 downloadEl.href = '/calendar/download_task_ics/' + arg.event.extendedProps.toJson.id
                             } else {
                                 downloadEl.href = '/calendar/download_case_ics/' + arg.event.extendedProps.toJson.id
@@ -302,10 +464,18 @@
                         return { domNodes: arrayOfDomNodes }
                     },
                     datesSet: function(info) {
+                        calendarRange = {start: info.startStr, end: info.endStr}
                         onDateChange();
+                    },
+                    dateClick: function(info) {
+                        openEventModal(null, info.dateStr)
                     },
                     eventClick: function(info) {
                         const d = info.event.extendedProps.toJson
+                        if (info.event.extendedProps.kind === 'manual') {
+                            openEventModal(d)
+                            return
+                        }
                         $("#modal_task_label").text(d.title).css("margin-right", "5px")
                         $("#status_modal").empty()
                         if (d.status_id && status_info.value && status_info.value.status){
@@ -515,7 +685,9 @@
             return {
                 message_list,
                 openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task,
-                selection_assigned_tasks, downloadCalendarFeed
+                selection_assigned_tasks, downloadCalendarFeed,
+                showManualEvents, onDateChange, eventForm, eventError, eventSaving,
+                openEventModal, closeEventModal, changeEventAllDay, saveManualEvent, deleteManualEvent
             }
         }
     }).mount('#main-container')

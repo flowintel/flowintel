@@ -53,21 +53,60 @@
         </div>
     </section>
 
-    <section class="stats-filter-bar">
-        <div class="stats-filter-meta">
-            <strong>View:</strong> [[ periodLabel() ]]
+    <section class="stats-filter-bar" aria-labelledby="stats-filter-title">
+        <div class="stats-filter-heading">
+            <div id="stats-filter-title" class="fw-semibold"><i class="fa-solid fa-filter me-2"></i>Filters</div>
+            <div class="stats-filter-meta"><strong>View:</strong> [[ applied_filter_label ]]</div>
         </div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="small text-muted mb-0" for="period-filter">Period</label>
-            <select id="period-filter" class="form-select form-select-sm w-auto" v-model="period_days" @change="reload_all">
-                <option value="">All time</option>
-                <option value="1">Last 24 hours</option>
-                <option value="7">Last week</option>
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="365">Last year</option>
-            </select>
-        </div>
+        <form class="stats-filter-controls" @submit.prevent="reload_all">
+            <div class="stats-filter-field">
+                <label for="period-filter">Period</label>
+                <select id="period-filter" class="form-select form-select-sm" v-model="period_days">
+                    <option value="">All time</option>
+                    <option value="1">Last 24 hours</option>
+                    <option value="7">Last week</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last year</option>
+                    <option value="custom">Custom range</option>
+                </select>
+            </div>
+            <template v-if="period_days === 'custom'">
+                <div class="stats-filter-field">
+                    <label for="stats-date-from">From</label>
+                    <input id="stats-date-from" type="date" class="form-control form-control-sm" v-model="date_from" :max="date_to || undefined">
+                </div>
+                <div class="stats-filter-field">
+                    <label for="stats-date-to">To</label>
+                    <input id="stats-date-to" type="date" class="form-control form-control-sm" v-model="date_to" :min="date_from || undefined">
+                </div>
+            </template>
+            <div class="stats-filter-field">
+                <label for="case-status-filter">Case status</label>
+                <select id="case-status-filter" class="form-select form-select-sm" v-model="case_status">
+                    <option value="all">All cases</option>
+                    <option value="open">Open cases</option>
+                    <option value="closed">Closed cases</option>
+                </select>
+            </div>
+            <div class="stats-filter-field">
+                <label for="task-status-filter">Task status</label>
+                <select id="task-status-filter" class="form-select form-select-sm" v-model="task_status">
+                    <option value="all">All tasks</option>
+                    <option value="open">Open tasks</option>
+                    <option value="closed">Closed tasks</option>
+                </select>
+            </div>
+            <div class="stats-filter-actions">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="fa-solid fa-check me-1"></i>Apply
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" @click="reset_filters" :disabled="!hasActiveFilters()">
+                    Reset
+                </button>
+            </div>
+        </form>
+        <div v-if="filter_error" class="stats-filter-error" role="alert">[[ filter_error ]]</div>
     </section>
 
     <nav class="stats-tabs nav" aria-label="Stats tabs">
@@ -589,7 +628,7 @@
             <article class="stats-card soft-danger">
                 <div class="stats-card-label"><i class="fa-solid fa-right-to-bracket"></i>Recent logins</div>
                 <div class="stats-card-value">[[ formatNumber(admin_stat.recent_login_count) ]]</div>
-                <p class="stats-card-note">Recorded during the last [[ admin_stat.login_activity_days || 90 ]] days</p>
+                <p class="stats-card-note">Recorded [[ admin_stat.login_activity_period || ('during the last ' + (admin_stat.login_activity_days || 90) + ' days') ]]</p>
             </article>
         </section>
 
@@ -750,6 +789,12 @@
             const recent_logins = ref({count: 0, logins: []})
             const main_tab = ref('case')
             const period_days = ref('')
+            const date_from = ref('')
+            const date_to = ref('')
+            const case_status = ref('all')
+            const task_status = ref('all')
+            const filter_error = ref('')
+            const applied_filter_label = ref('All time')
             const generated_on = ref('')
             const selected_case_tag = ref(null)
             const selected_task_tag = ref(null)
@@ -781,10 +826,19 @@
             })
             let expandedChartInstance = null
 
-            function with_period(url) {
-                if (!period_days.value) return url
-                const sep = url.includes('?') ? '&' : '?'
-                return url + sep + 'days=' + encodeURIComponent(period_days.value)
+            function with_filters(url) {
+                const params = new URLSearchParams()
+                if (period_days.value === 'custom') {
+                    if (date_from.value) params.set('date_from', date_from.value)
+                    if (date_to.value) params.set('date_to', date_to.value)
+                } else if (period_days.value) {
+                    params.set('days', period_days.value)
+                }
+                if (case_status.value !== 'all') params.set('case_status', case_status.value)
+                if (task_status.value !== 'all') params.set('task_status', task_status.value)
+                const query = params.toString()
+                if (!query) return url
+                return url + (url.includes('?') ? '&' : '?') + query
             }
 
             function periodLabel() {
@@ -796,7 +850,34 @@
                     '90': 'Last 90 days',
                     '365': 'Last year',
                 }
+                if (period_days.value === 'custom') {
+                    if (date_from.value && date_to.value) return date_from.value + ' to ' + date_to.value
+                    if (date_from.value) return 'Since ' + date_from.value
+                    if (date_to.value) return 'Through ' + date_to.value
+                    return 'Custom range'
+                }
                 return labels[String(period_days.value)] || 'All time'
+            }
+
+            function filterLabel() {
+                const labels = [periodLabel()]
+                if (case_status.value !== 'all') labels.push(case_status.value + ' cases')
+                if (task_status.value !== 'all') labels.push(task_status.value + ' tasks')
+                return labels.join(' · ')
+            }
+
+            function hasActiveFilters() {
+                return Boolean(period_days.value || case_status.value !== 'all' || task_status.value !== 'all')
+            }
+
+            async function reset_filters() {
+                period_days.value = ''
+                date_from.value = ''
+                date_to.value = ''
+                case_status.value = 'all'
+                task_status.value = 'all'
+                filter_error.value = ''
+                await reload_all()
             }
 
             function formatNumber(value) {
@@ -1224,17 +1305,17 @@
             }
 
             async function fetch_case_stat() {
-                const res = await fetch(with_period('/tools/case_stats'))
+                const res = await fetch(with_filters('/tools/case_stats'))
                 if (res.status === 200) case_stat.value = await res.json()
             }
 
             async function fetch_admin_stat() {
-                const res = await fetch(with_period('/tools/admin_stats'))
+                const res = await fetch(with_filters('/tools/admin_stats'))
                 if (res.status === 200) admin_stat.value = await res.json()
             }
 
             async function fetch_case_tag_stat() {
-                const res = await fetch(with_period('/tools/case_tags_stats'))
+                const res = await fetch(with_filters('/tools/case_tags_stats'))
                 if (res.status === 200) case_tags_stats.value = await res.json()
             }
 
@@ -1244,27 +1325,27 @@
             }
 
             async function fetch_tag_galaxy_stats() {
-                const res = await fetch(with_period('/tools/tag_galaxy_stats'))
+                const res = await fetch(with_filters('/tools/tag_galaxy_stats'))
                 if (res.status === 200) tag_stats.value = await res.json()
             }
 
             async function fetch_misp_stats() {
-                const res = await fetch(with_period('/tools/misp_stats'))
+                const res = await fetch(with_filters('/tools/misp_stats'))
                 if (res.status === 200) misp_stat.value = await res.json()
             }
 
             async function fetch_overdue_tasks() {
-                const res = await fetch('/tools/overdue_tasks')
+                const res = await fetch(with_filters('/tools/overdue_tasks'))
                 if (res.status === 200) overdue.value = await res.json()
             }
 
             async function fetch_unassigned_tasks() {
-                const res = await fetch('/tools/unassigned_tasks')
+                const res = await fetch(with_filters('/tools/unassigned_tasks'))
                 if (res.status === 200) unassigned.value = await res.json()
             }
 
             async function fetch_inactive_users() {
-                const res = await fetch(with_period('/tools/inactive_users'))
+                const res = await fetch(with_filters('/tools/inactive_users'))
                 if (res.status === 200) inactive_users.value = await res.json()
             }
 
@@ -1276,6 +1357,11 @@
             const IS_ADMIN = {{ 'true' if current_user.is_admin() else 'false' }}
 
             async function reload_all() {
+                filter_error.value = ''
+                if (period_days.value === 'custom' && date_from.value && date_to.value && date_from.value > date_to.value) {
+                    filter_error.value = 'The start date must be on or before the end date.'
+                    return
+                }
                 const tasks = [
                     fetch_case_stat(),
                     fetch_case_tag_stat(),
@@ -1293,6 +1379,7 @@
                     )
                 }
                 await Promise.all(tasks)
+                applied_filter_label.value = filterLabel()
                 generated_on.value = new Date().toLocaleString()
                 if (expanded_chart.value.open && expanded_chart.value.canvasId) {
                     await nextTick()
@@ -1324,6 +1411,12 @@
                 recent_logins,
                 main_tab,
                 period_days,
+                date_from,
+                date_to,
+                case_status,
+                task_status,
+                filter_error,
+                applied_filter_label,
                 generated_on,
                 selected_case_tag,
                 selected_task_tag,
@@ -1335,7 +1428,9 @@
                 formatNumber,
                 formatPercent,
                 formatWeeks,
-                periodLabel,
+                filterLabel,
+                hasActiveFilters,
+                reset_filters,
                 clear_context_selection,
                 clear_misp_selection,
                 set_context_selection,

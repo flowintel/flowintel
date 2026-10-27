@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
@@ -11,8 +12,8 @@
 
 {% block content %}
 
+{% call(section) page_header('Variable syntax', 'fa-solid fa-code', 'Variables available in note templates and case or task notes.') %}{% endcall %}
 <div class="case-core-style">
-    <h4 class="mb-3"><i class="fa-solid fa-code me-2"></i>Flowintel variable syntax</h4>
     <div id="vars-ref">
         <div class="markdown-render-result">
             <smart_render :code="reference" language="markdown" :simple="true"></smart_render>

@@ -4,6 +4,7 @@
 
 {% extends 'base.html' %}
 {% import 'notification/alert.html' as alert_ui with context %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_link, header_segmented, header_select, header_input %}
 
 {% block head %}
 <title>Notifications - {{ config.APP_NAME }}</title>
@@ -17,90 +18,40 @@
 
 {% block content %}
 
-<div class="case-core-style" style="border-radius: 0;">
-    <div class="row align-items-center g-2">
-        <div class="col-auto d-flex align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Notifications</h5>
-            <span v-if="active_tab === 'notifications' && notif_list" class="badge bg-secondary ms-2">
-                <template v-if="has_filters">[[filtered_list.length]] (of [[notif_list.length]])</template>
-                <template v-else>[[notif_list.length]]</template>
-            </span>
-            {{ alert_ui.header_badges() }}
-        </div>
-
+{% call(section) page_header('Notifications', 'fa-solid fa-bell', 'Messages about your cases and tasks, and alerts coming from connectors.') %}
+    {% if section == 'stats' %}
+        {{ header_stat('fa-solid fa-inbox', "[[ has_filters ? filtered_list.length + ' / ' + notif_list.length : notif_list.length ]]", 'notifications', attrs='v-if="active_tab === \'notifications\' && notif_list"') }}
+        {{ alert_ui.header_badges() }}
+    {% elif section == 'toolbar' %}
         {{ alert_ui.tab_buttons() }}
 
         <template v-if="active_tab === 'notifications'">
-            <div class="col-auto">
-                <button v-if="!flag_is_read" class="btn btn-outline-success btn-sm"
-                        :disabled="!notif_list || notif_list.length === 0"
-                        :title="!notif_list || notif_list.length === 0 ? 'No unread notifications' : 'Mark all messages as read'"
-                        data-bs-toggle="modal" data-bs-target="#modal-mark-all-read">
-                    <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Mark all as read
-                </button>
-            </div>
-
-            <div class="col-auto">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Read filter">
-                    <button type="button" class="btn btn-sm" :class="!flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(true)">
-                        <i class="fa-solid fa-envelope fa-sm me-1"></i>Unread
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="flag_is_read ? 'btn-primary' : 'btn-outline-secondary'" @click="select_unread_read(false)">
-                        <i class="fa-solid fa-envelope-open fa-sm me-1"></i>Read
-                    </button>
-                </div>
-            </div>
-
-            <div class="col-auto">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Time filter">
-                    <button type="button" class="btn btn-sm" :class="time_filter === 'today' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'today'">
-                        Today
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="time_filter === 'week' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'week'">
-                        This week
-                    </button>
-                    <button type="button" class="btn btn-sm" :class="time_filter === 'all' ? 'btn-primary' : 'btn-outline-secondary'" @click="time_filter = 'all'">
-                        All
-                    </button>
-                </div>
-            </div>
-
-            <div class="col-auto">
-                <select class="form-select form-select-sm" v-model="category_filter" style="min-width: 150px;" title="Filter by category">
-                    <option v-for="option in category_options" :value="option.value">[[option.label]]</option>
-                </select>
-            </div>
-
-            <div class="col-auto">
-                <select class="form-select form-select-sm" v-model="type_filter" style="min-width: 160px;" title="Filter by type">
-                    <option v-for="option in type_options" :value="option.value">[[option.label]]</option>
-                </select>
-            </div>
-
-            <div class="col-auto">
-                <input type="number" min="1" class="form-control form-control-sm" v-model="case_id_filter"
-                       placeholder="Filter case ID" style="width: 140px;" title="Show only notifications for this case ID">
-            </div>
-
-            <div class="col-auto">
-                <select class="form-select form-select-sm" v-model="sort_mode" style="min-width: 150px;" title="Sort notifications">
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
-                    <option value="category">Category</option>
-                    <option value="type">Type</option>
-                </select>
-            </div>
-
-            <div class="col-auto">
-                <button class="btn btn-outline-secondary btn-sm" type="button" @click="reset_filters()" :disabled="!has_active_controls" title="Reset filters">
-                    <i class="fa-solid fa-rotate-left fa-sm"></i>
-                </button>
-            </div>
+            {{ header_segmented([
+                    {'value': 'false', 'label': 'Unread', 'icon': 'fa-solid fa-envelope'},
+                    {'value': 'true', 'label': 'Read', 'icon': 'fa-solid fa-envelope-open'},
+                ], active='flag_is_read === {value}', click='select_unread_read(!{value})', aria='Read filter') }}
+            {{ header_segmented([
+                    {'value': 'today', 'label': 'Today'},
+                    {'value': 'week', 'label': 'This week'},
+                    {'value': 'all', 'label': 'All'},
+                ], active="time_filter === '{value}'", click="time_filter = '{value}'", aria='Time filter') }}
+            {{ header_select(options_expr='category_options', model='category_filter', title='Filter by category') }}
+            {{ header_select(options_expr='type_options', model='type_filter', title='Filter by type') }}
+            {{ header_input('case_id_filter', 'Case ID', type='number', title='Show only notifications for this case ID', attrs='min="1"') }}
+            {{ header_select([
+                    {'value': 'newest', 'label': 'Newest first'},
+                    {'value': 'oldest', 'label': 'Oldest first'},
+                    {'value': 'category', 'label': 'Category'},
+                    {'value': 'type', 'label': 'Type'},
+                ], model='sort_mode', label='Sort', title='Sort notifications') }}
+            {{ header_link('Reset', icon='fa-solid fa-rotate-left', title='Reset filters', attrs='@click="reset_filters()" :disabled="!has_active_controls"') }}
+            {{ header_link('Mark all as read', icon='fa-solid fa-envelope-open',
+                           attrs='v-if="!flag_is_read" :disabled="!notif_list || notif_list.length === 0" data-bs-toggle="modal" data-bs-target="#modal-mark-all-read"') }}
         </template>
 
         {{ alert_ui.header_actions() }}
-    </div>
-</div>
+    {% endif %}
+{% endcall %}
 
 <div class="modal fade" id="modal-mark-all-read" tabindex="-1" aria-labelledby="modal-mark-all-read-label" aria-hidden="true">
     <div class="modal-dialog modal-sm">
@@ -122,7 +73,7 @@
     </div>
 </div>
 
-<div v-if="active_tab === 'notifications' && show_password_reset_prompt" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+<div v-if="active_tab === 'notifications' && show_password_reset_prompt" class="alert alert-success alert-dismissible fade show mb-3" role="alert">
     <i class="fa-solid fa-check-circle me-2"></i>
     <strong>Password reset completed.</strong> Would you like to mark all password reset notifications for this user for all admins as read?
     <div class="mt-2">
@@ -135,7 +86,6 @@
     </div>
 </div>
 
-<hr class="fading-line-2 mt-4 mb-4">
 
 <div v-show="active_tab === 'notifications'" class="case-core-style">
     <template v-if="notif_list">

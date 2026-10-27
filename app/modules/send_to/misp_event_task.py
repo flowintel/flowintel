@@ -196,7 +196,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
                 if loc_event_report_case:
                     loc_event_report_case["content"] = loc_notes
-                    misp.update_event_report(loc_event_report_case, event.get("id"))
+                    misp.update_event_report(loc_event_report_case)
                 else:
                     if loc_notes:
                         event_report = {

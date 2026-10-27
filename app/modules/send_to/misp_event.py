@@ -8,7 +8,7 @@ import uuid
 from flask import current_app
 from app.case.CaseCore import FILE_FOLDER
 
-from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event
+from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event, sync_object_references
 
 import conf.config_module as Config
 
@@ -532,7 +532,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
                     if loc_event_report_case:
                         loc_event_report_case["content"] = loc_notes
-                        misp.update_event_report(loc_event_report_case, event.get("id"))
+                        misp.update_event_report(loc_event_report_case)
                     else:
                         if loc_notes:
                             event_report = {
@@ -550,7 +550,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
 
                         if loc_event_report_case:
                             loc_event_report_case["content"] = loc_notes
-                            misp.update_event_report(loc_event_report_case, event.get("id"))
+                            misp.update_event_report(loc_event_report_case)
                         else:
                             if loc_notes:
                                 event_report = {
@@ -697,6 +697,8 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     
     if "errors" in event:
         return {"message": event.get("errors", "Error with MISP event")}
+
+    sync_object_references(misp, event, case.get("objects", []) or [], object_uuid_list)
 
     # Mirror any 'report'-template objects from the case as MISP EventReports on the event.
     try:

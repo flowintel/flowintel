@@ -271,7 +271,7 @@ def test_ingest_deduplicated_alert_does_not_create_extra_notifications(client, a
         assert count == 1
 
 
-def test_review_alert_response_includes_actor_history(client, app):
+def test_review_alert_response_includes_actor_history(client, app, monkeypatch):
     connector = create_connector(client)
     create_instance(client, connector.json["connector_id"], api_key="review-actor-key")
     response = client.post(
@@ -282,7 +282,7 @@ def test_review_alert_response_includes_actor_history(client, app):
     )
     assert response.status_code == 201
 
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
         admin = User.query.filter_by(api_key=ADMIN_KEY).first()
         admin_id = admin.id
@@ -420,7 +420,7 @@ def test_org_scoped_alert_visibility(client, app):
         assert visible_to_other == []
 
 
-def test_create_case_from_alert_links_connector(client, app):
+def test_create_case_from_alert_links_connector(client, app, monkeypatch):
     connector = create_connector(client)
     instance = create_instance(client, connector.json["connector_id"], api_key="case-key")
     response = client.post(
@@ -431,7 +431,7 @@ def test_create_case_from_alert_links_connector(client, app):
     )
     assert response.status_code == 201
 
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
         admin = User.query.filter_by(api_key=ADMIN_KEY).first()
         admin_id = admin.id
@@ -484,7 +484,7 @@ def test_create_case_from_alert_links_connector(client, app):
         assert Misp_Attribute.query.filter_by(case_id=case_id, type="link", value="https://siem.example/alerts/wazuh-42").count() == 1
 
 
-def test_create_case_from_alert_can_use_case_template(client, app):
+def test_create_case_from_alert_can_use_case_template(client, app, monkeypatch):
     template = create_case_template(client)
     assert template.status_code == 201
     template_id = int(template.json["message"].split(": ")[1])
@@ -499,7 +499,7 @@ def test_create_case_from_alert_can_use_case_template(client, app):
     )
     assert response.status_code == 201
 
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
         admin = User.query.filter_by(api_key=ADMIN_KEY).first()
         with client.session_transaction() as session:

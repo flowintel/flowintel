@@ -3,32 +3,32 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_button %}
+{% import 'macros/role_badge.html' as role_badge %}
 
 {% block content %}
     
 <div class="container-fluid" style="width:80%;">
-        <div class="case-core-style" style="border-radius: 0;">
-            <h5 class="mb-0"><i class="fa-solid fa-user me-2"></i>My profile</h5>
-        </div>
-    <hr class="fading-line-2 mb-4 mt-4">
+    {% call(section) page_header('My profile', 'fa-solid fa-user', 'Your account, organisation, role and API key.') %}
+        {% if section == 'actions' %}
+            {{ header_button('Edit profile', href='/account/edit', icon='fa-solid fa-pen', title='Edit your profile') }}
+        {% endif %}
+    {% endcall %}
     
     <div class="card card-body" style="box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px 0px, rgba(0, 0, 0, 0.05) 0px 2px 10px 0px;">
-        <div>
-            <a class="btn btn-outline-success" href="/account/edit" type="button" style="margin-bottom: 10px;"> <i class="fa-solid fa-pen"></i> Edit</a>
-        </div>
         <div class="table-responsive">
             <table class="table">
                 <tr>
-                    <td style="color:#494950">First name</td>
+                    <td class="text-body-secondary">First name</td>
                     <td>{{ user.first_name|vue_escape }}</td>
                     <td></td>
                 </tr>
                 <tr>
-                    <td style="color:#494950">Last name</td>
+                    <td class="text-body-secondary">Last name</td>
                     <td>{{ user.last_name|vue_escape }}</td>
                 </tr>
                 <tr>
-                    <td style="color:#494950">Nickname</td>
+                    <td class="text-body-secondary">Nickname</td>
                     {%if user.nickname %}
                         <td> {{ user.nickname|vue_escape }}</td>
                     {%else%}
@@ -36,11 +36,11 @@
                     {%endif%}
                 </tr>
                 <tr>
-                    <td style="color:#494950">Email</td>
+                    <td class="text-body-secondary">Email</td>
                     <td>{{ user.email|vue_escape }}</td>
                 </tr>
                 <tr>
-                    <td style="color:#494950">Matrix id</td>
+                    <td class="text-body-secondary">Matrix id</td>
                     {%if user.matrix_id%}
                         <td> {{ user.matrix_id|vue_escape }}</td>
                     {%else%}
@@ -48,45 +48,33 @@
                     {%endif%}
                 </tr>
                 <tr>
-                    <td style="color:#494950">Organisation</td>
+                    <td class="text-body-secondary">Organisation</td>
                     <td>
                         <a href="/admin/orgs" class="text-decoration-none">{{ org.name|vue_escape }}</a>
                     </td>
                 </tr>
                 <tr>
-                    <td style="color:#494950">Role</td>
+                    <td class="text-body-secondary">Role</td>
                     <td>
                         <a href="/admin/roles" class="text-decoration-none">
                             {{ role.name|vue_escape }}
-                            {% if role.admin %}
-                                <span class="badge bg-danger ms-2">Admin</span>
-                            {% elif role.read_only %}
-                                <span class="badge bg-info ms-2">Read Only</span>
-                            {% else %}
-                                <span class="badge bg-success ms-2">
-                                    Editor
-                                    {% if role.org_admin %}
-                                        <i class="fa-solid fa-users ms-1" title="Org Admin"></i>
-                                    {% endif %}
-                                    {% if role.case_admin %}
-                                        <i class="fa-solid fa-briefcase ms-1" title="Case Admin"></i>
-                                    {% endif %}
-                                    {% if role.queue_admin %}
-                                        <i class="fa-solid fa-list-check ms-1" title="Queue Admin"></i>
-                                    {% endif %}
-                                    {% if role.queuer %}
-                                        <i class="fa-solid fa-inbox ms-1" title="Queuer"></i>
-                                    {% endif %}
-                                    {% if role.audit_viewer %}
-                                        <i class="fa-solid fa-file-lines ms-1" title="Audit Viewer"></i>
-                                    {% endif %}
-                                </span>
-                            {% endif %}
+                            {{ role_badge.render_role_badge(
+                                role.admin,
+                                role.read_only,
+                                role.org_admin,
+                                role.case_admin,
+                                role.queue_admin,
+                                role.queuer,
+                                role.audit_viewer,
+                                role.template_editor,
+                                role.misp_editor,
+                                role.importer
+                            ) }}
                         </a>
                     </td>
                 </tr>
                 <tr>
-                    <td style="color:#494950">API key</td>
+                    <td class="text-body-secondary">API key</td>
                     <td>
                         <div class="d-flex align-items-center">
                             <span id="api-key" class="api-key blurred me-2">

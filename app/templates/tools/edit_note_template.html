@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
@@ -8,14 +9,11 @@
 {%endblock%}
 
 {% block content %}
-    <div class="case-core-style" style="border-radius: 0;">
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <h5 class="mb-0"><i class="fa-solid fa-note-sticky me-2"></i>Edit a note template</h5>
-            </div>
-        </div>
-    </div>
-    <hr class="fading-line-2 mt-4 mb-4">
+    {% call(section) page_header('Edit note template #' ~ note_template.id ~ ' · ' ~ note_template.title, 'fa-solid fa-note-sticky', 'Change the title, description and content of this note template.') %}
+        {% if section == 'actions' %}
+            {{ header_link('Note template', '/tools/note_template_view/' ~ note_template.id, title='Back to the note template') }}
+        {% endif %}
+    {% endcall %}
 
     <div class="case-core-style">
         <div class="mb-3">

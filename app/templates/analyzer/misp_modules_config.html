@@ -3,25 +3,19 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_search, header_link %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0;"> 
-        <h1>
-            <a type="button" class="btn btn-outline-dark me-2" href="/analyzer/misp-modules"><i class="fa-solid fa-arrow-left"></i></a>
-        </h1>
-        <h1>
-            <i class="fa-solid fa-gears me-2"></i>Modules Config
-            <span class="badge bg-secondary" style="font-size: 0.5em;">[[modules_config.length]]</span>
-        </h1>
+    {% call(section) page_header('Modules config', 'fa-solid fa-gears', 'Enable MISP modules and set their parameters.') %}
+        {% if section == 'stats' %}
+            {{ header_stat('fa-solid fa-puzzle-piece', '[[ modules_config.length ]]', 'modules') }}
+        {% elif section == 'actions' %}
+            {{ header_link('Analyser', '/analyzer/misp-modules', title='Back to the analyser') }}
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search modules') }}
+        {% endif %}
+    {% endcall %}
 
-        <!-- Search bar -->
-        <div class="input-group w-auto translate-middle-x" style="left: 30% !important;">
-            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <input type="search" @input="onInput" id="search_modules" placeholder="Search modules" autofocus class="form-control rounded" style="min-width: 350px;" />
-        </div>
-    </div>
-
-    <hr class="fading-line-2 mb-4 mt-4">
 
     <div class="row" style="margin-bottom: 100px;">
         <div class="col" style="flex: 0 0 50%">

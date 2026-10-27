@@ -1,0 +1,332 @@
+/*
+  themes/christmas.css — "Christmas" theme (seasonal, dark: a night sky with stars),
+  ported from Rulezet.
+
+  Same colours as Flowintel. Decorations are added by
+  static/js/themes/christmas.js while <html data-theme-pref="christmas">: a twinkling
+  garland under the top bar, a Santa hat on the "I" of the logo, red Christmas baubles hanging in
+  the sidebar, snow that comes and goes, and a
+  snowy landscape band above the footer (fir trees, snow piles, a campfire, and a
+  snowman on his bike doing something different on each pass), stars and shooting stars.
+*/
+
+/* Same colours as Flowintel (no token overridden): only decorations are added */
+
+/* ── Garland ─────────────────────────────────────────────────────────── */
+.xmas-garland {
+    position: absolute; left: 0; right: 0; bottom: -22px;
+    height: 26px;
+    pointer-events: none;
+    z-index: 2;
+}
+.xmas-garland__wire { position: absolute; inset: 0; width: 100%; height: 100%; }
+.xmas-garland__wire path { fill: none; stroke: #7a9a7a; stroke-width: 1.6; opacity: .75; }
+.xmas-bulb {
+    position: absolute; top: 9px;
+    width: 9px; height: 13px;
+    margin-left: -4.5px;
+    border-radius: 50% 50% 45% 45%;
+    background: currentColor;
+    box-shadow: 0 0 8px 2px currentColor;
+    animation: xmas-twinkle 2.4s ease-in-out infinite;
+    animation-delay: var(--r, 0s);
+    transition: opacity 1.5s ease;
+}
+/* Patterns (christmas.js cycleGarland), each kept 45–75 s; all slow and soft. */
+.xmas-garland[data-pattern="wave"] .xmas-bulb {          /* light runs left → right */
+    animation: xmas-wave 3.2s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 110ms);
+}
+.xmas-garland[data-pattern="tones"] .xmas-bulb {         /* light bulbs, then dark ones */
+    animation: xmas-tone 7s ease-in-out infinite;
+}
+.xmas-garland[data-pattern="tones"] .xmas-bulb[data-tone="dark"] { animation-delay: -3.5s; }
+.xmas-garland[data-pattern="alternate"] .xmas-bulb {     /* every other bulb */
+    animation: xmas-tone 5s ease-in-out infinite;
+}
+.xmas-garland[data-pattern="alternate"] .xmas-bulb:nth-of-type(even) { animation-delay: -2.5s; }
+.xmas-garland[data-pattern="breathe"] .xmas-bulb {       /* all together, slowly */
+    animation: xmas-breathe 5s ease-in-out infinite;
+}
+@keyframes xmas-wave {
+    0%, 100% { opacity: .35; box-shadow: 0 0 2px 0 currentColor; }
+    18%      { opacity: 1;   box-shadow: 0 0 10px 3px currentColor; }
+    40%      { opacity: .35; box-shadow: 0 0 2px 0 currentColor; }
+}
+@keyframes xmas-tone {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 9px 2px currentColor; }
+    50%      { opacity: .25; box-shadow: 0 0 1px 0 currentColor; }
+}
+@keyframes xmas-breathe {
+    0%, 100% { opacity: .55; box-shadow: 0 0 4px 1px currentColor; }
+    50%      { opacity: 1;   box-shadow: 0 0 11px 3px currentColor; }
+}
+@keyframes xmas-twinkle {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 9px 2px currentColor; }
+    50%      { opacity: .35; box-shadow: 0 0 2px 0 currentColor; }
+}
+.xmas-bulb::before {   /* the socket */
+    content: ""; position: absolute; top: -4px; left: 2px;
+    width: 5px; height: 5px; border-radius: 1px;
+    background: #4b5a4b;
+}
+.xmas-bulb--red    { color: #ff3b3b; }
+.xmas-bulb--gold   { color: #ffc93c; }
+.xmas-bulb--green  { color: #3ddc84; }
+.xmas-bulb--blue   { color: #4aa8ff; }
+.xmas-bulb--pink   { color: #ff6fcf; }
+
+/* ── Santa hat on the logo (sidebar) ─────────────────────────────────── */
+.xmas-logo { position: relative; }
+.xmas-hat {               /* left / top set by christmas.js placeHat, on the I */
+    position: absolute;
+    width: 18px; height: 16px;
+    transform: rotate(-10deg);
+    pointer-events: none;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .25));
+}
+
+/* ── Red Christmas baubles hanging from a fir branch at the bottom of the
+   sidebar (christmas.js baubles), each swinging gently on its string ─────── */
+.xmas-baubles {
+    position: fixed; left: 0; bottom: 0;
+    width: var(--sidebar); height: 150px;
+    pointer-events: none;
+    z-index: 601;             /* just above the sidebar (600) */
+}
+@media (min-width: 768px) {
+    body.sidebar-toggled .xmas-baubles { width: 6.5rem; }
+}
+@media (max-width: 767px) {
+    .xmas-baubles { display: none; }
+}
+.xmas-baubles svg { display: block; width: 100%; height: 100%; }
+.xmas-bauble {
+    transform-box: view-box;
+    animation: xmas-swing 3.6s ease-in-out infinite alternate;
+}
+@keyframes xmas-swing {
+    from { transform: rotate(-5deg); }
+    to   { transform: rotate(5deg); }
+}
+
+/* ── Snow ────────────────────────────────────────────────────────────── */
+.xmas-snow {
+    position: fixed; inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1040;            /* above the page, under Bootstrap modals (1055) */
+}
+.xmas-flake {
+    position: absolute; top: -12px;
+    color: #ffffff;
+    text-shadow: 0 0 4px rgba(255, 255, 255, .6);
+    user-select: none;
+    animation: xmas-fall linear infinite, xmas-sway ease-in-out infinite alternate;
+}
+/* Snow starts and stops naturally (christmas.js): a stopped flake finishes
+   its fall, then stays hidden; flakes beyond the current intensity are off. */
+.xmas-flake.xmas-flake--done,
+.xmas-flake.xmas-flake--off { visibility: hidden; animation-play-state: paused; }
+@keyframes xmas-fall { to { transform: translateY(105vh); } }
+@keyframes xmas-sway { from { margin-left: -14px; } to { margin-left: 14px; } }
+
+
+/* ── Night sky: the stars live BEHIND the page (z-index -1). For that the page
+   background is carried by <html> instead of <body>: cards, navbar and sidebar
+   cover them, they only show through the empty space around the content. ──── */
+html[data-theme-pref="christmas"] { background-color: var(--fi-page); }
+html[data-theme-pref="christmas"] body { background-color: transparent; }
+
+.xmas-stars { position: fixed; inset: 0; pointer-events: none; z-index: -1; }
+.xmas-star {
+    position: absolute;
+    width: 2px; height: 2px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 3px 1px rgba(255, 255, 255, .5);
+    animation: xmas-star 4s ease-in-out infinite;
+}
+@keyframes xmas-star { 0%, 100% { opacity: .12; } 50% { opacity: .65; } }
+
+/* A shooting star now and then: a big bright streak with a glowing head,
+   crossing a good part of the sky */
+.xmas-shooting-star {
+    position: absolute;
+    width: 260px; height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(200, 225, 255, .55) 60%, #ffffff);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, .95)) drop-shadow(0 0 14px rgba(160, 200, 255, .7));
+    transform: rotate(18deg) translateX(0);
+    transform-origin: right center;
+    opacity: 0;
+    animation: xmas-shoot 1.8s ease-out 1 forwards;
+}
+.xmas-shooting-star::after {     /* the head */
+    content: ""; position: absolute; right: -4px; top: 50%;
+    width: 9px; height: 9px; margin-top: -4.5px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 10px 4px rgba(255, 255, 255, .9), 0 0 24px 8px rgba(160, 200, 255, .6);
+}
+@keyframes xmas-shoot {
+    0%   { opacity: 0;  transform: rotate(18deg) translateX(0)     scaleX(.3); }
+    12%  { opacity: 1; }
+    75%  { opacity: 1; }
+    100% { opacity: 0;  transform: rotate(18deg) translateX(560px) scaleX(1); }
+}
+
+/* ── Snowy landscape band right above the footer (an SVG built by
+   christmas.js): hills, fir trees, snow piles, a campfire and a snowman on a
+   bike. In the page flow, next to the sidebar like the footer. ──────────── */
+.xmas-land {
+    position: relative;
+    height: 380px;            /* plenty of night sky over the hills for the animations */
+    margin-top: 1rem;
+    margin-left: var(--sidebar);
+    margin-bottom: -1px;      /* no hairline between the band and the footer */
+    pointer-events: none;
+    flex-shrink: 0;
+}
+.xmas-land + footer.site-footer { margin-top: 0; }
+@media (min-width: 768px) {
+    body.sidebar-toggled .xmas-land { margin-left: 6.5rem; }
+}
+@media (max-width: 767px) {
+    body.sidebar-toggled .xmas-land { margin-left: 0; }
+}
+.xmas-land svg { display: block; width: 100%; height: 100%; }
+.xmas-sky-star { opacity: .5; animation: xmas-star 4.5s ease-in-out infinite; }
+
+/* The campfire: flickering flames, a warm glow on the snow, rising smoke */
+.xmas-camp__glow { opacity: .5; animation: xmas-camp-glow 1.6s ease-in-out infinite alternate; }
+.xmas-camp__flame { transform-box: fill-box; transform-origin: 50% 100%; animation: xmas-camp-flicker .9s ease-in-out infinite alternate; }
+.xmas-camp__flame--in { animation-duration: .6s; animation-delay: -.3s; }
+.xmas-camp__smoke { transform-box: fill-box; transform-origin: center; opacity: 0; animation: xmas-camp-smoke 6.4s ease-out infinite; }
+@keyframes xmas-camp-flicker {
+    0%   { transform: scale(1, 1) skewX(0deg); }
+    50%  { transform: scale(.9, 1.12) skewX(4deg); }
+    100% { transform: scale(1.06, .92) skewX(-4deg); }
+}
+@keyframes xmas-camp-glow { from { opacity: .4; } to { opacity: .7; } }
+@keyframes xmas-camp-smoke {
+    0%   { opacity: 0;   transform: translate(0, 0) scale(.6); }
+    15%  { opacity: .5; }
+    100% { opacity: 0;   transform: translate(14px, -70px) scale(3.2); }
+}
+
+/* The snowman on his bike: the scarf flutters behind him (the ride itself and
+   the turning wheels are SVG animations, see christmas.js snowmanOnBike) */
+.xmas-rider__scarf { transform-box: fill-box; transform-origin: 0 50%; animation: xmas-scarf .5s ease-in-out infinite alternate; }
+@keyframes xmas-scarf { from { transform: rotate(-8deg); } to { transform: rotate(10deg); } }
+
+/* ── Christmas menu, bottom right, left of the "back to top" button: a tree
+   button opening a list of switches and of the snowman's scenarios ──────── */
+.xmas-menu {
+    position: fixed; right: 4.5rem; bottom: 1em;
+    z-index: 1045;            /* above the snow, under Bootstrap modals (1055) */
+    display: flex; flex-direction: column; align-items: flex-end; gap: .5rem;
+}
+.xmas-menu__toggle {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0; border-radius: 50%;
+    color: #6fcf8f;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+    opacity: .7;
+    transition: opacity .15s ease, transform .15s ease;
+}
+.xmas-menu__toggle:hover, .xmas-menu__toggle:focus-visible, .xmas-menu.is-open .xmas-menu__toggle { opacity: 1; transform: scale(1.06); }
+.xmas-menu__panel {
+    min-width: 220px; max-height: 70vh; overflow-y: auto;
+    padding: .35rem;
+    border-radius: 12px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+}
+.xmas-menu__title {
+    margin: .4rem .5rem .2rem;
+    padding-top: .4rem;
+    border-top: 1px solid var(--bs-border-color);
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: var(--bs-secondary-color);
+}
+.xmas-menu__item {
+    display: flex; align-items: center; gap: .55rem;
+    width: 100%;
+    padding: .35rem .5rem;
+    border: 0; border-radius: 8px;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-size: .82rem; text-align: left;
+}
+.xmas-menu__item i { color: var(--bs-secondary-color); }
+.xmas-menu__item:hover, .xmas-menu__item:focus-visible { background: var(--bs-secondary-bg); }
+.xmas-menu__item:hover i { color: #ffc93c; }
+.xmas-menu__item.is-off i { opacity: .45; }
+
+@media (prefers-reduced-motion: reduce) {
+    .xmas-bulb, .xmas-garland[data-pattern] .xmas-bulb, .xmas-star, .xmas-sky-star,
+    .xmas-camp__glow, .xmas-camp__flame, .xmas-rider__scarf, .xmas-bauble { animation: none; }
+    .xmas-shooting-star, .xmas-camp__smoke, .xmas-snow { display: none; }
+}
+
+/* ── Settings page preview (account/settings.html): the preview carries
+   data-theme-pref, so the same decorations are drawn in miniature there —
+   garland under the bar, snow and stars, a Santa hat, fir trees on a snowy ground. ──────────────────────────────────────────────────────── */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-sidebar,
+.settings-theme-preview[data-theme-pref="christmas"] .stp-body,
+.settings-theme-preview[data-theme-pref="christmas"] .stp-bar { position: relative; }
+
+/* Santa hat at the top of the sidebar */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-sidebar::before {
+    content: ""; position: absolute; top: 3px; left: 50%;
+    width: 14px; height: 12px; margin-left: -7px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 56'%3E%3Cpath d='M8 44 C14 20 30 6 46 8 C54 9 58 16 56 24 L50 22 C44 18 36 24 32 44 Z' fill='%23d62828'/%3E%3Crect x='2' y='40' width='40' height='11' rx='5.5' fill='%23fff'/%3E%3Ccircle cx='54' cy='26' r='7' fill='%23fff'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* Red baubles at the bottom of the sidebar */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-sidebar::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 6px;
+    height: 22px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 22'%3E%3Cpath d='M2 3 Q20 7 38 3' stroke='%232f6b3f' stroke-width='2.5' fill='none'/%3E%3Cpath d='M10 5 V12 M22 6 V17 M32 5 V10' stroke='%23d9dee8' stroke-width='.6'/%3E%3Ccircle cx='10' cy='14' r='3' fill='%23d62828'/%3E%3Ccircle cx='22' cy='19' r='3' fill='%23d62828'/%3E%3Ccircle cx='32' cy='12' r='2.5' fill='%23d62828'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* Garland: a row of coloured bulbs hanging under the bar */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-bar::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 100%;
+    height: 6px;
+    background:
+        radial-gradient(circle at 3px 3px, #ff3b3b 1.6px, transparent 2.2px) 0 0 / 24px 6px repeat-x,
+        radial-gradient(circle at 3px 3px, #ffc93c 1.6px, transparent 2.2px) 6px 0 / 24px 6px repeat-x,
+        radial-gradient(circle at 3px 3px, #3ddc84 1.6px, transparent 2.2px) 12px 0 / 24px 6px repeat-x,
+        radial-gradient(circle at 3px 3px, #4aa8ff 1.6px, transparent 2.2px) 18px 0 / 24px 6px repeat-x;
+    filter: drop-shadow(0 0 1.5px rgba(255, 220, 120, .8));
+}
+
+/* Snowflakes over the page, fir trees on a snowy ground at the bottom */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-body::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+        radial-gradient(circle, var(--xmas-preview-flake) 1px, transparent 1.4px) 4px 6px / 17px 15px,
+        radial-gradient(circle, var(--xmas-preview-flake) .8px, transparent 1.2px) 11px 2px / 23px 19px;
+    pointer-events: none;
+}
+.settings-theme-preview[data-theme-pref="christmas"] .stp-body::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 24px;
+    background: var(--xmas-preview-land) repeat-x bottom left / 60px 24px;
+}
+.settings-theme-preview[data-theme-pref="christmas"] {
+    --xmas-preview-flake: #ffffff;
+    --xmas-preview-land: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 24'%3E%3Cpath d='M10 4 L4 15 L16 15 Z M10 9 L3 19 L17 19 Z' fill='%230b1324'/%3E%3Cpath d='M38 8 L33 17 L43 17 Z M38 12 L32 20 L44 20 Z' fill='%2316223a'/%3E%3Cpath d='M0 24 L0 19 Q15 16 30 19 T60 19 L60 24 Z' fill='%23dfe7f5'/%3E%3Cellipse cx='50' cy='20' rx='6' ry='3' fill='%23ffffff'/%3E%3Ccircle cx='24' cy='17' r='2.2' fill='%23ff9a3c'/%3E%3C/svg%3E");
+}
+/* A shorter card, so the landscape shows under it */
+.settings-theme-preview[data-theme-pref="christmas"] .stp-card { position: relative; z-index: 1; flex: 0 0 34%; }
+
+/* "New attribute" form (case page): labels were grey and hard to read on the night sky */
+html[data-theme-pref="christmas"] .sa-new-attr .form-label,
+html[data-theme-pref="christmas"] .sa-new-attr .form-check-label { color: #f3f6fb; }

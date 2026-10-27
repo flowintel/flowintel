@@ -3,6 +3,7 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_link %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
@@ -13,58 +14,25 @@
 
 {% block content %}
 
-<div class="case-core-style" style="margin-bottom: 10px; border-radius: 0;">
-    <div class="row align-items-center">
-        <div class="col-auto d-flex align-items-center">
-            <h5 class="mb-0"><i class="fa-solid fa-clipboard-check me-2"></i>My tasks assignments</h5>
-        </div>
-        <div class="col-auto">
-            <my_assignment_filter ref="filter_ref" :tasks_list="tasks_list"
-                @tasks_list="(tasks) => emit_result(tasks)"
-                @current_filter="filter => current_filter = filter"
-                @active_mode="mode => active_mode = mode">
-            </my_assignment_filter>
-        </div>
-        <div class="col-auto" v-if="active_mode && active_mode.mode !== 'ongoing'">
-            <span class="badge bg-warning text-dark p-2">
-                <i class="fa-solid fa-filter me-1"></i>
-                Filter: <strong>[[ active_mode.label ]]</strong>
-                <button type="button" class="btn-close btn-close-sm ms-2" aria-label="Clear filter"
-                        @click="filter_ref?.filter_tasks('ongoing')"></button>
-            </span>
-        </div>
-    </div>
-</div>
+{% call(section) page_header('My task assignments', 'fa-solid fa-clipboard-check', 'Tasks assigned to you, across all your cases.') %}
+    {% if section == 'stats' %}
+        <template v-if="task_stats && task_stats.total > 0">
+            {{ header_stat('fa-solid fa-list-check', '[[ task_stats.total ]]', "total [[ task_stats.total === 1 ? 'task' : 'tasks' ]]", href='#', title='Go to the tasks', attrs='@click.prevent="scrollToTasks"') }}
+            {{ header_stat('fa-solid fa-clock-rotate-left', '[[ task_stats.overdue ]]', 'overdue', href='#', title='Show only overdue tasks', alert='true', attrs='v-if="task_stats.overdue > 0" @click.prevent="activateOverdueFilter"') }}
+            {{ header_stat('fa-solid fa-check', label='Nothing overdue', attrs='v-else') }}
+            {{ header_stat('fa-solid fa-calendar-week', '[[ task_stats.due_this_week ]]', 'due this week', href='#', title='Go to the tasks', attrs='v-if="task_stats.due_this_week > 0" @click.prevent="scrollToTasks"') }}
+            {{ header_stat('fa-solid fa-calendar-check', label='Nothing due this week', attrs='v-else') }}
+        </template>
+    {% elif section == 'toolbar' %}
+        <my_assignment_filter ref="filter_ref" :tasks_list="tasks_list"
+            @tasks_list="(tasks) => emit_result(tasks)"
+            @current_filter="filter => current_filter = filter"
+            @active_mode="mode => active_mode = mode">
+        </my_assignment_filter>
+        {{ header_link("Filter: [[ active_mode.label ]]", icon='fa-solid fa-xmark', title='Clear the filter', attrs='v-if="active_mode && active_mode.mode !== \'ongoing\'" @click="filter_ref?.filter_tasks(\'ongoing\')"') }}
+    {% endif %}
+{% endcall %}
 
-<!-- Task Statistics Dashboard -->
-<div v-if="task_stats && task_stats.total > 0" class="case-core-style mb-4" style="background: linear-gradient(135deg, #1f3763 0%, #456297 100%); border-radius: 8px; color: white;">
-    <div class="p-3">
-        <div class="d-flex flex-wrap gap-3">
-            <a @click.prevent="scrollToTasks" href="#" class="badge bg-light text-dark px-3 py-2 text-decoration-none" style="cursor: pointer;">
-                <i class="fa-solid fa-list-check me-1"></i>
-                <strong>[[ task_stats.total ]]</strong> total [[ task_stats.total === 1 ? 'task' : 'tasks' ]]
-            </a>
-            <a v-if="task_stats.overdue > 0" @click.prevent="activateOverdueFilter" href="#" class="badge bg-danger text-white px-3 py-2 text-decoration-none" style="cursor: pointer;" title="Show only overdue tasks">
-                <i class="fa-solid fa-clock-rotate-left me-1"></i>
-                <strong>[[ task_stats.overdue ]]</strong> overdue
-            </a>
-            <span v-else class="badge bg-success text-white px-3 py-2">
-                <i class="fa-solid fa-check me-1"></i>
-                Nothing overdue
-            </span>
-            <a v-if="task_stats.due_this_week > 0" @click.prevent="scrollToTasks" href="#" class="badge bg-warning text-dark px-3 py-2 text-decoration-none" style="cursor: pointer;">
-                <i class="fa-solid fa-calendar-week me-1"></i>
-                <strong>[[ task_stats.due_this_week ]]</strong> due this week
-            </a>
-            <span v-else class="badge bg-light text-dark px-3 py-2">
-                <i class="fa-solid fa-calendar-check me-1"></i>
-                Nothing due this week
-            </span>
-        </div>
-    </div>
-</div>
-
-<hr class="fading-line-2 mb-4 mt-4">
 
 <!-- pagination -->
 <nav aria-label="Page navigation" class="nav-pagination" v-if="tasks_list && tasks_list.nb_pages > 1">

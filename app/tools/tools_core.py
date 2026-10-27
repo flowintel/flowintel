@@ -46,7 +46,8 @@ def _import_event_standalone_attributes(case, event, instance_id, selected_attri
     selected_attribute_uuids = set(selected_attribute_uuids or [])
 
     for event_attr in getattr(event, 'attributes', []):
-        if event_attr.object_id and int(event_attr.object_id) != 0:
+        event_attr_object_id = getattr(event_attr, "object_id", None)
+        if event_attr_object_id and int(event_attr_object_id) != 0:
             continue
         if selected_attribute_uuids and event_attr.uuid not in selected_attribute_uuids:
             continue
@@ -71,6 +72,7 @@ def _import_event_standalone_attributes(case, event, instance_id, selected_attri
 
     if standalone_attr_uuid_list:
         CaseModel.result_standalone_attr_module(standalone_attr_uuid_list, instance_id=instance_id, case_id=case.id)
+    return standalone_attr_uuid_list
 
 
 def _upsert_case_misp_connector(case, instance, identifier):
@@ -280,6 +282,9 @@ def case_creation_from_importer(case, current_user):
 
     # Create MISP objects and link to tasks when task links are present in the import payload
     created_objects_by_key = {}
+    created_objects_by_uuid = {}
+    created_attributes_by_uuid = {}
+    created_attributes_by_key = {}
     for misp_object in case.get("misp-objects", []):
         misp_object["object-template"] = {"name": misp_object["name"], "uuid": misp_object["template_uuid"]}
         # collect task ids that reference this object in the imported tasks
@@ -298,6 +303,20 @@ def case_creation_from_importer(case, current_user):
             created_objects_by_key[(created_obj.template_uuid, created_obj.name)] = created_obj.id
         except Exception:
             pass
+        if misp_object.get("uuid"):
+            created_objects_by_uuid[misp_object.get("uuid")] = created_obj.id
+        try:
+            created_attrs = list(created_obj.attributes)
+            for source_attr, created_attr in zip(misp_object.get("attributes", []), created_attrs):
+                if source_attr.get("uuid"):
+                    created_attributes_by_uuid[source_attr.get("uuid")] = created_attr.id
+                created_attributes_by_key[(
+                    source_attr.get("type"),
+                    source_attr.get("object_relation"),
+                    source_attr.get("value")
+                )] = created_attr.id
+        except Exception:
+            pass
 
     for attr in case.get("standalone_attributes", []):
         # collect task ids that reference this standalone attribute in the imported tasks
@@ -310,7 +329,52 @@ def case_creation_from_importer(case, current_user):
                         task_ids.add(tid)
         if task_ids:
             attr["task_ids"] = list(task_ids)
-        CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+        created_attr = CaseModel.create_standalone_attribute(case_created.id, attr, current_user)
+        if attr.get("uuid"):
+            created_attributes_by_uuid[attr.get("uuid")] = created_attr.id
+        created_attributes_by_key[(attr.get("type"), attr.get("object_relation"), attr.get("value"))] = created_attr.id
+
+    def resolve_imported_reference(reference):
+        if reference.get("referenced_type") == "attribute" or reference.get("referenced_attribute_uuid"):
+            attr_id = created_attributes_by_uuid.get(reference.get("referenced_attribute_uuid"))
+            if not attr_id:
+                attr_id = created_attributes_by_key.get((
+                    reference.get("referenced_attribute_type"),
+                    reference.get("referenced_attribute_object_relation"),
+                    reference.get("referenced_attribute_value")
+                ))
+            return "attribute", attr_id
+
+        object_id = created_objects_by_uuid.get(reference.get("referenced_object_uuid"))
+        if not object_id:
+            object_id = created_objects_by_key.get((
+                reference.get("referenced_object_template_uuid"),
+                reference.get("referenced_object_name")
+            ))
+        return "object", object_id
+
+    for misp_object in case.get("misp-objects", []):
+        source_id = created_objects_by_uuid.get(misp_object.get("uuid"))
+        if not source_id:
+            source_id = created_objects_by_key.get((misp_object.get("template_uuid"), misp_object.get("name")))
+        if not source_id:
+            continue
+
+        for reference in misp_object.get("references", []):
+            referenced_type, referenced_id = resolve_imported_reference(reference)
+            if not referenced_id:
+                continue
+            CaseModel.create_misp_object_reference(
+                case_created.id,
+                source_id,
+                referenced_id,
+                reference.get("relationship_type"),
+                current_user,
+                comment=reference.get("comment", ""),
+                validate_relationship=False,
+                record_history=False,
+                referenced_type=referenced_type,
+            )
 
     try:
         db.session.commit()
@@ -484,12 +548,64 @@ def days_cutoff(days):
     return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
 
 
-def filter_cases_by_date(cases, cutoff):
-    if cutoff is None:
-        return cases
-    return [c for c in cases if c.creation_date and c.creation_date >= cutoff]
+def stats_date_bounds(days=None, date_from=None, date_to=None):
+    """Return inclusive/exclusive datetime bounds for statistics filters."""
+    start = None
+    end = None
 
-def stats_core(cases):
+    if date_from:
+        try:
+            start = datetime.datetime.strptime(date_from, "%Y-%m-%d")
+        except (TypeError, ValueError):
+            pass
+    elif days:
+        start = days_cutoff(days)
+
+    if date_to:
+        try:
+            # Use an exclusive upper bound so the selected end date is included.
+            end = datetime.datetime.strptime(date_to, "%Y-%m-%d") + datetime.timedelta(days=1)
+        except (TypeError, ValueError):
+            pass
+
+    return start, end
+
+
+def normalize_stats_status(value):
+    return value if value in {"open", "closed"} else "all"
+
+
+def filter_cases_for_stats(cases, start=None, end=None, status="all"):
+    status = normalize_stats_status(status)
+    filtered = []
+    for case in cases:
+        if start is not None and (not case.creation_date or case.creation_date < start):
+            continue
+        if end is not None and (not case.creation_date or case.creation_date >= end):
+            continue
+        if status == "open" and case.completed:
+            continue
+        if status == "closed" and not case.completed:
+            continue
+        filtered.append(case)
+    return filtered
+
+
+def filter_cases_by_date(cases, cutoff):
+    """Backward-compatible date-only statistics filter."""
+    return filter_cases_for_stats(cases, start=cutoff)
+
+
+def filter_tasks_for_stats(tasks, status="all"):
+    status = normalize_stats_status(status)
+    if status == "open":
+        return [task for task in tasks if not task.completed]
+    if status == "closed":
+        return [task for task in tasks if task.completed]
+    return list(tasks)
+
+
+def stats_core(cases, task_status="all"):
     cases_opened_month = {month: 0 for month in calendar.month_name if month}
     cases_opened_year = {}
     cases_closed_month = {month: 0 for month in calendar.month_name if month}
@@ -545,7 +661,7 @@ def stats_core(cases):
             if case.deadline and case.deadline < now:
                 overdue_cases += 1
 
-        case_tasks = list(case.tasks)
+        case_tasks = filter_tasks_for_stats(case.tasks, task_status)
         case_open_tasks = 0
         case_closed_tasks = 0
 
@@ -583,7 +699,11 @@ def stats_core(cases):
                     elif task.deadline <= upcoming_cutoff:
                         due_soon_tasks += 1
 
-        task_count = case.nb_tasks if case.nb_tasks is not None else len(case_tasks)
+        task_count = (
+            case.nb_tasks
+            if normalize_stats_status(task_status) == "all" and case.nb_tasks is not None
+            else len(case_tasks)
+        )
         if task_count not in tasks_per_case:
             tasks_per_case[task_count] = 0
         tasks_per_case[task_count] += 1
@@ -639,9 +759,10 @@ def stats_core(cases):
             "due_soon_tasks": due_soon_tasks,
             "top_cases_by_tasks": top_cases_by_tasks[:5]}
 
-def get_case_by_tags(current_user, cutoff=None):
+def get_case_by_tags(current_user, cutoff=None, end=None, case_status="all", task_status="all"):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     dict_case_tag = {}
     dict_case_cluster_tag = {}
     dict_case_custom_tag = {}
@@ -668,7 +789,7 @@ def get_case_by_tags(current_user, cutoff=None):
                 dict_case_cluster_tag[cl.tag] = 0
             dict_case_cluster_tag[cl.tag] += 1
 
-        for task in case.tasks:
+        for task in filter_tasks_for_stats(case.tasks, task_status):
             custom = Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all()
             for c in custom:
                 if not c.name in dict_task_custom_tag:
@@ -696,9 +817,10 @@ def get_case_by_tags(current_user, cutoff=None):
             "task_clusters": chart_dict_constructor(dict_task_cluster_tag)}
 
 
-def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
+def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None, end=None, case_status="all", task_status="all"):
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
 
     case_tag_map = {}
     case_cluster_map = {}
@@ -723,7 +845,7 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
             e["count"] += 1
             e["cases"].append(case_info)
 
-        for task in case.tasks:
+        for task in filter_tasks_for_stats(case.tasks, task_status):
             task_info = {"id": task.id, "title": task.title, "case_id": task.case_id}
 
             for c in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id==Custom_Tags.id).filter_by(task_id=task.id).all():
@@ -753,11 +875,11 @@ def get_tag_galaxy_top_stats(current_user, limit=10, cutoff=None):
     }
 
 
-def get_misp_stats(current_user, cutoff=None, limit=10):
+def get_misp_stats(current_user, cutoff=None, end=None, case_status="all", limit=10):
     """Aggregate visible MISP objects and standalone attributes for the stats UI."""
     cases = Case.query.join(Case_Org, Case_Org.case_id == Case.id).where(Case_Org.org_id == current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
-    cases = filter_cases_by_date(cases, cutoff)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [case.id for case in cases]
 
     if not case_ids:
@@ -1190,13 +1312,23 @@ def create_case_misp_event(request_form, current_user):
     if object_uuid_list:
         CaseModel.result_misp_object_module(object_uuid_list, instance_id=instance.id, case_id=case.id)
 
+    standalone_attr_uuid_list = []
     if request_form.get("import_standalone_attributes"):
-        _import_event_standalone_attributes(
+        standalone_attr_uuid_list = _import_event_standalone_attributes(
             case,
             event,
             instance.id,
             selected_attribute_uuids=selected_attribute_uuids,
         )
+
+    CaseModel.import_misp_object_references_from_event(
+        case.id,
+        instance.id,
+        event.objects,
+        current_user=current_user,
+        object_uuid_list=object_uuid_list,
+        standalone_attr_uuid_list=standalone_attr_uuid_list,
+    )
 
     event_label = f'event {event.id} "{event.info}"'
 
@@ -1488,14 +1620,15 @@ def get_community_stats():
 # Operational task widgets #
 ############################
 
-def get_overdue_tasks(current_user, limit=20):
+def get_overdue_tasks(current_user, limit=20, cutoff=None, end=None, case_status="all", task_status="all"):
     """Open tasks past their deadline for cases the user can see."""
     now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
         .where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [c.id for c in cases]
-    if not case_ids:
+    if not case_ids or normalize_stats_status(task_status) == "closed":
         return {"count": 0, "tasks": []}
 
     q = Task.query.filter(Task.case_id.in_(case_ids))\
@@ -1516,13 +1649,14 @@ def get_overdue_tasks(current_user, limit=20):
     }
 
 
-def get_unassigned_tasks(current_user, limit=20):
+def get_unassigned_tasks(current_user, limit=20, cutoff=None, end=None, case_status="all", task_status="all"):
     """Open tasks with no assignee for cases the user can see."""
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id)\
         .where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
+    cases = filter_cases_for_stats(cases, cutoff, end, case_status)
     case_ids = [c.id for c in cases]
-    if not case_ids:
+    if not case_ids or normalize_stats_status(task_status) == "closed":
         return {"count": 0, "tasks": []}
 
     assigned_ids = db.session.query(Task_User.task_id).distinct().subquery()
@@ -1547,20 +1681,36 @@ def get_unassigned_tasks(current_user, limit=20):
 # Admin extra #
 ###############
 
-def get_admin_extra_stats(days=90):
+def get_admin_extra_stats(days=90, cutoff=None, end=None, custom_range=False):
     """Notification backlog + login activity per day for the last `days` days."""
     notif_backlog = Notification.query.filter_by(is_read=False).count()
     total_notifications = Notification.query.count()
 
-    cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
-    rows = db.session.query(
+    if not custom_range:
+        cutoff = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=days)
+
+    query = db.session.query(
         db.func.date(Login_Event.login_date).label('day'),
         db.func.count(Login_Event.id).label('count'),
-    ).filter(Login_Event.login_date >= cutoff)\
-     .group_by('day')\
-     .order_by('day')\
-     .all()
+    )
+    if cutoff is not None:
+        query = query.filter(Login_Event.login_date >= cutoff)
+    if end is not None:
+        query = query.filter(Login_Event.login_date < end)
+    rows = query.group_by('day').order_by('day').all()
     activity = [{"calendar": str(r.day), "count": r.count} for r in rows]
+
+    if custom_range:
+        if cutoff and end:
+            period_label = f"from {cutoff:%Y-%m-%d} through {(end - datetime.timedelta(days=1)):%Y-%m-%d}"
+        elif cutoff:
+            period_label = f"since {cutoff:%Y-%m-%d}"
+        elif end:
+            period_label = f"through {(end - datetime.timedelta(days=1)):%Y-%m-%d}"
+        else:
+            period_label = "across all time"
+    else:
+        period_label = f"during the last {days} days"
 
     return {
         "notification_backlog": notif_backlog,
@@ -1568,6 +1718,7 @@ def get_admin_extra_stats(days=90):
         "login_activity": activity,
         "recent_login_count": sum(row["count"] for row in activity),
         "login_activity_days": days,
+        "login_activity_period": period_label,
     }
 
 

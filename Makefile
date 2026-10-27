@@ -39,6 +39,8 @@ BOLD_GREEN := \033[1;32m
 UV_VERSION :=
 UV ?= uv
 export UV_PROJECT_ENVIRONMENT := $(CURDIR)/.venv
+VERSION_FILE ?= version
+VERSION := $(strip $(shell cat $(VERSION_FILE) 2>/dev/null))
 
 ########################################################################################
 # PREAMBLE - OS AND DEPENDENCY CHECKS
@@ -104,6 +106,9 @@ tag_message := ""
 
 rebuild := 1
 
+# Legacy
+# base_image := ubuntu:noble
+
 ########################################################################################
 # RULES
 ########################################################################################
@@ -166,6 +171,7 @@ configure_repo_dev:
 	cp -n template.env.full.postgres .env.full.postgres.custom
 	cp -n template.env.mariadb .env.mariadb.custom
 	cp -n template.env.postgres .env.postgres.custom
+	cp -n .env.build.maintained .env.build
 	echo
 	echo "The repository was configured for local dev running."
 	echo
@@ -173,7 +179,7 @@ configure_repo_dev:
 	# TODO add the install deps with uv recipes -> Development lifecycle
 	echo -e "${BLUE}${BOLD}Do not forget to run the database_init recipe at first install, aftert the docker-compose spawned.${RESET}"
 
-first_install: configure_repo_dev
+first_install: configure_repo_dev reinit_submodules
 	echo
 	echo "💣 DO NOT RUN IN PRODUCTION !!! Press Enter to continue or Ctrl+C to exit"
 	read -r wait_for_me
@@ -326,8 +332,6 @@ full_run_postgres: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-postgres.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_maria: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -337,8 +341,6 @@ full_run_maria: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-maria.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_mysql: configure_repo_dev build_latest_local
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -348,8 +350,6 @@ full_run_mysql: configure_repo_dev build_latest_local
 	docker compose -f docker/docker-compose-local-full-mysql.yml up
 	echo "Press Enter to close..."
 	read _
-	sleep 1
-	rm docker/.env
 
 full_run_official_postgres: configure_repo_dev
 	# We stop dev infra on error on a the end - must be in single bash shell
@@ -366,12 +366,38 @@ full_run_official_postgres: configure_repo_dev
 
 # Test 🧪, Build 🌍 , Publish  🌬️ and Release 🔥
 test: first_install
-	VENV_DIR=".venv" ./launch.sh -t
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -t
+
+test_skipped: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -ts
+
+test_new: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tn
+
+test_new_non_random: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tnnr
+
+test_parallel: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tp
+
+test_new_parallel: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tnp
 
 build_latest_local: nuke
 ifeq ($(rebuild),1)
 	echo "Image Rebuild rebuild requested"
-	docker build -f Dockerfile -t flowintel:latest .
+	set -a; \
+	source .env.build; \
+	set +a; \
+	GIT_SHORT=$$(git rev-parse --short HEAD) VERSION=$(VERSION) docker buildx bake -f docker-bake.hcl flowintel --load flowintel; \
+	docker image inspect flowintel:latest >/dev/null; \
+# Legacy
+#	docker build \
+#		--build-arg BASE_IMAGE="${base_image}" \
+#		-f Dockerfile \
+#		-t flowintel:latest \
+#		.	
+	# docker run --rm dhi.io/syft:latest ubuntu:latest
 	echo "Image built"
 else
 	echo "Image Rebuild skipped"
@@ -379,25 +405,37 @@ endif
 
 # Various Helpers
 dev_localinfra_postgres_run:
+	cp -f .env.postgres.custom docker/.env
 	docker compose -f docker/docker-compose-local-infra-postgres.yml up
 
 dev_localinfra_maria_run:
+	cp -f .env.maria.custom docker/.env
 	docker compose -f docker/docker-compose-local-infra-maria.yml up
 
 dev_localinfra_postgres_stop:
 	docker compose -f docker/docker-compose-local-infra-postgres.yml down
+	sleep 1
+	rm docker/.env
 
 dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-infra-maria.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_postgres_stop:
 	docker compose -f docker/docker-compose-local-full-postgres.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_maria_stop:
 	docker compose -f docker/docker-compose-local-full-maria.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_mysql_stop:
 	docker compose -f docker/docker-compose-local-full-mysql.yml down
+	sleep 1
+	rm docker/.env
 
 full_dev_localinfra_official_postgres_stop:
 	docker compose -f docker/docker-compose.yml down

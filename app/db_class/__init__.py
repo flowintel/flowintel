@@ -8,7 +8,7 @@ __all__ = [
     # Cases
     "Case", "Case_Link_Case", "Case_Misp_Object", "Case_Org", "Case_Task_Template", "Case_Template",
     "Case_Custom_Tags", "Case_Tags", "Case_Template_Custom_Tags", "Case_Template_Tags",
-    "Case_Note_Template_Model", "Case_Timeline_Event", "Case_Timeline_Event_Link",
+    "Case_Note_Template_Model", "Case_Timeline_Event", "Case_Timeline_Event_Link", "Case_Misp_Object_Reference",
     # Tasks
     "Subtask_Template",
     "Task",

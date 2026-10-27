@@ -229,6 +229,42 @@ def get_object(obj_name):
     return False
 
 
+@lru_cache
+def get_object_relationships():
+    """Return the MISP object relationship vocabulary bundled in misp-objects."""
+    relationships_file = os.path.join(
+        os.getcwd(),
+        "modules",
+        "misp-objects",
+        "relationships",
+        "definition.json"
+    )
+    if not os.path.isfile(relationships_file):
+        return []
+
+    with open(relationships_file, "r") as raw_relationship_file:
+        raw_relationships = json.load(raw_relationship_file)
+
+    relationships = []
+    for relationship in raw_relationships.get("values", []):
+        name = relationship.get("name")
+        if not name:
+            continue
+        relationships.append({
+            "name": name,
+            "description": relationship.get("description", ""),
+            "format": relationship.get("format", []),
+            "opposite": relationship.get("opposite", ""),
+        })
+
+    return sorted(relationships, key=lambda item: item["name"])
+
+
+@lru_cache
+def get_object_relationship_names():
+    return frozenset(relationship["name"] for relationship in get_object_relationships())
+
+
 
 
 def validate_importer_json(json_data, jsonschema_flowintel):

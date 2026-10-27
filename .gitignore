@@ -6,8 +6,8 @@
 instance/*
 
 # Ignore history directory contents
-history/*
-history_test/*
+*history/*
+*history_test/*
 
 # Ignore uploads directory contents
 uploads/*
@@ -43,6 +43,7 @@ __pycache__/
 .env
 .env.docker
 .env.local
+.env.build
 tmp/
 /logs
 
@@ -77,3 +78,5 @@ dump.rdb
 
 *.custom
 CLAUDE.md
+
+.coverage*

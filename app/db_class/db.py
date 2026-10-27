@@ -12,6 +12,7 @@ from flask_login import  UserMixin, AnonymousUserMixin
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from app.extensions import db, login_manager
+from app.utils.themes import THEMES
 
 DATETIME_FORMAT_FULL = '%Y-%m-%d %H:%M'
 CASCADE_DELETE_ORPHAN = "all, delete-orphan"
@@ -153,6 +154,33 @@ class AnonymousUser(AnonymousUserMixin):
 
     def is_importer(self):
         return False
+
+
+class Calendar_Event(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), nullable=False, index=True)
+    org_id = db.Column(db.Integer, db.ForeignKey('org.id', ondelete="CASCADE"), index=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, default='')
+    start = db.Column(db.DateTime, nullable=False, index=True)
+    end = db.Column(db.DateTime)
+    all_day = db.Column(db.Boolean, nullable=False, default=True)
+
+    def to_json(self):
+        def format_date(value):
+            if value is None:
+                return None
+            return value.date().isoformat() if self.all_day else value.isoformat() + 'Z'
+
+        return {
+            "id": self.id,
+            "title": self.title,
+            "description": self.description,
+            "start": format_date(self.start),
+            "end": format_date(self.end),
+            "all_day": self.all_day,
+            "visibility": "organisation" if self.org_id is not None else "private",
+        }
 
 
 class Case(db.Model):
@@ -618,6 +646,30 @@ class Login_Event(db.Model):
     login_date = db.Column(db.DateTime, index=True)
 
 
+class UserSettings(db.Model):
+    """Per-user preferences (one row per user, created on first change).
+
+    Each preference is a column with a default; CHOICES lists the accepted values
+    (used to validate updates, see account/settings_core.py).
+    """
+    CHOICES = {
+        "theme": tuple(THEMES),
+        "font": ("rubik", "system", "readable"),
+    }
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete="CASCADE"), unique=True, index=True, nullable=False)
+    theme = db.Column(db.String(16), nullable=False, default="auto", server_default="auto")
+    font = db.Column(db.String(16), nullable=False, default="rubik", server_default="rubik")
+
+    def to_json(self):
+        return {
+            "user_id": self.user_id,
+            "theme": self.theme,
+            "font": self.font,
+        }
+
+
 class Case_Org(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_id = db.Column(db.Integer)
@@ -694,6 +746,9 @@ class Alert(db.Model):
 
 class ExternalAlert(db.Model):
     __tablename__ = "external_alert"
+    __table_args__ = (
+        db.UniqueConstraint('connector_instance_id', 'deduplication_key', name='uq_external_alert_connector_dedup_key'),
+    )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
@@ -1629,7 +1684,15 @@ class Case_Misp_Object(db.Model):
             "template_uuid": self.template_uuid,
             "name": self.name,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL),
-            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL)
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL),
+            "references": [
+                ref.to_json()
+                for ref in Case_Misp_Object_Reference.query.filter_by(source_object_id=self.id, source_attribute_id=None).all()
+            ],
+            "referenced_by": [
+                ref.to_json()
+                for ref in Case_Misp_Object_Reference.query.filter_by(referenced_object_id=self.id, referenced_attribute_id=None).all()
+            ],
         }
         return json_dict
     
@@ -1640,7 +1703,123 @@ class Case_Misp_Object(db.Model):
             "name": self.name
         }
         json_dict["attributes"] = [attr.download() for attr in self.attributes]
+        json_dict["references"] = [
+            ref.download()
+            for ref in Case_Misp_Object_Reference.query.filter_by(source_object_id=self.id, source_attribute_id=None).all()
+        ]
         return json_dict
+
+
+class Case_Misp_Object_Reference(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    case_id = db.Column(db.Integer, db.ForeignKey(FK_CASE_ID, ondelete="CASCADE"), index=True)
+    source_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"), index=True)
+    source_attribute_id = db.Column(db.Integer, db.ForeignKey('misp__attribute.id', ondelete="CASCADE"), index=True)
+    referenced_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"), index=True)
+    referenced_attribute_id = db.Column(db.Integer, db.ForeignKey('misp__attribute.id', ondelete="CASCADE"), index=True)
+    relationship_type = db.Column(db.String(128), index=True)
+    comment = db.Column(db.Text, nullable=True)
+    creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+    last_modif = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'source_object_id',
+            'source_attribute_id',
+            'referenced_object_id',
+            'referenced_attribute_id',
+            'relationship_type',
+            name='uq_case_misp_object_reference'
+        ),
+    )
+
+    @staticmethod
+    def _attribute_label(attribute):
+        if not attribute:
+            return None
+        parts = []
+        if attribute.object_relation:
+            parts.append(attribute.object_relation)
+        if attribute.type and attribute.type != attribute.object_relation:
+            parts.append(attribute.type)
+        parts.append(attribute.value)
+        return " / ".join(str(part) for part in parts if part)
+
+    @staticmethod
+    def _attribute_case_id(attribute):
+        if not attribute:
+            return None
+        if attribute.case_id:
+            return attribute.case_id
+        if attribute.case_misp_object_id:
+            source_object = Case_Misp_Object.query.get(attribute.case_misp_object_id)
+            return source_object.case_id if source_object else None
+        return None
+
+    def to_json(self):
+        source = Case_Misp_Object.query.get(self.source_object_id) if self.source_object_id else None
+        source_attr = Misp_Attribute.query.get(self.source_attribute_id) if self.source_attribute_id else None
+        referenced = Case_Misp_Object.query.get(self.referenced_object_id) if self.referenced_object_id else None
+        referenced_attr = Misp_Attribute.query.get(self.referenced_attribute_id) if self.referenced_attribute_id else None
+        source_type = "attribute" if self.source_attribute_id else "object"
+        referenced_type = "attribute" if self.referenced_attribute_id else "object"
+        return {
+            "id": self.id,
+            "case_id": self.case_id,
+            "source_type": source_type,
+            "source_object_id": self.source_object_id,
+            "source_object_uuid": source.uuid if source else None,
+            "source_object_name": source.name if source else None,
+            "source_object_template_uuid": source.template_uuid if source else None,
+            "source_attribute_id": self.source_attribute_id,
+            "source_attribute_uuid": source_attr.uuid if source_attr else None,
+            "source_attribute_value": source_attr.value if source_attr else None,
+            "source_attribute_type": source_attr.type if source_attr else None,
+            "source_attribute_object_relation": source_attr.object_relation if source_attr else None,
+            "source_attribute_label": self._attribute_label(source_attr),
+            "referenced_type": referenced_type,
+            "referenced_object_id": self.referenced_object_id,
+            "referenced_object_uuid": referenced.uuid if referenced else None,
+            "referenced_object_name": referenced.name if referenced else None,
+            "referenced_object_template_uuid": referenced.template_uuid if referenced else None,
+            "referenced_attribute_id": self.referenced_attribute_id,
+            "referenced_attribute_uuid": referenced_attr.uuid if referenced_attr else None,
+            "referenced_attribute_value": referenced_attr.value if referenced_attr else None,
+            "referenced_attribute_type": referenced_attr.type if referenced_attr else None,
+            "referenced_attribute_object_relation": referenced_attr.object_relation if referenced_attr else None,
+            "referenced_attribute_label": self._attribute_label(referenced_attr),
+            "relationship_type": self.relationship_type,
+            "comment": self.comment or "",
+            "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL) if self.creation_date else None,
+            "last_modif": self.last_modif.strftime(DATETIME_FORMAT_FULL) if self.last_modif else None,
+        }
+
+    def download(self):
+        source = Case_Misp_Object.query.get(self.source_object_id) if self.source_object_id else None
+        source_attr = Misp_Attribute.query.get(self.source_attribute_id) if self.source_attribute_id else None
+        referenced = Case_Misp_Object.query.get(self.referenced_object_id) if self.referenced_object_id else None
+        referenced_attr = Misp_Attribute.query.get(self.referenced_attribute_id) if self.referenced_attribute_id else None
+        return {
+            "source_type": "attribute" if self.source_attribute_id else "object",
+            "source_object_uuid": source.uuid if source else None,
+            "source_object_name": source.name if source else None,
+            "source_object_template_uuid": source.template_uuid if source else None,
+            "source_attribute_uuid": source_attr.uuid if source_attr else None,
+            "source_attribute_value": source_attr.value if source_attr else None,
+            "source_attribute_type": source_attr.type if source_attr else None,
+            "source_attribute_object_relation": source_attr.object_relation if source_attr else None,
+            "referenced_type": "attribute" if self.referenced_attribute_id else "object",
+            "referenced_object_uuid": referenced.uuid if referenced else None,
+            "referenced_object_name": referenced.name if referenced else None,
+            "referenced_object_template_uuid": referenced.template_uuid if referenced else None,
+            "referenced_attribute_uuid": referenced_attr.uuid if referenced_attr else None,
+            "referenced_attribute_value": referenced_attr.value if referenced_attr else None,
+            "referenced_attribute_type": referenced_attr.type if referenced_attr else None,
+            "referenced_attribute_object_relation": referenced_attr.object_relation if referenced_attr else None,
+            "relationship_type": self.relationship_type,
+            "comment": self.comment or "",
+        }
+
 
 class Misp_Attribute(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -1864,17 +2043,23 @@ class Case_Timeline_Event(db.Model):
     date_text = db.Column(db.String(64), nullable=False)
     date_parsed = db.Column(db.DateTime, nullable=True)
     description = db.Column(db.Text, nullable=False)
+    additional_note = db.Column(db.Text, nullable=True)
     misp_object_id = db.Column(db.Integer, nullable=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete="CASCADE"), nullable=True, index=True)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     def to_json(self):
+        file = File.query.get(self.file_id) if self.file_id else None
         json_dict = {
             "id": self.id,
             "case_id": self.case_id,
             "date_text": self.date_text,
             "date_parsed": self.date_parsed.strftime(DATETIME_FORMAT_FULL) if self.date_parsed else None,
             "description": self.description,
+            "additional_note": self.additional_note,
             "misp_object_id": self.misp_object_id,
+            "file_id": self.file_id,
+            "file": file.to_json() if file else None,
             "creation_date": self.creation_date.strftime(DATETIME_FORMAT_FULL)
         }
         return json_dict

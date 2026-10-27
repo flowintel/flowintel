@@ -89,6 +89,25 @@ In `/bin` there's a script for installation and for launching
 ./launch.sh -dtdcc           # Delete test cases
 ```
 
+### Create a user directly in the database
+
+Run from the repository root using the application's Python environment:
+
+```bash
+env/bin/python bin/create_user.py --email admin@example.com \
+    --first-name Site --last-name Admin --role Admin
+```
+
+The script prompts for a password and confirmation, and needs no existing user
+or API key. It uses `conf/config.py` and the application's environment variables;
+use `--env production` for a production deployment. The database schema must
+already be initialised and migrations applied.
+
+The default role is `Editor`. Use `--role` to select a role by name; the built-in
+`Admin`, `Editor`, and `Read Only` roles are created if missing. Use `--org-id ID`
+to join an existing organisation, or omit it to create a personal organisation.
+Existing users are never overwritten. Run `--help` for all options.
+
 ## Using vite
 
 To build assets using vite:

@@ -1,4 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
+import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, nextTick } = Vue
@@ -16,6 +17,7 @@ export default {
         const show_add_link = ref(false)
         const new_date_text = ref('')
         const new_description = ref('')
+        const new_additional_note = ref('')
         const link_source = ref('')
         const link_target = ref('')
         const link_label = ref('')
@@ -61,10 +63,12 @@ export default {
                     color = '#17a2b8'
                 } else if (ev.misp_object_id && Number(ev.misp_object_id) < 0) {
                     color = '#fd7e14'
+                } else if (ev.file_id) {
+                    color = '#198754'
                 }
                 return {
                     id: String(ev.id),
-                    data: { label: label, event_id: String(ev.id) },
+                    data: { label: label, event_id: String(ev.id), file_id: ev.file_id ? String(ev.file_id) : null },
                     style: { color: color }
                 }
             })
@@ -73,7 +77,12 @@ export default {
                 id: String(lk.id),
                 from: String(lk.source_event_id),
                 to: String(lk.target_event_id),
-                data: { label: lk.label || '', link_id: String(lk.id) }
+                data: {
+                    label: lk.automatic ? `[MISP] ${lk.label || 'relationship'}` : (lk.label || ''),
+                    link_id: String(lk.id),
+                    automatic: !!lk.automatic,
+                    link_type: lk.link_type || 'manual'
+                }
             }))
 
             const data = { nodes: nodes, edges: edges }
@@ -107,7 +116,7 @@ export default {
                 return
             }
             if (!new_description.value.trim()) {
-                create_message('Description is required', 'warning-subtle')
+                create_message('Event is required', 'warning-subtle')
                 return
             }
             const res = await fetch('/case/' + props.case_id + '/create_timeline_event', {
@@ -115,12 +124,14 @@ export default {
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
                 body: JSON.stringify({
                     date_text: new_date_text.value,
-                    description: new_description.value
+                    description: new_description.value,
+                    additional_note: new_additional_note.value
                 })
             })
             if (res.status === 200) {
                 new_date_text.value = ''
                 new_description.value = ''
+                new_additional_note.value = ''
                 show_add_event.value = false
                 touchCaseLastModif(props.cases_info)
                 await fetch_graph_data()
@@ -159,6 +170,10 @@ export default {
 
         async function save_edge_label() {
             if (!selected_edge.value) return
+            if (selected_edge.value.automatic) {
+                create_message('Automatic MISP relationship links are edited from the MISP relationship UI.', 'info-subtle')
+                return
+            }
             const res = await fetch('/case/' + props.case_id + '/edit_timeline_event_link/' + selected_edge.value.id, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
@@ -174,6 +189,10 @@ export default {
 
         async function delete_selected_edge() {
             if (!selected_edge.value) return
+            if (selected_edge.value.automatic) {
+                create_message('Automatic MISP relationship links are removed by deleting the MISP relationship.', 'info-subtle')
+                return
+            }
             const ok = await confirmDelete({
                 title: 'Delete link?',
                 message: 'Are you sure you want to delete this link? This cannot be undone.'
@@ -207,6 +226,14 @@ export default {
             await display_toast(res)
         }
 
+        // Optional picker next to the free-text date field (see
+        // timeline_date_picker.js); the date is applied on "Validate".
+        function open_date_picker(event) {
+            open_timeline_date_picker(event.currentTarget, new_date_text.value, value => {
+                new_date_text.value = value
+            })
+        }
+
         function event_label(ev) {
             return ev.date_text + ' — ' + (ev.description.length > 50 ? ev.description.substring(0, 50) + '…' : ev.description)
         }
@@ -221,7 +248,9 @@ export default {
             show_add_event,
             show_add_link,
             new_date_text,
+            open_date_picker,
             new_description,
+            new_additional_note,
             link_source,
             link_target,
             link_label,
@@ -261,14 +290,24 @@ export default {
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Date / Time</label>
-                        <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, Mar 15 2024...">
-                        <div class="form-text">Any common date format is accepted</div>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control form-control-sm" v-model="new_date_text"
+                                   placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30...">
+                            <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event)" title="Pick a date (optional)" aria-label="Pick a date">
+                                <i class="fa-regular fa-calendar"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
-                        <label class="form-label">Description</label>
-                        <textarea class="form-control form-control-sm" v-model="new_description" rows="2"
-                                  placeholder="What happened at this point in time?"></textarea>
+                        <label class="form-label">Event</label>
+                        <input type="text" class="form-control form-control-sm" v-model="new_description"
+                               placeholder="Short event summary">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Additional Note</label>
+                        <textarea class="form-control form-control-sm" v-model="new_additional_note" rows="3"
+                                  placeholder="Optional details"></textarea>
                     </div>
                 </div>
                 <div class="mt-2">
@@ -318,11 +357,12 @@ export default {
             <div class="card-body py-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="text-muted">Selected link:</span>
+                    <span v-if="selected_edge.automatic" class="badge bg-info text-dark">MISP relationship</span>
                     <input type="text" class="form-control form-control-sm" v-model="edit_link_label" placeholder="Link label" style="max-width: 200px;">
-                    <button class="btn btn-success btn-sm" @click="save_edge_label()" title="Save label">
+                    <button class="btn btn-success btn-sm" @click="save_edge_label()" title="Save label" :disabled="selected_edge.automatic">
                         <i class="fa-solid fa-check"></i>
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" @click="delete_selected_edge()" title="Delete link">
+                    <button class="btn btn-outline-danger btn-sm" @click="delete_selected_edge()" title="Delete link" :disabled="selected_edge.automatic">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" @click="selected_edge = null" title="Deselect">
@@ -338,7 +378,7 @@ export default {
         <div class="mt-2">
             <small class="text-muted">
                 <i class="fa-solid fa-circle-info me-1"></i>
-                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue and standalone attributes are orange.
+                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue, standalone attributes are orange and imported files are green.
             </small>
         </div>
     </div>

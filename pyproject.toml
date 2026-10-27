@@ -1,7 +1,7 @@
 # pyproject.toml - Flowintel
 [project]
 name = "flowintel"
-version = "3.1.0"
+version = "4.0.0"
 description = "Open-source case management platform for security analysts"
 requires-python = ">=3.10,<3.14"
 dependencies = [
@@ -41,6 +41,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
+    "pytest-cov",
+    "pytest-xdist",
+    "pytest-randomly",
 ]
 
 [tool.uv]
@@ -58,4 +61,8 @@ filterwarnings = [
     "error",
     "ignore::UserWarning",
     "ignore::DeprecationWarning"
+]
+markers = [
+    "concurrent_db: concurrent acces to db tests (example: race conditions) requires the legacy per-test database fixture",
+    "legacy_db: requires the legacy per-test database fixture",
 ]

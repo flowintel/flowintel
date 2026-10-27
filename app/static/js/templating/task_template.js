@@ -32,6 +32,8 @@ export default {
 		}
 
 		const expandedTasks = ref({});
+		const task_template_usage = ref({});
+		const task_template_usage_loading = ref({});
 		const edit_mode = ref(-1)
 		const note_editor_render = ref([])
 		const dayjs = window.dayjs
@@ -85,6 +87,36 @@ export default {
 				modal.hide();
 			}
 			display_toast(res)
+		}
+
+		async function load_task_template_usage(template) {
+			if (task_template_usage.value[template.id]) return
+
+			task_template_usage_loading.value[template.id] = true
+			try {
+				const res = await fetch('/templating/task/' + template.id + '/case_templates')
+				if (res.status == 200) {
+					const loc = await res.json()
+					task_template_usage.value[template.id] = loc.case_templates || []
+				} else {
+					task_template_usage.value[template.id] = []
+					display_toast(res)
+				}
+			} finally {
+				task_template_usage_loading.value[template.id] = false
+			}
+		}
+
+		function get_task_template_usage(template) {
+			return task_template_usage.value[template.id] || []
+		}
+
+		function is_task_template_usage_loading(template) {
+			return !!task_template_usage_loading.value[template.id]
+		}
+
+		function is_task_template_used(template) {
+			return get_task_template_usage(template).length > 0
 		}
 
 		async function remove_task(template, template_array) {
@@ -238,6 +270,11 @@ export default {
 			mapIcon,
 			truncateText,
 			expandedTasks,
+			task_template_usage,
+			load_task_template_usage,
+			get_task_template_usage,
+			is_task_template_usage_loading,
+			is_task_template_used,
 
 			edit_mode,
 			cases_info,
@@ -396,7 +433,7 @@ export default {
 			</div>
 			<div>
 				<button type="button" class="btn btn-danger" title="Delete the task template" data-bs-toggle="modal" 
-				:data-bs-target="'#delete_task_template_modal_'+template.id">
+				:data-bs-target="'#delete_task_template_modal_'+template.id" @click="load_task_template_usage(template)">
 					<i class="fa-solid fa-trash fa-fw"></i>
 				</button>
 			</div>
@@ -411,9 +448,32 @@ export default {
 					<h1 class="modal-title fs-5" id="delete_task_template_modal">Delete '[[template.title]]' ?</h1>
 					<button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
+				<div class="modal-body">
+					<div v-if="is_task_template_usage_loading(template)" class="text-center">
+						<div class="spinner-border spinner-border-sm text-primary" role="status">
+							<span class="visually-hidden">Loading...</span>
+						</div>
+					</div>
+					<div v-else-if="is_task_template_used(template)">
+						<div class="alert alert-info mb-3" role="alert">
+							This task template is used in the following case templates.
+						</div>
+						<ul class="list-group list-group-flush">
+							<li v-for="case_template in get_task_template_usage(template)" class="list-group-item px-0">
+								<a :href="'/templating/case/' + case_template.id" target="_blank" class="text-decoration-none">
+									<i class="fa-solid fa-external-link-alt fa-sm me-1"></i>
+									[[case_template.title]]
+								</a>
+							</li>
+						</ul>
+					</div>
+					<div v-else>
+						Are you sure you want to delete this task template?
+					</div>
+				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-					<button class="btn btn-danger btn-sm"  @click="delete_task(template, templates_list)"><i class="fa-solid fa-trash"></i> Confirm</button>
+					<button class="btn btn-danger btn-sm" :disabled="is_task_template_usage_loading(template)" @click="delete_task(template, templates_list)"><i class="fa-solid fa-trash"></i> Confirm</button>
 				</div>
 			</div>
 		</div>

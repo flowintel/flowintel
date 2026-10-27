@@ -1,5 +1,6 @@
 import { display_toast } from '/static/js/toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { touchTaskAndCaseLastModif } from '/static/js/case/helpers.js'
 import smart_editor from '/static/js/components/smart-editor.js'
 import smart_render from '/static/js/components/smart-render.js'
 const { ref, onMounted } = Vue
@@ -245,7 +246,7 @@ export default {
 			<div class="task-section-body">
 				<!-- Task contains notes -->
 				<div v-if="task.notes.length">
-					<template v-for="task_note, key in task.notes">
+					<template v-for="task_note, key in task.notes" :key="task_note.id">
 						<!-- Note is not empty -->
 						<template v-if="task_note.note">
 							<!-- Edit existing note -->

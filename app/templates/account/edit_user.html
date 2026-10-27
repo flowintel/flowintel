@@ -2,9 +2,15 @@
     Author: David Cruciani
 -->
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_link %}
 {% import 'macros/form_macros.html' as f %}
 
 {% block content %}
+    {% call(section) page_header('Edit my profile', 'fa-solid fa-user-pen', 'Your name, email, Matrix id and password.') %}
+        {% if section == 'actions' %}
+            {{ header_link('My profile', '/account/', title='Back to your profile') }}
+        {% endif %}
+    {% endcall %}
     <form action="" method="post">
         {{ form.hidden_tag() }}
         {% if not edit_mode %}

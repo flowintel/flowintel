@@ -1,0 +1,42 @@
+{% macro render_role_badge(admin, read_only, org_admin=false, case_admin=false,
+                           queue_admin=false, queuer=false, audit_viewer=false,
+                           template_editor=false, misp_editor=false, importer=false,
+                           compact=false) -%}
+    {% if admin %}
+        <span class="badge bg-danger ms-1" title="Admin role">
+            {% if compact %}<i class="fa-solid fa-shield-halved"></i>{% else %}Admin{% endif %}
+        </span>
+    {% elif read_only %}
+        <span class="badge bg-info ms-1" title="Read Only role">
+            {% if compact %}<i class="fa-solid fa-eye"></i>{% else %}Read Only{% endif %}
+        </span>
+    {% else %}
+        <span class="badge bg-success ms-1" title="Editor role">
+            {% if compact %}<i class="fa-solid fa-pen"></i>{% else %}Editor{% endif %}
+            {% if org_admin %}
+                <i class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
+            {% endif %}
+            {% if case_admin %}
+                <i class="fa-solid fa-briefcase ms-1" title="Also Case Admin"></i>
+            {% endif %}
+            {% if queue_admin %}
+                <i class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
+            {% endif %}
+            {% if queuer %}
+                <i class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
+            {% endif %}
+            {% if audit_viewer %}
+                <i class="fa-solid fa-file-lines ms-1" title="Also Audit Viewer"></i>
+            {% endif %}
+            {% if template_editor %}
+                <i class="fa-solid fa-folder ms-1" title="Also Template Editor"></i>
+            {% endif %}
+            {% if misp_editor %}
+                <i class="fa-solid fa-share-nodes ms-1" title="Also MISP Editor"></i>
+            {% endif %}
+            {% if importer %}
+                <i class="fa-solid fa-file-import ms-1" title="Also Importer"></i>
+            {% endif %}
+        </span>
+    {% endif %}
+{%- endmacro %}

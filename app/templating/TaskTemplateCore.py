@@ -5,7 +5,7 @@ from sqlalchemy import and_, desc
 
 from app.extensions import db
 from app.db_class.db import (
-    Case_Task_Template, Galaxy, Task_Template, Note_Template, Task_Template_Galaxy, Task_Template_Url_Tool, Subtask_Template,
+    Case_Template, Case_Task_Template, Galaxy, Task_Template, Note_Template, Task_Template_Galaxy, Task_Template_Url_Tool, Subtask_Template,
     Task_Template_Tags, Task_Template_Galaxy_Tags, Task_Template_Custom_Tags,
     Tags, Cluster, Custom_Tags
 )
@@ -257,7 +257,6 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         to_deleted = Case_Task_Template.query.filter_by(task_id=tid).all()
         for to_do in to_deleted:
             db.session.delete(to_do)
-            db.session.commit()
         Task_Template_Tags.query.filter_by(task_id=tid).delete()
         Task_Template_Galaxy_Tags.query.filter_by(template_id=tid).delete()
         Task_Template_Custom_Tags.query.filter_by(task_template_id=tid).delete()
@@ -267,6 +266,16 @@ class TaskTemplateCore(CommonAbstract, FilteringAbstract):
         db.session.delete(template)
         db.session.commit()
         return True
+
+    def get_case_templates_using_task_template(self, tid):
+        case_templates = (
+            Case_Template.query
+            .join(Case_Task_Template, Case_Task_Template.case_id == Case_Template.id)
+            .filter(Case_Task_Template.task_id == tid)
+            .order_by(Case_Template.title)
+            .all()
+        )
+        return [{"id": template.id, "title": template.title} for template in case_templates]
 
     def create_note(self, tid):
         """Create a new empty note in the template"""

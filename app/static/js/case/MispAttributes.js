@@ -167,12 +167,39 @@ export default {
             hasSelect2 = hasJQuery && $.fn && $.fn.select2
         } catch(e) {}
 
+        function destroySelect2(elementId) {
+            if (!hasSelect2) return
+            try {
+                const sel = document.getElementById(elementId)
+                if (sel && $(sel).data('select2')) $(sel).select2('destroy')
+            } catch(e) {}
+        }
+
+        function initNewAttributeTypeSelect() {
+            if (!show_add.value || !hasSelect2) return
+            const sel = document.getElementById('new-attr-type-select')
+            if (!sel) return
+            try { if ($(sel).data('select2')) $(sel).select2('destroy') } catch(e) {}
+            $(sel)
+                .select2({
+                    theme: 'bootstrap-5',
+                    dropdownParent: $('body'),
+                    placeholder: 'Select type...',
+                    allowClear: true,
+                    width: '100%'
+                })
+                .val(new_state.value.type || null)
+                .trigger('change.select2')
+                .off('change.flowintelMispAttrType')
+                .on('change.flowintelMispAttrType', function() {
+                    new_state.value.type = $(this).val() || ''
+                })
+        }
+
         function reset_add() {
             try {
-                if (hasSelect2) {
-                    const sel = document.getElementById('new-attr-task-select')
-                    if (sel && $(sel).data('select2')) $(sel).select2('destroy')
-                }
+                destroySelect2('new-attr-type-select')
+                destroySelect2('new-attr-task-select')
             } catch(e) {}
             try {
                 const sel = document.getElementById('new-attr-task-select')
@@ -328,6 +355,7 @@ export default {
         watch(() => show_add.value, async (nv) => {
             if (!nv) return
             await nextTick()
+            initNewAttributeTypeSelect()
             try {
                 const sel = document.getElementById('new-attr-task-select')
                 if (!sel) return
@@ -359,6 +387,12 @@ export default {
                     $(sel).on('change.select2', function() { updateTaskSelection(this) })
                 }
             } catch(e) {}
+        })
+
+        watch(MISP_ATTRIBUTE_TYPES, async () => {
+            if (!show_add.value) return
+            await nextTick()
+            initNewAttributeTypeSelect()
         })
 
         return {
@@ -439,7 +473,7 @@ export default {
             </button>
         </div>
 
-        <div v-if="show_add && can_edit" class="card mb-3">
+        <div v-if="show_add && can_edit" class="card mb-3 sa-new-attr">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-bold">New attribute</span>
                 <button type="button" class="btn-close" @click="reset_add()" aria-label="Close"></button>
@@ -448,7 +482,7 @@ export default {
                 <div class="row g-2">
                     <div class="col-md-3">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Type <span class="text-danger">*</span></label>
-                        <select v-model="new_state.type" class="form-select form-select-sm">
+                        <select id="new-attr-type-select" v-model="new_state.type" class="form-select form-select-sm">
                             <option value="">-- select type --</option>
                             <option v-for="t in MISP_ATTRIBUTE_TYPES" :key="t" :value="t">[[ t ]]</option>
                         </select>
@@ -460,13 +494,6 @@ export default {
                     <div class="col-md-5">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Comment</label>
                         <input v-model="new_state.comment" class="form-control form-control-sm" placeholder="Comment" />
-                    </div>
-                    <div class="col-md-12">
-                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Link to tasks (optional)</label>
-                        <select id="new-attr-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
-                            <option v-for="task in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="task.id" :value="task.id">[[ task.title ]]</option>
-                        </select>
-                        <div class="small text-muted mt-1">Select one or more tasks to link this attribute to upon creation.</div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">First seen</label>
@@ -485,6 +512,13 @@ export default {
                             <input type="checkbox" v-model="new_state.disable_correlation" class="form-check-input" id="sa-nocorr-new" />
                             <label class="form-check-label" for="sa-nocorr-new" style="font-size:0.875rem;">No correlation</label>
                         </div>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold mb-1" style="font-size:0.875rem;">Link to tasks (optional)</label>
+                        <select id="new-attr-task-select" class="form-select form-select-sm" multiple data-placeholder="Select tasks...">
+                            <option v-for="task in (cases_info && cases_info.tasks ? cases_info.tasks : [])" :key="task.id" :value="task.id">[[ task.title ]]</option>
+                        </select>
+                        <div class="small text-muted mt-1">Select one or more tasks to link this attribute to upon creation.</div>
                     </div>
                 </div>
                 <div class="mt-3 d-flex gap-2">

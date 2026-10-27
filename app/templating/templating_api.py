@@ -359,6 +359,16 @@ class DeleteTaskTemplate(Resource):
         return {"message": "Template not found"}, 404
     
 
+@templating_ns.route('/task/<tid>/case_templates')
+@templating_ns.doc(description='Get case templates using a task template')
+class GetCaseTemplatesUsingTaskTemplate(Resource):
+    method_decorators = [api_required]
+    def get(self, tid):
+        if CommonModel.get_task_template(tid):
+            return {"case_templates": TaskModel.get_case_templates_using_task_template(tid)}, 200
+        return {"message": "Template not found"}, 404
+
+
 @templating_ns.route('/get_taxonomies_task/<tid>', methods=["GET"])
 @templating_ns.doc(description='Get Taxonomies of a task', params={'tid': 'id of a task template'})
 class GetTaxonomiesTask(Resource):

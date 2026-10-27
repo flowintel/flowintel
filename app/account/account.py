@@ -35,6 +35,7 @@ from ..notification import notification_core as NotifModel
 from .form import LoginForm, EditUserFrom, RequestPasswordResetForm
 
 from . import account_core as AccountModel
+from . import settings_core as SettingsModel
 from . import entra_core as EntraModel
 from . import keycloak_core as KeycloakModel
 from . import simplesaml_core as SimpleSamlModel
@@ -126,6 +127,23 @@ def validate_password_reset_token():
     
     return True
 
+
+
+@account_blueprint.route("/settings", methods=["GET"])
+@login_required
+def settings():
+    """Settings page of the current user"""
+    return render_template("account/settings.html", settings=SettingsModel.get_settings(current_user))
+
+
+@account_blueprint.route("/settings", methods=["POST"])
+@login_required
+def update_settings():
+    """Save one or more settings of the current user, e.g. {"theme": "dark"}"""
+    settings, error = SettingsModel.update_settings(current_user, request.get_json(silent=True))
+    if error:
+        return {"message": error, "toast_class": "warning-subtle"}, 400
+    return {"message": "Settings saved", "toast_class": "success-subtle", "settings": settings.to_json()}, 200
 
 
 @account_blueprint.route("/")
@@ -573,7 +591,9 @@ def simplesaml_metadata():
 def logout():
     user_email = current_user.email
     flowintel_log("audit", 200, "User logout", Email=user_email)
-    logout_user()
+    # Clear the session first: logout_user() leaves a flag in it telling Flask-Login to
+    # delete the "remember me" cookie, which session.clear() afterwards would wipe out
     session.clear()
+    logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))

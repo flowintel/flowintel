@@ -3,31 +3,20 @@
 -->
 
 {% extends 'base.html' %}
+{% from 'macros/page_header.html' import page_header, header_button, header_search, header_link %}
 
 {% block content %}
-    <div class="case-core-style d-flex" style="border-radius: 0;">
-        <h1>
-            <a type="button" class="btn btn-outline-dark me-2" href="/connectors"><i class="fa-solid fa-arrow-left"></i></a>
-        </h1>
-        <h1>
-            Connectors Icons
-
+    {% call(section) page_header('Connector icons', 'fa-solid fa-icons', 'Images shown next to connectors and their instances.') %}
+        {% if section == 'actions' %}
+            {{ header_link('Connectors', '/connectors/', title='Back to the connectors') }}
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search icons by name') }}
             {% if current_user.is_admin() %}
-                <span>
-                    <a class="btn btn-primary" href="/connectors/add_icons"><i class="fa-solid fa-plus"></i></a>
-                </span>
+                {{ header_button('New icon', href='/connectors/add_icons', title='Add an icon') }}
             {% endif %}
-        </h1>
+        {% endif %}
+    {% endcall %}
 
-        <!-- Search bar -->
-        <div class="input-group w-auto translate-middle-x" id="search_org" style="left: 30% !important;">
-            <button class="btn btn-outline-primary"><i class="fa-solid fa-magnifying-glass"></i></button>
-            <input autocomplete="off" @input="onInput" type="search" class="form-control rounded" placeholder='Search Icons by name' style="min-width: 350px;" />
-        </div>
-        <!-- Search bar -->
-    </div>
-
-    <hr class="fading-line-2 mb-4 mt-4">
     
     <div class="case-core-style">
         <template v-if="icons_list">

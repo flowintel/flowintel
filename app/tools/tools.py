@@ -295,14 +295,30 @@ def chart_dict_constructor(input_dict):
         })
     return loc_dict
 
+
+def _stats_filter_args():
+    cutoff, end = ToolsModel.stats_date_bounds(
+        days=request.args.get('days'),
+        date_from=request.args.get('date_from'),
+        date_to=request.args.get('date_to'),
+    )
+    return {
+        "cutoff": cutoff,
+        "end": end,
+        "case_status": ToolsModel.normalize_stats_status(request.args.get('case_status')),
+        "task_status": ToolsModel.normalize_stats_status(request.args.get('task_status')),
+    }
+
 @tools_blueprint.route("/case_stats")
 @login_required
 def case_stats():
-    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
+    filters = _stats_filter_args()
     cases = Case.query.join(Case_Org, Case_Org.case_id==Case.id).where(Case_Org.org_id==current_user.org_id).all()
     cases = check_user_in_private_cases(cases, current_user)
-    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
-    return ToolsModel.stats_core(cases)
+    cases = ToolsModel.filter_cases_for_stats(
+        cases, filters["cutoff"], filters["end"], filters["case_status"]
+    )
+    return ToolsModel.stats_core(cases, task_status=filters["task_status"])
 
 @tools_blueprint.route("/admin_stats")
 @login_required
@@ -310,22 +326,30 @@ def admin_stats():
     if not current_user.is_admin():
         return {}
     days_arg = request.args.get('days')
-    cutoff = ToolsModel.days_cutoff(days_arg)
+    filters = _stats_filter_args()
     cases = Case.query.all()
-    cases = ToolsModel.filter_cases_by_date(cases, cutoff)
-    res_dict = ToolsModel.stats_core(cases)
+    cases = ToolsModel.filter_cases_for_stats(
+        cases, filters["cutoff"], filters["end"], filters["case_status"]
+    )
+    res_dict = ToolsModel.stats_core(cases, task_status=filters["task_status"])
     try:
         days = int(days_arg) if days_arg else 90
     except (TypeError, ValueError):
         days = 90
-    res_dict.update(ToolsModel.get_admin_extra_stats(days=days))
+    custom_range = bool(request.args.get('date_from') or request.args.get('date_to'))
+    res_dict.update(ToolsModel.get_admin_extra_stats(
+        days=days,
+        cutoff=filters["cutoff"],
+        end=filters["end"],
+        custom_range=custom_range,
+    ))
     return res_dict
 
 @tools_blueprint.route("/case_tags_stats")
 @login_required
 def get_case_by_tags():
-    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
-    res = ToolsModel.get_case_by_tags(current_user, cutoff=cutoff)
+    filters = _stats_filter_args()
+    res = ToolsModel.get_case_by_tags(current_user, **filters)
     if res:
         return res
     return {}
@@ -333,14 +357,15 @@ def get_case_by_tags():
 @tools_blueprint.route("/tag_galaxy_stats")
 @login_required
 def get_tag_galaxy_stats():
-    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
-    return ToolsModel.get_tag_galaxy_top_stats(current_user, cutoff=cutoff)
+    filters = _stats_filter_args()
+    return ToolsModel.get_tag_galaxy_top_stats(current_user, **filters)
 
 @tools_blueprint.route("/misp_stats")
 @login_required
 def misp_stats():
-    cutoff = ToolsModel.days_cutoff(request.args.get('days'))
-    return ToolsModel.get_misp_stats(current_user, cutoff=cutoff)
+    filters = _stats_filter_args()
+    filters.pop("task_status")
+    return ToolsModel.get_misp_stats(current_user, **filters)
 
 @tools_blueprint.route("/community_stats")
 @login_required
@@ -352,12 +377,12 @@ def community_stats():
 @tools_blueprint.route("/overdue_tasks")
 @login_required
 def overdue_tasks():
-    return ToolsModel.get_overdue_tasks(current_user)
+    return ToolsModel.get_overdue_tasks(current_user, **_stats_filter_args())
 
 @tools_blueprint.route("/unassigned_tasks")
 @login_required
 def unassigned_tasks():
-    return ToolsModel.get_unassigned_tasks(current_user)
+    return ToolsModel.get_unassigned_tasks(current_user, **_stats_filter_args())
 
 @tools_blueprint.route("/inactive_users")
 @login_required

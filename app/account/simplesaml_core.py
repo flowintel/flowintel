@@ -42,46 +42,32 @@ def _sync_role_on_login():
 
 def _group_admin():
     # Editor by default, Admin will be notified thanks to True argument, then Admin can promote new Admin
-    return (
+    # Because we check if the role drifted, it basically mean that a user cannot stay system admin when connecting through saml
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_ADMIN"),
         "Editor",
         True
-    )
+    )]
 
 def _group_editor():
-    return (
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_EDITOR"),
         "Editor",
         False
-    )
+    )]
 
-def _group_case_admin():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_CASE_ADMIN"),
-        current_app.config.get("SIMPLESAML_ROLE_CASE_ADMIN"),
-        False
-    )
-
-def _group_queue_admin():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_QUEUE_ADMIN"),
-        current_app.config.get("SIMPLESAML_ROLE_QUEUE_ADMIN"),
-        False
-    )
-
-def _group_queuer():
-    return (
-        current_app.config.get("SIMPLESAML_GROUP_QUEUER"),
-        current_app.config.get("SIMPLESAML_ROLE_QUEUER"),
-        False
-    )
+def _group_mapped():
+    mapped_list = current_app.config.get("SIMPLESAML_MAPPER_GROUPS_ROLES_PRIORITY")
+    return [
+        (item["group"], item["role"], False) for item in mapped_list
+    ]
 
 def _group_readonly():
-    return (
+    return [(
         current_app.config.get("SIMPLESAML_GROUP_READONLY"),
         "Read Only", 
         False
-    )
+    )]
 
 def _group_aliases():
     return current_app.config.get("SIMPLESAML_GROUP_ALIASES", {})
@@ -182,12 +168,36 @@ def _first(attributes: dict, key: str, default: str = '') -> str:
     return vals[0] if vals else default
 
 
+def _create_notif(
+    email: str, username:str, matched_group:str, target_role_name:str, notify_admin:bool
+    )-> tuple[str]:
+    return (
+        f"SimpleSAML user '{email}' (login: {username}) is a member of '{matched_group}' "
+        f"and has been provisioned with the '{target_role_name}' role. "
+        + (
+            "Please promote them to Admin if appropriate."
+            if notify_admin else
+            "Please review their organisation assignment."
+        )
+    )
+
 # ---------------------------------------------------------------------------
 # User provisioning — same group-priority logic as Keycloak core
 # ---------------------------------------------------------------------------
 def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str | None]:
     """
     Resolve/Provision a Flowintel user from a validated python3-saml auth object.
+    
+    The Flowintel role is assigned to the User at creation time.
+    - If it means "Admin" Flowintel System role, the current Admin is notified to make
+    the exact permission change. This notification happens only at creation stage,
+    when it happens an synching role, there is no notification.
+    - If SIMPLESAML_SYNC_ROLE_ON_LOGIN is True (default), at each login, the user is
+    reassigned its expected role. The collateral impact is that it is not possible to
+    make a User coming from Saml world and "Admin" Flowintel System role.
+    This is intentionnal behavior at current stage and it is aligned, yet more explicit,
+    than with Keycloak and EntraID behavior where it was more an implicit consequence.
+
     Returns (user, None) or (None, error_message).
     """
     # First get the attributes from SAML
@@ -199,19 +209,17 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
 
     raw_groups = attrs.get(_attr_groups(), [])
     aliases = _group_aliases()
-    groups = [aliases.get(group, group) for group in raw_groups]
+    groups = [aliases.get(group) for group in raw_groups]
 
     full_name = _first(attrs, _attr_name())
     username  = _first(attrs, _attr_username(), default=email.split('@')[0])
 
     # Which role stays on top if present in multiple groups mapping different privilege roles
     priority_list = [
-        _group_admin(),
-        _group_case_admin(),
-        _group_queue_admin(),
-        _group_editor(),
-        _group_queuer(),
-        _group_readonly(),
+        *_group_admin(),
+        *_group_mapped(),
+        *_group_editor(),
+        *_group_readonly(),
     ]
 
     configured_groups = [e[0] for e in priority_list]
@@ -260,6 +268,20 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
             ):
             user.role_id = target_role.id
             db.session.commit()
+
+            msg = _create_notif(
+            email=email,
+            username=username,
+            matched_group=matched_group,
+            target_role_name=target_role.name,
+            notify_admin=notify_admin)
+
+            NotifModel.create_notification_for_admins(
+                message=msg,
+                html_icon="fa-solid fa-user-shield",
+                user_id_for_redirect=user.id,
+            )
+
         return user, None
 
     # Name: single 'cn' field split on first space
@@ -295,15 +317,13 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
 
     logger.info("Provisioned new SimpleSAML user: %s (role: %s)", email, target_role.name)
 
-    msg = (
-        f"SimpleSAML user '{email}' (login: {username}) is a member of '{matched_group}' "
-        f"and has been provisioned with the '{target_role.name}' role. "
-        + (
-            "Please promote them to Admin if appropriate."
-            if notify_admin else
-            "Please review their organisation assignment."
-        )
-    )
+    msg = _create_notif(
+        email=email,
+        username=username,
+        matched_group=matched_group,
+        target_role_name=target_role.name,
+        notify_admin=notify_admin)
+
     NotifModel.create_notification_for_admins(
         message=msg,
         html_icon="fa-solid fa-user-shield",
