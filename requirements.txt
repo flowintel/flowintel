@@ -6,7 +6,7 @@ aiofiles==25.1.0
     #   vt-py
 aiohappyeyeballs==2.7.1
     # via aiohttp
-aiohttp==3.14.4
+aiohttp==3.14.5
     # via
     #   aiohttp-socks
     #   geoip2
@@ -18,7 +18,7 @@ aiohttp-socks==0.12.0
     # via matrix-nio
 aiosignal==1.4.0
     # via aiohttp
-alembic==1.20.0
+alembic==1.20.1
     # via flask-migrate
 aniso8601==10.0.1
     # via flask-restx
@@ -39,6 +39,7 @@ anyio==4.15.1
 async-timeout==5.0.1 ; python_full_version < '3.11.3'
     # via
     #   aiohttp
+    #   litellm
     #   python-socks
     #   redis
 atomicwrites==1.4.1
@@ -62,19 +63,23 @@ blinker==1.9.0
     # via flask
 blockchain==1.4.4
     # via misp-modules
-boto3==1.43.111
+boto3==1.43.119
     # via litellm
-botocore==1.43.111
+botocore==1.43.119
     # via
     #   boto3
     #   s3transfer
-brotli==1.2.0
-    # via vulners
+brotli==1.2.1
+    # via
+    #   misp-modules
+    #   vulners
+brotlicffi==1.2.1.0 ; platform_python_implementation != 'CPython'
+    # via misp-modules
 cachelib==0.14.0 ; python_full_version < '3.11'
     # via flask-session
 cachelib==0.17.0 ; python_full_version >= '3.11'
     # via flask-session
-cachetools==7.2.1
+cachetools==7.2.6
     # via
     #   dspy
     #   greynoise
@@ -83,13 +88,17 @@ cattrs==26.2.1
     # via requests-cache
 censys==2.0.9
     # via misp-modules
-certifi==2026.7.22
+certifi==2026.10.23
     # via
     #   httpcore
     #   httpx
+    #   litellm
+    #   misp-modules
     #   requests
-cffi==2.1.1 ; platform_python_implementation != 'PyPy'
-    # via cryptography
+cffi==2.1.1
+    # via
+    #   brotlicffi
+    #   cryptography
 charset-normalizer==3.5.2
     # via requests
 clamd==1.0.2
@@ -120,7 +129,9 @@ colorama==0.4.6
     #   tqdm
 commonmark==0.9.2
     # via rich
-configparser==7.2.0
+configparser==7.2.0 ; python_full_version < '3.11'
+    # via pysafebrowsing
+configparser==7.3.0 ; python_full_version >= '3.11'
     # via pysafebrowsing
 contourpy==1.3.2 ; python_full_version < '3.11'
     # via matplotlib
@@ -146,19 +157,21 @@ diskcache==5.6.3
     # via dspy
 distro==1.9.0
     # via openai
-dnsdb2==1.1.5
+dnsdb2==1.2.0
     # via misp-modules
 dnspython==2.8.0 ; python_full_version < '3.11'
     # via
     #   email-validator
+    #   misp-modules
     #   pypdns
 dnspython==2.9.0 ; python_full_version >= '3.11'
     # via
     #   email-validator
+    #   misp-modules
     #   pypdns
 domaintools-api==2.10.0
     # via misp-modules
-dspy==3.4.0
+dspy==3.4.1
     # via flowintel
 email-validator==2.3.0
     # via flowintel
@@ -168,8 +181,6 @@ exceptiongroup==1.3.1 ; python_full_version < '3.11'
     # via
     #   anyio
     #   cattrs
-execnet==2.1.2
-    # via pytest-xdist
 fastmcp==1.0
     # via flowintel-mcp
 fastuuid==0.14.0
@@ -206,7 +217,7 @@ flowintel-mcp @ git+https://github.com/flowintel/flowintel-mcp@4de28c57fe44eca15
     # via flowintel
 fonttools==4.65.0 ; python_full_version < '3.11'
     # via matplotlib
-fonttools==4.66.1 ; python_full_version >= '3.11'
+fonttools==4.67.0 ; python_full_version >= '3.11'
     # via matplotlib
 frozenlist==1.8.0
     # via
@@ -275,7 +286,7 @@ idna==3.20
     #   tldextract
     #   url-normalize
     #   yarl
-ijson==3.5.1
+ijson==3.6.0
     # via vulners
 importlib-metadata==8.9.0
     # via litellm
@@ -297,16 +308,17 @@ jinja2==3.1.6
     #   greynoise
     #   litellm
     #   misp-modules
-jiter==0.17.0
+jiter==0.18.0
     # via openai
 jmespath==1.1.0
     # via
     #   boto3
     #   botocore
-json-repair==0.64.0
+json-repair==0.64.2
     # via dspy
 jsonschema==4.26.0
     # via
+    #   dspy
     #   flask-restx
     #   flowintel
     #   litellm
@@ -317,7 +329,7 @@ jsonschema-specifications==2025.9.1
     # via jsonschema
 kiwisolver==1.5.1
     # via matplotlib
-litellm==1.104.2
+litellm==1.106.4
     # via dspy
 lxml==6.1.3
     # via
@@ -348,15 +360,21 @@ maxminddb==3.2.0
     # via geoip2
 mcp==1.30.0
     # via fastmcp
-misp-modules==3.0.11
+misp-modules==3.1.1
     # via flowintel
-more-itertools==11.1.0
+more-itertools==11.1.0 ; python_full_version < '3.11'
+    # via greynoise
+more-itertools==11.2.1 ; python_full_version >= '3.11'
     # via greynoise
 msal==1.39.0
     # via flowintel
 msgspec==0.22.0
     # via flask-session
-multidict==6.9.1
+multidict==7.1.0 ; python_full_version < '3.11'
+    # via
+    #   aiohttp
+    #   yarl
+multidict==7.2.1 ; python_full_version >= '3.11'
     # via
     #   aiohttp
     #   yarl
@@ -370,7 +388,7 @@ numpy==2.4.6 ; python_full_version == '3.11.*'
     # via
     #   contourpy
     #   matplotlib
-numpy==2.5.3 ; python_full_version >= '3.12'
+numpy==2.5.4 ; python_full_version >= '3.12'
     # via
     #   contourpy
     #   matplotlib
@@ -385,7 +403,7 @@ orjson==3.13.0
     #   dspy
     #   misp-modules
     #   vulners
-packaging==26.2
+packaging==26.3
     # via
     #   huggingface-hub
     #   litellm
@@ -398,9 +416,13 @@ passivetotal==2.5.9
     # via misp-modules
 peewee==3.19.0
     # via matrix-nio
-pillow==12.3.0
+pillow==12.3.0 ; python_full_version < '3.11'
     # via matplotlib
-platformdirs==4.12.4
+pillow==13.0.0 ; python_full_version >= '3.11'
+    # via matplotlib
+platformdirs==4.12.4 ; python_full_version < '3.11'
+    # via requests-cache
+platformdirs==4.13.5 ; python_full_version >= '3.11'
     # via requests-cache
 prompt-toolkit==3.0.53
     # via click-repl
@@ -412,19 +434,23 @@ psutil==7.2.2
     # via misp-modules
 psycopg2-binary==2.9.13
     # via flowintel
-publicsuffixlist==1.1.0.20261010
+ptrclassify==0.3.0
+    # via misp-modules
+publicsuffixlist==1.1.2.20261023
     # via misp-modules
 pycountry==26.2.16
     # via misp-modules
-pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy'
+pycparser==3.11 ; python_full_version < '3.11' and implementation_name != 'PyPy'
     # via cffi
-pycryptodome==3.24.0
+pycparser==3.12 ; python_full_version >= '3.11' and implementation_name != 'PyPy'
+    # via cffi
+pycryptodome==4.2.0
     # via
     #   matrix-nio
     #   stream-unzip
-pycryptodomex==3.24.0
+pycryptodomex==3.24.1
     # via pyzipper
-pydantic==2.14.0
+pydantic==2.14.1
     # via
     #   dspy
     #   fastmcp
@@ -434,9 +460,14 @@ pydantic==2.14.0
     #   pydantic-settings
     #   pyonyphe
     #   vulners
-pydantic-core==2.50.0
+pydantic-core==2.50.1
     # via pydantic
-pydantic-settings==2.15.0
+pydantic-settings==2.15.0 ; python_full_version < '3.11'
+    # via
+    #   fastmcp
+    #   litellm
+    #   mcp
+pydantic-settings==2.16.1 ; python_full_version >= '3.11'
     # via
     #   fastmcp
     #   litellm
@@ -447,7 +478,7 @@ pyeupi==1.3.0
     # via misp-modules
 pygeoip==0.3.2
     # via misp-modules
-pygments==2.20.0
+pygments==2.21.0
     # via rich
 pyintel471==0.1.1
     # via misp-modules
@@ -464,6 +495,8 @@ pymisp==2.5.34.4
     #   whisper-misp
 pymispgalaxies==1.1.1
     # via flowintel
+pymispwarninglists==1.7.0
+    # via misp-modules
 pymysql==1.2.3
     # via flowintel
 pyonyphe==3.1.1
@@ -478,16 +511,8 @@ pypssl==2.2
     # via misp-modules
 pysafebrowsing==0.1.4
     # via misp-modules
-pytaxonomies==2.1.0
-    # via -r requirements.in
-pytest==9.0.3
-    # via -r requirements.in
-pytest-cov==7.1.0
-    # via -r requirements.in
-pytest-xdist==3.8.0
-    # via -r requirements.in
-pytest-randomly==5.0.0
-    # via -r requirements.in
+pytaxonomies==2.1.2
+    # via flowintel
 python-dateutil==2.9.0.post0
     # via
     #   botocore
@@ -517,6 +542,7 @@ pywin32==312 ; sys_platform == 'win32'
 pyyaml==6.0.3
     # via
     #   domaintools-api
+    #   dspy
     #   huggingface-hub
     #   litellm
 pyzipper==0.4.0
@@ -580,11 +606,11 @@ rpds-py==2026.9.1 ; python_full_version >= '3.11'
     #   referencing
 rstapi==1.2.0
     # via misp-modules
-s3transfer==0.19.2
+s3transfer==0.19.3
     # via boto3
 schedule==1.2.2
     # via flowintel
-setuptools==84.0.0
+setuptools==84.2.1
     # via misp-modules
 shellingham==1.5.4
     # via typer
@@ -600,23 +626,29 @@ sniffio==1.3.1
     # via openai
 socialscan==1.4.2
     # via misp-modules
-soupsieve==2.10 ; python_full_version < '3.11'
+soupsieve==2.10 ; python_full_version < '3.11.5'
     # via beautifulsoup4
-soupsieve==3.0 ; python_full_version >= '3.11'
+soupsieve==3.0.4 ; python_full_version >= '3.11.5'
     # via beautifulsoup4
-sqlalchemy==2.0.54 ; python_full_version < '3.11'
+sqlalchemy==2.0.55 ; python_full_version < '3.11'
     # via
     #   alembic
     #   flask-sqlalchemy
     #   flowintel
-sqlalchemy==2.1.4 ; python_full_version >= '3.11'
+sqlalchemy==2.1.6 ; python_full_version >= '3.11'
     # via
     #   alembic
     #   flask-sqlalchemy
     #   flowintel
-sse-starlette==3.5.0
+sse-starlette==3.5.1 ; python_full_version < '3.11'
     # via mcp
-starlette==1.7.0
+sse-starlette==3.6.0 ; python_full_version >= '3.11'
+    # via mcp
+starlette==1.7.0 ; python_full_version < '3.11'
+    # via
+    #   mcp
+    #   sse-starlette
+starlette==1.10.0 ; python_full_version >= '3.11'
     # via
     #   mcp
     #   sse-starlette
@@ -664,11 +696,13 @@ typing-extensions==4.16.0
     #   cryptography
     #   exceptiongroup
     #   huggingface-hub
+    #   litellm
     #   mcp
     #   multidict
     #   openai
     #   pydantic
     #   pydantic-core
+    #   pydantic-settings
     #   pyjwt
     #   referencing
     #   sqlalchemy
@@ -694,6 +728,7 @@ urllib3==2.8.0
     # via
     #   botocore
     #   crowdstrike-falconpy
+    #   misp-modules
     #   requests
     #   requests-cache
 uvicorn==0.54.0 ; sys_platform != 'emscripten'
@@ -704,13 +739,13 @@ vt-graph-api==2.2.0
     # via misp-modules
 vt-py==0.22.0
     # via misp-modules
-vulners==4.3.0
+vulners==4.4.0
     # via misp-modules
-wcwidth==0.9.2
+wcwidth==0.9.4
     # via prompt-toolkit
 websockets==16.1.1 ; python_full_version < '3.11'
     # via mattermostdriver
-websockets==17.2 ; python_full_version >= '3.11'
+websockets==17.3 ; python_full_version >= '3.11'
     # via mattermostdriver
 werkzeug==3.1.9
     # via
@@ -718,11 +753,15 @@ werkzeug==3.1.9
     #   flask-login
     #   flask-restx
     #   flowintel
-whisper-misp==0.0.1
+whisper-misp==0.0.2
     # via misp-modules
-wrapt==2.5.0
+wrapt==2.5.1
     # via deprecated
-wtforms==3.2.2
+wtforms==3.2.2 ; python_full_version < '3.11'
+    # via
+    #   flask-wtf
+    #   flowintel
+wtforms==3.3.1 ; python_full_version >= '3.11'
     # via
     #   flask-wtf
     #   flowintel
@@ -732,7 +771,7 @@ yara-python==4.5.0
     # via misp-modules
 yarl==1.25.1
     # via aiohttp
-zipp==4.1.1
+zipp==4.1.2
     # via importlib-metadata
 zstandard==0.25.0
     # via vulners

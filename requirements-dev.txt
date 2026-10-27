@@ -2,18 +2,35 @@
 #    uv export --locked --only-group dev --no-emit-project --no-hashes --format requirements-txt -o requirements-dev.txt
 colorama==0.4.6 ; sys_platform == 'win32'
     # via pytest
+coverage==7.16.2 ; python_full_version < '3.11'
+    # via pytest-cov
+coverage==7.17.0 ; python_full_version >= '3.11'
+    # via pytest-cov
 exceptiongroup==1.3.1 ; python_full_version < '3.11'
     # via pytest
-iniconfig==2.3.0
+execnet==2.1.2
+    # via pytest-xdist
+iniconfig==2.3.1
     # via pytest
-packaging==26.2
+packaging==26.3
     # via pytest
-pluggy==1.6.0
+pluggy==1.7.0
+    # via
+    #   pytest
+    #   pytest-cov
+pygments==2.21.0
     # via pytest
-pygments==2.20.0
-    # via pytest
-pytest==9.1.0
+pytest==9.1.1
+    # via
+    #   pytest-cov
+    #   pytest-randomly
+    #   pytest-xdist
+pytest-cov==7.1.0
+pytest-randomly==5.0.0
+pytest-xdist==3.8.0
 tomli==2.5.0 ; python_full_version < '3.11'
-    # via pytest
+    # via
+    #   coverage
+    #   pytest
 typing-extensions==4.16.0 ; python_full_version < '3.11'
     # via exceptiongroup
