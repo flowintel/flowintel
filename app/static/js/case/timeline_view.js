@@ -1,4 +1,5 @@
 import {display_toast, create_message} from '../toaster.js'
+import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
 import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
@@ -178,6 +179,16 @@ export default {
             if (!timeline_root.value || !timeline_root.value.contains(event.target)) return
             if (!is_editable_target(event.target)) return
             event.stopImmediatePropagation()
+        }
+
+        // Optional picker next to the free-text date field (see
+        // timeline_date_picker.js); the date is applied on "Validate".
+        function open_date_picker(event, target) {
+            const current = target === 'edit' ? edit_date_text.value : new_date_text.value
+            open_timeline_date_picker(event.currentTarget, current, value => {
+                if (target === 'edit') edit_date_text.value = value
+                else new_date_text.value = value
+            })
         }
 
         // Mirrors the formats accepted by CaseCore.parse_date(). Kept loose on
@@ -434,6 +445,7 @@ export default {
             timeline_root,
             show_add_form,
             new_date_text,
+            open_date_picker,
             new_description,
             new_additional_note,
             editing_event_id,
@@ -487,8 +499,13 @@ export default {
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Date / Time <span class="text-danger" aria-hidden="true">*</span><span class="visually-hidden">(required)</span></label>
-                        <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30..." required>
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control form-control-sm" v-model="new_date_text"
+                                   placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30..." required>
+                            <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event, 'new')" title="Pick a date (optional)" aria-label="Pick a date">
+                                <i class="fa-regular fa-calendar"></i>
+                            </button>
+                        </div>
                         <div class="form-text">Saved as YYYY-MM-DD HH:MM</div>
                     </div>
                     <div class="col-md-8">
@@ -623,7 +640,12 @@ export default {
                     <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : (ev.file_id ? 'table-success' : ''))">
                         <template v-if="editing_event_id === ev.id">
                             <td>
-                                <input type="text" class="form-control form-control-sm" v-model="edit_date_text">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control form-control-sm" v-model="edit_date_text">
+                                    <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event, 'edit')" title="Pick a date (optional)" aria-label="Pick a date">
+                                        <i class="fa-regular fa-calendar"></i>
+                                    </button>
+                                </div>
                             </td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" v-model="edit_description">

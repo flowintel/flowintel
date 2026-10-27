@@ -364,6 +364,9 @@ full_run_official_postgres: configure_repo_dev
 test: first_install
 	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -t
 
+test_skipped: first_install
+	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -ts
+
 test_new: first_install
 	VENV_DIR=".venv" FLOWINTEL_TEST_LOG=1 ./launch.sh -tn
 

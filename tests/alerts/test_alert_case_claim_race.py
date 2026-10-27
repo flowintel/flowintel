@@ -1,5 +1,6 @@
 import copy
 import threading
+import pytest
 
 from app import db
 from app.alerting import alerting_core as AlertingCore
@@ -40,7 +41,7 @@ def setup_source(client):
     )
     assert response.status_code == 200, response.json
 
-
+@pytest.mark.concurrent_db
 def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, monkeypatch):
     setup_source(client)
     response = client.post(
@@ -51,7 +52,7 @@ def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, m
     assert response.status_code == 201
     alert_id = response.json["alert_id"]
 
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
         admin_id = User.query.filter_by(api_key=ADMIN_KEY).first().id
         cases_before = Case.query.count()

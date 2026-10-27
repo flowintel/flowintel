@@ -25,3 +25,7 @@ filterwarnings = [
     "ignore::UserWarning",
     "ignore::DeprecationWarning"
 ]
+markers = [
+    "concurrent_db: concurrent acces to db tests (example: race conditions) requires the legacy per-test database fixture",
+    "legacy_db: requires the legacy per-test database fixture",
+]

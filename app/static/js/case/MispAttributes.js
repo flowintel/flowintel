@@ -473,7 +473,7 @@ export default {
             </button>
         </div>
 
-        <div v-if="show_add && can_edit" class="card mb-3">
+        <div v-if="show_add && can_edit" class="card mb-3 sa-new-attr">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span class="fw-bold">New attribute</span>
                 <button type="button" class="btn-close" @click="reset_add()" aria-label="Close"></button>

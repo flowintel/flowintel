@@ -245,6 +245,27 @@
   color: var(--bs-body-color);
 }
 
+[data-bs-theme="dark"] th,
+[data-theme-pref="christmas"] th,
+[data-bs-theme="dark"] .bg-light,
+[data-theme-pref="christmas"] .bg-light {
+  --bs-table-bg: transparent;
+  --bs-table-accent-bg: transparent;
+  background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] th,
+[data-theme-pref="christmas"] th,
+[data-bs-theme="dark"] .text-dark,
+[data-theme-pref="christmas"] .text-dark {
+  color: #fff !important;
+}
+
+[data-bs-theme="dark"] .select2-selection__rendered,
+[data-theme-pref="christmas"] .select2-selection__rendered {
+  color: #fff !important;
+}
+
 [data-bs-theme="dark"] .select2-dropdown,
 [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown {
   background-color: var(--fi-surface);
@@ -362,4 +383,166 @@
 
 [data-bs-theme="dark"] .alert-console {
   color: var(--bs-body-color);
+}
+
+/* ---------- Case timeline (TimelineJS) ---------- */
+/* The vendored TimelineJS stylesheet hard-codes white/grey surfaces. */
+
+[data-bs-theme="dark"] .tl-timeline,
+[data-bs-theme="dark"] .tl-storyslider,
+[data-bs-theme="dark"] .tl-slide,
+[data-bs-theme="dark"] .tl-slider-background {
+  background-color: var(--fi-surface) !important;
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .tl-timeline h1,
+[data-bs-theme="dark"] .tl-timeline h2,
+[data-bs-theme="dark"] .tl-timeline h3,
+[data-bs-theme="dark"] .tl-timeline h4,
+[data-bs-theme="dark"] .tl-timeline h5,
+[data-bs-theme="dark"] .tl-timeline h6,
+[data-bs-theme="dark"] .tl-timeline .tl-slidenav-next a,
+[data-bs-theme="dark"] .tl-timeline .tl-slidenav-previous a,
+[data-bs-theme="dark"] .tl-slidenav-previous .tl-slidenav-content-container .tl-slidenav-icon,
+[data-bs-theme="dark"] .tl-slidenav-next .tl-slidenav-content-container .tl-slidenav-icon,
+[data-bs-theme="dark"] .tl-slidenav-previous .tl-slidenav-content-container .tl-slidenav-title,
+[data-bs-theme="dark"] .tl-slidenav-next .tl-slidenav-content-container .tl-slidenav-title,
+[data-bs-theme="dark"] .tl-slidenav-previous .tl-slidenav-content-container .tl-slidenav-description,
+[data-bs-theme="dark"] .tl-slidenav-next .tl-slidenav-content-container .tl-slidenav-description {
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .tl-timeline p,
+[data-bs-theme="dark"] .tl-message .tl-message-container .tl-message-content {
+  color: var(--bs-secondary-color);
+}
+
+[data-bs-theme="dark"] .tl-timenav {
+  background-color: var(--fi-raised);
+}
+
+[data-bs-theme="dark"] .tl-timenav .tl-timenav-line,
+[data-bs-theme="dark"] .tl-timeaxis-background {
+  background-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .tl-timeaxis .tl-timeaxis-content-container .tl-timeaxis-major,
+[data-bs-theme="dark"] .tl-timeaxis-background {
+  background-color: var(--fi-surface);
+}
+
+[data-bs-theme="dark"] .tl-timeaxis .tl-timeaxis-content-container .tl-timeaxis-major .tl-timeaxis-tick,
+[data-bs-theme="dark"] .tl-timeaxis .tl-timeaxis-content-container .tl-timeaxis-minor .tl-timeaxis-tick {
+  color: var(--bs-secondary-color);
+}
+
+[data-bs-theme="dark"] .tl-timemarker .tl-timemarker-content-container,
+[data-bs-theme="dark"] .tl-timemarker .tl-timemarker-timespan .tl-timemarker-timespan-content {
+  background-color: var(--bs-tertiary-bg);
+  border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .tl-timemarker .tl-timemarker-content-container .tl-timemarker-content .tl-timemarker-text h2.tl-headline,
+[data-bs-theme="dark"] .tl-timemarker.tl-timemarker-active .tl-timemarker-content-container .tl-timemarker-content .tl-timemarker-text h2.tl-headline {
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .tl-timemarker.tl-timemarker-active .tl-timemarker-content-container {
+  background-color: var(--fi-raised);
+  border-color: var(--fi-accent);
+}
+
+[data-bs-theme="dark"] .tl-menubar-button {
+  background-color: var(--fi-raised);
+  color: var(--bs-body-color);
+}
+
+/* ---------- Date picker (flatpickr) ---------- */
+
+[data-bs-theme="dark"] .flatpickr-calendar {
+  background: var(--fi-raised);
+  border-color: var(--bs-border-color);
+  box-shadow: 0 3px 13px rgba(0, 0, 0, 0.5);
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-calendar.arrowTop:after,
+[data-bs-theme="dark"] .flatpickr-calendar.arrowTop:before {
+  border-bottom-color: var(--fi-raised);
+}
+
+[data-bs-theme="dark"] .flatpickr-calendar.arrowBottom:after,
+[data-bs-theme="dark"] .flatpickr-calendar.arrowBottom:before {
+  border-top-color: var(--fi-raised);
+}
+
+[data-bs-theme="dark"] .flatpickr-months .flatpickr-month,
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months,
+[data-bs-theme="dark"] .flatpickr-current-month input.cur-year,
+[data-bs-theme="dark"] span.flatpickr-weekday,
+[data-bs-theme="dark"] .flatpickr-time input,
+[data-bs-theme="dark"] .flatpickr-time .flatpickr-am-pm,
+[data-bs-theme="dark"] .flatpickr-time .flatpickr-time-separator {
+  background: transparent;
+  color: var(--bs-body-color);
+  fill: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-current-month .flatpickr-monthDropdown-months option {
+  background-color: var(--fi-raised);
+}
+
+[data-bs-theme="dark"] .flatpickr-months .flatpickr-prev-month,
+[data-bs-theme="dark"] .flatpickr-months .flatpickr-next-month {
+  color: var(--bs-body-color);
+  fill: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-months .flatpickr-prev-month svg,
+[data-bs-theme="dark"] .flatpickr-months .flatpickr-next-month svg {
+  fill: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-day {
+  color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-day.prevMonthDay,
+[data-bs-theme="dark"] .flatpickr-day.nextMonthDay,
+[data-bs-theme="dark"] .flatpickr-day.flatpickr-disabled {
+  color: var(--bs-secondary-color);
+  opacity: 0.6;
+}
+
+[data-bs-theme="dark"] .flatpickr-day:hover,
+[data-bs-theme="dark"] .flatpickr-day:focus,
+[data-bs-theme="dark"] .flatpickr-time input:hover,
+[data-bs-theme="dark"] .flatpickr-time input:focus,
+[data-bs-theme="dark"] .numInputWrapper:hover {
+  background: var(--bs-tertiary-bg);
+  border-color: var(--bs-tertiary-bg);
+}
+
+[data-bs-theme="dark"] .flatpickr-day.today {
+  border-color: var(--bs-secondary-color);
+}
+
+[data-bs-theme="dark"] .flatpickr-day.selected,
+[data-bs-theme="dark"] .flatpickr-day.selected:hover {
+  background: var(--fi-accent);
+  border-color: var(--fi-accent);
+  color: #fff;
+}
+
+[data-bs-theme="dark"] .flatpickr-calendar.hasTime .flatpickr-time {
+  border-top-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .numInputWrapper span.arrowUp:after {
+  border-bottom-color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .numInputWrapper span.arrowDown:after {
+  border-top-color: var(--bs-body-color);
 }
