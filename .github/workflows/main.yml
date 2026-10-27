@@ -56,7 +56,7 @@ jobs:
 
 # As a 1st default, we keep the Session scoped new approach for test in sequential  to provide clear outputs.
     - name: New Test - Sequential
-      if: ${{ !cancelled() }}
+      if: always()
       run: |
         ./launch.sh -tn
 
@@ -87,7 +87,7 @@ jobs:
 # As a 2nd default, we keep the Legacy "clean" approach for test in sequential in order
 # to provide complementary results for tests incompatible with the Session scoped approach
     - name: Legacy Test - Sequential (Non Random on deselected tests)
-      if: ${{ !cancelled() }}
+      if: always()
       run: |
         ./launch.sh -ts
 
