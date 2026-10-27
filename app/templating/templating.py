@@ -1061,8 +1061,12 @@ def _scan_local_entries(repo):
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     upserted = []
 
-    for tpl_type in ("case", "task"):
-        type_dir = os.path.join(base, tpl_type)
+    folder_types = {"case": "case", "cases": "case", "task": "task", "tasks": "task"}
+    for folder_name in sorted(os.listdir(base)):
+        tpl_type = folder_types.get(folder_name.lower())
+        if tpl_type is None:
+            continue
+        type_dir = os.path.join(base, folder_name)
         if not os.path.isdir(type_dir):
             continue
 
@@ -1084,7 +1088,7 @@ def _scan_local_entries(repo):
             title_ = (tpl.get("title") or tpl.get("name") or filename.replace(".json", "")).strip()
             description_ = (tpl.get("description") or "")[:500]
             version_ = tpl.get("version")
-            relative_path = f"{tpl_type}/{filename}"
+            relative_path = f"{folder_name}/{filename}"
             file_sha = hashlib.sha1(raw_bytes).hexdigest()
 
             entry = Template_Repository_Entry.query.filter_by(
