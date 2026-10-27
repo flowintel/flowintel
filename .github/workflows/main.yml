@@ -24,7 +24,8 @@ jobs:
         git submodule init && git submodule update
 
 ####
-#    - name: New Test Stress - Sequential
+# Uncomment when it seems necessary to explore many various random order for running tests
+#    - name: New Test Order Stress - Sequential
 #      run: |
 #        ./launch.sh -tns
 #
@@ -36,18 +37,24 @@ jobs:
 #        path: tests_master.log
 #        if-no-files-found: ignore
 ####
-    - name: New Test - Parallel
-      run: |
-        ./launch.sh -tnp
 
-    - name: Upload debug logs (New Test - Parallel)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-logs-new-parallel-${{ github.run_id }}
-        path: newtests_gw*.log
-        if-no-files-found: ignore
+####
+# Bypassed by comment - kept for legacy in case it is needed again
+#    - name: New Test - Parallel
+#      run: |
+#        ./launch.sh -tnp
+#
+#    - name: Upload debug logs (New Test - Parallel)
+#      if: always()
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: test-logs-new-parallel-${{ github.run_id }}
+#        path: newtests_gw*.log
+#        if-no-files-found: ignore
+#
+####
 
+# As a 1st default, we keep the Session scoped new approach for test in sequential  to provide clear outputs.
     - name: New Test - Sequential
       if: ${{ !cancelled() }}
       run: |
@@ -61,21 +68,24 @@ jobs:
         path: newtests_master.log
         if-no-files-found: ignore
 
-    - name: New Test - Sequential (Non Random)
-      if: ${{ !cancelled() }}
-      run: |
-        ./launch.sh -tnnr
-
-    - name: Upload debug logs (New Test - Sequential - Non Random)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-logs-new-sequential-non-random-${{ github.run_id }}
-        path: newtests_master.log
-        if-no-files-found: ignore
+####
+# Bypassed by comment - kept for legacy in case it is needed again
+#    - name: New Test - Sequential (Non Random)
+#      if: ${{ !cancelled() }}
+#      run: |
+#        ./launch.sh -tnnr
+#
+#    - name: Upload debug logs (New Test - Sequential - Non Random)
+#      if: always()
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: test-logs-new-sequential-non-random-${{ github.run_id }}
+#        path: newtests_master.log
+#        if-no-files-found: ignore
 ####
 
-####
+# As a 2nd default, we keep the Legacy "clean" approach for test in sequential in order
+# to provide complementary results for tests incompatible with the Session scoped approach
     - name: Legacy Test - Sequential (Non Random on deselected tests)
       if: ${{ !cancelled() }}
       run: |
@@ -89,45 +99,38 @@ jobs:
         path: tests_master.log
         if-no-files-found: ignore
 
-#    - name: Debug via tmate (parallel failure)
-#      if: failure()
-#      uses: mxschmitt/action-tmate@v3
-#      timeout-minutes: 15
-
+# As a 3rd default, we keep the Legacy approach for test in parallel on all tests
+# Meant to keep a "reference"
     - name: Legacy Test - Parallel (Non Random on all tests)
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') }}
       run: |
         ./launch.sh -tp
 
     - name: Upload debug logs (Legacy Test - Parallel - Non Random on all tests)
-      if: always()
+      if: ${{ always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') }}    
       uses: actions/upload-artifact@v4
       with:
         name: test-logs-legacy-parallel-${{ github.run_id }}
         path: tests_gw*.log
         if-no-files-found: ignore
 
+####
+# Bypassed by comment - kept for legacy in case it is needed again
+#    - name: Legacy Test - Sequential (Non Random on all tests)
+#      if: ${{ !cancelled() }}
+#      run: |
+#        ./launch.sh -t
+#
+#    - name: Upload debug logs (Legacy Test - Sequential - Non Random on all tests)
+#      if: always()
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: test-logs-legacy-sequential-${{ github.run_id }}
+#        path: tests_master.log
+#        if-no-files-found: ignore
+#
 #    - name: Debug via tmate (parallel failure)
 #      if: failure()
 #      uses: mxschmitt/action-tmate@v3
 #      timeout-minutes: 15
-
-    - name: Legacy Test - Sequential (Non Random on all tests)
-      if: ${{ !cancelled() }}
-      run: |
-        ./launch.sh -t
-
-    - name: Upload debug logs (Legacy Test - Sequential - Non Random on all tests)
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-logs-legacy-sequential-${{ github.run_id }}
-        path: tests_master.log
-        if-no-files-found: ignore
-
-#    - name: Debug via tmate (parallel failure)
-#      if: failure()
-#      uses: mxschmitt/action-tmate@v3
-#      timeout-minutes: 15
-
 ####
