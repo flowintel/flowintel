@@ -108,6 +108,7 @@ export default {
         }
 
         function set_sync_direction(dir) {
+            if (dir === 'send' && sync_selected_instance.value?.details?.read_only) return
             sync_direction.value = dir
             if (dir === 'logs' && sync_selected_instance.value) {
                 load_sync_logs(sync_selected_instance.value.case_task_instance_id)
@@ -194,6 +195,7 @@ export default {
 
         async function save_automation(instance, direction) {
             if (!instance?.can_use_connector) return
+            if (direction === 'send' && instance.details?.read_only) return
             const state = get_automation_state(instance.case_task_instance_id)
             const schedule = state.schedules[direction]
             state.saving = { ...state.saving, [direction]: true }
@@ -219,6 +221,7 @@ export default {
         async function resolve_automation_conflict(instance, conflict, resolution, options = {}) {
             const showToast = options.showToast !== false
             if (!instance?.can_use_connector) return false
+            if (instance.details?.read_only && conflict.direction === 'send' && resolution === 'prefer_flowintel') return false
             const state = get_automation_state(instance.case_task_instance_id)
             state.resolving = { ...state.resolving, [conflict.id]: true }
             const conflictId = conflict.parent_conflict_id || conflict.id
@@ -499,6 +502,9 @@ export default {
             identifier_editing.value = false
             identifier_draft.value = ''
             connector_info_expanded.value = false
+            if (inst?.details?.read_only && sync_direction.value === 'send') {
+                sync_direction.value = 'receive'
+            }
             if ((props.mode === 'sync' || props.mode === 'automation' || props.mode === 'collision') && inst) {
                 load_automation(inst.case_task_instance_id)
             }
@@ -574,6 +580,7 @@ export default {
                             @click="sync_instance_idx = i">
                             <img :src="'/static/icons/'+inst.details.icon" style="max-width:20px; flex-shrink:0;">
                             <span class="text-truncate small">[[ inst.details.name ]]</span>
+                            <span v-if="inst.details?.read_only" class="badge text-bg-secondary ms-auto">Read only</span>
                             <span v-if="!inst.can_use_connector" class="badge bg-light text-muted border ms-auto">view only</span>
                         </div>
                     </div>
@@ -658,10 +665,13 @@ export default {
                             <div v-if="mode === 'sync' && !sync_selected_instance.can_use_connector && sync_direction !== 'logs' && sync_direction !== 'automation'" class="alert alert-info py-2 px-3 mb-3">
                                 You can inspect which objects are synced with this connector, but only connectors you can use directly are interactive.
                             </div>
+                            <div v-if="sync_selected_instance.details?.read_only" class="alert alert-info py-2 px-3 mb-3">
+                                This instance is read only. You can receive data from MISP; sending and outgoing automation are disabled.
+                            </div>
                             <!-- Direction tabs: Send / Receive / Automation / Logs -->
                             <ul v-if="mode === 'sync'" class="nav nav-tabs mb-3">
                                 <li class="nav-item">
-                                    <button :class="['nav-link', {active: sync_direction === 'send'}]" @click="set_sync_direction('send')">
+                                    <button :class="['nav-link', {active: sync_direction === 'send'}]" :disabled="sync_selected_instance.details?.read_only" @click="set_sync_direction('send')">
                                         <i class="fa-solid fa-arrow-up fa-sm me-1"></i>Send
                                     </button>
                                 </li>
@@ -706,7 +716,7 @@ export default {
                                         Automation can only be changed on connectors you can use directly.
                                     </div>
                                     <div class="row g-3">
-                                        <div v-for="direction in ['send', 'receive']" :key="'automation-'+direction" class="col-lg-6">
+                                        <div v-for="direction in (sync_selected_instance.details?.read_only ? ['receive'] : ['send', 'receive'])" :key="'automation-'+direction" class="col-lg-6">
                                             <div class="card h-100">
                                                 <div class="card-header d-flex align-items-center justify-content-between py-2">
                                                     <span class="fw-semibold">
@@ -798,7 +808,7 @@ export default {
                                                 <span class="badge bg-light text-dark border">[[ collision_selected_count(sync_selected_instance.case_task_instance_id) ]] selected</span>
                                                 <div class="btn-group btn-group-sm">
                                                     <button type="button" class="btn btn-outline-secondary"
-                                                            :disabled="!sync_selected_instance.can_use_connector || !collision_selected_count(sync_selected_instance.case_task_instance_id) || get_automation_state(sync_selected_instance.case_task_instance_id).bulk_resolving.prefer_flowintel"
+                                                            :disabled="!sync_selected_instance.can_use_connector || sync_selected_instance.details?.read_only || !collision_selected_count(sync_selected_instance.case_task_instance_id) || get_automation_state(sync_selected_instance.case_task_instance_id).bulk_resolving.prefer_flowintel"
                                                             @click="resolve_selected_automation_conflicts(sync_selected_instance, 'prefer_flowintel')">
                                                         <span v-if="get_automation_state(sync_selected_instance.case_task_instance_id).bulk_resolving.prefer_flowintel" class="spinner-border spinner-border-sm me-1" style="width:0.7rem;height:0.7rem;"></span>
                                                         Flowintel
@@ -878,7 +888,7 @@ export default {
                                                     <td class="text-end">
                                                         <div class="btn-group btn-group-sm">
                                                             <button type="button" class="btn btn-outline-secondary"
-                                                                    :disabled="!sync_selected_instance.can_use_connector || get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"
+                                                                    :disabled="!sync_selected_instance.can_use_connector || (sync_selected_instance.details?.read_only && conflict.direction === 'send') || get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"
                                                                     @click="resolve_automation_conflict(sync_selected_instance, conflict, 'prefer_flowintel')">Flowintel</button>
                                                             <button type="button" class="btn btn-outline-secondary"
                                                                     :disabled="!sync_selected_instance.can_use_connector || get_automation_state(sync_selected_instance.case_task_instance_id).resolving[conflict.id]"

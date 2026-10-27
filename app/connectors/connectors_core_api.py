@@ -19,6 +19,8 @@ def verif_add_connector(data_dict):
     return data_dict
 
 def verif_add_instance(data_dict):
+    if "read_only" in data_dict and not isinstance(data_dict["read_only"], bool):
+        return {"message": "read_only must be a boolean"}
     if "name" not in data_dict or not data_dict["name"]:
         return {"message": "Please give a name to your instance"}
     elif Connector_Instance.query.filter_by(name=data_dict["name"]).first():
@@ -63,6 +65,8 @@ def verif_edit_connector(data_dict, cid):
     return data_dict
 
 def verif_edit_instance(data_dict, iid):
+    if "read_only" in data_dict and not isinstance(data_dict["read_only"], bool):
+        return {"message": "read_only must be a boolean"}
     instance = Connector_Instance.query.get(iid)
     if "name" not in data_dict or data_dict["name"] == instance.name or not data_dict["name"]:
         data_dict["name"] = instance.name

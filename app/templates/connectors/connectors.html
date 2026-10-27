@@ -94,7 +94,10 @@
                             <table>
                                 <template v-for="instance in instances_table[connector.id]">
                                     <tr>
-                                        <td title="Name of the instance">[[instance.name]]</td>
+                                        <td title="Name of the instance">
+                                            [[instance.name]]
+                                            <span v-if="instance.read_only" class="badge text-bg-secondary ms-1" title="Receiving is allowed; sending is disabled">Read only</span>
+                                        </td>
                                         <td v-if="instance.sharing_scope !== 'personal'">
                                             <small :title="instance.sharing_scope === 'org' ? 'This instance is shared with your organisation' : 'This instance is shared platform-wide and can only be managed by admins'">
                                                 <span class="badge rounded-pill text-bg-success">[[ instance.sharing_scope === 'org' ? 'Org' : 'Global' ]]</span>

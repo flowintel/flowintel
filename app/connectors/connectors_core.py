@@ -13,6 +13,7 @@ MISP_SYNC_INTERVALS = {"manual", "daily", "weekly", "monthly"}
 MISP_SYNC_CONFLICT_STRATEGIES = {"ask", "prefer_flowintel", "prefer_misp"}
 MISP_SYNC_RESOLUTIONS = {"prefer_flowintel", "prefer_misp", "skip"}
 MISP_SYNC_COLLISION_ICON = "fa-solid fa-code-compare"
+READ_ONLY_CONNECTOR_MESSAGE = "This connector instance is read only. Receiving data is allowed, but sending is disabled."
 
 
 def as_utc_datetime(value):
@@ -498,7 +499,8 @@ def add_connector_instance_core(cid, form_dict, user_id):
         connector_id=cid,
         global_api_key=global_api_key,
         shared_org_id=shared_org_id,
-        sharing_scope=sharing_scope
+        sharing_scope=sharing_scope,
+        read_only=form_dict.get("read_only", False)
     )
     db.session.add(connector)
     db.session.commit()
@@ -586,6 +588,14 @@ def edit_connector_instance_core(iid, form_dict):
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
+        if "read_only" in form_dict:
+            instance_db.read_only = form_dict["read_only"]
+        if instance_db.read_only:
+            case_connector_ids = db.session.query(Case_Connector_Instance.id).filter_by(instance_id=instance_db.id)
+            Case_Misp_Sync_Schedule.query.filter(
+                Case_Misp_Sync_Schedule.case_connector_instance_id.in_(case_connector_ids),
+                Case_Misp_Sync_Schedule.direction == "send"
+            ).update({"enabled": False, "next_run_at": None}, synchronize_session=False)
         instance_db.sharing_scope = sharing_scope
         if sharing_scope == "global":
             instance_db.shared_org_id = None
@@ -904,6 +914,15 @@ def upsert_misp_sync_schedule(case_id, case_connector_instance_id, data, user):
     if error:
         return None, error
 
+    case_connector = Case_Connector_Instance.query.get(case_connector_instance_id)
+    instance = get_instance(case_connector.instance_id) if case_connector else None
+    if instance and instance.read_only and normalized["enabled"]:
+        from ..utils.utils import get_modules_list
+        _, module_configs = get_modules_list()
+        module_type = module_configs.get(normalized["module_name"], {}).get("type")
+        if normalized["direction"] == "send" or module_type != "receive_from":
+            return None, READ_ONLY_CONNECTOR_MESSAGE
+
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     schedule = Case_Misp_Sync_Schedule.query.filter_by(
         case_id=int(case_id),
@@ -1197,6 +1216,11 @@ def resolve_misp_sync_conflict(conflict_id, resolution, resolution_payload, user
     conflict = Case_Misp_Sync_Conflict.query.get(conflict_id)
     if not conflict:
         return None, "Conflict not found"
+    if conflict.direction == "send" and resolution == "prefer_flowintel":
+        case_connector = Case_Connector_Instance.query.get(conflict.case_connector_instance_id)
+        instance = get_instance(case_connector.instance_id) if case_connector else None
+        if instance and instance.read_only:
+            return None, READ_ONLY_CONNECTOR_MESSAGE
     resolution_payload = resolution_payload if isinstance(resolution_payload, dict) else {}
     detail_token = resolution_payload.get("detail_token")
     if conflict.item_type == "event" and detail_token:

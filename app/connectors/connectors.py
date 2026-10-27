@@ -282,6 +282,7 @@ def edit_instance(cid, iid):
             form.description.data = loc_instance.description
             form.is_global_connector.data = True if loc_instance.global_api_key else False
             form.sharing_scope.data = ConnectorModel.get_instance_sharing_scope(loc_instance)
+            form.read_only.data = loc_instance.read_only
             
         return render_template("connectors/add_instance.html", form=form, edit_mode=True)
     return render_template("404.html")

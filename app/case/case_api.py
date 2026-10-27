@@ -783,6 +783,7 @@ class GetConnectorsCase(Resource):
                 instance_list.append({
                     "id": loc_instance.id,
                     "name": loc_instance.name,
+                    "read_only": loc_instance.read_only,
                     "identifier": case_instance.identifier
                 })
             return {"connectors": instance_list}, 200

@@ -89,6 +89,7 @@ class AddInstance(Resource):
         "description": "Description of the connector",
         "url": "Required. Url for the instance. Used by module to connect to service",
         "api_key": "Api key used by module to connect to service",
+        "read_only": "Boolean. Receive data only; block sending to this instance (default: false)",
     })
     def post(self, cid):
         if ConnectorModel.get_connector(cid):
@@ -118,6 +119,7 @@ class EditInstance(Resource):
         "description": "Description of the connector",
         "url": "Required. Url for the instance. Used by module to connect to service",
         "api_key": "Api key used by module to connect to service",
+        "read_only": "Boolean. Receive data only; omitted values keep the existing setting",
     })
     def post(self, cid, iid):
         if ConnectorModel.get_connector(cid):

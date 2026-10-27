@@ -1630,6 +1630,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             current_user = User.query.get(user_id)
             instance_list = list()
             for instance in connector.instances:
+                if instance.read_only and res[module].get("type") != "receive_from":
+                    continue
                 if (
                     instance.sharing_scope == "global"
                     or (instance.sharing_scope == "org" and current_user and instance.shared_org_id == current_user.org_id)
@@ -1871,7 +1873,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def ensure_misp_send_conflict(self, case_instance_id, loc_case, user):
         """Create or refresh a pending send-side MISP collision without running a sync."""
         case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
-        if not case:
+        if not case or loc_instance.read_only:
             return None
         return self._misp_send_remote_change_guard(
             loc_case,
@@ -1889,9 +1891,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not case:
             return instance
 
-        modules, _ = get_modules_list()
-        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
-        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+        modules, module_configs = get_modules_list()
+        if module not in modules:
+            return {"message": "Module not found"}
+        direction = "receive" if module_configs.get(module, {}).get("type") == "receive_from" else "send"
+        if loc_instance.read_only and direction == "send":
+            return {"message": ConnectorModel.READ_ONLY_CONNECTOR_MESSAGE, "toast_class": "warning-subtle"}
         automation_log_message = self.misp_sync_automation_log_message(payload)
 
         remote_change_result = self._misp_send_remote_change_guard(
@@ -2006,7 +2011,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # Record last sync time on successful module execution
         case_instance.last_sync = sync_finished_at
         try:
-            from ..connectors import connectors_core as ConnectorModel
             ConnectorModel.mark_misp_sync_schedule_run(case["id"], case_instance_id, direction, loc_case.last_modif, sync_finished_at)
         except Exception:
             pass
@@ -2020,9 +2024,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not case:
             return instance
 
-        modules, _ = get_modules_list()
+        modules, module_configs = get_modules_list()
         if module not in modules:
             return {"message": "Module not found"}
+        if loc_instance.read_only and module_configs.get(module, {}).get("type") != "receive_from":
+            return {"message": ConnectorModel.READ_ONLY_CONNECTOR_MESSAGE, "toast_class": "warning-subtle"}
 
         module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
         if module_cfg.get("case_task") != "case":

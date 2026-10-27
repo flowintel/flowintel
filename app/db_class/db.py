@@ -1283,6 +1283,7 @@ class Connector_Instance(db.Model):
     global_api_key = db.Column(db.String(100), index=True)
     shared_org_id = db.Column(db.Integer, index=True, nullable=True)
     sharing_scope = db.Column(db.String(20), index=True, nullable=False, default="personal", server_default="personal")
+    read_only = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     def to_json(self):
         sharing_scope = self.sharing_scope or "personal"
@@ -1295,7 +1296,8 @@ class Connector_Instance(db.Model):
             "connector_id": self.connector_id,
             "global_api_key": True if self.global_api_key else False,
             "shared_org_id": self.shared_org_id,
-            "sharing_scope": sharing_scope
+            "sharing_scope": sharing_scope,
+            "read_only": self.read_only
         }
         return json_dict
 

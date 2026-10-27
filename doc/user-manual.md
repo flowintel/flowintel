@@ -917,7 +917,7 @@ You can edit the identifier of an attached connector or remove the connector ent
 
 ## Pushing data to MISP
 
-Once a MISP connector of the **send_to** type is attached, you can push data to the MISP instance. Because connectors can be added to both cases and tasks, and you can attach multiple connectors to the same case or task, you can push to several MISP instances at once or use different push modes side by side.
+Once a writable MISP connector is attached, you can push data to the MISP instance. Because connectors can be added to both cases and tasks, and you can attach multiple connectors to the same case or task, you can push to several MISP instances at once or use different push modes side by side. Instances marked **Read only** allow receiving data but block all sends, including API calls and automated syncs.
 
 When you click the send button on a case-level connector, Flowintel offers two push modes:
 
@@ -932,7 +932,7 @@ Taxonomy tags and galaxy clusters are synchronised to the MISP event. Custom tag
 
 ## Receiving data from MISP
 
-If the connector instance is configured as a **receive_from** type, you can pull data from MISP into a case. Flowintel fetches the MISP event using the identifier and creates or updates local MISP objects and their attributes to match. As with send connectors, you can attach multiple receive connectors to the same case to pull from different MISP instances.
+You can pull data from MISP into a case using either a writable or a **Read only** instance. Flowintel fetches the MISP event using the identifier and creates or updates local MISP objects and their attributes to match. You can attach multiple connectors to the same case to pull from different MISP instances.
 
 The receive operation synchronises MISP objects and attributes only. It does not pull event-level metadata such as tags or galaxies back into the case. If you need those, add them to the case manually.
 
@@ -2218,6 +2218,8 @@ Click **Create** to save.
 ### Editing and deleting a connector
 
 To edit a connector, click the **Edit** button on the connector card and update the name, description or icon. To delete a connector, click the **Delete** button. If the connector still has instances, the delete button is disabled. You must remove all instances before the connector itself can be deleted.
+
+When adding or editing an instance, enable **Read only (receive only)** to prevent Flowintel from sending data to that server. Imports, searches and incoming syncs remain available. Existing instances are writable by default. Enabling read-only mode disables existing outgoing automation schedules; turning it off does not automatically re-enable those schedules. The connector API accepts a boolean `read_only` field on instance creation and editing. Omitting it during an edit preserves the current setting.
 
 ### Icons
 

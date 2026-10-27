@@ -17,6 +17,7 @@ export default {
     },
     emits: ['sync_done', 'close'],
     setup(props, { emit }) {
+        const send_blocked = computed(() => props.direction === 'send' && !!props.instance?.details?.read_only)
         const local_objects = ref([])
         const local_standalone_attrs = ref([])
         const local_search = ref('')
@@ -285,8 +286,8 @@ export default {
             if (props.direction !== 'send') {
                 active_panel.value = 'objects'
             }
-            // default module depending on panel
-            module_name.value = active_panel.value === 'objects' ? 'misp_object_event' : ''
+            // Default to a module matching the selected direction and panel.
+            module_name.value = props.direction === 'receive' ? 'receive_misp_object' : (active_panel.value === 'objects' ? 'misp_object_event' : '')
             // initialize selected_tasks_map from provided case tasks
             selected_tasks_map.value = {}
             for (const t of tasks.value) {
@@ -296,6 +297,10 @@ export default {
         }
 
         async function submit() {
+            if (send_blocked.value) {
+                create_message("This connector instance is read only. Sending is disabled.", "warning-subtle")
+                return
+            }
             if (!props.can_use_connector) {
                 create_message("This connector is view only for you in this case", "warning-subtle")
                 return
@@ -342,6 +347,7 @@ export default {
         }
 
         async function submit_case_tasks() {
+            if (send_blocked.value) return
             if (!props.can_use_connector) {
                 create_message("This connector is view only for you in this case", "warning-subtle")
                 return
@@ -404,6 +410,7 @@ export default {
         }, { immediate: true })
 
         return {
+            send_blocked,
             local_objects, local_standalone_attrs, local_search, local_type_filter, selected_local_ids, selected_local_sa_ids, is_loading_local,
             remote_objects, remote_standalone_attrs, remote_search, remote_type_filter, selected_remote_uuids, selected_remote_sa_uuids, is_loading_remote,
             module_name, module_desc, is_submitting, is_importing_report,
@@ -700,7 +707,7 @@ export default {
                         </template>
                     </div>
                     <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-                    <button type="button" class="btn btn-primary" :disabled="is_submitting || !can_use_connector" @click="submit()">
+                    <button type="button" class="btn btn-primary" :disabled="is_submitting || !can_use_connector || send_blocked" @click="submit()">
                         <span v-if="is_submitting" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                         [[ direction === 'send' ? 'Send to MISP' : 'Receive from MISP' ]]
                     </button>
@@ -781,7 +788,7 @@ export default {
             <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-2 border-top">
                 <div class="text-muted small me-auto">Prepare a selective export of case and tasks</div>
                 <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-                <button type="button" class="btn btn-primary" :disabled="is_submitting || !module_name || !can_use_connector" @click="submit()">
+                <button type="button" class="btn btn-primary" :disabled="is_submitting || !module_name || !can_use_connector || send_blocked" @click="submit()">
                     <span v-if="is_submitting" class="spinner-border spinner-border-sm me-1" style="width:0.75rem;height:0.75rem;"></span>
                     Send to MISP
                 </button>

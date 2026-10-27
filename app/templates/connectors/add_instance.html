@@ -7,7 +7,7 @@
 
 {% block content %}
     {% if edit_mode %}
-        {% set header = ('Edit instance · ' ~ (form.name.data or ''), 'fa-solid fa-pen-to-square', 'Change the URL, credentials or type of this instance.') %}
+        {% set header = ('Edit instance · ' ~ (form.name.data or ''), 'fa-solid fa-pen-to-square', 'Change the URL, credentials or access mode of this instance.') %}
     {% else %}
         {% set header = ('New instance', 'fa-solid fa-plug-circle-plus', 'Add a server of this connector that cases and tasks can use.') %}
     {% endif %}
@@ -65,6 +65,11 @@
                 {% if form.is_global_connector.errors %}
                     <div class="text-danger small">{{form.is_global_connector.errors[0] | safe}}</div>
                 {%endif%}
+            </div>
+            <div class="form-check mb-3">
+                {{form.read_only(class_="form-check-input", aria_describedby="read-only-help")}}
+                {{form.read_only.label(class_="form-check-label")}}
+                <div id="read-only-help" class="form-text">Allow receiving data from this instance and block all sends, including automated syncs. Enabling this disables existing outgoing sync schedules.</div>
             </div>
             <hr>
             <div class="d-flex gap-2">
