@@ -20,7 +20,7 @@ If you believe you have found a security vulnerability in Flowintel, please cont
 
 Whenever possible, please encrypt your message using the following GnuPG key:
 
-- **Fingerprint:** `CA57 2205 C002 4E06 BA70 BE89 EAAD CFFC 22BD 4CD`
+- **Fingerprint:** `CA57 2205 C002 4E06 BA70 BE89 EAAD CFFC 22BD 4CD5`
 
 You can obtain the corresponding public key from standard key servers or via CIRCL.
 
