@@ -103,21 +103,8 @@
 
 
     <!-- pagination -->
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1" v-cloak>
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetch_sorted_cases(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
-                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    <app-pagination v-if="case_list" class="my-3" :current-page="current_page" :nb-pages="case_list.nb_pages"
+                    @page="fetch_sorted_cases"></app-pagination>
     <!-- pagination -->
 
     <template v-if="case_list">
@@ -271,26 +258,14 @@
         </div>
     </template>
 
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="case_list && case_list.nb_pages > 1" v-cloak>
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetch_sorted_cases(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetch_sorted_cases(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == case_list.nb_pages}">
-                <button class="page-link" @click="fetch_sorted_cases(Math.min(current_page+1, case_list.nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    <app-pagination v-if="case_list" class="my-3" :current-page="current_page" :nb-pages="case_list.nb_pages"
+                    @page="fetch_sorted_cases"></app-pagination>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
+        import Pagination from '/static/js/components/pagination.js'
         const { createApp, ref, computed} = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
@@ -301,6 +276,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                'app-pagination': Pagination,
                 smart_render,
                 tag_badge,
                 tag_filter
@@ -513,24 +489,6 @@
                 }
 
 
-                const visiblePages = computed(() => {
-                    const pages = []
-                    const total = case_list.value.nb_pages
-                    const current = current_page.value
-                    if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                        if (current <= 4) {
-                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
-                        } else if (current >= total - 3) {
-                            console.log("Over total-3");
-                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                        } else {
-                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
-                        }
-                    }
-                    return pages
-                })
 
                 return {
                     message_list,
@@ -553,7 +511,6 @@
                     totalTags,
                     toggleTags,
                     hiddenTagCount,
-                    visiblePages,
 
                     complete_case,
                     sort_by_filter,

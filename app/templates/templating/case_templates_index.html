@@ -66,21 +66,8 @@
 	</div>
     <!-- Search bar -->
 
-    <nav aria-label="Page navigation" class="nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetch_templates(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
-                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    <app-pagination v-if="templates_list" class="my-3" :current-page="current_page" :nb-pages="templates_list.nb_pages"
+                    @page="fetch_templates"></app-pagination>
 
     <template v-if="templates_list">
         <template v-for="template in templates_list.templates">
@@ -201,27 +188,15 @@
         </div>
     </template>
 
-    <nav aria-label="Page navigation" class="mt-3 nav-pagination" v-if="templates_list && templates_list.nb_pages > 1">
-        <ul class="pagination">
-            <li :class="{'page-item': true, 'disabled': current_page == 1}">
-                <button class="page-link" @click="fetch_templates(Math.max(1, current_page-1))">Previous</button>
-            </li>
-            <li v-for="page in visiblePages"
-                :class="['page-time', {active: page === current_page, disabled: page === '...' }]">
-                <button class="page-link" v-if="page !== '...'" @click="fetch_templates(page)">[[ page ]]</button>
-                <span class="page-link" v-else>...</span>
-            </li>
-            <li :class="{'page-item': true, 'disabled': current_page == templates_list.nb_pages}">
-                <button class="page-link" @click="fetch_templates(Math.min(current_page+1, templates_list.nb_pages))">Next</button>
-            </li>
-        </ul>
-    </nav>
+    <app-pagination v-if="templates_list" class="my-3" :current-page="current_page" :nb-pages="templates_list.nb_pages"
+                    @page="fetch_templates"></app-pagination>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed } = Vue
+        import Pagination from '/static/js/components/pagination.js'
+        const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         import smart_render from '/static/js/components/smart-render.js'
@@ -230,6 +205,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                'app-pagination': Pagination,
                 smart_render,
                 tag_filter
             },
@@ -320,24 +296,6 @@
                 
 
 
-                const visiblePages = computed(() => {
-                    const pages = []
-                    const total = templates_list.value.nb_pages
-                    const current = current_page.value
-                    if (total <= 7) {
-                        for (let i = 1; i <= total; i++) pages.push(i)
-                    } else {
-                        if (current <= 4) {
-                            pages.push(1, 2, 3, 4, 5, '...', total-1, total)
-                        } else if (current >= total - 3) {
-                            console.log("Over total-3");
-                            pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total)
-                        } else {
-                            pages.push(1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total)
-                        }
-                    }
-                    return pages
-                })
 
 
                 return {
@@ -351,7 +309,6 @@
                     templates_list,
                     current_page,
 
-                    visiblePages,
                     can_manage_templates,
                     on_tag_filter_change,
 

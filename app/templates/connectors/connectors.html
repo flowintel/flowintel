@@ -200,19 +200,8 @@
                                 <span><i class="fa-solid fa-lock me-1"></i>[[ cases_modal_private_count ]] private case<template v-if="cases_modal_private_count > 1">s</template></span>
                             </li>
                         </ul>
-                        <nav v-if="cases_modal_nb_pages > 1" class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item" :class="{ disabled: cases_modal_page === 1 }">
-                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page - 1)">&laquo;</button>
-                                </li>
-                                <li v-for="p in cases_modal_nb_pages" :key="p" class="page-item" :class="{ active: p === cases_modal_page }">
-                                    <button class="page-link" @click="fetchCasesPage(p)">[[ p ]]</button>
-                                </li>
-                                <li class="page-item" :class="{ disabled: cases_modal_page === cases_modal_nb_pages }">
-                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page + 1)">&raquo;</button>
-                                </li>
-                            </ul>
-                        </nav>
+                        <app-pagination class="mt-3" :current-page="cases_modal_page" :nb-pages="cases_modal_nb_pages"
+                                        aria-label="Linked cases pagination" @page="fetchCasesPage"></app-pagination>
                     </template>
                     <p v-else class="text-muted"><i>No cases linked to this instance.</i></p>
                 </div>
@@ -231,10 +220,12 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        import Pagination from '/static/js/components/pagination.js'
+        const { createApp, ref, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
 
         createApp({
+            components: { 'app-pagination': Pagination },
             delimiters: ['[[', ']]'],
             setup() {
                 const connectors_list = ref(null)

@@ -1059,31 +1059,13 @@
                 </div>
 
                 <!-- Pagination -->
-                <nav v-if="total_pages > 1" aria-label="Task pagination" class="mt-3 d-flex justify-content-center">
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item" :class="{ disabled: current_page <= 1 }">
-                            <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(current_page - 1)">
-                                <i class="fa-solid fa-chevron-left fa-xs"></i>
-                            </a>
-                        </li>
-                        <template v-for="p in total_pages" :key="p">
-                            <li v-if="p === 1 || p === total_pages || (p >= current_page - 2 && p <= current_page + 2)" class="page-item" :class="{ active: p === current_page }">
-                                <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(p)">[[ p ]]</a>
-                            </li>
-                            <li v-else-if="p === current_page - 3 || p === current_page + 3" class="page-item disabled">
-                                <span class="page-link">&hellip;</span>
-                            </li>
-                        </template>
-                        <li class="page-item" :class="{ disabled: current_page >= total_pages }">
-                            <a class="page-link" href="#task-collapse" @click.prevent="go_to_page(current_page + 1)">
-                                <i class="fa-solid fa-chevron-right fa-xs"></i>
-                            </a>
-                        </li>
-                    </ul>
+                <div v-if="total_pages > 1" class="mt-3 d-flex justify-content-center">
+                    <app-pagination :current-page="current_page" :nb-pages="total_pages"
+                                    aria-label="Task pagination" @page="go_to_page"></app-pagination>
                     <span class="ms-3 text-muted align-self-center" style="font-size: 0.82rem;">
                         [[ total_tasks ]] task<span v-if="total_tasks !== 1">s</span>
                     </span>
-                </nav>
+                </div>
             </template>
             <template v-else-if="tasks_tab == 'tasks-notes'">
                 <template v-for="(notes, idx) in all_notes">
@@ -1114,6 +1096,7 @@
 
 {% block script %}
     <script type="module">
+        import Pagination from '/static/js/components/pagination.js'
         const { createApp, ref, computed, nextTick, onMounted, watch, markRaw } = Vue
         import case_tasks from '/static/js/case/case_tasks.js'
         import hedgedoc_template from '/static/js/case/hedgedoc_template.js'
@@ -1139,6 +1122,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                'app-pagination': Pagination,
                 case_tasks,
                 hedgedoc_template,
                 action_buttons,

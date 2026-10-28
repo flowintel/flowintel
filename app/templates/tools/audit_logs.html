@@ -220,21 +220,8 @@
         </table>
     </div>
 
-    <nav v-if="pagination && pagination.nb_pages > 1" class="mt-3" aria-label="Audit log pagination">
-        <ul class="pagination pagination-sm justify-content-center mb-0">
-            <li class="page-item" :class="{disabled: !pagination.has_prev}">
-                <button class="page-link" @click="go_to_page(pagination.page - 1)">Previous</button>
-            </li>
-            <li v-for="page in visible_pages" :key="`page-${page}`"
-                :class="['page-item', {active: page === pagination.page, disabled: page === '...'}]">
-                <button v-if="page !== '...'" class="page-link" @click="go_to_page(page)">[[ page ]]</button>
-                <span v-else class="page-link">...</span>
-            </li>
-            <li class="page-item" :class="{disabled: !pagination.has_next}">
-                <button class="page-link" @click="go_to_page(pagination.page + 1)">Next</button>
-            </li>
-        </ul>
-    </nav>
+    <app-pagination v-if="pagination" class="mt-3" :current-page="pagination.page" :nb-pages="pagination.nb_pages"
+                    aria-label="Audit log pagination" @page="go_to_page"></app-pagination>
 
     <!-- Detail offcanvas (row drill-down) -->
     <div class="offcanvas offcanvas-end" tabindex="-1" id="auditDetailOffcanvas"
@@ -286,10 +273,12 @@
 
 {% block script %}
 <script type="module">
+    import Pagination from '/static/js/components/pagination.js'
     const { createApp, ref, computed, onMounted } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
 
     createApp({
+        components: { 'app-pagination': Pagination },
         delimiters: ['[[', ']]'],
         setup() {
             const active_tab = ref('logs')
@@ -325,22 +314,6 @@
                 activity.value.reduce((m, d) => Math.max(m, d.count), 0)
             )
 
-            const visible_pages = computed(() => {
-                const total = pagination.value.nb_pages || 1
-                const current = pagination.value.page || 1
-                const pages = []
-                if (total <= 7) {
-                    for (let i = 1; i <= total; i++) pages.push(i)
-                    return pages
-                }
-                if (current <= 4) {
-                    return [1, 2, 3, 4, 5, '...', total - 1, total]
-                }
-                if (current >= total - 3) {
-                    return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
-                }
-                return [1, '...', current - 2, current - 1, current, current + 1, current + 2, '...', total]
-            })
 
             function activity_bar_height(count) {
                 if (!activity_peak.value) return 0
@@ -484,7 +457,6 @@
                 rows,
                 pagination,
                 per_page,
-                visible_pages,
                 loading,
                 start_date,
                 end_date,

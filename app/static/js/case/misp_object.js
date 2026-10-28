@@ -1,3 +1,4 @@
+import Pagination from '../components/pagination.js'
 import {display_toast, create_message} from '../toaster.js'
 import MispObjectLink from './MispObjectLink.js'
 import { confirmDelete } from '/static/js/confirm.js'
@@ -5,7 +6,7 @@ import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js
 const { ref, computed, onMounted, onUnmounted, watch, nextTick, reactive } = Vue
 export default {
     delimiters: ['[[', ']]'],
-    components: { 'misp-object-link': MispObjectLink },
+    components: { Pagination, 'misp-object-link': MispObjectLink },
 	props: {
 		case_id: Number,
 		cases_info: Object,
@@ -1846,19 +1847,8 @@ export default {
             </div>
         </div>
 
-        <nav v-if="total_pages > 1" class="mt-2" aria-label="Objects pagination">
-            <ul class="pagination pagination-sm justify-content-center">
-                <li class="page-item" :class="{disabled: current_page === 1}">
-                    <button class="page-link" @click="current_page--">&laquo;</button>
-                </li>
-                <li v-for="p in total_pages" :key="p" class="page-item" :class="{active: p === current_page}">
-                    <button class="page-link" @click="current_page = p">[[ p ]]</button>
-                </li>
-                <li class="page-item" :class="{disabled: current_page === total_pages}">
-                    <button class="page-link" @click="current_page++">&raquo;</button>
-                </li>
-            </ul>
-        </nav>
+        <Pagination class="mt-2" :current-page="current_page" :nb-pages="total_pages"
+                    aria-label="Objects pagination" @page="current_page = $event" />
     </template>
 
     <!-- Tab view -->
