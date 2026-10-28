@@ -159,9 +159,8 @@ function test {
     python3 -m pytest -n 0 \
         -p no:randomly \
         --cov=./app \
-        --cov-report=term-missing \
-        --durations=0
-
+        --cov-report=term-missing #--durations=0 # Uncomment if durations evaluations are again needed
+        
     pytest_exit_code=$?
     set -e
 
@@ -189,8 +188,7 @@ function test_skipped {
         -p no:randomly \
         --cov=./app \
         --cov-report=term-missing \
-        --durations=0 \
-       -m "concurrent_db or legacy_db"
+       -m "concurrent_db or legacy_db" #--durations=0 # Uncomment if durations evaluations are again needed
 
     pytest_exit_code=$?
     set -e
@@ -225,8 +223,7 @@ function test_parallel {
         --dist loadfile \
 		-m "not slow" \
 		-v --capture=no \
-        -s \
-        --durations=0
+        -s #--durations=0 # Uncomment if durations evaluations are again needed
 
     pytest_exit_code=$?
     set -e
@@ -260,8 +257,7 @@ function test_new {
     python3 -m pytest -n 0 \
         --cov=./app \
         --cov-report=term-missing \
-        --durations=0 \
-        --noconftest -p tests.conftest_new
+        --noconftest -p tests.conftest_new #--durations=0 # Uncomment if durations evaluations are again needed
 
     # Quick batch of 10 random tests:
     # Kept for legacy as a first step of stress testing with "randomity"
@@ -348,7 +344,6 @@ function test_new_stress {
       python3 -m pytest -n 0 \
           --cov=./app \
           --cov-report=term-missing \
-          --durations=0 \
           --noconftest -p tests.conftest_new | grep " passed in "
     done
     set -e
@@ -371,8 +366,7 @@ function test_new_non_random {
         -p no:randomly \
         --cov=./app \
         --cov-report=term-missing \
-        --durations=0 \
-        --noconftest -p tests.conftest_new
+        --noconftest -p tests.conftest_new #--durations=0 # Uncomment if durations evaluations are again needed
     pytest_exit_code=$?
     set -e
 
@@ -406,8 +400,7 @@ function test_new_parallel {
 		-m "not slow" \
 		-v --capture=no \
         -s \
-        --durations=0 \
-        --noconftest -p tests.conftest_new
+        --noconftest -p tests.conftest_new #--durations=0 # Uncomment if durations evaluations are again needed
 
     pytest_exit_code=$?
     set -e
