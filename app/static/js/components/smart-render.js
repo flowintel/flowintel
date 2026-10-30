@@ -64,20 +64,62 @@ function esc(s) {
 }
 
 // ── Search injection ───────────────────────────────────────────────────────────
-// Injects <mark> tags into already-highlighted HTML while staying outside HTML tags.
+// Work on text nodes: rewriting HTML strings can corrupt sanitized attributes
+// or split character entities. This also handles leading and trailing plain text.
+
+function html_text_nodes(html) {
+    const template = document.createElement('template')
+    template.innerHTML = html
+    const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_TEXT)
+    const nodes = []
+    while (walker.nextNode()) {
+        const node = walker.currentNode
+        if (!node.parentElement?.closest('script, style, textarea, title, noscript')) nodes.push(node)
+    }
+    return { template, nodes }
+}
+
+function mark_text_nodes(html, re, make_mark) {
+    const { template, nodes } = html_text_nodes(html)
+    for (const node of nodes) {
+        const text = node.data
+        let end = 0
+        let fragment = null
+        for (const match of text.matchAll(re)) {
+            if (!match[0]) continue
+            fragment ||= document.createDocumentFragment()
+            fragment.append(text.slice(end, match.index), make_mark(match[0]))
+            end = match.index + match[0].length
+        }
+        if (fragment) {
+            fragment.append(text.slice(end))
+            node.replaceWith(fragment)
+        }
+    }
+    return template.innerHTML
+}
+
+function make_mark(text, class_name, key) {
+    const mark = document.createElement('mark')
+    mark.className = class_name
+    mark.textContent = text
+    if (key !== undefined) mark.dataset.match = key
+    return mark
+}
+
+function count_html_matches(html, term) {
+    if (!term) return 0
+    return html_text_nodes(html).nodes.reduce((total, node) => total + count_matches(node.data, term), 0)
+}
 
 function inject_search_marks(html, term, matches_map, focus_key) {
     if (!term) return html
     let match_n = 0
-    return html.replace(/>([^<]*)</g, (full, text) => {
-        if (!text) return full
-        const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
-        const marked = text.replace(re, m => {
-            const key = match_n++
-            const cls = key === focus_key ? 'cv-match cv-match--focus' : 'cv-match'
-            return `<mark class="${cls}" data-match="${key}">${m}</mark>`
-        })
-        return `>${marked}<`
+    const re = new RegExp(escape_re(term), 'gi')
+    return mark_text_nodes(html, re, text => {
+        const key = match_n++
+        const cls = key === focus_key ? 'cv-match cv-match--focus' : 'cv-match'
+        return make_mark(text, cls, key)
     })
 }
 
@@ -104,11 +146,7 @@ function inject_auto_marks(html, terms) {
     const pattern = list.map(escape_re).join('|')
     let re
     try { re = new RegExp(pattern, 'gi') } catch { return html }
-    return html.replace(/>([^<]*)</g, (full, text) => {
-        if (!text) return full
-        const marked = text.replace(re, m => `<mark class="cv-match cv-match--auto">${m}</mark>`)
-        return `>${marked}<`
-    })
+    return mark_text_nodes(html, re, text => make_mark(text, 'cv-match cv-match--auto'))
 }
 
 // ── JSON tree builder ──────────────────────────────────────────────────────────
@@ -456,14 +494,11 @@ export default {
             }
         })
 
-        // Total matches for current search — rendered markdown strips markup
-        // (headings, emphasis, link syntax) so counting must run against the
-        // rendered text, not the raw source, or the header count would lie.
+        // Count the same decoded text nodes that receive search marks.
         const total_matches = computed(() => {
-            const text = markdown_mode.value
-                ? rendered_md.value.replace(/<[^>]+>/g, '')
-                : normalized_code.value
-            return count_matches(text, search_term.value)
+            if (markdown_mode.value) return count_html_matches(rendered_md.value, search_term.value)
+            if (json_mode.value && json_lines.value) return json_match_offsets.value.total
+            return count_html_matches(highlighted_html.value, search_term.value)
         })
 
         // Rendered markdown with search matches marked, for the full-header case
@@ -478,15 +513,6 @@ export default {
         const highlighted_with_extras = computed(() => {
             const html = highlighted_html.value
             if (!props.extraHighlights || !props.extraHighlights.length) return html
-            // Plain-text mode (e.g. YARA/text language): no HTML tags to anchor on —
-            // match directly against the escaped code, escaping each term the same way.
-            if (!html.includes('<')) {
-                const terms = props.extraHighlights.filter(Boolean).map(t => esc(String(t)))
-                if (!terms.length) return html
-                let re
-                try { re = new RegExp(terms.map(escape_re).join('|'), 'gi') } catch { return html }
-                return html.replace(re, m => `<mark class="cv-match cv-match--auto">${m}</mark>`)
-            }
             return inject_auto_marks(html, props.extraHighlights)
         })
 
@@ -496,20 +522,6 @@ export default {
         const highlighted_with_search = computed(() => {
             if (!search_term.value) return highlighted_with_extras.value
             const html = highlighted_html.value
-            // Plain-text mode: highlighted_html is just escaped text with no HTML tags.
-            // inject_search_marks relies on >text< patterns; none exist here.
-            // Instead, search directly on the escaped text using the escaped term.
-            if (!html.includes('<')) {
-                const term = search_term.value
-                const escapedTerm = esc(term)
-                const re = new RegExp(escapedTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
-                let match_n = 0
-                return html.replace(re, m => {
-                    const key = match_n++
-                    const cls = key === cur_match.value ? 'cv-match cv-match--focus' : 'cv-match'
-                    return `<mark class="${cls}" data-match="${key}">${m}</mark>`
-                })
-            }
             return inject_search_marks(html, search_term.value, null, cur_match.value)
         })
 
@@ -547,6 +559,18 @@ export default {
                 }
             }
             return result
+        })
+
+        // Parse each visible line once per search, rather than all preceding
+        // lines again for every line rendered or every focus change.
+        const json_match_offsets = computed(() => {
+            let total = 0
+            const offsets = visible_json_lines.value.map(line => {
+                const offset = total
+                total += count_html_matches(line.html, search_term.value)
+                return offset
+            })
+            return { offsets, total }
         })
 
         // ── Search navigation ─────────────────────────────────────────
@@ -596,15 +620,7 @@ export default {
         // ── Inject search marks in JSON tree ──────────────────────────
         function inject_marks(html, line_idx) {
             if (!search_term.value) return html
-            // Count matches before this line to offset the global match index
-            let offset = 0
-            const lines = visible_json_lines.value
-            for (let i = 0; i < line_idx; i++) {
-                offset += count_matches(
-                    lines[i].html.replace(/<[^>]+>/g, ''),
-                    search_term.value
-                )
-            }
+            const offset = json_match_offsets.value.offsets[line_idx] || 0
             return inject_search_marks(html, search_term.value, null, cur_match.value - offset)
         }
 

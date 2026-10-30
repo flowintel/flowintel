@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
 
@@ -49,23 +51,39 @@ def result_to_case():
     analyzer_case_id = flask_session.get("analyzer_case_id", "")
     return render_template("analyzer/misp_modules_result_to_case.html", analyzer_case_id=analyzer_case_id)
 
+def _selected_json_response(key, empty_value):
+    """Decode the form's JSON once and never serve session content as HTML."""
+    value = flask_session.get(key)
+    try:
+        if value is None or value == "":
+            value = empty_value
+        else:
+            value = json.loads(value)
+        response = jsonify(value)
+    except (TypeError, ValueError, RecursionError):
+        response = jsonify({"message": "Invalid selection JSON"})
+        response.status_code = 400
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 @analyzer_blueprint.route("/misp-modules/get_note_selected", methods=['GET', 'POST'])
 @login_required
 def get_note_selected():
     """Get notes selected"""
-    return flask_session.get("note_selected")
+    return _selected_json_response("note_selected", "")
 
 @analyzer_blueprint.route("/misp-modules/get_misp_object_selected", methods=['GET', 'POST'])
 @login_required
 def get_misp_object_selected():
     """Get notes selected"""
-    return flask_session.get("misp_object_selected")
+    return _selected_json_response("misp_object_selected", [])
 
 @analyzer_blueprint.route("/misp-modules/get_misp_attribute_selected", methods=['GET', 'POST'])
 @login_required
 def get_misp_attribute_selected():
     """Get standalone attributes selected"""
-    return flask_session.get("misp_attribute_selected")
+    return _selected_json_response("misp_attribute_selected", [])
 
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
