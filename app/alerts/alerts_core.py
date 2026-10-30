@@ -43,8 +43,12 @@ def user_visible_alerts(alerts, user):
 
 def alerts_to_json(alerts, user):
     result = []
+    is_admin = user.is_admin()
     for alert, case in user_visible_alerts(alerts, user):
         item = alert.to_json()
+        if not is_admin:
+            # Historical webhook URLs may still contain active bearer tokens.
+            item.pop("webhook_url", None)
         item["case_title"] = case.title if case else "(deleted)"
         item["case_uuid"] = case.uuid if case else ""
         result.append(item)
