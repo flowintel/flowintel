@@ -21,14 +21,14 @@ def create_connector(client):
 def create_instance(client, connector_id):
     return client.post(f"/api/connectors/{connector_id}/add_instance",
                        content_type="application/json",
-                       headers={"X-API-KEY": MISP_EDITOR_API_KEY},
+                       headers={"X-API-KEY": ADMIN_API_KEY},
                        json={
                            "name": "Template Test Instance",
                            "description": "For template tests",
                            "type_select": "send_to",
                            "url": "https://example.com",
                            "api_key": "test-key-12345",
-                           "is_global_connector": False
+                           "sharing_scope": "global"
                        })
 
 

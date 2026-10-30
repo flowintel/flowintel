@@ -20,7 +20,8 @@ class GetCaseTemplates(Resource):
     method_decorators = [api_required]
     def get(self):
         templates = CommonModel.get_all_case_templates()
-        return {"templates": [template.to_json() for template in templates]}, 200
+        user = utils.get_user_from_api(request.headers)
+        return {"templates": [template.to_json(user) for template in templates]}, 200
     
 @templating_ns.route('/case/<cid>')
 @templating_ns.doc(description='Get a case template', params={'cid': 'id of a case template'})
@@ -29,7 +30,7 @@ class GetCaseTemplate(Resource):
     def get(self, cid):
         case_template = CommonModel.get_case_template(cid)
         if case_template:
-            loc_case = case_template.to_json()
+            loc_case = case_template.to_json(utils.get_user_from_api(request.headers))
             tasks_template = CommonModel.get_task_by_case(cid)
             loc_case["tasks"] = [task_template.to_json() for task_template in tasks_template]
             return loc_case, 200
@@ -45,7 +46,7 @@ class GetCaseTitle(Resource):
         if "title" in request.json:
             case = CommonModel.get_case_by_title(request.json["title"])
             if case:
-                case_json = case.to_json()          
+                case_json = case.to_json(utils.get_user_from_api(request.headers))
                 return case_json, 200
             return {"message": "Case not found"}, 404
         return {"message": "Need to pass a title"}, 404
@@ -203,7 +204,7 @@ class GetGalaxiesCase(Resource):
 class GetCaseTemplateConnectorInstance(Resource):
     method_decorators = [api_required]
     def get(self, cid):
-        connector_instances = CommonModel.get_case_template_connector_instances(cid)
+        connector_instances = CommonModel.get_case_template_connector_instances(cid, utils.get_user_from_api(request.headers))
         c_i_formated = list()
         if connector_instances:
             for c_i in connector_instances:
@@ -223,7 +224,7 @@ class AddConnector(Resource):
     })
     def post(self, cid):
         if CommonModel.get_case_template(cid):
-            if "connectors" in request.json and CommonModel.add_connector_instances_to_case_template(cid, request.json['connectors']):
+            if "connectors" in request.json and CommonModel.add_connector_instances_to_case_template(cid, request.json['connectors'], utils.get_user_from_api(request.headers)):
                 return {"message": "Connector added successfully"}, 200
             return {"message": "Need to pass 'connectors'"}, 400
         return {"message": "Case template not found"}, 404

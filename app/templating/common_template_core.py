@@ -202,14 +202,26 @@ def get_case_template_connector_instance(ctid, ciid):
     """Return the connector present in a case template"""
     return Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid, connector_instance_id=ciid).first()
 
-def get_case_template_connector_instances(ctid):
-    """Return a list of all connectors present in a case template"""
-    return Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid).all()
+def get_case_template_connector_instances(ctid, current_user):
+    """Return only template connectors visible to the acting user."""
+    from ..connectors.connectors_core import is_instance_visible_to_user
+    if current_user is None:
+        return []
+    links = Case_Template_Connector_Instance.query.filter_by(case_template_id=ctid).all()
+    return [link for link in links
+            if (instance := Connector_Instance.query.get(link.connector_instance_id))
+            and is_instance_visible_to_user(instance, current_user)]
 
-def add_connector_instances_to_case_template(ctid, connector_instances) -> bool:
+def add_connector_instances_to_case_template(ctid, connector_instances, current_user) -> bool:
     """Add connector instance to case template"""
+    from ..connectors.connectors_core import is_instance_visible_to_user
+    if current_user is None or not isinstance(connector_instances, list):
+        return False
     for connector_instance in connector_instances:
-        if "id" not in connector_instance or not Connector_Instance.query.get(connector_instance["id"]):
+        if not isinstance(connector_instance, dict) or "id" not in connector_instance:
+            return False
+        instance = Connector_Instance.query.get(connector_instance["id"])
+        if not instance or not is_instance_visible_to_user(instance, current_user):
             return False
         if "identifier" not in connector_instance:
             return False

@@ -895,6 +895,12 @@ You can revisit any previous result and walk through the same three-step process
 
 Connectors link a case or task to external platforms such as MISP or AIL. Before you can use connectors, the platform administrator must configure at least one connector and its instances under **Tools > Connectors**. You also need the **MISP Editor** role to work with connectors on cases and tasks.
 
+Connector sharing scope also applies to MISP helper tools and case templates. A template only shows and copies connector instances visible to the user creating the case.
+
+Changing the URL or sharing scope of an instance that holds a shared API key requires entering the key again. The same protection applies when a URL change would reuse another user's personal key. After a URL change, other users must configure their personal keys again; their access to the instance is retained. Edits that only change metadata keep the existing scope and key.
+
+An outbound MISP API key cannot authenticate incoming alerts. Configure a separate non-MISP alert-source connector instance for alert ingestion, even when the incoming payload uses the MISP event format.
+
 To manage connectors with regards to your daily operational work, open the case or task detail page and navigate to the **Connectors** tab. The workflow described below applies equally to cases and tasks, unless noted otherwise.
 
 ## Adding a connector to a case or a task

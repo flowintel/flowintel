@@ -137,7 +137,8 @@ def get_instance_cases(cid, iid):
     """Get paginated cases linked to a connector instance"""
     if not ConnectorModel.get_connector(cid):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
-    if not ConnectorModel.get_connector_instance(cid, iid):
+    instance = ConnectorModel.get_connector_instance(cid, iid)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     page = request.args.get('page', 1, type=int)
     cases, total, nb_pages, private_count = ConnectorModel.get_cases_for_instance(iid, page=page, current_user=current_user)
@@ -255,9 +256,12 @@ def edit_instance(cid, iid):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             form_dict["acting_user_id"] = current_user.id
-            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user)
+            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user, loc_instance)
             if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
                 flash("You are not allowed to save a connector with this sharing scope", "danger")
+                return render_template("connectors/add_instance.html", form=form, edit_mode=True)
+            if ConnectorModel.instance_edit_requires_api_key(loc_instance, form_dict, current_user):
+                flash("Changing the instance URL or sharing scope requires entering the API key again", "error")
                 return render_template("connectors/add_instance.html", form=form, edit_mode=True)
             if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
                 flash("Error editing connector")
@@ -366,8 +370,8 @@ def check_connectivity(cid, iid):
     if not connector:
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
     
-    instance = ConnectorModel.get_instance(iid)
-    if not instance:
+    instance = ConnectorModel.get_connector_instance(cid, iid)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     
     # Only MISP connectors

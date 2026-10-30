@@ -116,7 +116,7 @@ def case_template_view(cid):
 def get_case_template(cid):
     """View a case Template"""
     template = CommonModel.get_case_template(cid)
-    return {"template": template.to_json()}
+    return {"template": template.to_json(current_user)}
 
 @templating_blueprint.route("/case/<cid>/add_task", methods=['GET','POST'])
 @login_required
@@ -226,7 +226,7 @@ def get_all_case_templates():
     templates = CommonModel.get_all_case_templates()
     templates_list = list()
     for template in templates:
-        loc_template = template.to_json()
+        loc_template = template.to_json(current_user)
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list}
@@ -275,7 +275,7 @@ def get_page_case_templates():
 
     templates_list = list()
     for template in templates:
-        loc_template = template.to_json()
+        loc_template = template.to_json(current_user)
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list, "nb_pages": nb_pages}
@@ -287,7 +287,7 @@ def get_template(cid):
     """Get a case template"""
     template = CommonModel.get_case_template(cid)
     if template:
-        return {"template": template.to_json()}
+        return {"template": template.to_json(current_user)}
     return {"message": "Template not found"}
 
 
@@ -299,7 +299,7 @@ def get_template(cid):
 @templating_blueprint.route("/<tid>/get_case_template_connector_instances", methods=['GET'])
 @login_required
 def get_case_template_connector_instances(tid):
-    connector_instances = CommonModel.get_case_template_connector_instances(tid)
+    connector_instances = CommonModel.get_case_template_connector_instances(tid, current_user)
     if connector_instances:
         c_i_formated = list()
         for c_i in connector_instances:
@@ -318,7 +318,7 @@ def get_case_template_connector_instances(tid):
 def add_connector(tid):
     """Add connector instance to template"""
     if CommonModel.get_case_template(tid):
-        if "connector_instances" in request.json and CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances']):
+        if "connector_instances" in request.json and CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances'], current_user):
             return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404

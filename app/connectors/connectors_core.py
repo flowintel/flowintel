@@ -240,11 +240,13 @@ def can_user_manage_instance(instance, user):
     return bool(get_user_instance_both(user_id=user.id, instance_id=instance.id))
 
 
-def normalize_instance_sharing_scope(form_dict, user):
+def normalize_instance_sharing_scope(form_dict, user, instance=None):
     """Normalize legacy and current sharing scope inputs."""
     scope = form_dict.get("sharing_scope")
     if scope in {"personal", "org", "global"}:
         return scope
+    if instance is not None and not scope and "is_global_connector" not in form_dict:
+        return get_instance_sharing_scope(instance)
 
     if form_dict.get("is_global_connector"):
         if user.is_admin():
@@ -564,11 +566,35 @@ def edit_connector_core(cid, form_dict):
         return True
     return False
 
+def instance_edit_requires_api_key(instance, form_dict, user):
+    """Do not move credentials the editor has not supplied to a new URL or scope."""
+    if (form_dict.get("api_key") or "").strip():
+        return False
+    url_changed = (form_dict.get("url", instance.url) or "").strip() != (instance.url or "").strip()
+    scope = normalize_instance_sharing_scope(form_dict, user, instance)
+    scope_changed = scope != get_instance_sharing_scope(instance)
+    if instance.global_api_key and (url_changed or scope_changed or scope == "personal"):
+        return True
+    other_keys = User_Connector_Instance.query.filter(
+        User_Connector_Instance.instance_id == instance.id,
+        User_Connector_Instance.user_id != user.id,
+        User_Connector_Instance.api_key.isnot(None),
+        User_Connector_Instance.api_key != ""
+    ).first()
+    if not other_keys:
+        return False
+    own_key = User_Connector_Instance.query.filter_by(user_id=user.id, instance_id=instance.id).first()
+    return url_changed or (scope != "personal" and not (own_key and own_key.api_key))
+
+
 def edit_connector_instance_core(iid, form_dict):
     instance_db = get_instance(iid)
     if instance_db:
         user = User.query.get(form_dict["acting_user_id"])
-        sharing_scope = normalize_instance_sharing_scope(form_dict, user)
+        if instance_edit_requires_api_key(instance_db, form_dict, user):
+            return False
+        sharing_scope = normalize_instance_sharing_scope(form_dict, user, instance_db)
+        url_changed = (form_dict["url"] or "").strip() != (instance_db.url or "").strip()
         api_key = (form_dict.get("api_key") or "").strip()
         existing_user_instance = User_Connector_Instance.query.filter_by(
             user_id=user.id,
@@ -581,9 +607,6 @@ def edit_connector_instance_core(iid, form_dict):
                 if existing_user_instance and existing_user_instance.api_key
                 else None
             )
-        if not existing_instance_key:
-            any_user_instance = User_Connector_Instance.query.filter_by(instance_id=iid).first()
-            existing_instance_key = any_user_instance.api_key if any_user_instance else None
         saved_api_key = api_key or existing_instance_key or ""
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
@@ -608,6 +631,12 @@ def edit_connector_instance_core(iid, form_dict):
         else:
             instance_db.shared_org_id = None
             instance_db.global_api_key = None
+            if url_changed:
+                # Other associations must not send their old credentials to the new URL.
+                other_instances = User_Connector_Instance.query.filter_by(instance_id=iid)
+                if existing_user_instance:
+                    other_instances = other_instances.filter(User_Connector_Instance.id != existing_user_instance.id)
+                other_instances.update({"api_key": ""}, synchronize_session=False)
             user_instance = existing_user_instance
             if not user_instance:
                 user_instance = User_Connector_Instance(

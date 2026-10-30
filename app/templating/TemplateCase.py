@@ -306,7 +306,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
             db.session.commit()
             
         ## Case Connector Instance
-        for connector_instances in case_template.to_json()['connector_instances']:
+        for connector_instances in case_template.to_json(user)['connector_instances']:
             if not connector_instances.get('instance'):
                 continue
             c_c_i = Case_Connector_Instance(

@@ -877,7 +877,7 @@ class Case_Template(db.Model):
     version = db.Column(db.Integer, default=1)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
-    def to_json(self):
+    def to_json(self, current_user=None):
         json_dict =  {
             "id": self.id,
             "uuid": self.uuid,
@@ -895,7 +895,8 @@ class Case_Template(db.Model):
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
-        json_dict["connector_instances"] = [connector_instance.to_json() for connector_instance in Case_Template_Connector_Instance.query.filter(Case_Template_Connector_Instance.case_template_id==self.id).all()]
+        from ..templating.common_template_core import get_case_template_connector_instances
+        json_dict["connector_instances"] = [link.to_json() for link in get_case_template_connector_instances(self.id, current_user)]
 
         return json_dict
     

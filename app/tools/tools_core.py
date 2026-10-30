@@ -1019,22 +1019,29 @@ def get_misp_stats(current_user, cutoff=None, end=None, case_status="all", limit
 # Case from MISP Event #
 ########################
 
-def get_misp_connector_by_user(user_id):
+def get_misp_connector_by_user(user):
         connector = ConnectorModel.get_connector_by_name("MISP")
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if instance.sharing_scope in {"org", "global"}:
+                if not ConnectorModel.is_instance_visible_to_user(instance, user):
+                    continue
+                if ConnectorModel.get_instance_sharing_scope(instance) in {"org", "global"}:
                     loc_instance = instance.to_json()
-                    if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                    if ConnectorModel.get_user_instance_both(user_id=user.id, instance_id=instance.id):
                         loc_instance["is_user_global_api"] = True
                     instances_list.append(loc_instance)
-                elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                else:
                     instances_list.append(instance.to_json())
         return instances_list
 
 def check_connection_misp(misp_instance_id: int, current_user: User):
     instance = Connector_Instance.query.get(misp_instance_id)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
+        return "Instance not found"
+    connector = ConnectorModel.get_connector(instance.connector_id)
+    if not connector or (connector.name or "").lower() != "misp":
+        return "Instance not found"
     if instance:
         loc_api_key = ""
         if instance.global_api_key:

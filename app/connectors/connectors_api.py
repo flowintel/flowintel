@@ -133,11 +133,14 @@ class EditInstance(Resource):
             if request.json:
                 verif_dict = ConnectorModelApi.verif_edit_instance(request.json, iid)
                 if not "message" in verif_dict:
-                    sharing_scope = ConnectorModel.normalize_instance_sharing_scope(verif_dict, current_user)
+                    sharing_scope = ConnectorModel.normalize_instance_sharing_scope(verif_dict, current_user, instance)
                     if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
                         return {"message": "Permission denied for requested sharing scope"}, 403
                     verif_dict["acting_user_id"] = current_user.id
-                    ConnectorModel.edit_connector_instance_core(iid, verif_dict)
+                    if ConnectorModel.instance_edit_requires_api_key(instance, verif_dict, current_user):
+                        return {"message": "Changing the instance URL or sharing scope requires 'api_key'"}, 400
+                    if not ConnectorModel.edit_connector_instance_core(iid, verif_dict):
+                        return {"message": "Error editing connector instance"}, 400
                     flowintel_log("audit", 200, "API: Connector instance edited", User=current_user.email, ConnectorId=cid, InstanceId=iid)
                     return {"message": "Instance edited", "connector_id": int(iid)}, 200
                 return verif_dict, 400
