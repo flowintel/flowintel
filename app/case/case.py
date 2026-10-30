@@ -522,7 +522,10 @@ def get_assigned_users(cid, tid):
             flowintel_log("audit", 403, "Get assigned users to task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         
-        users, _ = TaskModel.get_users_assign_task(tid, current_user)
+        task = CommonModel.get_task(tid)
+        if not task or task.case_id != case.id:
+            return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+        users, _ = TaskModel.get_users_assign_task(task.id, current_user)
         return users
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 

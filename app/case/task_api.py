@@ -162,7 +162,7 @@ class GetNoteTask(Resource):
             
             if "note_id" in request.args:
                 task_note = CommonModel.get_task_note(request.args.get("note_id"))
-                if task_note:
+                if task_note and task_note.task_id == task.id:
                     return {"note": task_note.note}, 200
                 return {"message": "Note not found"}, 404
             return {"message": "Need to pass a note id"}, 400
@@ -577,7 +577,7 @@ class GetSubtask(Resource):
                 return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
             subtask = TaskModel.get_subtask(sid)
-            if subtask:
+            if subtask and subtask.task_id == task.id:
                 return subtask.to_json()
         return {"message": "Task Not found"}, 404
     
@@ -694,7 +694,7 @@ class GetUrlTool(Resource):
                 return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
             
             url_tool = TaskModel.get_url_tool(utid)
-            if url_tool:
+            if url_tool and url_tool.task_id == task.id:
                 return url_tool.to_json()
         return {"message": "Task Not found"}, 404
     

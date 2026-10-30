@@ -506,12 +506,12 @@ def edit_timeline_event(cid, eid):
                     return {"message": "Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.", "toast_class": "danger-subtle"}, 400
                 if "additional_note" in request.json:
                     event = CaseModel.edit_timeline_event(
-                        eid, date_text, description, current_user,
+                        case.id, eid, date_text, description, current_user,
                         additional_note=request.json.get("additional_note")
                     )
                 else:
                     event = CaseModel.edit_timeline_event(
-                        eid, date_text, description, current_user
+                        case.id, eid, date_text, description, current_user
                     )
                 if event:
                     return {"message": "Event updated", "toast_class": "success-subtle", "event": event.to_json()}, 200
@@ -651,7 +651,7 @@ def edit_timeline_event_link(cid, lid):
     case = CommonModel.get_case(cid)
     if case:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            link = CaseModel.edit_timeline_event_link(lid, request.json.get("label", ""), current_user)
+            link = CaseModel.edit_timeline_event_link(case.id, lid, request.json.get("label", ""), current_user)
             if link:
                 return {"message": "Link updated", "toast_class": "success-subtle", "link": link.to_json()}, 200
             return {"message": "Link not found", "toast_class": "warning-subtle"}, 404
@@ -740,9 +740,10 @@ def add_connector(cid):
 @misp_editor_required
 def remove_connector(cid, ciid):
     """Remove a connector from case"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.remove_connector(ciid, current_user):
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+            if CaseModel.remove_connector(case.id, ciid, current_user):
                 flowintel_log("audit", 200, "Connector removed from case", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
                 return {"message": "Connector removed", 'toast_class': "success-subtle"}, 200
             return {"message": "Something went wrong", 'toast_class': "danger-subtle"}, 400
@@ -756,14 +757,15 @@ def remove_connector(cid, ciid):
 @misp_editor_required
 def edit_connector(cid, ciid):
     """Edit Connector"""
-    if CommonModel.get_case(cid):
-        if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+    case = CommonModel.get_case(cid)
+    if case:
+        if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
             case_instance = CommonModel.get_case_connectors_by_id(ciid)
             loc_instance = CommonModel.get_instance(case_instance.instance_id) if case_instance else None
-            if not case_instance or int(case_instance.case_id) != int(cid) or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
+            if not case_instance or case_instance.case_id != case.id or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
                 return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
             if "identifier" in request.json:
-                if CaseModel.edit_connector(ciid, request.json, current_user):
+                if CaseModel.edit_connector(case.id, ciid, request.json, current_user):
                     flowintel_log("audit", 200, "Connector edited", User=current_user.email, CaseId=cid, ConnectorInstanceId=ciid)
                     return {"message": "Connector edited successfully", "toast_class": "success-subtle"}, 200
                 return {"message": "Error editing connector", "toast_class": "danger-subtle"}, 400
