@@ -99,8 +99,11 @@ def manage_notes_selected():
         flowintel_log("audit", 200, "Analyser results saved to case",
             User=current_user.email, CaseId=case_id)
         return {"case_id": case_id}, 200
+    status = case_id.pop("status", 400)
+    if status == 403:
+        flowintel_log("audit", 403, "Analyser results to case: Action not allowed", User=current_user.email)
     case_id["toast_class"] = "warning-subtle"
-    return case_id, 400
+    return case_id, status
 
 
 
@@ -218,7 +221,7 @@ def misp_module_loading_status(sid):
 def misp_module_result_data(sid):
     """Result page of misp-modules query"""
     res = MispModuleModel.get_misp_modules_result(sid)
-    if res:
+    if MispModuleModel.can_read_result(res, current_user):
         return res.to_json()
     return render_template("404.html"), 404
 

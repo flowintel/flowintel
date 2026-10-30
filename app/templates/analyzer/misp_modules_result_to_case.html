@@ -508,7 +508,7 @@
                         },
                         body: JSON.stringify(prepare_request)
                     })
-                    if(await res.status==400 ){
+                    if(!res.ok){
                         display_toast(res)
                         return
                     }else{

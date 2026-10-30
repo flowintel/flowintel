@@ -40,6 +40,13 @@ def get_misp_modules_result(mmrid):
     return Misp_Module_Result.query.filter_by(uuid=mmrid).first()
 
 
+def can_read_result(result, current_user):
+    """Stored analyzer results belong to their requester, with admin access."""
+    return bool(result and current_user and (
+        current_user.is_admin() or result.user_id == current_user.id
+    ))
+
+
 def util_get_attr(module, loc_list):
     """Additional algo for get_list_misp_attributes"""
     if "input" in module["mispattributes"]:
@@ -141,41 +148,72 @@ def delete_history(huuid, current_user):
     return False
 
 def manage_notes_selected(request_json, current_user):
-    case_id = None
+    if not isinstance(request_json, dict) or not isinstance(request_json.get("notes"), str):
+        return {"message": "Invalid request"}
+    destinations = {
+        key for key in ("create_case", "create_task", "existing_task_note", "create_note", "case_note")
+        if key in request_json
+    }
+    if len(destinations) != 1 and destinations != {"create_case", "create_task"}:
+        return {"message": "Select one destination for the results"}
+    if any(not isinstance(request_json[key], dict) for key in destinations):
+        return {"message": "Invalid destination"}
+    for key in ("misp-objects", "misp-attributes"):
+        if key in request_json and not isinstance(request_json[key], list):
+            return {"message": "Invalid MISP selection"}
+
+    # Resolve and authorise the destination before any helper commits changes.
     if "create_case" in request_json:
-        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_case"])
-        if "message" not in verif_dict:
-            case = CaseModel.create_case(verif_dict, current_user)
-            CaseModel.modify_note_core(case.id, current_user, request_json["notes"])
-            case_id = case.id
+        if "create_task" in request_json and request_json.get("case_id") not in (None, ""):
+            return {"message": "A new case cannot target an existing case"}
+        case_data = CaseModelApi.verif_create_case_task(request_json["create_case"])
+        if "message" in case_data:
+            return case_data
+    else:
+        if "create_task" in request_json:
+            case = CommonModel.get_case(request_json.get("case_id"))
+        elif "case_note" in request_json:
+            case = CommonModel.get_case(request_json["case_note"].get("case_id"))
         else:
-            return verif_dict
+            target = request_json.get("existing_task_note", request_json.get("create_note"))
+            task = CommonModel.get_task(target.get("task_id"))
+            if not task:
+                return {"message": "Task not found"}
+            case = CommonModel.get_case(task.case_id)
+        if not case:
+            return {"message": "Case not found"}
+        if not (current_user.is_admin() or CommonModel.get_present_in_case(case.id, current_user)):
+            return {"message": "Action not allowed", "status": 403}
+        if "existing_task_note" in request_json or "create_note" in request_json:
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "status": 403}
 
     if "create_task" in request_json:
-        if "case_id" in request_json:
-            case_id = request_json["case_id"]
-        else:
-            return {"message": "No case id passed"}
-        
-        verif_dict = CaseModelApi.verif_create_case_task(request_json["create_task"])
-        if "message" not in verif_dict:
-            task = TaskModel.create_task(verif_dict, case_id, current_user)
-            TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
-        else:
-            return verif_dict
+        task_data = CaseModelApi.verif_create_case_task(request_json["create_task"])
+        if "message" in task_data:
+            return task_data
+
+    if "create_case" in request_json:
+        case = CaseModel.create_case(case_data, current_user)
+        CaseModel.modify_note_core(case.id, current_user, request_json["notes"])
+    case_id = case.id
+
+    if "create_task" in request_json:
+        task = TaskModel.create_task(task_data, case_id, current_user)
+        TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
 
     elif "existing_task_note" in request_json:
-        task = CommonModel.get_task(request_json["existing_task_note"]["task_id"])
-        TaskModel.modif_note_core(task.id, current_user, request_json["notes"], request_json["existing_task_note"]["note_id"])
-        case_id = task.case_id
+        note_id = request_json["existing_task_note"].get("note_id")
+        if not isinstance(note_id, (int, str)) or isinstance(note_id, bool):
+            return {"message": "Note not found"}
+        result = TaskModel.modif_note_core(task.id, current_user, request_json["notes"], note_id)
+        if isinstance(result, dict):
+            return result
 
     elif "create_note" in request_json:
-        task = CommonModel.get_task(request_json["create_note"]["task_id"])
         TaskModel.modif_note_core(task.id, current_user, request_json["notes"], "-1")
-        case_id = task.case_id
 
     elif "case_note" in request_json:
-        case_id = request_json["case_note"]["case_id"]
         CaseModel.modify_note_core(case_id, current_user, request_json["notes"])
 
     if "misp-objects" in request_json:
