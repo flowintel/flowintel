@@ -1695,9 +1695,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def remove_connector(self, case_instance_id, current_user=None):
+    def remove_connector(self, cid, case_instance_id, current_user=None):
         case_instance = Case_Connector_Instance.query.get(case_instance_id)
-        if not case_instance:
+        if not case_instance or case_instance.case_id != int(cid):
             return False
         case_id = case_instance.case_id
         try:
@@ -1715,9 +1715,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return False
         return True
 
-    def edit_connector(self, case_instance_id, request_json, current_user=None):
+    def edit_connector(self, cid, case_instance_id, request_json, current_user=None):
         c = Case_Connector_Instance.query.get(case_instance_id)
-        if c:
+        if c and c.case_id == int(cid):
             c.identifier = request_json["identifier"]
             db.session.commit()
             CommonModel.update_last_modif(c.case_id)
@@ -1824,6 +1824,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def _build_case_connector_module_context(self, case_instance_id, loc_case, user):
         """Prepare the common case and connector payload used by case connector modules."""
+        case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
+        if not case_instance or case_instance.case_id != loc_case.id:
+            return None, None, None, {"message": "Connector instance not found"}
+
         org = CommonModel.get_org(loc_case.owner_org_id)
 
         tasks = []
@@ -1840,10 +1844,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         for cluster in case["clusters"]:
             cluster["galaxy"] = Galaxy.query.get(cluster["galaxy_id"]).to_json()
-
-        case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
-        if not case_instance:
-            return None, None, None, {"message": "Connector instance not found"}
 
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
@@ -3345,10 +3345,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         return imported_files
 
-    def edit_timeline_event(self, event_id, date_text, description, current_user, additional_note=TIMELINE_ADDITIONAL_NOTE_UNSET):
+    def edit_timeline_event(self, cid, event_id, date_text, description, current_user, additional_note=TIMELINE_ADDITIONAL_NOTE_UNSET):
         """Edit a timeline event"""
         event = self.get_timeline_event(event_id)
-        if not event:
+        if not event or event.case_id != int(cid):
             return None
         date_parsed = self.parse_date(date_text)
         event.date_text = self.format_timeline_event_date(date_parsed)
@@ -3626,10 +3626,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def edit_timeline_event_link(self, link_id, label, current_user):
+    def edit_timeline_event_link(self, cid, link_id, label, current_user):
         """Edit a link label"""
         link = Case_Timeline_Event_Link.query.get(link_id)
-        if not link:
+        if not link or link.case_id != int(cid):
             return None
         link.label = label or None
         db.session.commit()

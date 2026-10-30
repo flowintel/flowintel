@@ -816,11 +816,16 @@ class EditConnectorsCase(Resource):
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
     def post(self, cid, ciid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                case_instance = CommonModel.get_case_connectors_by_id(ciid)
+                loc_instance = CommonModel.get_instance(case_instance.instance_id) if case_instance else None
+                if not case_instance or case_instance.case_id != case.id or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
+                    return {"message": "Permission denied"}, 403
                 if "identifier" in request.json:
-                    if CaseModel.edit_connector(ciid, request.json, current_user):
+                    if CaseModel.edit_connector(case.id, ciid, request.json, current_user):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -832,10 +837,11 @@ class EditConnectorsCase(Resource):
 class RemoveConnectors(Resource):
     method_decorators = [misp_editor_required, api_required]
     def get(self, cid, ciid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_connector(ciid, current_user):
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                if CaseModel.remove_connector(case.id, ciid, current_user):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403
