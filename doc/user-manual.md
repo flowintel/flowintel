@@ -1777,7 +1777,7 @@ Because Flowintel does not send email notifications, the administrator sets the 
 
 From the **Community > Users** page, find the user and click the edit button. You can change any of the fields listed above. If you need to reset the password, tick the **Change password** option and enter the new credentials. Again, communicate the new password through a secure channel outside of Flowintel.
 
-Changes to a user profile take effect immediately. The user does not need to log out and log back in.
+Changes to a user profile take effect immediately. A password reset invalidates all of that user's browser sessions and remembered logins, and generates a new API key. The user must log in again and update integrations that used the old key. This also applies when administrators reset their own password.
 
 ### Deleting a user
 
@@ -1907,6 +1907,8 @@ Clicking your name opens a dropdown menu with a link to **My profile**. From the
 ### Editing your profile
 
 To edit your profile, click the **Edit** button on the profile page. You can change your first name, last name, nickname, Matrix ID and email address. To change your password, tick the **Change password** checkbox and fill in the new password and confirmation fields.
+
+For a local account, enter your **Current password** when changing your email address or password. Other profile edits do not require it. Changing your password signs out your other browser sessions and invalidates remembered logins. Your current browser stays signed in, but you must select **Keep me logged in** on a later login to remember it again. A self-service password change preserves your API key; reset it separately if it may have been exposed.
 
 You cannot change your own role or organisation. Only an administrator can do that.
 

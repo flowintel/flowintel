@@ -179,7 +179,7 @@ def sample_xss_alert():
 
 def login_user(client, user):
     with client.session_transaction() as session:
-        session["_user_id"] = str(user.id)
+        session["_user_id"] = user.get_id()
         session["_fresh"] = True
 
 
@@ -436,7 +436,7 @@ def test_create_case_from_alert_links_connector(client, app, monkeypatch):
         admin = User.query.filter_by(api_key=ADMIN_KEY).first()
         admin_id = admin.id
         with client.session_transaction() as session:
-            session["_user_id"] = str(admin.id)
+            session["_user_id"] = admin.get_id()
             session["_fresh"] = True
 
     case_response = client.post(
@@ -503,7 +503,7 @@ def test_create_case_from_alert_can_use_case_template(client, app, monkeypatch):
     with app.app_context():
         admin = User.query.filter_by(api_key=ADMIN_KEY).first()
         with client.session_transaction() as session:
-            session["_user_id"] = str(admin.id)
+            session["_user_id"] = admin.get_id()
             session["_fresh"] = True
 
     case_response = client.post(

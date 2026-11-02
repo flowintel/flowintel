@@ -12,9 +12,11 @@ EVENT = {'title': 'Team planning', 'start': '2026-09-25', 'all_day': True}
 
 def login(client, app, api_key='editor_api_key'):
     with app.app_context():
-        user_id = User.query.filter_by(api_key=api_key).one().id
+        user = User.query.filter_by(api_key=api_key).one()
+        user_id = user.id
+        login_id = user.get_id()
     with client.session_transaction() as session:
-        session['_user_id'] = str(user_id)
+        session['_user_id'] = login_id
         session['_fresh'] = True
     return user_id
 

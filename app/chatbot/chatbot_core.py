@@ -159,12 +159,9 @@ def _ensure_mcp():
         # If we have an ID, reload the User from the DB to get a fresh instance
         if user_id:
             try:
-                from app.db_class.db import User
+                from app.db_class.db import load_user
 
-                try:
-                    reloaded = User.query.get(int(user_id))
-                except Exception:
-                    reloaded = User.query.get(user_id)
+                reloaded = load_user(user_id)
                 if reloaded:
                     api_key = getattr(reloaded, "api_key", None)
             except Exception:

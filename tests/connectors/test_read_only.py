@@ -74,9 +74,9 @@ def test_instance_read_only_form_create_edit_and_display(client, app):
     # Cookie sessions keep this form test independent of a running Valkey server.
     app.session_interface = SecureCookieSessionInterface()
     with app.app_context():
-        user_id = User.query.filter_by(api_key=ADMIN_KEY).one().id
+        login_id = User.query.filter_by(api_key=ADMIN_KEY).one().get_id()
     with client.session_transaction() as session:
-        session["_user_id"] = str(user_id)
+        session["_user_id"] = login_id
         session["_fresh"] = True
 
     connector_id = create_connector(client, name="MISP").json["connector_id"]

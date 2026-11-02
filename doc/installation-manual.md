@@ -2442,6 +2442,8 @@ This section covers how to upgrade Flowintel to a newer version. Flowintel uses 
 
 ## Before upgrading
 
+The session-revocation security update changes browser login identifiers. Existing sessions and remember-me cookies from earlier versions are rejected, so all users must log in again after this upgrade. No database migration is needed for this change. Administrator password resets now also rotate the affected user's API key; integrations using that key must be updated.
+
 1. **Read the release notes**. Check the [Flowintel releases page](https://github.com/flowintel/flowintel/releases) for breaking changes, new dependencies, or manual steps that apply to the version you are upgrading to.
 
 2. **Stop Flowintel**. If Flowintel is running as a systemd service, stop it before making any changes:

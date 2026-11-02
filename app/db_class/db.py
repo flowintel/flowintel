@@ -1,7 +1,10 @@
 import datetime
+import hashlib
+import hmac
 import json
 import uuid
 
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
@@ -37,6 +40,17 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime, index=True)
     # Trusted relay marker, assigned only by bootstrap or explicit operator registration.
     is_bot = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
+
+    def session_token(self):
+        """Bind browser authentication to this account and its current credentials."""
+        key = current_app.config['SECRET_KEY']
+        if isinstance(key, str):
+            key = key.encode()
+        identity = f"session:{self.id}:{self.auth_provider}:{self.creation_date}:{self.password_hash or ''}"
+        return hmac.new(key, identity.encode(), hashlib.sha256).hexdigest()
+
+    def get_id(self):
+        return f"{self.id}:{self.session_token()}"
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -2089,6 +2103,28 @@ class Case_Timeline_Event_Link(db.Model):
 
 login_manager.anonymous_user = AnonymousUser
 
+def session_user_id(value):
+    """Extract an ID for session housekeeping only; this does not authenticate it."""
+    if not isinstance(value, (str, int)):
+        return None
+    identifier = str(value).partition(':')[0]
+    if not identifier.isascii() or not identifier.isdecimal() or len(identifier) > 19:
+        return None
+    number = int(identifier)
+    return number if 0 < number <= 2**63 - 1 else None
+
+
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Reject legacy bare IDs even in server-side sessions: Flask-Login can copy
+    # an old remember cookie into the session before calling this loader.
+    if not isinstance(user_id, str) or not user_id.isascii():
+        return None
+    identifier, separator, token = user_id.partition(':')
+    uid = session_user_id(identifier)
+    if uid is None or not separator or len(token) != 64:
+        return None
+    user = db.session.get(User, uid)
+    if user is not None and hmac.compare_digest(user_id, user.get_id()):
+        return user
+    return None

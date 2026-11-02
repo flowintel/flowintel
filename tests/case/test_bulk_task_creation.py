@@ -8,7 +8,7 @@ from app.case.TaskCore import (
     BulkTaskImportError,
     TaskModel,
 )
-from app.db_class.db import Task
+from app.db_class.db import Task, User
 
 
 ADMIN_API_KEY = "admin_api_key"
@@ -25,8 +25,10 @@ def create_case(client):
 
 
 def login_as(client, user_id):
+    with client.application.app_context():
+        login_id = User.query.get(user_id).get_id()
     with client.session_transaction() as session:
-        session["_user_id"] = str(user_id)
+        session["_user_id"] = login_id
         session["_fresh"] = True
 
 

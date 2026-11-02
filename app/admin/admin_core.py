@@ -6,6 +6,7 @@ import uuid
 from flask import current_app
 
 from app.extensions import db
+from app.db_class.db import session_user_id
 from app.db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
 from ..utils.utils import generate_api_key
 
@@ -275,6 +276,7 @@ def admin_edit_user_core(form_dict, id):
     password_changed = "password" in form_dict and form_dict["password"] and user.auth_provider == 'local'
     if password_changed:
         user.password=form_dict["password"]
+        user.api_key = generate_api_key()
     user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
@@ -310,7 +312,7 @@ def _invalidate_user_sessions(user_id):
     if not redis_client:
         return
     for key, data in _iter_user_sessions():
-        if data.get("_user_id") == str(user_id):
+        if session_user_id(data.get("_user_id")) == int(user_id):
             redis_client.delete(key)
 
 
@@ -331,8 +333,8 @@ def list_active_user_sessions(exclude_user_id=None):
     # user_id -> {"count": sessions, "idle": idle of the most recent one}
     active = {}
     for key, data in _iter_user_sessions():
-        user_id = data.get("_user_id")
-        if not user_id or user_id == str(exclude_user_id):
+        user_id = session_user_id(data.get("_user_id"))
+        if not user_id or str(user_id) == str(exclude_user_id):
             continue
 
         ttl = redis_client.ttl(key)

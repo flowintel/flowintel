@@ -54,7 +54,7 @@ def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, m
 
     monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
-        admin_id = User.query.filter_by(api_key=ADMIN_KEY).first().id
+        login_id = User.query.filter_by(api_key=ADMIN_KEY).first().get_id()
         cases_before = Case.query.count()
 
     # Hold both requests after the "already linked" check and before either
@@ -75,7 +75,7 @@ def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, m
         try:
             user_client = app.test_client()
             with user_client.session_transaction() as session:
-                session["_user_id"] = str(admin_id)
+                session["_user_id"] = login_id
                 session["_fresh"] = True
             responses[index] = user_client.post(
                 f"/alerting/api/{alert_id}/case",
