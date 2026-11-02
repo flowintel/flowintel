@@ -1516,10 +1516,42 @@ The `conf/config_module.py` file contains settings for optional features. The de
 You only need to edit `config_module.py` if you're using:
 
 - **SMTP**: For sending email notifications
+- **MISP or mail with a private CA**: For configuring trusted CA bundles
 - **Matrix**: For Matrix chat notifications
 - **Computer-assisted generation**: For AI-powered content generation features
 
 If you're not using these features, leave the file unchanged.
+
+### TLS verification for MISP and mail
+
+All MISP HTTPS connections, SMTP STARTTLS, and IMAP TLS connections verify the
+server certificate and hostname by default. Existing configuration files without
+the following settings also use these secure defaults:
+
+```python
+MISP_VERIFY_SSL = True
+MAIL_VERIFY_SSL = True
+```
+
+MISP uses Requests' default CA bundle and environment settings; mail uses Python's
+system SSL trust defaults. For a private CA, set the corresponding option to an
+absolute path to a PEM CA bundle containing the issuing CA certificates:
+
+```python
+MISP_VERIFY_SSL = "/etc/flowintel/misp-ca.pem"
+MAIL_VERIFY_SSL = "/etc/flowintel/mail-ca.pem"
+```
+
+These settings apply to all MISP clients and both SMTP and IMAP respectively.
+Restart Flowintel and its workers after changing the configuration. Invalid values
+or unusable CA bundles cause connections to fail; they do not disable verification.
+
+**Upgrade note:** Connections that previously accepted self-signed, untrusted,
+expired, or hostname-mismatched certificates will now fail. Configure a trusted CA
+bundle and ensure the certificate matches the server hostname and is valid. An
+explicit Python `False` disables certificate and hostname verification for that
+setting, exposing credentials and data to interception; reserve this for controlled
+testing. MISP connector URLs must use HTTPS to benefit from TLS verification.
 
 ## Chatbot (optional)
 

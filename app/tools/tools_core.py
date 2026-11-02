@@ -10,6 +10,7 @@ from werkzeug.datastructures import FileStorage
 
 from sqlalchemy import or_
 
+from app.utils.tls import misp_ssl
 from app.extensions import db
 from app.db_class.db import *
 
@@ -1053,7 +1054,7 @@ def check_connection_misp(misp_instance_id: int, current_user: User):
 
         if loc_api_key:
             try:
-                misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
+                misp = PyMISP(instance.url, loc_api_key, ssl=misp_ssl(), timeout=20)
             except Exception:
                 return "Error connecting to MISP"
             

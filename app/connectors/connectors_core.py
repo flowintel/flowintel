@@ -4,6 +4,7 @@ import uuid
 
 from werkzeug.utils import secure_filename
 
+from app.utils.tls import misp_ssl
 from app.extensions import db
 from app.db_class.db import Case, Case_Connector_Instance, Case_Org, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 
@@ -55,7 +56,7 @@ def _misp_get_event_pythonified(loc_instance, api_key, event_identifier):
         return None, None
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -741,7 +742,7 @@ def misp_get_event_objects(loc_instance, api_key, event_identifier):
     """
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -777,7 +778,7 @@ def misp_get_event_reports(loc_instance, api_key, event_identifier):
     """
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -1370,11 +1371,9 @@ def check_misp_connectivity(instance, current_user=None):
         loc_api_key = user_api_key.api_key
     try:
         from pymisp import PyMISP
-        import urllib3
-        urllib3.disable_warnings()
         
         # Initialize MISP connection - if this succeeds, connectivity is verified
-        misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
+        misp = PyMISP(instance.url, loc_api_key, ssl=misp_ssl(), timeout=20)
         
         return {
             "success": True,
@@ -1403,10 +1402,8 @@ def search_misp_attributes(instance, current_user, query, api_key=None):
 
     try:
         from pymisp import PyMISP
-        import urllib3
-        urllib3.disable_warnings()
 
-        misp = PyMISP(instance.url, api_key, ssl=False, timeout=30)
+        misp = PyMISP(instance.url, api_key, ssl=misp_ssl(), timeout=30)
         search_value = query if "%" in query else f"%{query}%"
         response = misp.search(
             controller="attributes",
