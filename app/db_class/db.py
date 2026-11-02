@@ -35,6 +35,8 @@ class User(UserMixin, db.Model):
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
     last_login = db.Column(db.DateTime, index=True)
+    # Trusted relay marker, assigned only by bootstrap or explicit operator registration.
+    is_bot = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
 
     def is_admin(self):
         r = Role.query.get(self.role_id)

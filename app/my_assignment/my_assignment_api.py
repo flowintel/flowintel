@@ -21,7 +21,7 @@ class MyAssignment(Resource):
 
         page = request.args.get("page", default=1, type=int)
         user = AssignModel.get_user(user_id)
-        requester = utils.get_user_api(request.headers["X-API-KEY"])
+        requester = utils.get_user_from_api(request.headers)
         if not user or (not requester.is_admin() and
                         (requester.org_id is None or user.org_id != requester.org_id)):
             return {"message": "User not found"}, 404

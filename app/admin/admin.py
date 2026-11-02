@@ -99,6 +99,9 @@ def edit_user(uid):
     if not user_modif:
         flash("User not found.", "error")
         return redirect(url_for('admin.users'))
+    if user_modif.is_bot and not current_user.is_admin():
+        flash("Only administrators can edit Matrix bot accounts.", "error")
+        return redirect(url_for('admin.users'))
     
     if current_user.is_pure_org_admin():
         if user_modif.org_id != current_user.org_id:
@@ -181,6 +184,8 @@ def delete_user(uid):
     user = AdminModel.get_user(uid)
     if not user:
         return {"message":"User not found", "toast_class": "danger-subtle"}, 404
+    if user.is_bot and not current_user.is_admin():
+        return {"message":"Only administrators can delete Matrix bot accounts", "toast_class": "danger-subtle"}, 403
     
     if user.id == current_user.id:
         return {"message":"You cannot delete your own account", "toast_class": "danger-subtle"}, 403

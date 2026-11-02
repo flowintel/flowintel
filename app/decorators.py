@@ -3,7 +3,7 @@ from functools import wraps
 from flask import abort, request
 from flask_login import current_user
 
-from .utils.utils import get_user_api, verif_api_key
+from .utils.utils import get_user_from_api, verif_api_key
 
 
 def permission_required(perm):
@@ -17,7 +17,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not user.is_admin():
                         abort(403)
                 elif not current_user.is_admin():
@@ -27,7 +27,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not (user.is_admin() or user.is_org_admin()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_org_admin()):
@@ -37,7 +37,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or user.read_only():
                         abort(403)
                 elif current_user.read_only():
@@ -47,7 +47,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not (user.is_admin() or user.is_template_editor()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_template_editor()):
@@ -57,7 +57,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not (user.is_admin() or user.is_misp_editor()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_misp_editor()):
@@ -67,7 +67,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not (user.is_admin() or user.is_importer()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_importer()):
@@ -77,7 +77,7 @@ def permission_required(perm):
                     api_key = request.headers.get("X-API-KEY")
                     if not api_key:
                         abort(403)
-                    user = get_user_api(api_key)
+                    user = get_user_from_api(request.headers)
                     if not user or not (user.is_admin() or user.is_audit_viewer()):
                         abort(403)
                 elif not (current_user.is_admin() or current_user.is_audit_viewer()):

@@ -963,7 +963,7 @@ INIT_ADMIN_USER = {
 
 **Bot account**
 
-The bot account is used internally for Matrix chat notifications. Flowintel creates this account during installation regardless of whether you plan to use Matrix.
+The bot account is used by the Matrix API relay. Flowintel creates this account during installation regardless of whether you plan to use Matrix. It has a protected bot marker and the Read Only role; changing an ordinary user's name or email does not make that user a bot.
 
 ```python
 INIT_BOT_USER = {
@@ -974,6 +974,22 @@ INIT_BOT_USER = {
 ```
 
 If you do not intend to use Matrix notifications, you can leave this account as it is. It does not need to be deleted and has no administrative privileges.
+
+The relay sends its API key in `X-API-KEY` and the requesting user's registered Matrix ID in `MATRIX-ID`. Authentication, role checks, organisation visibility, ownership and audit use that requesting user. A Read Only user remains Read Only through the relay. A bot key without a valid `MATRIX-ID`, a bot-to-bot request, or an ordinary API key carrying `MATRIX-ID` is refused. This also applies to directory lookups: include the sender's `MATRIX-ID` when resolving their profile; the relay has no global directory exemption.
+
+### Upgrading an existing Matrix relay
+
+Stop the relay, apply the database migrations, and register its known account before restarting it. The migration adds the marker with a false default and does **not** discover bots from names or `INIT_BOT_USER` email, because users can edit both fields.
+
+Identify the actual bot's database user ID from trusted deployment records or the API key configured in the relay. Then run, using the application's environment and replacing `BOT_USER_ID` with that verified numeric ID:
+
+```bash
+env/bin/python bin/register_matrix_bot.py --env production --user-id BOT_USER_ID
+```
+
+Registration marks that account as a relay and moves it to Read Only, preserving its API key and organisation. Only administrators can edit or delete registered bot accounts; OrgAdmins cannot reset their credentials, even within their own organisation. It is safe to repeat registration for the same account. Do not select a normal user's account: registration grants the ability to relay requests for registered Matrix users. Existing unregistered accounts retain their previous roles until explicitly registered, but cannot use `MATRIX-ID`; complete registration before resuming the integration. If Matrix is unused, review or remove the legacy bot's Admin role through normal account administration.
+
+New installations mark only a newly created bot automatically. An existing email collision is never promoted to a relay. Registration is an operator command, not a profile or user-management API field. Matrix ID ownership verification remains the external integration's responsibility.
 
 
 ## Database configuration

@@ -2005,7 +2005,7 @@ The `LIMIT_USER_VIEW_TO_ORG` setting controls whether non-admin users can see us
 
 Enable this setting when your deployment hosts multiple organisations that should not be aware of each other's membership. When disabled (the default), all users can see users from all organisations in the community user list.
 
-The restriction applies to web directory lists and API lookups by user ID, last name or Matrix ID. Non-admin users without an organisation can only look up their own profile when it is enabled. Matrix integrations that use a non-admin API key are subject to the same restriction.
+The restriction applies to web directory lists and API lookups by user ID, last name or Matrix ID. Non-admin users without an organisation can only look up their own profile when it is enabled. Matrix relays must include the requesting user's `MATRIX-ID`; the directory restriction applies to that user's organisation and permissions.
 
 Regardless of this setting, OrgAdmins can retrieve assignments only for users in their own organisation, and only for cases they can view. Administrators can retrieve assignments across organisations. Assignment lists, page counts and statistics exclude cases the viewer can no longer access.
 

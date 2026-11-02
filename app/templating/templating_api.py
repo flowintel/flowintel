@@ -152,7 +152,7 @@ class CreateCaseFromTemplate(Resource):
         if template:
             if request.json:
                 if "title" in request.json:
-                    new_case = TemplateModel.create_case_from_template(cid, request.json["title"], utils.get_user_api(request.headers["X-API-KEY"]))
+                    new_case = TemplateModel.create_case_from_template(cid, request.json["title"], utils.get_user_from_api(request.headers))
                     if type(new_case) == dict:
                         return new_case
                     return {"message": f"New case created, id: {new_case.id}"}, 201
