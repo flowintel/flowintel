@@ -185,20 +185,16 @@ def get_tag_cluster(cluster_id):
 
 
 def create_default_org(user):
-    """Create a default org for a user who have no org"""
-    o_d = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
-    if not o_d:
-        org = Org(
-            name = f"{user.first_name} {user.last_name}",
-            description = f"Org for user: {user.id}-{user.first_name} {user.last_name}",
-            uuid = str(uuid.uuid4()),
-            default_org = True
-        )
-        db.session.add(org)
-        db.session.commit()
-
-        return org
-    return o_d
+    """Create a fresh default org; a user's name must never grant org membership."""
+    org = Org(
+        name = f"{user.first_name} {user.last_name}",
+        description = f"Org for user: {user.id}-{user.first_name} {user.last_name}",
+        uuid = str(uuid.uuid4()),
+        default_org = True
+    )
+    db.session.add(org)
+    db.session.commit()
+    return org
 
 
 def delete_default_org(user_org_id):

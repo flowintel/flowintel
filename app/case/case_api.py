@@ -1,6 +1,7 @@
 from flask import request
 
 from flask_restx import Namespace, Resource
+from sqlalchemy.exc import MultipleResultsFound
 
 from app.db_class.db import Case, User, File, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, DATETIME_FORMAT_FULL, db
 
@@ -359,7 +360,10 @@ class AddOrgCase(Resource):
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
-                org = CommonModel.get_org_by_name(request.json["name"])
+                try:
+                    org = CommonModel.get_org_by_name(request.json["name"])
+                except MultipleResultsFound:
+                    return {"message": "Organisation name is ambiguous; specify its oid instead"}, 400
             elif "oid" in request.json:
                 org = CommonModel.get_org(request.json["oid"])
             else:

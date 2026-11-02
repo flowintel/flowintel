@@ -216,8 +216,8 @@ def get_orgs():
     return Org.query.all()
 
 def get_org_by_name(name):
-    """Return an org by is name"""
-    return Org.query.filter_by(name=name).first()
+    """Return an org by name; raise MultipleResultsFound for ambiguous names."""
+    return Org.query.filter_by(name=name).one_or_none()
 
 def get_org_order_by_name():
     """Return all orgs order by name"""

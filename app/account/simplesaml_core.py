@@ -9,6 +9,7 @@ from .. import db
 from ..db_class.db import Role, User
 from ..notification import notification_core as NotifModel
 from ..utils.utils import generate_api_key
+from .sso_identity import find_sso_user
 
 logger = logging.getLogger(__name__)
 
@@ -257,12 +258,13 @@ def get_or_create_sso_user(auth: OneLogin_Saml2_Auth) -> tuple[User | None, str 
             "Please ask an administrator to create it."
         )
 
-    user = User.query.filter_by(email=email).first()
+    user, error = find_sso_user(email, "simplesaml")
+    if error:
+        return None, error
 
     if user:
         # Sync role if it drifted (group membership change)
         if (
-            user.auth_provider == "simplesaml" and 
             user.role_id != target_role.id and
             _sync_role_on_login()
             ):
