@@ -72,10 +72,7 @@ class GetUsers(Resource):
     def get(self):
         user = get_user_api(request.headers["X-API-KEY"])
         
-        if current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not user.is_admin():
-            users = AdminModel.get_users_by_org(user.org_id)
-        else:
-            users = AdminModel.get_all_users()
+        users = AdminModel.get_visible_users(user).all()
         
         return {"users": [user.to_json() for user in users]}, 200
     
@@ -84,7 +81,8 @@ class GetUsers(Resource):
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self, uid):
-        user = AdminModel.get_user(uid)
+        api_user = get_user_api(request.headers["X-API-KEY"])
+        user = AdminModel.get_visible_users(api_user).filter_by(id=uid).first()
         if user:
             return user.to_json(), 200
         return {"message": "User not found"}, 404
@@ -95,7 +93,8 @@ class GetUserName(Resource):
     method_decorators = [api_required]
     def get(self):
         if "lastname" in request.args:
-            users = AdminModel.get_user_by_lastname(request.args.get("lastname"))
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            users = AdminModel.get_user_by_lastname(request.args.get("lastname"), api_user)
             return {"users": [user.to_json() for user in users]}, 200
         return {"message": "Need to pass a last name"}, 400
 
@@ -105,7 +104,8 @@ class GetUserMatrix(Resource):
     method_decorators = [api_required]
     def get(self):
         if "matrix_id" in request.args:
-            user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"))
+            api_user = get_user_api(request.headers["X-API-KEY"])
+            user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"), api_user)
             if user:
                 return user.to_json(), 200
             return {"message": "No user found for this matrix id"}, 404

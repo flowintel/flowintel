@@ -2005,6 +2005,10 @@ The `LIMIT_USER_VIEW_TO_ORG` setting controls whether non-admin users can see us
 
 Enable this setting when your deployment hosts multiple organisations that should not be aware of each other's membership. When disabled (the default), all users can see users from all organisations in the community user list.
 
+The restriction applies to web directory lists and API lookups by user ID, last name or Matrix ID. Non-admin users without an organisation can only look up their own profile when it is enabled. Matrix integrations that use a non-admin API key are subject to the same restriction.
+
+Regardless of this setting, OrgAdmins can retrieve assignments only for users in their own organisation, and only for cases they can view. Administrators can retrieve assignments across organisations. Assignment lists, page counts and statistics exclude cases the viewer can no longer access.
+
 ## Theming and customisations
 
 Flowintel can be adapted to match your organisation's visual identity and communication policies. The settings below let you change the application name, replace logos, add welcome text to the login page and configure a GDPR notice. Most of these can be changed from the web interface without restarting the application.

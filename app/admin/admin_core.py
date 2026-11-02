@@ -18,14 +18,26 @@ def get_users_by_org(org_id):
     """Return all users filtered by organisation"""
     return User.query.filter_by(org_id=org_id).all()
 
-def get_users_page(page, org_id=None, name=None):
-    """Return users by page, optionally filtered by org_id and/or partial name match.
+def user_directory_is_limited(viewer):
+    return current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not viewer.is_admin()
+
+
+def get_visible_users(viewer):
+    """Scope directory queries to the authenticated viewer before selecting rows."""
+    query = User.query
+    if user_directory_is_limited(viewer):
+        if viewer.org_id is None:
+            return query.filter_by(id=viewer.id)
+        return query.filter_by(org_id=viewer.org_id)
+    return query
+
+
+def get_users_page(page, viewer, name=None):
+    """Return visible users by page, optionally filtered by partial name match.
 
     - `name` performs a case-insensitive partial match against `User.first_name` or `User.last_name`.
     """
-    query = User.query
-    if org_id is not None:
-        query = query.filter_by(org_id=org_id)
+    query = get_visible_users(viewer)
     if name:
         query = query.filter(db.or_(User.first_name.ilike(f"%{name}%"), User.last_name.ilike(f"%{name}%")))
     query = query.order_by(db.func.lower(User.first_name), db.func.lower(User.last_name))
@@ -58,12 +70,12 @@ def get_user(id):
     """Return the user"""
     return User.query.get(id)
 
-def get_user_by_lastname(lastname):
+def get_user_by_lastname(lastname, viewer):
     # Case-insensitive partial match for last name
-    return User.query.filter(User.last_name.ilike(f"%{lastname}%")).all()
+    return get_visible_users(viewer).filter(User.last_name.ilike(f"%{lastname}%")).all()
 
-def get_user_by_matrix_id(matrix_id):
-    return User.query.filter_by(matrix_id=matrix_id).first()
+def get_user_by_matrix_id(matrix_id, viewer):
+    return get_visible_users(viewer).filter_by(matrix_id=matrix_id).first()
 
 def get_org(id):
     """Return the org"""
