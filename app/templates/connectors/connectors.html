@@ -270,7 +270,10 @@
                 }
 
                 async function delete_connector(connector){
-                    const res = await fetch('/connectors/delete_connector/'+connector.id)
+                    const res = await fetch('/connectors/delete_connector/'+connector.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(await res.status == 200){
                         let index = connectors_list.value.connectors.indexOf(connector)
                         if(index > -1)
@@ -299,7 +302,10 @@
                 }
 
                 async function delete_instance(instance, connector_id){
-                    const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id)
+                    const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     const data = await res.json()
                     if(res.status == 200){
                         let index = instances_table.value[connector_id].indexOf(instance)

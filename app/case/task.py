@@ -270,7 +270,7 @@ def complete_task(tid):
     return {"message": "Task not found", "toast_class": "danger-subtle"}, 404
     
 
-@task_blueprint.route("/<cid>/delete_task/<tid>", methods=['GET'])
+@task_blueprint.route("/<cid>/delete_task/<tid>", methods=['POST'])
 @login_required
 @editor_required
 @task_case_bound_required

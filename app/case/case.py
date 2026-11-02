@@ -285,7 +285,7 @@ def search():
     return {"message": "No case", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/delete", methods=['GET'])
+@case_blueprint.route("/<cid>/delete", methods=['POST'])
 @login_required
 @editor_required
 def delete(cid):
@@ -368,7 +368,7 @@ def complete_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/remove_org/<oid>", methods=['GET'])
+@case_blueprint.route("/<cid>/remove_org/<oid>", methods=['POST'])
 @login_required
 @editor_required
 def remove_org_case(cid, oid):
@@ -573,7 +573,7 @@ def fork_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/merge/<ocid>", methods=['GET'])
+@case_blueprint.route("/<cid>/merge/<ocid>", methods=['POST'])
 @login_required
 @editor_required
 def merge_case(cid, ocid):

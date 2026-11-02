@@ -190,7 +190,10 @@ export default {
 		}
 
 		async function delete_task(task) {
-			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id)
+			const res = await fetch('/case/' + task.case_id + '/delete_task/' + task.id, {
+				method: 'POST',
+				headers: {'X-CSRFToken': $('#csrf_token').val()}
+			})
 
 			if (await res.status == 200) {
 				touchCaseLastModif(props.cases_info)

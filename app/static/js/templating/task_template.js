@@ -76,7 +76,10 @@ export default {
 		}
 
 		async function delete_task(template, template_array) {
-			const res = await fetch("/templating/delete_task/" + template.id)
+			const res = await fetch("/templating/delete_task/" + template.id, {
+				method: 'POST',
+				headers: {'X-CSRFToken': $('#csrf_token').val()}
+			})
 			if (await res.status == 200) {
 				let index = template_array.indexOf(template)
 				if (index > -1)

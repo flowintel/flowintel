@@ -528,7 +528,7 @@ def edit_note_template(nid):
     return {"message": "Note template not found", "toast_class": "warning-subtle"}, 404
 
 
-@tools_blueprint.route("/delete_note_template/<int:nid>", methods=['GET'])
+@tools_blueprint.route("/delete_note_template/<int:nid>", methods=['POST'])
 @login_required
 @template_editor_required
 def delete_note_template(nid):

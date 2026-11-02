@@ -492,7 +492,7 @@ def get_tags():
     tags.sort(key=lambda x: x["name"])
     return {"tags": tags}
 
-@admin_blueprint.route("/taxonomy_status", methods=['GET'])
+@admin_blueprint.route("/taxonomy_status", methods=['POST'])
 @login_required
 @admin_required
 def taxonomy_status():
@@ -583,7 +583,7 @@ def get_clusters():
     clusters.sort(key=lambda x: x["name"])
     return jsonify({"clusters": clusters})
 
-@admin_blueprint.route("/galaxy_status", methods=['GET'])
+@admin_blueprint.route("/galaxy_status", methods=['POST'])
 @login_required
 @admin_required
 def galaxy_status():

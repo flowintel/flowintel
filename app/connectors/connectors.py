@@ -313,7 +313,7 @@ def edit_icon(iid):
     return render_template("connectors/edit_icons.html", form=form, icon_file=icon_file.to_json())
 
 
-@connector_blueprint.route("/delete_connector/<cid>", methods=['GET','POST'])
+@connector_blueprint.route("/delete_connector/<cid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_connector(cid):
@@ -324,7 +324,7 @@ def delete_connector(cid):
         return {"message":"Error connector deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Connector not found", "toast_class": "danger-subtle"}, 404
 
-@connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['GET','POST'])
+@connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['POST'])
 @login_required
 @misp_editor_required
 def delete_instance(cid, iid):
@@ -383,7 +383,7 @@ def check_connectivity(cid, iid):
     return result, status_code
 
 
-@connector_blueprint.route("/delete_icon/<iid>", methods=['GET','POST'])
+@connector_blueprint.route("/delete_icon/<iid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_icon(iid):

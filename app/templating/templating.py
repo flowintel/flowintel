@@ -461,7 +461,7 @@ def remove_task(cid, tid):
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
-@templating_blueprint.route("/delete_task/<tid>", methods=['GET'])
+@templating_blueprint.route("/delete_task/<tid>", methods=['POST'])
 @login_required
 @template_editor_required
 def delete_task(tid):
@@ -475,7 +475,7 @@ def delete_task(tid):
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
-@templating_blueprint.route("/delete_case/<cid>", methods=['GET'])
+@templating_blueprint.route("/delete_case/<cid>", methods=['POST'])
 @login_required
 @template_editor_required
 def delete_case(cid):

@@ -28,7 +28,10 @@ export default {
                 confirmText: 'Remove'
             })
             if (!ok) return
-            const res = await fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id)
+            const res = await fetch('/case/' + cases_info.case.id + '/remove_org/' + org.id, {
+                method: 'POST',
+                headers: {'X-CSRFToken': $('#csrf_token').val()}
+            })
             if (await res.status == 200) {
                 let index = cases_info.orgs_in_case.indexOf(org)
                 if (index > -1)

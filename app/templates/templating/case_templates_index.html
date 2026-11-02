@@ -269,7 +269,10 @@
 
 
                 async function delete_case(case_template){
-                    const res = await fetch("/templating/delete_case/" + case_template.id)
+                    const res = await fetch("/templating/delete_case/" + case_template.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(await res.status == 200){
                         let index = templates_list.value.templates.indexOf(case_template)
                         if(index > -1)
