@@ -110,9 +110,16 @@ def update_config():
             pattern = rf"^{re.escape(key)}\s*=.*$"
             replacement = f"{key} = {py_val}"
             if re.search(pattern, content, flags=re.MULTILINE):
-                content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+                # Insert the serialized literal without interpreting its backslashes
+                # as regex replacement escapes (for example, turning \\n into a newline).
+                content = re.sub(pattern, lambda _m: replacement, content, flags=re.MULTILINE)
             else:
                 content += f"\n{replacement}\n"
+
+        try:
+            compile(content, CONFIG_MODULE_PATH, "exec")
+        except SyntaxError:
+            return jsonify({"status": "error", "message": "Invalid config value"}), 400
 
         with open(CONFIG_MODULE_PATH, "w") as f:
             f.write(content)
