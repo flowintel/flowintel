@@ -38,6 +38,12 @@ OLLAMA_URL = "http://localhost:11434"
 OLLAMA_KEY = ""
 OLLAMA_MODEL = ""
 
+# Permit chatbot operations beyond the reviewed read-only API allow-list.
+# Enabling this lets model-chosen calls change data using the chatting user's
+# permissions, including instructions induced by untrusted case content.
+# Administrative API endpoints remain blocked.
+CHATBOT_ALLOW_WRITES = False
+
 # Rulezet receive-from module
 # Set to False only for trusted self-signed test instances; leaving it True is recommended for production.
 RULEZET_VERIFY_SSL = True

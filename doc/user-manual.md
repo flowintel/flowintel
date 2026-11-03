@@ -1029,6 +1029,8 @@ When editing a note or template, typing `@` triggers an autocomplete dropdown th
 
 In edit mode, the raw `@variable` syntax is shown. In the rendered preview, each variable is replaced with its current value from the database.
 
+Cross-case references also respect the audience of the note's case. References to private cases resolve only within that case or from a private case whose assigned organisations can all view the referenced case. Otherwise the reference stays unchanged, even for an administrator. The same rule applies to task references, AI reports, exports and MISP sends.
+
 A complete reference of all available @-variables is accessible from **Tools > Variable Syntax** in the sidebar. This page lists every supported variable path with a description, organised by category: case, task, user, nested collections (tasks, subtasks, notes, MISP objects and attributes) and date helpers. If you are unsure which path to use, consult this page.
 
 ## Creating a case from a template

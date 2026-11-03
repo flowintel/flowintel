@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 from typing import List
 import uuid
 import datetime
@@ -1401,21 +1402,25 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             sys.executable,
             "-c",
             "import json,requests,sys;" \
-            "url=sys.argv[1];payload=json.loads(sys.argv[2]);headers=json.loads(sys.argv[3]);" \
-            "resp=requests.post(url,json=payload,headers=headers,timeout=600);" \
+            "request=json.load(sys.stdin);" \
+            "resp=requests.post(request['url'],json=request['payload'],headers=request['headers'],timeout=600);" \
             "resp.raise_for_status();" \
             "print(resp.text)",
-            url,
-            json.dumps(payload),
-            json.dumps(headers),
         ]
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        # An anonymous private file keeps credentials and case data out of argv.
+        # The child inherits stdin; both descriptors close without a named file
+        # to clean up, including when spawning fails.
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as request_file:
+            json.dump({"url": url, "payload": payload, "headers": headers}, request_file)
+            request_file.seek(0)
+            process = subprocess.Popen(
+                cmd,
+                stdin=request_file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
 
         # Store process and metadata so we can annotate the final report when done
         input_prompt_desc = prompt if prompt else "auto-generated from case data"

@@ -813,7 +813,7 @@ def resolve_note_variables(cid):
     task_id = request.json.get("task_id", None)
     mark = request.json.get("mark", False)
     
-    resolved = resolve_variables(text, case_id=int(cid), task_id=int(task_id) if task_id else None, mark=bool(mark))
+    resolved = resolve_variables(text, case_id=case.id, task_id=task_id, mark=bool(mark))
     return {"resolved": resolved}, 200
 
 

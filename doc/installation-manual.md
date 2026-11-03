@@ -1577,6 +1577,10 @@ OLLAMA_MODEL = ""                       # Default model name (optional)
 
 If `OLLAMA_URL` is not reachable, the chatbot page still loads but the model dropdown stays empty and queries fail with a clear error. Restart Flowintel after changing either configuration file.
 
+The chatbot API tool defaults to a reviewed allow-list of read operations on cases, tasks and templates, including searches. State-changing GET endpoints are excluded as well as ordinary write requests. Administrative API endpoints are always blocked. To explicitly permit other API operations, set `CHATBOT_ALLOW_WRITES = True` in `conf/config_module.py`; this lets the model change data with the chatting user's permissions, including when untrusted case content influences its instructions. Leave it disabled unless that behavior is intended.
+
+AI report requests pass credentials and case content through a private temporary input file inherited by the child process, rather than exposing them in process arguments.
+
 ### Technical background
 
 The chatbot is a thin Flask blueprint (`app/chatbot/`) that wires three external pieces together:

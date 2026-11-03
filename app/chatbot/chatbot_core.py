@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import os
+import re
 import threading
+from urllib.parse import urlsplit
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -222,8 +224,68 @@ def _ensure_mcp():
 
 # --- Sync wrappers around MCP tools (mirrors flowintel_dspy.py pattern) ---
 
+# GET is not a read guarantee: several legacy API GET routes change state.
+# Keep this list explicit so new endpoints are unavailable until reviewed.
+_API_ID = r"(?:[0-9]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+_READ_API_PATHS = {
+    "GET": tuple(re.compile(pattern) for pattern in (
+        r"/case/(?:all|completed|not_completed|get_taxonomies|get_galaxies|list_status|get_misp_object|get_misp_object_relationships|get_misp_attribute_types)",
+        rf"/case/{_API_ID}(?:/(?:get_note|get_all_users|get_note_template|tasks|tasks_finished|all_notes|files|history|get_case_misp_object|get_case_misp_attributes))?",
+        rf"/case/(?:get_taxonomies_case|get_galaxies_case)/{_API_ID}",
+        r"/task/list_status",
+        rf"/task/{_API_ID}(?:/(?:get_all_notes|get_note|files|get_taxonomies_task|get_galaxies_task|list_subtasks|list_urls_tools))?",
+        rf"/task/{_API_ID}/(?:subtask|url_tool)/{_API_ID}",
+        r"/templating/(?:cases|tasks)",
+        rf"/templating/(?:case|task)/{_API_ID}",
+        rf"/templating/case/{_API_ID}/task/{_API_ID}",
+        rf"/templating/task/{_API_ID}/(?:case_templates|list_subtasks)",
+        rf"/templating/task/{_API_ID}/subtask/{_API_ID}",
+        rf"/templating/{_API_ID}/(?:list_urls_tools|url_tool/{_API_ID})",
+        rf"/templating/(?:get_taxonomies_case|get_galaxies_case|get_taxonomies_task|get_galaxies_task)/{_API_ID}",
+    )),
+    "POST": (re.compile(r"/(?:case/(?:title|search|get_tags)|task/title|templating/case/title)"),),
+}
+
+
+def _chatbot_api_request(method, path):
+    """Return the checked MCP method/path, or a refusal before starting MCP."""
+    if not isinstance(method, str) or method not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+        return None, None, "Refused: unsupported HTTP method"
+    if not isinstance(path, str) or not path.startswith("/") or path.startswith("//"):
+        return None, None, "Refused: use a relative API path beginning with /"
+    if any(char.isspace() or ord(char) < 32 or ord(char) == 127 for char in path):
+        return None, None, "Refused: invalid API path"
+    try:
+        parts = urlsplit(path)
+    except ValueError:
+        return None, None, "Refused: invalid API path"
+    if parts.scheme or parts.netloc or parts.fragment or "#" in path:
+        return None, None, "Refused: external URLs and fragments are not allowed"
+    route = parts.path
+    if any(char in route for char in ("%", "\\", ";")) or any(segment in ("", ".", "..") for segment in route[1:].split("/")):
+        return None, None, "Refused: ambiguous API path"
+    # MCP's configured base already ends in /api. Accept both Swagger-relative
+    # paths and /api-prefixed paths, and forward only the checked representation.
+    if route.startswith("/api/"):
+        route = route[4:]
+    if route.lower() == "/admin" or route.lower().startswith("/admin/"):
+        return None, None, "Refused: admin endpoints are unavailable to the chatbot"
+    if route == "/api" or route.startswith("/api/"):
+        return None, None, "Refused: invalid API prefix"
+    permitted_read = any(pattern.fullmatch(route) for pattern in _READ_API_PATHS.get(method, ()))
+    if not permitted_read and getattr(ConfigModule, "CHATBOT_ALLOW_WRITES", False) is not True:
+        return None, None, "Refused: this operation is not in the chatbot's read-only allow-list"
+    return method, route + ("?" + parts.query if parts.query else ""), None
+
+
 def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
-    """Call the FlowIntel API via MCP. Args: method (GET/POST/...), path (/api/...), body (optional JSON dict)."""
+    """Read Flowintel cases, tasks and templates through reviewed API operations.
+    Args: method (GET, or POST for searches), path (/case/... or /api/case/...),
+    body (optional JSON). Other operations require administrator opt-in;
+    admin endpoints are always unavailable."""
+    method, path, refusal = _chatbot_api_request(method, path)
+    if refusal:
+        return refusal
     logger.debug("LLM requested tool -> %s %s", method, path)
     _ensure_mcp()
     coro = _mcp_session.call_tool("call_flowintel_api", {"method": method, "path": path, "body": body})
