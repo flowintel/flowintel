@@ -396,6 +396,9 @@ def create_misp_attribute(cid):
     case = CommonModel.get_case(cid)
     if not case or not check_user_private_case(case):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Create MISP attribute: Org not assigned to case", User=current_user.email, CaseId=case.id)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     data = request.get_json()
     if not data:
         return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
@@ -416,6 +419,9 @@ def edit_misp_attribute(cid, aid):
     case = CommonModel.get_case(cid)
     if not case or not check_user_private_case(case):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Edit MISP attribute: Org not assigned to case", User=current_user.email, CaseId=case.id)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     data = request.get_json()
     if not data:
         return {"message": "No data provided", "toast_class": "warning-subtle"}, 400
@@ -434,6 +440,9 @@ def delete_misp_attribute(cid, aid):
     case = CommonModel.get_case(cid)
     if not case or not check_user_private_case(case):
         return {"message": "No case found", "toast_class": "warning-subtle"}, 404
+    if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
+        flowintel_log("audit", 403, "Delete MISP attribute: Org not assigned to case", User=current_user.email, CaseId=case.id)
+        return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     result, status = CaseModel.delete_standalone_attr(cid, aid, current_user)
     if status == 200:
         sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
@@ -883,6 +892,7 @@ def get_sync_automation(cid, ciid):
 
 @case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_automation", methods=['POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def save_sync_automation(cid, ciid):
     """Create or update automation settings for one sync direction."""
@@ -900,6 +910,7 @@ def save_sync_automation(cid, ciid):
 
 @case_blueprint.route("/<int:cid>/connectors/<int:ciid>/sync_conflicts/<int:conflict_id>/resolve", methods=['POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def resolve_sync_conflict(cid, ciid, conflict_id):
     """Resolve a pending MISP sync conflict after user validation."""

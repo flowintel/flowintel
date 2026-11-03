@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
 
-from ..decorators import misp_editor_required
+from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 
 from . import session_class as SessionModel
@@ -88,6 +88,7 @@ def get_misp_attribute_selected():
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def manage_notes_selected():
     """Manage notes selected"""

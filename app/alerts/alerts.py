@@ -4,7 +4,7 @@ import re
 from flask import jsonify, request, redirect
 from flask_login import login_required, current_user
 import conf.config_module as ConfigModule
-from app.decorators import admin_required
+from app.decorators import admin_required, editor_required
 
 from app.alerts import alerts_core as AlertsCore
 from . import alerts_blueprint
@@ -59,6 +59,7 @@ def api_alerts_unread():
 
 @alerts_blueprint.route("/api/alerts/<int:aid>/read", methods=["POST"])
 @login_required
+@editor_required
 def api_alert_read(aid):
     AlertsCore.mark_alert_read(aid, current_user)
     return jsonify({"status": "ok"})
@@ -66,6 +67,7 @@ def api_alert_read(aid):
 
 @alerts_blueprint.route("/api/alerts/read_all", methods=["POST"])
 @login_required
+@editor_required
 def api_alerts_read_all():
     count = AlertsCore.mark_all_read(current_user)
     return jsonify({"status": "ok", "count": count})
@@ -73,6 +75,7 @@ def api_alerts_read_all():
 
 @alerts_blueprint.route("/api/alerts/delete_read", methods=["POST"])
 @login_required
+@editor_required
 def api_alerts_delete_read():
     count = AlertsCore.delete_read(current_user)
     return jsonify({"status": "ok", "count": count})

@@ -174,6 +174,8 @@ Each notification can be marked as read or unread by clicking the checkbox next 
 
 Clicking on a notification takes you to the related case but does not mark it as read. You must mark it as read explicitly. This prevents important messages from being dismissed before you have fully reviewed them.
 
+The **Case/webhook** tab contains shared case alerts. Read-only users can view them; users with write permission can mark visible alerts as read or remove read alerts. These actions affect the shared feed for all users.
+
 ## Tasks assigned to you
 
 ![user-manual-diagrams/tasks-assigned.png](user-manual-diagrams/tasks-assigned.png)
@@ -894,6 +896,8 @@ You can revisit any previous result and walk through the same three-step process
 # Use connectors to connect to external platforms
 
 Connectors link a case or task to external platforms such as MISP or AIL. Before you can use connectors, the platform administrator must configure at least one connector and its instances under **Tools > Connectors**. You also need the **MISP Editor** role to work with connectors on cases and tasks.
+
+Running case connector modules and removing stored rules also require write permission and membership in an organisation assigned to the case; administrators can act across cases. Scheduled and on-change synchronisation recheck the schedule owner's current role and case membership before using connector credentials.
 
 Connector sharing scope also applies to MISP helper tools and case templates. A template only shows and copies connector instances visible to the user creating the case.
 

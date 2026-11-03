@@ -687,7 +687,7 @@ class GetInstanceModules(Resource):
 @case_ns.route('/<cid>/call_module_case', methods=['POST'])
 @case_ns.doc(description='Call a module on a case')
 class CallModuleCase(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     @case_ns.doc(params={
         "module": "Required. Name of the module to call",
         "instance_id": "Required. List of name or id of instances to use for the module"
@@ -696,7 +696,7 @@ class CallModuleCase(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if "module" in request.json:
                     if "instance_id" in request.json:
                         res = CaseModel.call_module_case(request.json["module"], request.json["instance_id"], case, current_user)
@@ -883,7 +883,7 @@ class GetMispSyncAutomation(Resource):
 @case_ns.route('/<cid>/connectors/<ciid>/sync_automation', methods=['POST'])
 @case_ns.doc(description='Create or update MISP sync automation settings')
 class SaveMispSyncAutomation(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     def post(self, cid, ciid):
         case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
         if error:
@@ -898,7 +898,7 @@ class SaveMispSyncAutomation(Resource):
 @case_ns.route('/<cid>/connectors/<ciid>/sync_conflicts/<conflict_id>/resolve', methods=['POST'])
 @case_ns.doc(description='Resolve a pending MISP sync conflict')
 class ResolveMispSyncConflict(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     def post(self, cid, ciid, conflict_id):
         case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
         if error:

@@ -1827,6 +1827,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def _build_case_connector_module_context(self, case_instance_id, loc_case, user):
         """Prepare the common case and connector payload used by case connector modules."""
+        # Scheduled and on-change runs must still have their owner's current
+        # write permission and case membership before accessing the connector.
+        if user.read_only() or not (
+            user.is_admin() or (user.is_misp_editor() and CommonModel.get_present_in_case(loc_case.id, user))
+        ):
+            return None, None, None, {"message": "Action not allowed", "toast_class": "warning-subtle"}
+
         case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
         if not case_instance or case_instance.case_id != loc_case.id:
             return None, None, None, {"message": "Connector instance not found"}

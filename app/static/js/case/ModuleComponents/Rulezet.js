@@ -1,5 +1,5 @@
 import { display_toast } from '../../toaster.js'
-const { ref, onMounted } = Vue
+const { ref, computed, onMounted } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
@@ -10,6 +10,12 @@ export default {
         connector_type: String
     },
     setup(props) {
+        const can_manage_rules = computed(() => {
+            const info = props.cases_info
+            const permission = info && info.permission
+            return !!(permission && !permission.read_only &&
+                (permission.admin || (permission.misp_editor && info.present_in_case)))
+        })
         const selected_instance = ref(props.connector_instances && props.connector_instances.length ? props.connector_instances[0] : null)
         const query_input = ref('')
         const is_loading = ref(false)
@@ -41,6 +47,7 @@ export default {
         }
 
         async function run_query() {
+            if (!can_manage_rules.value) return
             if (!selected_instance.value) return display_toast({ message: 'No connector instance selected', toast_class: 'warning-subtle' })
             if (!query_input.value || query_input.value.trim().length === 0) return display_toast({ message: 'Please enter a query', toast_class: 'warning-subtle' })
 
@@ -69,6 +76,7 @@ export default {
         }
 
         async function removeRule(r) {
+            if (!can_manage_rules.value) return
             if (!selected_instance.value) return display_toast({ message: 'No connector instance selected', toast_class: 'warning-subtle' })
             if (!confirm('Remove this rule locally?')) return
             is_removing_id.value = r.id || r.uuid || (r.remote_id ? r.remote_id : null)
@@ -91,6 +99,7 @@ export default {
         }
 
         async function resyncRule(r) {
+            if (!can_manage_rules.value) return
             if (!selected_instance.value) return display_toast({ message: 'No connector instance selected', toast_class: 'warning-subtle' })
             const queryVal = r.remote_id || r.id || r.uuid
             if (!queryVal) return display_toast({ message: 'No identifier available to resync', toast_class: 'warning-subtle' })
@@ -150,6 +159,7 @@ export default {
         }
 
         return {
+            can_manage_rules,
             selected_instance,
             query_input,
             is_loading,
@@ -187,7 +197,7 @@ export default {
                     </div>
                 </div>
             </div>
-            <div class="row mb-3">
+            <div v-if="can_manage_rules" class="row mb-3">
                 <div class="col-md-6">
                     <label class="form-label">Query (IP / input)</label>
                     <input class="form-control" v-model="query_input" placeholder="Enter IP or query" />
@@ -215,11 +225,11 @@ export default {
                                 <button class="btn btn-sm btn-outline-secondary" type="button" :data-bs-toggle="'collapse'" :data-bs-target="'#rule-' + idx" aria-expanded="true" :aria-controls="'rule-' + idx">
                                     Toggle
                                 </button>
-                                <button class="btn btn-sm btn-danger ms-2" type="button" @click="removeRule(r)" :disabled="is_removing_id === r.id || is_resyncing_id === r.id">
+                                <button v-if="can_manage_rules" class="btn btn-sm btn-danger ms-2" type="button" @click="removeRule(r)" :disabled="is_removing_id === r.id || is_resyncing_id === r.id">
                                     <span v-if="is_removing_id === r.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                     <span v-else>Remove</span>
                                 </button>
-                                <button class="btn btn-sm btn-outline-primary ms-2" type="button" @click="resyncRule(r)" :disabled="is_resyncing_id === r.id || is_removing_id === r.id">
+                                <button v-if="can_manage_rules" class="btn btn-sm btn-outline-primary ms-2" type="button" @click="resyncRule(r)" :disabled="is_resyncing_id === r.id || is_removing_id === r.id">
                                     <span v-if="is_resyncing_id === r.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                     <span v-else>Resync</span>
                                 </button>
