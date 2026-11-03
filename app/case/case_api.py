@@ -551,6 +551,25 @@ class SearchCase(Resource):
             return {"message": "No case", 'toast_class': "danger-subtle"}, 404
         return {"message": "Please enter terms"}, 400
     
+@case_ns.route('/search/attribute', methods=['POST'])
+@case_ns.doc(description='Find visible cases by exact MISP attribute value, including completed cases')
+class SearchCaseAttribute(Resource):
+    method_decorators = [api_required]
+
+    @case_ns.doc(params={"value": "Required. Non-empty attribute value (exact match, no wildcards)"})
+    def post(self):
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or not isinstance(data.get("value"), str) or not data["value"].strip():
+            return {"message": "A non-empty attribute value is required"}, 400
+
+        current_user = utils.get_user_from_api(request.headers)
+        cases = CommonModel.search_by_attribute_value(data["value"], current_user)
+        return {"cases": [
+            {"id": case.id, "uuid": case.uuid, "title": case.title, "completed": case.completed}
+            for case in cases
+        ]}, 200
+
+
 @case_ns.route('/<cid>/change_status', methods=['POST'])
 @case_ns.doc(description='Change the status of the case')
 class ChangeStatusCase(Resource):

@@ -197,6 +197,19 @@ def search(text: str, current_user: User) -> List[Case]:
     cases = Case.query.where(or_(*filters), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
     return check_user_in_private_cases(cases, current_user)
 
+def search_by_attribute_value(value: str, current_user: User) -> List[Case]:
+    """Find visible cases with an exact attribute value, including completed cases."""
+    object_case_ids = db.session.query(Case_Misp_Object.case_id).join(
+        Misp_Attribute, Misp_Attribute.case_misp_object_id == Case_Misp_Object.id
+    ).filter(Misp_Attribute.value == value)
+    standalone_case_ids = db.session.query(Misp_Attribute.case_id).filter(
+        Misp_Attribute.case_misp_object_id.is_(None),
+        Misp_Attribute.value == value,
+    )
+    case_ids = object_case_ids.union(standalone_case_ids)
+    cases = Case.query.filter(Case.id.in_(case_ids)).order_by(Case.id).all()
+    return check_user_in_private_cases(cases, current_user)
+
 def get_all_org_case(case):
     """Return a list of all orgs in a case"""
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
