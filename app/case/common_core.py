@@ -718,13 +718,34 @@ def get_audit_logs(case_id):
         if not os.path.exists(log_file_path):
             return []
         
+        case = get_case(case_id)
+        if not case:
+            return []
         audit_logs = []
-        case_id_str = str(case_id)
+        # CaseId must be in the metadata prefix, never in a title or message.
+        # Existing producers put only User and optional numeric TemplateId/AlertId
+        # before it. Reject ambiguous legacy records rather than guessing a scope.
+        case_metadata_re = re.compile(
+            r'\. User:[ \t]+[^\s]+[ \t]+'
+            r'(?:(?:TemplateId|AlertId):[ \t]+[0-9]+[ \t]+)?'
+            r'CaseId:[ \t]+([^\s"]+)(?=[ \t]|"?\r?\n?$)'
+        )
         
         with open(log_file_path, "r") as log_file:
             for line in log_file:
-                # Check if the line contains AUDIT and the specific CaseId
-                if 'AUDIT:' in line and f'CaseId: {case_id_str}' in line:
+                if not re.match(r'^\d{2}/\w{3}/\d{4} \d{2}:\d{2}:\d{2} - \S+ - - "AUDIT:\s*\d+\s*-', line):
+                    continue
+                if len(re.findall(r'(?<!\S)User:', line)) != 1 or len(re.findall(r'(?<!\S)CaseId:', line)) != 1:
+                    continue
+                case_match = case_metadata_re.search(line)
+                if not case_match:
+                    continue
+                logged_id = case_match.group(1)
+                matches_case = (
+                    int(logged_id) == case.id if re.fullmatch(r'[0-9]+', logged_id)
+                    else logged_id.lower() == str(case.uuid).lower()
+                )
+                if matches_case:
                     # Parse the log line
                     # Format: DD/Mon/YYYY HH:MM:SS - IP - - "AUDIT: STATUS - MESSAGE. User: EMAIL CaseId: ID ..."
                     try:

@@ -228,6 +228,12 @@ class Case(db.Model):
     computer_assistate_model = db.Column(db.String(64), nullable=True)
     computer_assistate_prompt = db.Column(db.Text, nullable=True)
 
+    def get_report_prompt(self):
+        # Older automatic prompts embed full case data, including protected history.
+        if self.computer_assistate_prompt and self.computer_assistate_prompt.startswith("Give me a report using: {"):
+            return "auto-generated from case data"
+        return self.computer_assistate_prompt
+
     def to_json(self):
         json_dict = {
             "id": self.id,
@@ -251,7 +257,7 @@ class Case(db.Model):
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report,
             "computer_assistate_model": self.computer_assistate_model,
-            "computer_assistate_prompt": self.computer_assistate_prompt
+            "computer_assistate_prompt": self.get_report_prompt()
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
@@ -296,7 +302,7 @@ class Case(db.Model):
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report,
             "computer_assistate_model": self.computer_assistate_model,
-            "computer_assistate_prompt": self.computer_assistate_prompt
+            "computer_assistate_prompt": self.get_report_prompt()
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)

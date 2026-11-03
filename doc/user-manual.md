@@ -2135,7 +2135,7 @@ Four filters are available at the top of the page:
 
 A small graph above the table summarises activity over the chosen window. The **Export** button downloads the filtered result as CSV or JSON for archival or for handing over to an external SIEM.
 
-The audit log is a community-wide view. It complements, but does not replace, the per-case history visible from the **History** tab on each case: the case history is scoped to a single case and follows the same access rules as the case itself, while the audit log shows every recorded action on the platform.
+The audit log is a community-wide view. It complements the per-case history in the **History** tab. Per-case history and audit logs require both case visibility and an Admin, Case Admin, or Audit Viewer role; the community-wide audit log shows recorded actions across the platform to its authorised viewers.
 
 
 ## MISP integration settings
@@ -2372,7 +2372,7 @@ Flowintel does not specify a date format, it uses the date format that is set by
 
 **Who can see case history and audit logs?**
 
-Any logged-in user can view the history and audit log of a case, provided the case is not private. For private cases, only users whose organisation is assigned to the case and administrators can access the history. Both history and audit logs can be downloaded as plain text or Markdown files.
+Admins, Case Admins, and Audit Viewers can view case history and per-case audit logs. Case Admins and Audit Viewers must also belong to an organisation assigned to a private case; administrators retain access to all cases. The same checks apply to plain-text and Markdown downloads. Shared AI reports are generated without case history, and automatic prompt metadata does not expose the underlying case data.
 
 
 # Troubleshooting

@@ -1340,8 +1340,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def generate_computer_assistate_report(self, case: Case, current_user: User, model: str = None, prompt: str = None):
         """Generate a report from all informations find in the case"""
 
-        history = CommonModel.get_history(case.uuid)
-
         # Build task_list from Task objects so we can resolve variables
         task_list = []
         for task in case.tasks:
@@ -1361,6 +1359,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         misp_object_list = [obj.download() for obj in CaseModel.get_misp_object_by_case(case.id)]
         loc_case = case.download()
         del loc_case["computer_assistate_report"]
+        loc_case.pop("computer_assistate_prompt", None)
         # Resolve variables in the case notes as well
         try:
             loc_case['notes'] = resolve_variables(loc_case.get('notes', ''), case.id, None, mark=False)
@@ -1370,7 +1369,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return_dict = loc_case
         return_dict["tasks"] = task_list
         return_dict["misp-objects"] = misp_object_list
-        return_dict["history"] = history
+        # Generated reports are shared with all case viewers, who may not have
+        # permission to read history. Keep that protected source out of the prompt.
 
         model_to_use = model if model else ConfigModule.OLLAMA_MODEL
         if not ConfigModule.OLLAMA_URL or not model_to_use:
@@ -1420,8 +1420,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # Persist model and prompt to the case record so they are available later
         try:
             case.computer_assistate_model = model_to_use
-            # store full prompt (could be large) — prompt if provided, else the constructed message
-            case.computer_assistate_prompt = prompt if prompt else message
+            case.computer_assistate_prompt = input_prompt_desc
             db.session.add(case)
             db.session.commit()
         except Exception:

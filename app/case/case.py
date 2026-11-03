@@ -687,6 +687,10 @@ def history(cid):
             flowintel_log("audit", 403, "Get history: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Get history: Access restricted", User=current_user.email, CaseId=case.id)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+
         history = CommonModel.get_history(case.uuid)
         if history:
             return {"history": history}
@@ -704,7 +708,11 @@ def audit_logs(cid):
             flowintel_log("audit", 403, "Get audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        audit_logs = CommonModel.get_audit_logs(cid)
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Get audit logs: Access restricted", User=current_user.email, CaseId=case.id)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+
+        audit_logs = CommonModel.get_audit_logs(case.id)
         if audit_logs:
             return {"audit_logs": audit_logs}
         return {"audit_logs": []}

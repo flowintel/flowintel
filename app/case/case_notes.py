@@ -130,7 +130,7 @@ def get_computer_assistate_report(cid):
             if getattr(case, 'computer_assistate_model', None):
                 resp["model"] = case.computer_assistate_model
             if getattr(case, 'computer_assistate_prompt', None):
-                resp["prompt"] = case.computer_assistate_prompt
+                resp["prompt"] = case.get_report_prompt()
         except Exception:
             pass
         return resp
