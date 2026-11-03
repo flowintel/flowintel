@@ -19,11 +19,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Keep credentials out of the Docker build context and cached layers.
+          persist-credentials: false
+          # Fetch origin/main while checkout still has authentication.
+          fetch-depth: 0
 
       - name: Determine if tag is on main
         id: branchcheck
         run: |
-          git fetch origin main --quiet
           if [ "${{ github.sha }}" = "$(git rev-parse origin/main)" ]; then
             echo "is_main=true" >> "$GITHUB_OUTPUT"
           else
