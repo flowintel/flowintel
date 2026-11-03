@@ -941,7 +941,11 @@ def create_template_case_from_alert_payload(template_id, alert, user, payload, t
     if not template:
         return None, {"message": "Case template not found"}, 404
 
-    case = TemplateModel.create_case_from_template(template_id, title, user, privileged_case=privileged_case)
+    case = TemplateModel.create_case_from_template(
+        template_id, title, user,
+        privileged_case=privileged_case,
+        is_private=bool(payload.get("is_private", False)),
+    )
     if isinstance(case, dict):
         return None, case, 400
 

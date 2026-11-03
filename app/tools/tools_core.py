@@ -1275,13 +1275,15 @@ def create_case_misp_event(request_form, current_user):
 
     event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
 
-    case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
+    case = TemplateModel.create_case_from_template(
+        request_form.get("case_template_id"), request_form.get("case_title"),
+        current_user, is_private=True,
+    )
 
     misp_event_id = request_form.get('misp_event_id')
 
     case.description = event.info
     case.ticket_id = f"MISP Event: {misp_event_id}"
-    case.is_private = True
     case.is_updated_from_misp = True
     db.session.commit()
 

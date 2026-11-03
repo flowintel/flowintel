@@ -160,7 +160,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
             for template in form_dict["template_select"]:
                 if Case_Template.query.get(template):
-                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user, privileged_case)
+                    case = CaseTemplateModel.create_case_from_template(
+                        template, form_dict["title_template"], user,
+                        privileged_case=privileged_case,
+                        is_private=form_dict.get("is_private", False),
+                    )
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
             hedgedoc_url = self.normalize_hedgedoc_url(form_dict.get("hedgedoc_url"))
