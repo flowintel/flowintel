@@ -10,6 +10,7 @@ from app.extensions import db
 from app.db_class.db import Role, User
 from ..notification import notification_core as NotifModel
 from ..utils.utils import generate_api_key
+from .sso_identity import find_sso_user
 
 logger = logging.getLogger(__name__)
 
@@ -71,13 +72,13 @@ def acquire_token_by_code(code, redirect_uri):
 
 
 def _get_user_groups(access_token):
-    """Return the list of group displayNames the signed-in user belongs to.
+    """Return the group object IDs the signed-in user belongs to.
 
     Uses transitiveMemberOf so nested group membership is included.
     Handles paginated Graph API responses. Returns [] on any error.
     """
     groups = []
-    url = f"{GRAPH_API_BASE}/me/transitiveMemberOf/microsoft.graph.group?$select=displayName"
+    url = f"{GRAPH_API_BASE}/me/transitiveMemberOf/microsoft.graph.group?$select=id"
     try:
         while url:
             resp = requests.get(
@@ -89,7 +90,10 @@ def _get_user_groups(access_token):
                 logger.warning("Graph API groups call returned %s: %s", resp.status_code, resp.text[:500])
                 return []
             data = resp.json()
-            groups.extend(g["displayName"] for g in data.get("value", []))
+            groups.extend(
+                g["id"].lower() for g in data.get("value", [])
+                if isinstance(g.get("id"), str) and _UUID_RE.fullmatch(g["id"])
+            )
             url = data.get("@odata.nextLink")
     except Exception as exc:
         logger.warning("Graph API groups call failed: %s", exc)
@@ -120,13 +124,24 @@ def get_or_create_sso_user(id_token_claims, access_token):
     # FlowintelAdmin maps to Editor initially; admins are notified to promote manually.
     cfg = current_app.config
     priority_list = [
-        (cfg.get("ENTRA_GROUP_ADMIN",      "FlowintelAdmin"),      "Editor",                                True),
-        (cfg.get("ENTRA_GROUP_EDITOR",     "FlowintelEditor"),     "Editor",                                False),
-        (cfg.get("ENTRA_GROUP_CASE_ADMIN", "FlowintelCaseAdmin"),  cfg.get("ENTRA_ROLE_CASE_ADMIN",  "CaseAdmin"),  False),
-        (cfg.get("ENTRA_GROUP_QUEUE_ADMIN","FlowintelQueueAdmin"), cfg.get("ENTRA_ROLE_QUEUE_ADMIN", "QueueAdmin"), False),
-        (cfg.get("ENTRA_GROUP_QUEUER",     "FlowintelQueuer"),     cfg.get("ENTRA_ROLE_QUEUER",      "Queuer"),     False),
-        (cfg.get("ENTRA_GROUP_READONLY",   "FlowintelReadOnly"),   "Read Only",                             False),
+        (cfg.get("ENTRA_GROUP_ADMIN", ""),       "Editor", True),
+        (cfg.get("ENTRA_GROUP_EDITOR", ""),      "Editor", False),
+        (cfg.get("ENTRA_GROUP_CASE_ADMIN", ""),  cfg.get("ENTRA_ROLE_CASE_ADMIN", "CaseAdmin"), False),
+        (cfg.get("ENTRA_GROUP_QUEUE_ADMIN", ""), cfg.get("ENTRA_ROLE_QUEUE_ADMIN", "QueueAdmin"), False),
+        (cfg.get("ENTRA_GROUP_QUEUER", ""),      cfg.get("ENTRA_ROLE_QUEUER", "Queuer"), False),
+        (cfg.get("ENTRA_GROUP_READONLY", ""),    "Read Only", False),
     ]
+    # Names can be duplicated by tenant members; only configured object IDs grant roles.
+    priority_list = [
+        (group_id.strip().lower(), role_name, notify)
+        for group_id, role_name, notify in priority_list
+        if isinstance(group_id, str) and _UUID_RE.fullmatch(group_id.strip())
+    ]
+    if not priority_list:
+        return None, (
+            "No Entra group object IDs are configured. "
+            "Ask an administrator to configure ENTRA_GROUP_*."
+        )
 
     configured_groups = [entry[0] for entry in priority_list]
     logger.info(
@@ -137,9 +152,9 @@ def get_or_create_sso_user(id_token_claims, access_token):
     matched_group = None
     matched_role_name = None
     notify_admin = False
-    for group_name, role_name, should_notify in priority_list:
-        if group_name in groups:
-            matched_group = group_name
+    for group_id, role_name, should_notify in priority_list:
+        if group_id in groups:
+            matched_group = group_id
             matched_role_name = role_name
             notify_admin = should_notify
             break
@@ -159,11 +174,13 @@ def get_or_create_sso_user(id_token_claims, access_token):
             "Please ask an administrator to create it."
         )
 
-    user = User.query.filter_by(email=email).first()
+    user, error = find_sso_user(email, "entra")
+    if error:
+        return None, error
 
     if user:
         # On every login, sync the role for SSO accounts in case group membership changed.
-        if user.auth_provider == "entra" and user.role_id != target_role.id:
+        if user.role_id != target_role.id:
             user.role_id = target_role.id
             db.session.commit()
         return user, None

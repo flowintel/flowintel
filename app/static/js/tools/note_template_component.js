@@ -19,7 +19,10 @@ export default {
 		const dayjs = window.dayjs
 
 		async function delete_note_template(note_template, notes_array) {
-			const res = await fetch("/tools/delete_note_template/" + note_template.id)
+			const res = await fetch("/tools/delete_note_template/" + note_template.id, {
+				method: 'POST',
+				headers: {'X-CSRFToken': $('#csrf_token').val()}
+			})
 			if (await res.status == 200) {
 				let index = notes_array.indexOf(note_template)
 				if (index > -1)

@@ -7,7 +7,7 @@ from flask import current_app
 from flask_login import current_user
 
 from ..decorators import api_required, admin_required, admin_or_org_admin_required
-from ..utils.utils import get_user_api, reload_application
+from ..utils.utils import get_user_from_api, reload_application
 from ..utils.logger import flowintel_log
 
 admin_ns = Namespace("admin", description="Endpoints to manage admin actions")
@@ -70,12 +70,9 @@ add_role_model = admin_ns.model('AddRole', {
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self):
-        user = get_user_api(request.headers["X-API-KEY"])
+        user = get_user_from_api(request.headers)
         
-        if current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not user.is_admin():
-            users = AdminModel.get_users_by_org(user.org_id)
-        else:
-            users = AdminModel.get_all_users()
+        users = AdminModel.get_visible_users(user).all()
         
         return {"users": [user.to_json() for user in users]}, 200
     
@@ -84,7 +81,8 @@ class GetUsers(Resource):
 class GetUsers(Resource):
     method_decorators = [api_required]
     def get(self, uid):
-        user = AdminModel.get_user(uid)
+        api_user = get_user_from_api(request.headers)
+        user = AdminModel.get_visible_users(api_user).filter_by(id=uid).first()
         if user:
             return user.to_json(), 200
         return {"message": "User not found"}, 404
@@ -95,7 +93,8 @@ class GetUserName(Resource):
     method_decorators = [api_required]
     def get(self):
         if "lastname" in request.args:
-            users = AdminModel.get_user_by_lastname(request.args.get("lastname"))
+            api_user = get_user_from_api(request.headers)
+            users = AdminModel.get_user_by_lastname(request.args.get("lastname"), api_user)
             return {"users": [user.to_json() for user in users]}, 200
         return {"message": "Need to pass a last name"}, 400
 
@@ -105,7 +104,8 @@ class GetUserMatrix(Resource):
     method_decorators = [api_required]
     def get(self):
         if "matrix_id" in request.args:
-            user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"))
+            api_user = get_user_from_api(request.headers)
+            user = AdminModel.get_user_by_matrix_id(request.args.get("matrix_id"), api_user)
             if user:
                 return user.to_json(), 200
             return {"message": "No user found for this matrix id"}, 404
@@ -119,7 +119,7 @@ class AddUser(Resource):
     @admin_ns.expect(add_user_model)
     def post(self):
         if request.json:
-            api_user = get_user_api(request.headers["X-API-KEY"])
+            api_user = get_user_from_api(request.headers)
             
             verif_dict = AdminModelApi.verif_add_user(request.json, api_user)
             if "message" not in verif_dict:
@@ -140,11 +140,13 @@ class EditUser(Resource):
     @admin_ns.expect(edit_user_model)
     def post(self, id):
         if request.json:
-            api_user = get_user_api(request.headers["X-API-KEY"])
+            api_user = get_user_from_api(request.headers)
             
             user_to_edit = AdminModel.get_user(id)
             if not user_to_edit:
                 return {"message": "User not found"}, 404
+            if user_to_edit.is_bot and not api_user.is_admin():
+                return {"message": "Only administrators can edit Matrix bot accounts"}, 403
             
             if api_user.is_pure_org_admin():
                 if user_to_edit.org_id != api_user.org_id:
@@ -173,11 +175,13 @@ class EditUser(Resource):
 class DeleteUser(Resource):
     method_decorators = [admin_or_org_admin_required, api_required]
     def get(self, id):
-        api_user = get_user_api(request.headers["X-API-KEY"])
+        api_user = get_user_from_api(request.headers)
         
         user_to_delete = AdminModel.get_user(id)
         if not user_to_delete:
             return {"message": "User not found"}, 404
+        if user_to_delete.is_bot and not api_user.is_admin():
+            return {"message": "Only administrators can delete Matrix bot accounts"}, 403
         
         if user_to_delete.id == api_user.id:
             return {"message": "You cannot delete your own account"}, 403
@@ -224,7 +228,7 @@ class AddOrg(Resource):
     @admin_ns.expect(add_org_model)
     def post(self):
         if request.json:
-            api_user = get_user_api(request.headers["X-API-KEY"])
+            api_user = get_user_from_api(request.headers)
             verif_dict = AdminModelApi.verif_add_org(request.json)
             if "message" not in verif_dict:
                 org = AdminModel.add_org_core(verif_dict)
@@ -242,7 +246,7 @@ class EditOrg(Resource):
     @admin_ns.expect(edit_org_model)
     def post(self, id):
         if request.json:
-            api_user = get_user_api(request.headers["X-API-KEY"])
+            api_user = get_user_from_api(request.headers)
             org = AdminModel.get_org(id)
             if not org:
                 return {"message": "Org not found"}, 404
@@ -260,7 +264,7 @@ class EditOrg(Resource):
 class DeleteOrg(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, oid):
-        api_user = get_user_api(request.headers["X-API-KEY"])
+        api_user = get_user_from_api(request.headers)
         org = AdminModel.get_org(oid)
         if not org:
             return {"message": "Org not found"}, 404
@@ -302,7 +306,7 @@ class AddRole(Resource):
     @admin_ns.expect(add_role_model)
     def post(self):
         if request.json:
-            api_user = get_user_api(request.headers["X-API-KEY"])
+            api_user = get_user_from_api(request.headers)
             verif_dict = AdminModelApi.verif_add_role(request.json)
             if "message" not in verif_dict:
                 role = AdminModel.add_role_core(verif_dict)
@@ -317,7 +321,7 @@ class AddRole(Resource):
 class DeleteRole(Resource):
     method_decorators = [admin_required, api_required]
     def get(self, rid):
-        api_user = get_user_api(request.headers["X-API-KEY"])
+        api_user = get_user_from_api(request.headers)
         role_id = int(rid)
 
         if role_id in current_app.config['SYSTEM_ROLES']:
@@ -347,7 +351,7 @@ class DeleteRole(Resource):
 class ReloadApplication(Resource):
     method_decorators = [api_required]
     def post(self):
-        api_user = get_user_api(request.headers["X-API-KEY"])
+        api_user = get_user_from_api(request.headers)
         if not api_user.is_admin():
             return {"message": "Admin required"}, 403
 

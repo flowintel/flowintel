@@ -102,27 +102,35 @@ def generate_api_key(length=60):
 
 def get_user_api(api_key):
     """Get a user by its api key"""
+    if not api_key:
+        return None
     return User.query.filter_by(api_key=api_key).first()
 
 
 def get_user_from_api(headers):
-    """Try to get bot user by matrix id. If not, get basic user"""
+    """Resolve the same acting user for API authentication, permissions and actions."""
+    key_user = get_user_api(headers.get("X-API-KEY"))
+    if key_user is None:
+        return None
+    if key_user.is_bot:
+        matrix_id = headers.get("MATRIX-ID")
+        if not matrix_id:
+            return None
+        user = User.query.filter_by(matrix_id=matrix_id).first()
+        # A relay never falls back to its own role, nor delegates to another relay.
+        return user if user is not None and not user.is_bot else None
     if "MATRIX-ID" in headers:
-        bot = User.query.filter_by(last_name="Bot", first_name="Matrix").first()
-        if bot and bot.api_key == headers["X-API-KEY"]:
-            user = User.query.filter_by(matrix_id=headers["MATRIX-ID"]).first()
-            if user:
-                return user
-    return get_user_api(headers["X-API-KEY"])
+        return None
+    return key_user
 
 
 def verif_api_key(headers):
     """Check if api key belong to a user"""
     if not "X-API-KEY" in headers:
         return {"message": "Error no API key pass"}, 403
-    user = get_user_api(headers["X-API-KEY"])
+    user = get_user_from_api(headers)
     if not user:
-        return {"message": "API key not found"}, 403
+        return {"message": "Invalid API key or Matrix identity"}, 403
     return {}
 
 

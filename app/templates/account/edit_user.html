@@ -67,6 +67,18 @@
                     {% endif %}
                 </div>
             </div>            
+            {% if not is_sso %}
+            <div class="row mt-3">
+                <div class="col">
+                    {{ form.current_password.label(class_="col-form-label") }}
+                    {{ form.current_password(class_="form-control", autocomplete="current-password") }}
+                    <div class="form-text">Required when changing your email or password.</div>
+                    {% if form.current_password.errors %}
+                        <div style="color: red;">{{ form.current_password.errors[0] }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
             <div class="row mt-3">
                 <div class="col">
                     {% if is_sso %}

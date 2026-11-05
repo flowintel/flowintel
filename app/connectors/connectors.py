@@ -137,7 +137,8 @@ def get_instance_cases(cid, iid):
     """Get paginated cases linked to a connector instance"""
     if not ConnectorModel.get_connector(cid):
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
-    if not ConnectorModel.get_connector_instance(cid, iid):
+    instance = ConnectorModel.get_connector_instance(cid, iid)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     page = request.args.get('page', 1, type=int)
     cases, total, nb_pages, private_count = ConnectorModel.get_cases_for_instance(iid, page=page, current_user=current_user)
@@ -255,9 +256,12 @@ def edit_instance(cid, iid):
         if form.validate_on_submit():
             form_dict = form_to_dict(form)
             form_dict["acting_user_id"] = current_user.id
-            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user)
+            sharing_scope = ConnectorModel.normalize_instance_sharing_scope(form_dict, current_user, loc_instance)
             if not ConnectorModel.can_user_use_sharing_scope(current_user, sharing_scope):
                 flash("You are not allowed to save a connector with this sharing scope", "danger")
+                return render_template("connectors/add_instance.html", form=form, edit_mode=True)
+            if ConnectorModel.instance_edit_requires_api_key(loc_instance, form_dict, current_user):
+                flash("Changing the instance URL or sharing scope requires entering the API key again", "error")
                 return render_template("connectors/add_instance.html", form=form, edit_mode=True)
             if not ConnectorModel.edit_connector_instance_core(iid, form_dict):
                 flash("Error editing connector")
@@ -282,6 +286,7 @@ def edit_instance(cid, iid):
             form.description.data = loc_instance.description
             form.is_global_connector.data = True if loc_instance.global_api_key else False
             form.sharing_scope.data = ConnectorModel.get_instance_sharing_scope(loc_instance)
+            form.read_only.data = loc_instance.read_only
             
         return render_template("connectors/add_instance.html", form=form, edit_mode=True)
     return render_template("404.html")
@@ -308,7 +313,7 @@ def edit_icon(iid):
     return render_template("connectors/edit_icons.html", form=form, icon_file=icon_file.to_json())
 
 
-@connector_blueprint.route("/delete_connector/<cid>", methods=['GET','POST'])
+@connector_blueprint.route("/delete_connector/<cid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_connector(cid):
@@ -319,7 +324,7 @@ def delete_connector(cid):
         return {"message":"Error connector deleted", "toast_class": "danger-subtle"}, 400
     return {"message":"Connector not found", "toast_class": "danger-subtle"}, 404
 
-@connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['GET','POST'])
+@connector_blueprint.route("/<cid>/delete_instance/<iid>", methods=['POST'])
 @login_required
 @misp_editor_required
 def delete_instance(cid, iid):
@@ -365,8 +370,8 @@ def check_connectivity(cid, iid):
     if not connector:
         return {"message": "Connector not found", "toast_class": "danger-subtle"}, 404
     
-    instance = ConnectorModel.get_instance(iid)
-    if not instance:
+    instance = ConnectorModel.get_connector_instance(cid, iid)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
         return {"message": "Instance not found", "toast_class": "danger-subtle"}, 404
     
     # Only MISP connectors
@@ -378,7 +383,7 @@ def check_connectivity(cid, iid):
     return result, status_code
 
 
-@connector_blueprint.route("/delete_icon/<iid>", methods=['GET','POST'])
+@connector_blueprint.route("/delete_icon/<iid>", methods=['POST'])
 @login_required
 @admin_required
 def delete_icon(iid):

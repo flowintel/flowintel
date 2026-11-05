@@ -20,7 +20,7 @@ class ImportCase(Resource):
     @importer_ns.doc(description='Pass a case JSON object or a list of case JSON objects to import. Each case must include a "title" field and may contain "tasks", "tags", "clusters", "custom_tags", and other case fields.')
     def post(self):
         if request.json:
-            current_user = utils.get_user_api(request.headers["X-API-KEY"])
+            current_user = utils.get_user_from_api(request.headers)
             if type(request.json) == list:
                 for case in request.json:
                     res = ToolModel.case_creation_from_importer(case, current_user)
@@ -42,7 +42,7 @@ class ImportCaseTemplate(Resource):
     @importer_ns.doc(description='Pass a case template JSON object or a list of case template JSON objects to import. Each template must include a "title" field and may contain "tasks", "tags", "clusters", and other template fields.')
     def post(self):
         if request.json:
-            current_user = utils.get_user_api(request.headers["X-API-KEY"])
+            current_user = utils.get_user_from_api(request.headers)
             if type(request.json) == list:
                 for case in request.json:
                     res = ToolModel.case_template_creation_from_importer(case)
@@ -80,7 +80,7 @@ class CaseMispEvent(Resource):
     })
     def post(self):
         if request.json:
-            current_user = utils.get_user_api(request.headers["X-API-KEY"])
+            current_user = utils.get_user_from_api(request.headers)
             verif_dict = ValidateApi.validate_case_from_misp(request.json, current_user)
 
             if "message" not in verif_dict:

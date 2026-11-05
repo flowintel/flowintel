@@ -1,7 +1,10 @@
 import datetime
+import hashlib
+import hmac
 import json
 import uuid
 
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import  UserMixin, AnonymousUserMixin
 
@@ -35,6 +38,19 @@ class User(UserMixin, db.Model):
     creation_date = db.Column(db.DateTime, index=True, default=datetime.datetime.now(tz=datetime.timezone.utc))
     auth_provider = db.Column(db.String(32), default='local', nullable=False, server_default='local')
     last_login = db.Column(db.DateTime, index=True)
+    # Trusted relay marker, assigned only by bootstrap or explicit operator registration.
+    is_bot = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
+
+    def session_token(self):
+        """Bind browser authentication to this account and its current credentials."""
+        key = current_app.config['SECRET_KEY']
+        if isinstance(key, str):
+            key = key.encode()
+        identity = f"session:{self.id}:{self.auth_provider}:{self.creation_date}:{self.password_hash or ''}"
+        return hmac.new(key, identity.encode(), hashlib.sha256).hexdigest()
+
+    def get_id(self):
+        return f"{self.id}:{self.session_token()}"
 
     def is_admin(self):
         r = Role.query.get(self.role_id)
@@ -212,6 +228,12 @@ class Case(db.Model):
     computer_assistate_model = db.Column(db.String(64), nullable=True)
     computer_assistate_prompt = db.Column(db.Text, nullable=True)
 
+    def get_report_prompt(self):
+        # Older automatic prompts embed full case data, including protected history.
+        if self.computer_assistate_prompt and self.computer_assistate_prompt.startswith("Give me a report using: {"):
+            return "auto-generated from case data"
+        return self.computer_assistate_prompt
+
     def to_json(self):
         json_dict = {
             "id": self.id,
@@ -235,7 +257,7 @@ class Case(db.Model):
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report,
             "computer_assistate_model": self.computer_assistate_model,
-            "computer_assistate_prompt": self.computer_assistate_prompt
+            "computer_assistate_prompt": self.get_report_prompt()
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
@@ -280,7 +302,7 @@ class Case(db.Model):
             "is_updated_from_misp": self.is_updated_from_misp,
             "computer_assistate_report": self.computer_assistate_report,
             "computer_assistate_model": self.computer_assistate_model,
-            "computer_assistate_prompt": self.computer_assistate_prompt
+            "computer_assistate_prompt": self.get_report_prompt()
         }
         if self.deadline:
             json_dict["deadline"] = self.deadline.strftime(DATETIME_FORMAT_FULL)
@@ -877,7 +899,7 @@ class Case_Template(db.Model):
     version = db.Column(db.Integer, default=1)
     creation_date = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
-    def to_json(self):
+    def to_json(self, current_user=None):
         json_dict =  {
             "id": self.id,
             "uuid": self.uuid,
@@ -895,7 +917,8 @@ class Case_Template(db.Model):
                                                     .where(Cluster.id==Case_Template_Galaxy_Tags.cluster_id).all()]
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Template_Custom_Tags, Case_Template_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Template_Custom_Tags.case_template_id==self.id).all()]
-        json_dict["connector_instances"] = [connector_instance.to_json() for connector_instance in Case_Template_Connector_Instance.query.filter(Case_Template_Connector_Instance.case_template_id==self.id).all()]
+        from ..templating.common_template_core import get_case_template_connector_instances
+        json_dict["connector_instances"] = [link.to_json() for link in get_case_template_connector_instances(self.id, current_user)]
 
         return json_dict
     
@@ -1283,6 +1306,7 @@ class Connector_Instance(db.Model):
     global_api_key = db.Column(db.String(100), index=True)
     shared_org_id = db.Column(db.Integer, index=True, nullable=True)
     sharing_scope = db.Column(db.String(20), index=True, nullable=False, default="personal", server_default="personal")
+    read_only = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     def to_json(self):
         sharing_scope = self.sharing_scope or "personal"
@@ -1295,7 +1319,8 @@ class Connector_Instance(db.Model):
             "connector_id": self.connector_id,
             "global_api_key": True if self.global_api_key else False,
             "shared_org_id": self.shared_org_id,
-            "sharing_scope": sharing_scope
+            "sharing_scope": sharing_scope,
+            "read_only": self.read_only
         }
         return json_dict
 
@@ -2084,6 +2109,28 @@ class Case_Timeline_Event_Link(db.Model):
 
 login_manager.anonymous_user = AnonymousUser
 
+def session_user_id(value):
+    """Extract an ID for session housekeeping only; this does not authenticate it."""
+    if not isinstance(value, (str, int)):
+        return None
+    identifier = str(value).partition(':')[0]
+    if not identifier.isascii() or not identifier.isdecimal() or len(identifier) > 19:
+        return None
+    number = int(identifier)
+    return number if 0 < number <= 2**63 - 1 else None
+
+
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    # Reject legacy bare IDs even in server-side sessions: Flask-Login can copy
+    # an old remember cookie into the session before calling this loader.
+    if not isinstance(user_id, str) or not user_id.isascii():
+        return None
+    identifier, separator, token = user_id.partition(':')
+    uid = session_user_id(identifier)
+    if uid is None or not separator or len(token) != 64:
+        return None
+    user = db.session.get(User, uid)
+    if user is not None and hmac.compare_digest(user_id, user.get_id()):
+        return user
+    return None

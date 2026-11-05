@@ -230,7 +230,10 @@
                 }
 
                 async function deactivate_taxo(taxonomy){
-                    const res = await fetch('taxonomy_status?taxonomy='+taxonomy.id)
+                    const res = await fetch('taxonomy_status?taxonomy='+taxonomy.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if (res.status === 200) taxonomy.exclude = !taxonomy.exclude
                     display_toast(res)
                     await fetchCounts()

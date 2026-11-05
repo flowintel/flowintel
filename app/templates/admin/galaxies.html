@@ -283,7 +283,10 @@
                 }
 
                 async function deactivate_galaxy(galaxy){
-                    const res = await fetch('galaxy_status?galaxy='+galaxy.id)
+                    const res = await fetch('galaxy_status?galaxy='+galaxy.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if (res.status === 200) galaxy.exclude = !galaxy.exclude
                     display_toast(res)
                     await fetchCounts()

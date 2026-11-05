@@ -131,6 +131,17 @@ def resolve_variables(text: str, case_id: int = None, task_id: int = None, mark:
     """
     if not text:
         return text
+
+    # Use one resolved destination for every reference, including UUID aliases
+    # and callers that only have a task context.
+    context = _lookup_entity(Case, str(case_id)) if case_id is not None else None
+    if case_id is not None and context is None:
+        return text
+    task = _lookup_entity(Task, str(task_id)) if task_id is not None else None
+    if case_id is None and task:
+        context = Case.query.get(task.case_id)
+    case_id = context.id if context else None
+    task_id = task.id if task else None
     
     def replacer(match):
         full_match = match.group(0)  # e.g. "@this.case.title"
@@ -181,6 +192,20 @@ def _can_view_task(task: Task) -> bool:
     if not task:
         return False
     return _can_view_case(Case.query.get(task.case_id))
+
+
+def _audience_can_view(target: Case, context_case_id) -> bool:
+    """Only expand values the destination case's readers may also read."""
+    if not target:
+        return False
+    if target.id == context_case_id or not target.is_private:
+        return True
+    context = Case.query.get(context_case_id) if context_case_id is not None else None
+    if not context or not context.is_private:
+        return False
+    context_orgs = {row.org_id for row in Case_Org.query.filter_by(case_id=context.id).all()}
+    target_orgs = {row.org_id for row in Case_Org.query.filter_by(case_id=target.id).all()}
+    return bool(context_orgs) and context_orgs.issubset(target_orgs)
 
 
 def _resolve_user_property(user: User, parts: list):
@@ -260,7 +285,7 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
         if len(parts) < 3:
             return None
         case = _lookup_entity(Case, parts[1])
-        if not case or not _can_view_case(case):
+        if not case or not _can_view_case(case) or not _audience_can_view(case, case_id):
             return None
         return _resolve_case_property(case, parts[2:])
     
@@ -270,6 +295,8 @@ def _resolve_single(var_path: str, case_id: int = None, task_id: int = None):
             return None
         task = _lookup_entity(Task, parts[1])
         if not task or not _can_view_task(task):
+            return None
+        if not _audience_can_view(Case.query.get(task.case_id), case_id):
             return None
         return _resolve_task_property(task, parts[2:])
 

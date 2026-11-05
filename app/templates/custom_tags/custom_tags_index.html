@@ -270,7 +270,10 @@
                 query_custom_tags()
 
                 async function change_status(custom_tag){
-                    let res = await fetch("/custom_tags/change_status?custom_tag_id="+custom_tag.id)
+                    let res = await fetch("/custom_tags/change_status?custom_tag_id="+custom_tag.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(res.status == 200){
                         custom_tag.is_active = !is_active(custom_tag)
                     }
@@ -346,7 +349,10 @@
                 }
 
                 async function delete_custom_tag(tag_id){
-                    let res = await fetch("/custom_tags/"+tag_id+"/delete_custom_tag")
+                    let res = await fetch("/custom_tags/"+tag_id+"/delete_custom_tag", {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(res.status == 200){
                         custom_tag_config.value = custom_tag_config.value.filter(t => t.id !== tag_id)
                     }

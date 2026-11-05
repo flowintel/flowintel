@@ -21,11 +21,13 @@ class MyAssignment(Resource):
 
         page = request.args.get("page", default=1, type=int)
         user = AssignModel.get_user(user_id)
-        if not user:
+        requester = utils.get_user_from_api(request.headers)
+        if not user or (not requester.is_admin() and
+                        (requester.org_id is None or user.org_id != requester.org_id)):
             return {"message": "User not found"}, 404
 
-        tasks_list = AssignModel.my_assignment_sort(user=user, completed=False, page=page)
-        return {"tasks": AssignModel.get_task_info(tasks_list, user), "nb_pages": tasks_list.pages}
+        tasks_list = AssignModel.my_assignment_sort(user=user, completed=False, page=page, viewer=requester)
+        return {"tasks": AssignModel.get_task_info(tasks_list, requester), "nb_pages": tasks_list.pages}
 
 
 @my_assignment_ns.route('/me')

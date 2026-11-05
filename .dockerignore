@@ -1,5 +1,6 @@
 Dockerfile**
 Makefile
+docker/
 
 # Ignore node_modules everywhere
 **/node_modules
@@ -14,5 +15,7 @@ conf/**
 .env**
 
 # Keep .git and .gitmodules for submodule support
+./pytest_cache
+./github
 !.git
 !.gitmodules

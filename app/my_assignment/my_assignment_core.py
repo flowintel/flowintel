@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 
-from app.db_class.db import Status, Subtask, Task, Task_User, User
+from app.db_class.db import Case, Case_Org, Status, Subtask, Task, Task_User, User
 
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
@@ -17,9 +17,25 @@ def get_user(uid):
 def _inactive_status_ids():
     return [s.id for s in Status.query.filter(Status.name.in_(_INACTIVE_STATUS_NAMES)).all()]
 
-def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False):
+def _visible_assignments(user, viewer):
+    """Apply the public/private case visibility rule before pagination or counts."""
     query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
-                      .where(Task_User.user_id==user.id, Task.completed==completed)
+                      .filter(Task_User.user_id==user.id)
+    visible_case = Case.query.filter(Case.id==Task.case_id)
+    if not viewer.is_admin():
+        visibility = Case.is_private.is_not(True)
+        if viewer.org_id is not None:
+            membership = Case_Org.query.filter(
+                Case_Org.case_id==Case.id, Case_Org.org_id==viewer.org_id
+            ).exists()
+            visibility = or_(visibility, membership)
+        visible_case = visible_case.filter(visibility)
+    return query.filter(visible_case.exists())
+
+
+def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False, viewer=None):
+    viewer = viewer if viewer is not None else user
+    query = _visible_assignments(user, viewer).filter(Task.completed==completed)
     inactive_ids = _inactive_status_ids()
     if inactive_only and inactive_ids:
         query = query.filter(Task.status_id.in_(inactive_ids))
@@ -37,6 +53,8 @@ def get_task_info(tasks_list, user):
     tasks_by_case = {}
     for task in tasks_list:
         case = CommonModel.get_case(task.case_id)
+        if not CommonModel.can_view_case(case, user):
+            continue
         users, _ = TaskModel.get_users_assign_task(task.id, user)
         final_task = task.to_json()
         final_task["users"] = users
@@ -56,8 +74,7 @@ def get_task_info(tasks_list, user):
 
 
 def calculate_task_stats(user):
-    base_query = Task.query.join(Task_User, Task_User.task_id==Task.id)\
-                           .filter(Task_User.user_id==user.id, Task.completed==False)
+    base_query = _visible_assignments(user, user).filter(Task.completed==False)
     excluded = _inactive_status_ids()
     if excluded:
         base_query = base_query.filter(Task.status_id.notin_(excluded))

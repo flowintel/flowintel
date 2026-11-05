@@ -89,6 +89,25 @@ In `/bin` there's a script for installation and for launching
 ./launch.sh -dtdcc           # Delete test cases
 ```
 
+### Create a user directly in the database
+
+Run from the repository root using the application's Python environment:
+
+```bash
+env/bin/python bin/create_user.py --email admin@example.com \
+    --first-name Site --last-name Admin --role Admin
+```
+
+The script prompts for a password and confirmation, and needs no existing user
+or API key. It uses `conf/config.py` and the application's environment variables;
+use `--env production` for a production deployment. The database schema must
+already be initialised and migrations applied.
+
+The default role is `Editor`. Use `--role` to select a role by name; the built-in
+`Admin`, `Editor`, and `Read Only` roles are created if missing. Use `--org-id ID`
+to join an existing organisation, or omit it to create a personal organisation.
+Existing users are never overwritten. Run `--help` for all options.
+
 ## Using vite
 
 To build assets using vite:
@@ -130,6 +149,22 @@ Examples of usage:
 3. Run the datastack local Development infrastructure with Postgres: ```make dev_localinfra_postgres_run```
 4. ***Still experimental*** Run the application in it own Python local Virtual Environment alongside the datastack local Development infrastructure with MariaDB: ```make run_maria```
 5. Initial the repository installing locally the Python Virtual Environment and deriving default config: ```make first_install```
+
+The Makefile helper provides also targets that facilitate the dependencies management with uv:
+1. `sync`: after clone, git pull or switching branches. Installs exactly uv.lock (dev group included) into .venv.
+   Never edits uv.lock; fails if it is stale.
+2. `lock`: after editing dependencies or requires-python in pyproject.toml.
+   Minimal re-resolve; commit the resulting uv.lock.
+3. `lock_upgrade`: scheduled dependency refresh, or to pick up a security fix. Run on a branch, read the uv.lock diff,
+   then run tests and audit.
+4. `lock_check`: CI and pre-commit. Fails if uv.lock does not match pyproject.toml. Changes nothing.
+5. `export_requirements`: after any lock change, before building Docker images or installing with pip.
+   Or to align the requirements for a release.
+   Regenerates requirements.txt (prod) and requirements-dev.txt. Runs audit first; needs network.
+6. `audit`: before a release and in CI. Scans locked production dependencies for known vulnerabilities.
+   Git dependencies are excluded and need manual review. In some cases, it may be necessary to exclude for package when
+   these ones are not yet patched against a vulnerability, yet an upgrade of requirements is still necessary for a
+   release. Appropriate mitigation shall be applied for Production.
 
 ## Dockerised deployment
 The deployment can be conducted using Docker in Development, Testing and Production environment. Different flavors of the

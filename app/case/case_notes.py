@@ -130,7 +130,7 @@ def get_computer_assistate_report(cid):
             if getattr(case, 'computer_assistate_model', None):
                 resp["model"] = case.computer_assistate_model
             if getattr(case, 'computer_assistate_prompt', None):
-                resp["prompt"] = case.computer_assistate_prompt
+                resp["prompt"] = case.get_report_prompt()
         except Exception:
             pass
         return resp
@@ -813,7 +813,7 @@ def resolve_note_variables(cid):
     task_id = request.json.get("task_id", None)
     mark = request.json.get("mark", False)
     
-    resolved = resolve_variables(text, case_id=int(cid), task_id=int(task_id) if task_id else None, mark=bool(mark))
+    resolved = resolve_variables(text, case_id=case.id, task_id=task_id, mark=bool(mark))
     return {"resolved": resolved}, 200
 
 

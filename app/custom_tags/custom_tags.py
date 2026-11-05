@@ -73,7 +73,7 @@ def get_custom_tag_usage(ctid):
         }, 200
     return {"message": "Custom tag not found", 'toast_class': "danger-subtle"}, 404
 
-@custom_tags_blueprint.route("/<ctid>/delete_custom_tag", methods=['GET', 'POST'])
+@custom_tags_blueprint.route("/<ctid>/delete_custom_tag", methods=['POST'])
 @login_required
 @editor_required
 def delete_custom_tag(ctid):
@@ -90,7 +90,7 @@ def delete_custom_tag(ctid):
         return {"message": "Error custom tag deleted", 'toast_class': "danger-subtle"}, 400
     return {"message": "Custom tag not found", 'toast_class': "danger-subtle"}, 404
 
-@custom_tags_blueprint.route("/change_status", methods=['GET', 'POST'])
+@custom_tags_blueprint.route("/change_status", methods=['POST'])
 @login_required
 @editor_required
 def change_status():

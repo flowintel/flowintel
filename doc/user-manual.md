@@ -174,6 +174,8 @@ Each notification can be marked as read or unread by clicking the checkbox next 
 
 Clicking on a notification takes you to the related case but does not mark it as read. You must mark it as read explicitly. This prevents important messages from being dismissed before you have fully reviewed them.
 
+The **Case/webhook** tab contains shared case alerts. Read-only users can view them; users with write permission can mark visible alerts as read or remove read alerts. These actions affect the shared feed for all users.
+
 ## Tasks assigned to you
 
 ![user-manual-diagrams/tasks-assigned.png](user-manual-diagrams/tasks-assigned.png)
@@ -895,6 +897,14 @@ You can revisit any previous result and walk through the same three-step process
 
 Connectors link a case or task to external platforms such as MISP or AIL. Before you can use connectors, the platform administrator must configure at least one connector and its instances under **Tools > Connectors**. You also need the **MISP Editor** role to work with connectors on cases and tasks.
 
+Running case connector modules and removing stored rules also require write permission and membership in an organisation assigned to the case; administrators can act across cases. Scheduled and on-change synchronisation recheck the schedule owner's current role and case membership before using connector credentials.
+
+Connector sharing scope also applies to MISP helper tools and case templates. A template only shows and copies connector instances visible to the user creating the case.
+
+Changing the URL or sharing scope of an instance that holds a shared API key requires entering the key again. The same protection applies when a URL change would reuse another user's personal key. After a URL change, other users must configure their personal keys again; their access to the instance is retained. Edits that only change metadata keep the existing scope and key.
+
+An outbound MISP API key cannot authenticate incoming alerts. Configure a separate non-MISP alert-source connector instance for alert ingestion, even when the incoming payload uses the MISP event format.
+
 To manage connectors with regards to your daily operational work, open the case or task detail page and navigate to the **Connectors** tab. The workflow described below applies equally to cases and tasks, unless noted otherwise.
 
 ## Adding a connector to a case or a task
@@ -917,7 +927,7 @@ You can edit the identifier of an attached connector or remove the connector ent
 
 ## Pushing data to MISP
 
-Once a MISP connector of the **send_to** type is attached, you can push data to the MISP instance. Because connectors can be added to both cases and tasks, and you can attach multiple connectors to the same case or task, you can push to several MISP instances at once or use different push modes side by side.
+Once a writable MISP connector is attached, you can push data to the MISP instance. Because connectors can be added to both cases and tasks, and you can attach multiple connectors to the same case or task, you can push to several MISP instances at once or use different push modes side by side. Instances marked **Read only** allow receiving data but block all sends, including API calls and automated syncs.
 
 When you click the send button on a case-level connector, Flowintel offers two push modes:
 
@@ -932,7 +942,7 @@ Taxonomy tags and galaxy clusters are synchronised to the MISP event. Custom tag
 
 ## Receiving data from MISP
 
-If the connector instance is configured as a **receive_from** type, you can pull data from MISP into a case. Flowintel fetches the MISP event using the identifier and creates or updates local MISP objects and their attributes to match. As with send connectors, you can attach multiple receive connectors to the same case to pull from different MISP instances.
+You can pull data from MISP into a case using either a writable or a **Read only** instance. Flowintel fetches the MISP event using the identifier and creates or updates local MISP objects and their attributes to match. You can attach multiple connectors to the same case to pull from different MISP instances.
 
 The receive operation synchronises MISP objects and attributes only. It does not pull event-level metadata such as tags or galaxies back into the case. If you need those, add them to the case manually.
 
@@ -1018,6 +1028,8 @@ Nested paths let you reach deeper into the data. `@this.case.tasks.1.title` retu
 When editing a note or template, typing `@` triggers an autocomplete dropdown that suggests available variables based on what you have typed so far. Select one of the suggestions and press **Tab** to insert it. This makes it easy to discover and use the correct path without having to memorise the syntax.
 
 In edit mode, the raw `@variable` syntax is shown. In the rendered preview, each variable is replaced with its current value from the database.
+
+Cross-case references also respect the audience of the note's case. References to private cases resolve only within that case or from a private case whose assigned organisations can all view the referenced case. Otherwise the reference stays unchanged, even for an administrator. The same rule applies to task references, AI reports, exports and MISP sends.
 
 A complete reference of all available @-variables is accessible from **Tools > Variable Syntax** in the sidebar. This page lists every supported variable path with a description, organised by category: case, task, user, nested collections (tasks, subtasks, notes, MISP objects and attributes) and date helpers. If you are unsure which path to use, consult this page.
 
@@ -1771,7 +1783,7 @@ Because Flowintel does not send email notifications, the administrator sets the 
 
 From the **Community > Users** page, find the user and click the edit button. You can change any of the fields listed above. If you need to reset the password, tick the **Change password** option and enter the new credentials. Again, communicate the new password through a secure channel outside of Flowintel.
 
-Changes to a user profile take effect immediately. The user does not need to log out and log back in.
+Changes to a user profile take effect immediately. A password reset invalidates all of that user's browser sessions and remembered logins, and generates a new API key. The user must log in again and update integrations that used the old key. This also applies when administrators reset their own password.
 
 ### Deleting a user
 
@@ -1902,6 +1914,8 @@ Clicking your name opens a dropdown menu with a link to **My profile**. From the
 
 To edit your profile, click the **Edit** button on the profile page. You can change your first name, last name, nickname, Matrix ID and email address. To change your password, tick the **Change password** checkbox and fill in the new password and confirmation fields.
 
+For a local account, enter your **Current password** when changing your email address or password. Other profile edits do not require it. Changing your password signs out your other browser sessions and invalidates remembered logins. Your current browser stays signed in, but you must select **Keep me logged in** on a later login to remember it again. A self-service password change preserves your API key; reset it separately if it may have been exposed.
+
 You cannot change your own role or organisation. Only an administrator can do that.
 
 Your API key is shown on the profile page in a blurred state. You can reveal it by clicking the eye icon next to it. If you need a new API key, use the reset button to generate one. The old key is invalidated immediately.
@@ -1998,6 +2012,10 @@ The `LIMIT_USER_VIEW_TO_ORG` setting controls whether non-admin users can see us
 | `LIMIT_USER_VIEW_TO_ORG` | `False` | Yes |
 
 Enable this setting when your deployment hosts multiple organisations that should not be aware of each other's membership. When disabled (the default), all users can see users from all organisations in the community user list.
+
+The restriction applies to web directory lists and API lookups by user ID, last name or Matrix ID. Non-admin users without an organisation can only look up their own profile when it is enabled. Matrix relays must include the requesting user's `MATRIX-ID`; the directory restriction applies to that user's organisation and permissions.
+
+Regardless of this setting, OrgAdmins can retrieve assignments only for users in their own organisation, and only for cases they can view. Administrators can retrieve assignments across organisations. Assignment lists, page counts and statistics exclude cases the viewer can no longer access.
 
 ## Theming and customisations
 
@@ -2123,7 +2141,7 @@ Four filters are available at the top of the page:
 
 A small graph above the table summarises activity over the chosen window. The **Export** button downloads the filtered result as CSV or JSON for archival or for handing over to an external SIEM.
 
-The audit log is a community-wide view. It complements, but does not replace, the per-case history visible from the **History** tab on each case: the case history is scoped to a single case and follows the same access rules as the case itself, while the audit log shows every recorded action on the platform.
+The audit log is a community-wide view. It complements the per-case history in the **History** tab. Per-case history and audit logs require both case visibility and an Admin, Case Admin, or Audit Viewer role; the community-wide audit log shows recorded actions across the platform to its authorised viewers.
 
 
 ## MISP integration settings
@@ -2218,6 +2236,8 @@ Click **Create** to save.
 ### Editing and deleting a connector
 
 To edit a connector, click the **Edit** button on the connector card and update the name, description or icon. To delete a connector, click the **Delete** button. If the connector still has instances, the delete button is disabled. You must remove all instances before the connector itself can be deleted.
+
+When adding or editing an instance, enable **Read only (receive only)** to prevent Flowintel from sending data to that server. Imports, searches and incoming syncs remain available. Existing instances are writable by default. Enabling read-only mode disables existing outgoing automation schedules; turning it off does not automatically re-enable those schedules. The connector API accepts a boolean `read_only` field on instance creation and editing. Omitting it during an edit preserves the current setting.
 
 ### Icons
 
@@ -2358,7 +2378,7 @@ Flowintel does not specify a date format, it uses the date format that is set by
 
 **Who can see case history and audit logs?**
 
-Any logged-in user can view the history and audit log of a case, provided the case is not private. For private cases, only users whose organisation is assigned to the case and administrators can access the history. Both history and audit logs can be downloaded as plain text or Markdown files.
+Admins, Case Admins, and Audit Viewers can view case history and per-case audit logs. Case Admins and Audit Viewers must also belong to an organisation assigned to a private case; administrators retain access to all cases. The same checks apply to plain-text and Markdown downloads. Shared AI reports are generated without case history, and automatic prompt metadata does not expose the underlying case data.
 
 
 # Troubleshooting

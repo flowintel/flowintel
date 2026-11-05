@@ -30,8 +30,17 @@ class EditUserFrom(FlaskForm):
     change_password = BooleanField('Change password')
     password = PasswordField('Password', validators=[Optional()])
     password2 = PasswordField('Confirm password', validators=[Optional()])
+    current_password = PasswordField('Current password')
 
     submit = SubmitField('Save')
+
+    def validate_current_password(self, field):
+        if current_user.auth_provider != 'local':
+            return
+        if not self.change_password.data and self.email.data == current_user.email:
+            return
+        if not field.data or not current_user.password_hash or not current_user.verify_password(field.data):
+            raise ValidationError('Enter your current password to change your email or password.')
 
     def validate_email(self, field):
         if field.data != current_user.email and User.query.filter_by(email=field.data).first():

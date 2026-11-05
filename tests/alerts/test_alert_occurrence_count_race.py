@@ -1,5 +1,6 @@
 import copy
 import threading
+import pytest
 
 from app.alerting import alerting_core as AlertingCore
 from app.db_class.db import ExternalAlert
@@ -48,6 +49,7 @@ def ingest(app):
     )
 
 
+@pytest.mark.concurrent_db
 def test_concurrent_duplicate_ingests_count_every_occurrence(client, app, monkeypatch):
     setup_source(client)
     assert ingest(app).status_code == 201

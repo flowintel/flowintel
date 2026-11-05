@@ -28,6 +28,7 @@ class AddConnectorForm(FlaskForm):
         
     
 class AddConnectorInstanceForm(FlaskForm):
+    read_only = BooleanField('Read only (receive only)', default=False)
     name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', default="", validators=[Optional()])
     url = StringField('Url', validators=[InputRequired(), Length(0, 64)])
@@ -63,6 +64,7 @@ class EditConnectorForm(FlaskForm):
         
 
 class EditConnectorInstanceForm(FlaskForm):
+    read_only = BooleanField('Read only (receive only)', default=False)
     instance_id = HiddenField("")
     name = StringField('Name', validators=[InputRequired(), Length(1, 64)])
     description = TextAreaField('Description', default="", validators=[Optional()])
