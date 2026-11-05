@@ -95,3 +95,55 @@ def version():
     with open(os.path.join(os.getcwd(),"version")) as read_version:
         loc = read_version.readlines()
     return {"version": loc[0]}
+
+
+@home_blueprint.route("/home_overview")
+@login_required
+def home_overview():
+    """Side panels of the home page: the user's open tasks and the deadlines coming up"""
+    import datetime
+
+    now = datetime.datetime.now()
+    horizon = now + datetime.timedelta(days=14)
+
+    open_cases = CommonModel.check_user_in_private_cases(
+        Case.query.filter_by(completed=False).all(), current_user)
+    case_by_id = {c.id: c for c in open_cases}
+
+    def fmt(value):
+        return value.strftime('%Y-%m-%d %H:%M') if value else None
+
+    # Open tasks assigned to the user, soonest deadline first (no deadline last)
+    task_ids = [tu.task_id for tu in Task_User.query.filter_by(user_id=current_user.id).all()]
+    my_tasks = []
+    if task_ids:
+        tasks = Task.query.filter(Task.id.in_(task_ids), Task.completed == False).all()
+        tasks = [t for t in tasks if t.case_id in case_by_id]
+        tasks.sort(key=lambda t: (t.deadline is None, t.deadline or now))
+        for t in tasks[:6]:
+            my_tasks.append({
+                "id": t.id, "title": t.title, "case_id": t.case_id,
+                "case_title": case_by_id[t.case_id].title,
+                "deadline": fmt(t.deadline), "status_id": t.status_id,
+            })
+
+    # Deadlines of open cases and their open tasks in the next 14 days, and those missed
+    # in the last 30 days (older ones are no longer "upcoming")
+    since = now - datetime.timedelta(days=30)
+    deadlines = []
+    for c in open_cases:
+        if c.deadline and since <= c.deadline <= horizon:
+            deadlines.append({"kind": "case", "id": c.id, "case_id": c.id, "title": c.title,
+                              "case_title": c.title, "deadline": fmt(c.deadline)})
+    if case_by_id:
+        due_tasks = Task.query.filter(Task.case_id.in_(list(case_by_id)), Task.completed == False,
+                                      Task.deadline.isnot(None), Task.deadline >= since,
+                                      Task.deadline <= horizon).all()
+        for t in due_tasks:
+            deadlines.append({"kind": "task", "id": t.id, "case_id": t.case_id, "title": t.title,
+                              "case_title": case_by_id[t.case_id].title, "deadline": fmt(t.deadline)})
+    deadlines.sort(key=lambda d: d["deadline"])
+
+    week = now + datetime.timedelta(days=7)
+    due_this_week = sum(1 for d in deadlines if d["deadline"] <= fmt(week))
+    return {"my_tasks": my_tasks, "deadlines": deadlines[:8], "due_this_week": due_this_week}, 200
