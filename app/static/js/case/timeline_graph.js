@@ -24,6 +24,7 @@ export default {
         const selected_edge = ref(null)
         const selected_node = ref(null)
         const edit_link_label = ref('')
+        const show_help = ref(false)
         let graph = null
 
         async function fetch_graph_data() {
@@ -37,6 +38,81 @@ export default {
             } else {
                 display_toast(res)
             }
+        }
+
+        // What a timeline event is: drives the card's colour, icon and legend entry
+        const EVENT_KINDS = {
+            misp_object: { label: 'MISP object', color: '#0d9fb8', icon: 'fa-solid fa-cube' },
+            misp_attribute: { label: 'MISP attribute', color: '#e8730c', icon: 'fa-solid fa-tag' },
+            file: { label: 'Imported file', color: '#198754', icon: 'fa-solid fa-file-lines' },
+            event: { label: 'Event', color: '#6f42c1', icon: 'fa-solid fa-clock' },
+        }
+
+        function event_kind(ev) {
+            if (ev.misp_object_id && Number(ev.misp_object_id) > 0) return 'misp_object'
+            if (ev.misp_object_id && Number(ev.misp_object_id) < 0) return 'misp_attribute'
+            if (ev.file_id) return 'file'
+            return 'event'
+        }
+
+        // Events in time order: what gives the graph its reading direction
+        function event_time(ev) {
+            const t = Date.parse((ev.date_parsed || ev.date_text || '').replace(' ', 'T'))
+            return isNaN(t) ? null : t
+        }
+
+        function chronological(events) {
+            return events
+                .filter(ev => event_time(ev) !== null)
+                .sort((a, b) => event_time(a) - event_time(b) || a.id - b.id)
+        }
+
+        // "+2d 4h", "+35m": time between two events, shown on the chronology links
+        function elapsed(ms) {
+            const m = Math.round(ms / 60000)
+            if (m < 1) return 'same time'
+            const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), min = m % 60
+            if (d) return '+' + d + 'd' + (h ? ' ' + h + 'h' : '')
+            if (h) return '+' + h + 'h' + (min ? ' ' + min + 'm' : '')
+            return '+' + min + 'm'
+        }
+
+        function el(tag, className, text) {
+            const node = document.createElement(tag)
+            if (className) node.className = className
+            if (text !== undefined && text !== null) node.textContent = text
+            return node
+        }
+
+        // The card drawn for each node. Built with textContent only: event data is
+        // never interpolated into markup.
+        function build_card(node) {
+            const ev = node.getData().event
+            const kind = EVENT_KINDS[event_kind(ev)]
+            const card = el('div', 'tlg-card')
+            card.style.setProperty('--tlg-accent', kind.color)
+
+            const head = el('div', 'tlg-card-head')
+            const icon = el('span', 'tlg-card-icon')
+            icon.appendChild(el('i', kind.icon))
+            head.appendChild(icon)
+            const step = node.getData().step
+            if (step) head.appendChild(el('span', 'tlg-card-step', '#' + step))
+            const when = el('div', 'tlg-card-when')
+            when.appendChild(el('span', 'tlg-card-kind', kind.label))
+            when.appendChild(el('span', 'tlg-card-date', ev.date_text))
+            head.insertBefore(when, head.querySelector('.tlg-card-step'))
+            card.appendChild(head)
+
+            card.appendChild(el('div', 'tlg-card-title', ev.description))
+            if (ev.additional_note) card.appendChild(el('div', 'tlg-card-note', ev.additional_note))
+            if (ev.file && ev.file.name) {
+                const file = el('div', 'tlg-card-file')
+                file.appendChild(el('i', 'fa-solid fa-paperclip'))
+                file.appendChild(document.createTextNode(' ' + ev.file.name))
+                card.appendChild(file)
+            }
+            return card
         }
 
         function render_graph() {
@@ -56,40 +132,95 @@ export default {
 
             container.innerHTML = ''
 
-            const nodes = graph_events.value.map(ev => {
-                let label = ev.date_text + '\n' + ev.description
-                let color = '#6c757d'
-                if (ev.misp_object_id && Number(ev.misp_object_id) > 0) {
-                    color = '#17a2b8'
-                } else if (ev.misp_object_id && Number(ev.misp_object_id) < 0) {
-                    color = '#fd7e14'
-                } else if (ev.file_id) {
-                    color = '#198754'
-                }
-                return {
-                    id: String(ev.id),
-                    data: { label: label, event_id: String(ev.id), file_id: ev.file_id ? String(ev.file_id) : null },
-                    style: { color: color }
-                }
-            })
+            const ordered = chronological(graph_events.value)
+            const step_of = new Map(ordered.map((ev, i) => [ev.id, i + 1]))
 
+            const nodes = graph_events.value.map(ev => ({
+                id: String(ev.id),
+                data: {
+                    label: ev.date_text + ' — ' + ev.description,
+                    kind: event_kind(ev),
+                    step: step_of.get(ev.id) || null,
+                    event: ev,
+                }
+            }))
+
+            // Three kinds of links, each telling something different:
+            //  - analyst: drawn by a user ("drops", "leads to"...), the causality they established
+            //  - misp: relationships between the MISP objects the events come from
+            //  - chronology: each event to the next one in time, labelled with the time between
+            //    them, so the cards read as a timeline and dwell times stand out
             const edges = graph_links.value.map(lk => ({
                 id: String(lk.id),
                 from: String(lk.source_event_id),
                 to: String(lk.target_event_id),
                 data: {
-                    label: lk.automatic ? `[MISP] ${lk.label || 'relationship'}` : (lk.label || ''),
+                    label: lk.label || (lk.automatic ? 'relationship' : ''),
                     link_id: String(lk.id),
                     automatic: !!lk.automatic,
-                    link_type: lk.link_type || 'manual'
+                    link_type: lk.automatic ? 'misp' : 'analyst'
                 }
             }))
+            for (let i = 1; i < ordered.length; i++) {
+                const prev = ordered[i - 1], cur = ordered[i]
+                edges.push({
+                    id: 'chrono-' + prev.id + '-' + cur.id,
+                    from: String(prev.id),
+                    to: String(cur.id),
+                    data: { label: elapsed(event_time(cur) - event_time(prev)), link_type: 'chronology', computed: true }
+                })
+            }
 
-            const data = { nodes: nodes, edges: edges }
+            const nodeStyleMap = {}
+            for (const [key, kind] of Object.entries(EVENT_KINDS)) {
+                // shape 'none': the card is the whole node; text '' because the card has its own title
+                nodeStyleMap[key] = { shape: 'none', color: kind.color, text: '', html: build_card }
+            }
 
+            // A focused viewer: the cards, their links, a legend that doubles as a filter,
+            // search and the zoom controls. No table, sidebar, notes, pivots or editing:
+            // events and links are managed with the buttons above, which save them in the case.
             const options = {
                 isDirected: true,
-                UI: { mode: 'full' },
+                layout: { type: 'structured', gap: 40, trayPosition: 'right' },
+                UI: {
+                    mode: 'light',
+                    editors: {
+                        nodeCreator: { enabled: false },
+                        edgeCreator: { enabled: false },
+                        nodeEditor: { enabled: false },
+                        edgeEditor: { enabled: false },
+                        deletion: { enabled: false },
+                    },
+                    notes: { enabled: false },
+                    history: { enabled: false },
+                    inspector: { enabled: false },
+                    filter: { enabled: false },
+                    sidebar: { enabled: false },
+                    contextMenu: { enabled: false },
+                    viewFlyout: { enabled: false },
+                    physicsFlyout: { enabled: false },
+                    table: false,
+                    minimap: false,
+                    pivotMode: false,
+                    legend: {
+                        position: 'bottom-left',
+                        sections: [
+                            { key: 'kind', title: 'Event' },
+                            { key: 'link_type', title: 'Link', scope: 'edge' },
+                        ],
+                    },
+                },
+                render: {
+                    nodeTypeAccessor: (node) => node.getData().kind,
+                    nodeStyleMap: nodeStyleMap,
+                    edgeTypeAccessor: (edge) => edge.getData().link_type,
+                    edgeStyleMap: {
+                        analyst: { strokeColor: '#6f42c1' },
+                        misp: { strokeColor: '#0d9fb8', dashed: true, animateDash: false },
+                        chronology: { strokeColor: '#adb5bd', dashed: true, animateDash: false },
+                    },
+                },
                 callbacks: {
                     onNodeSelect: (node) => {
                         const ev = graph_events.value.find(e => String(e.id) === String(node.id))
@@ -97,6 +228,7 @@ export default {
                     },
                     onNodeBlur: () => { selected_node.value = null },
                     onEdgeSelect: (edge) => {
+                        if (edge.getData && edge.getData().computed) return
                         const lk = graph_links.value.find(l => String(l.id) === String(edge.id))
                         if (lk) {
                             selected_edge.value = lk
@@ -107,7 +239,7 @@ export default {
                 }
             }
 
-            graph = new Pivotick(container, data, options)
+            graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
         }
 
         async function add_graph_event() {
@@ -257,6 +389,7 @@ export default {
             selected_edge,
             selected_node,
             edit_link_label,
+            show_help,
             add_graph_event,
             add_link,
             save_edge_label,
@@ -281,6 +414,10 @@ export default {
             <span v-if="selected_node" class="badge bg-secondary align-self-center">
                 <i class="fa-solid fa-circle-dot me-1"></i>Selected: [[ selected_node.date_text ]]
             </span>
+            <button class="btn btn-sm ms-auto" :class="show_help ? 'btn-secondary' : 'btn-outline-secondary'"
+                    @click="show_help = !show_help" title="How to read this graph" aria-label="How to read this graph">
+                <i class="fa-solid fa-question"></i>
+            </button>
         </div>
 
         <!-- Add Event Form -->
@@ -372,13 +509,44 @@ export default {
             </div>
         </div>
 
+        <!-- How to read the graph -->
+        <div v-if="show_help" class="card mb-3 tlg-help">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0"><i class="fa-solid fa-circle-question me-1"></i>How to read this graph</h6>
+                    <button class="btn-close btn-sm" @click="show_help = false" aria-label="Close"></button>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="tlg-help-title">Cards</div>
+                        <p class="mb-2">Each card is a timeline event. The number at its top right (<span class="tlg-card-step">#3</span>) is its place in time order: #1 is the earliest event.</p>
+                        <ul class="tlg-help-list">
+                            <li><span class="tlg-help-dot" style="background:#6f42c1"></span>Event added by hand</li>
+                            <li><span class="tlg-help-dot" style="background:#0d9fb8"></span>Event from a MISP object</li>
+                            <li><span class="tlg-help-dot" style="background:#e8730c"></span>Event from a standalone MISP attribute</li>
+                            <li><span class="tlg-help-dot" style="background:#198754"></span>Event from an imported file</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="tlg-help-title">Links</div>
+                        <ul class="tlg-help-list">
+                            <li><span class="tlg-help-line tlg-help-line-dashed" style="--c:#adb5bd"></span><span><b>Chronology</b>, drawn automatically from each event to the next one. Its label is the time between them (<code>+2h 14m</code>): a long gap shows where the attacker waited or went unnoticed.</span></li>
+                            <li><span class="tlg-help-line" style="--c:#6f42c1"></span><span><b>Your links</b>, added with <i>Add Link</i>: the cause and effect you established (“drops”, “leads to”…). Click one to rename or delete it.</span></li>
+                            <li><span class="tlg-help-line tlg-help-line-dashed" style="--c:#0d9fb8"></span><span><b>MISP relationships</b> between the objects the events come from. They are managed in the MISP tab.</span></li>
+                        </ul>
+                        <p class="mb-0 text-muted small">The arrow points from the earlier or causing event to the later or resulting one. Click an entry of the legend, at the bottom left of the graph, to hide that kind of card or link.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Graph Container -->
-        <div id="timeline-graph-container" style="width:100%; height:550px; border:1px solid #dee2e6; border-radius: 6px;"></div>
+        <div id="timeline-graph-container" class="tlg-container"></div>
 
         <div class="mt-2">
             <small class="text-muted">
                 <i class="fa-solid fa-circle-info me-1"></i>
-                Drag nodes to rearrange. Click an edge to select it. Click a node to select it for deletion. MISP objects are blue, standalone attributes are orange and imported files are green.
+                Cards are numbered in time order. Grey dashed links follow the chronology with the time between two events, purple links are the ones you add, blue dashed links come from MISP relationships. Click a legend entry to hide that kind; click a purple link to edit it, a card to select it.
             </small>
         </div>
     </div>

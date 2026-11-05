@@ -1,0 +1,150 @@
+/* Timeline graph (static/js/case/timeline_graph.js): the canvas and the event cards.
+   Colours come from Bootstrap's variables so the cards follow light, dark and the themes. */
+
+.tlg-container {
+    width: 100%;
+    height: 620px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle, color-mix(in srgb, var(--bs-body-color) 12%, transparent) 1px, transparent 1px) 0 0 / 22px 22px,
+        var(--bs-tertiary-bg);
+}
+
+.tlg-card {
+    --tlg-accent: #6f42c1;
+    width: 230px;
+    padding: 10px 12px 10px 14px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--tlg-accent) 35%, var(--bs-border-color));
+    border-left: 4px solid var(--tlg-accent);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    font-size: 12px;
+    line-height: 1.35;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tlg-card:hover {
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--tlg-accent) 35%, transparent);
+    transform: translateY(-1px);
+}
+
+/* Selected node: Pivotick marks the node group */
+.pvt-node-selected-highlight .tlg-card,
+.pvt-node-selected-highlight-shadow .tlg-card {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tlg-accent) 55%, transparent), 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+
+.tlg-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.tlg-card-icon {
+    flex: 0 0 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--tlg-accent) 16%, transparent);
+    color: var(--tlg-accent);
+    font-size: 12px;
+}
+
+.tlg-card-when {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tlg-card-kind {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--tlg-accent);
+}
+
+.tlg-card-date {
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+
+.tlg-card-title {
+    font-weight: 600;
+    font-size: 13px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.tlg-card-note {
+    margin-top: 5px;
+    padding-top: 5px;
+    border-top: 1px dashed var(--bs-border-color);
+    color: var(--bs-secondary-color);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.tlg-card-file {
+    margin-top: 6px;
+    display: inline-block;
+    max-width: 100%;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tlg-accent) 12%, transparent);
+    color: var(--tlg-accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tlg-card-step {
+    margin-left: auto;
+    align-self: flex-start;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* "?" help card above the graph */
+.tlg-help { font-size: 13px; }
+.tlg-help-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+    margin-bottom: 6px;
+}
+.tlg-help-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.tlg-help-list li { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.tlg-help-dot { flex: 0 0 12px; height: 12px; margin-top: 3px; border-radius: 3px; }
+.tlg-help-line { flex: 0 0 34px; height: 0; margin-top: 9px; border-top: 2px solid var(--c); position: relative; }
+.tlg-help-line-dashed { border-top-style: dashed; }
+.tlg-help-line::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -6px;
+    border: 5px solid transparent;
+    border-left-color: var(--c);
+}
