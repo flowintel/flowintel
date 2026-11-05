@@ -26,10 +26,17 @@ notification_blueprint = Blueprint(
 @notification_blueprint.route("/", methods=['GET'])
 @login_required
 def index():
+    is_admin = current_user.is_admin()
+    # Only public flags belong in a non-admin's template context. The existing
+    # template defaults provide empty placeholders for the protected settings.
+    alert_config = ConfigModule if is_admin else {
+        "CASE_CREATE_ALERT_ENABLED": getattr(ConfigModule, "CASE_CREATE_ALERT_ENABLED", True),
+        "WEBHOOK_ENABLED": getattr(ConfigModule, "WEBHOOK_ENABLED", False),
+    }
     return render_template(
         "notification/notification.html",
-        cfg=ConfigModule,
-        alert_logs=AlertsCore.read_alert_log(50),
+        cfg=alert_config,
+        alert_logs=AlertsCore.read_alert_log(50) if is_admin else [],
         case_alerts=AlertsCore.latest_alerts(current_user, limit=50),
     )
 

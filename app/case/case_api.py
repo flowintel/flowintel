@@ -1,6 +1,7 @@
 from flask import request
 
 from flask_restx import Namespace, Resource
+from sqlalchemy.exc import MultipleResultsFound
 
 from app.db_class.db import Case, User, File, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, DATETIME_FORMAT_FULL, db
 
@@ -359,7 +360,10 @@ class AddOrgCase(Resource):
         current_user = utils.get_user_from_api(request.headers)
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "name" in request.json:
-                org = CommonModel.get_org_by_name(request.json["name"])
+                try:
+                    org = CommonModel.get_org_by_name(request.json["name"])
+                except MultipleResultsFound:
+                    return {"message": "Organisation name is ambiguous; specify its oid instead"}, 400
             elif "oid" in request.json:
                 org = CommonModel.get_org(request.json["oid"])
             else:
@@ -683,7 +687,7 @@ class GetInstanceModules(Resource):
 @case_ns.route('/<cid>/call_module_case', methods=['POST'])
 @case_ns.doc(description='Call a module on a case')
 class CallModuleCase(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     @case_ns.doc(params={
         "module": "Required. Name of the module to call",
         "instance_id": "Required. List of name or id of instances to use for the module"
@@ -692,7 +696,7 @@ class CallModuleCase(Resource):
         case = CommonModel.get_case(cid)
         if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
                 if "module" in request.json:
                     if "instance_id" in request.json:
                         res = CaseModel.call_module_case(request.json["module"], request.json["instance_id"], case, current_user)
@@ -783,6 +787,7 @@ class GetConnectorsCase(Resource):
                 instance_list.append({
                     "id": loc_instance.id,
                     "name": loc_instance.name,
+                    "read_only": loc_instance.read_only,
                     "identifier": case_instance.identifier
                 })
             return {"connectors": instance_list}, 200
@@ -815,11 +820,16 @@ class EditConnectorsCase(Resource):
         "identifier": "Required. Identifier used by modules to identify where to send data."
     })
     def post(self, cid, ciid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                case_instance = CommonModel.get_case_connectors_by_id(ciid)
+                loc_instance = CommonModel.get_instance(case_instance.instance_id) if case_instance else None
+                if not case_instance or case_instance.case_id != case.id or not CommonModel.can_interact_with_case_connector(loc_instance, current_user):
+                    return {"message": "Permission denied"}, 403
                 if "identifier" in request.json:
-                    if CaseModel.edit_connector(ciid, request.json, current_user):
+                    if CaseModel.edit_connector(case.id, ciid, request.json, current_user):
                         return {"message": "Connector edited"}, 200
                     return {"message": "Error Connector edited"}, 400
                 return {"message": "Please give a list of connectors"}, 400
@@ -831,10 +841,11 @@ class EditConnectorsCase(Resource):
 class RemoveConnectors(Resource):
     method_decorators = [misp_editor_required, api_required]
     def get(self, cid, ciid):
-        if CommonModel.get_case(cid):
+        case = CommonModel.get_case(cid)
+        if case:
             current_user = utils.get_user_from_api(request.headers)
-            if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                if CaseModel.remove_connector(ciid, current_user):
+            if CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin():
+                if CaseModel.remove_connector(case.id, ciid, current_user):
                     return {"message": "Connector removed"}, 200
                 return {"message": "Error Connector removed"}, 400
             return {"message": "Permission denied"}, 403
@@ -872,7 +883,7 @@ class GetMispSyncAutomation(Resource):
 @case_ns.route('/<cid>/connectors/<ciid>/sync_automation', methods=['POST'])
 @case_ns.doc(description='Create or update MISP sync automation settings')
 class SaveMispSyncAutomation(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     def post(self, cid, ciid):
         case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
         if error:
@@ -887,7 +898,7 @@ class SaveMispSyncAutomation(Resource):
 @case_ns.route('/<cid>/connectors/<ciid>/sync_conflicts/<conflict_id>/resolve', methods=['POST'])
 @case_ns.doc(description='Resolve a pending MISP sync conflict')
 class ResolveMispSyncConflict(Resource):
-    method_decorators = [misp_editor_required, api_required]
+    method_decorators = [editor_required, misp_editor_required, api_required]
     def post(self, cid, ciid, conflict_id):
         case, case_instance, current_user, error = get_api_misp_case_connector(cid, ciid, request.headers, require_write=True)
         if error:

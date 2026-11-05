@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 from typing import List
 import uuid
 import datetime
@@ -160,7 +161,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if "template_select" in form_dict and not 0 in form_dict["template_select"]:
             for template in form_dict["template_select"]:
                 if Case_Template.query.get(template):
-                    case = CaseTemplateModel.create_case_from_template(template, form_dict["title_template"], user, privileged_case)
+                    case = CaseTemplateModel.create_case_from_template(
+                        template, form_dict["title_template"], user,
+                        privileged_case=privileged_case,
+                        is_private=form_dict.get("is_private", False),
+                    )
         else:
             deadline = CommonModel.deadline_check(form_dict["deadline_date"], form_dict["deadline_time"])
             hedgedoc_url = self.normalize_hedgedoc_url(form_dict.get("hedgedoc_url"))
@@ -1340,8 +1345,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def generate_computer_assistate_report(self, case: Case, current_user: User, model: str = None, prompt: str = None):
         """Generate a report from all informations find in the case"""
 
-        history = CommonModel.get_history(case.uuid)
-
         # Build task_list from Task objects so we can resolve variables
         task_list = []
         for task in case.tasks:
@@ -1361,6 +1364,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         misp_object_list = [obj.download() for obj in CaseModel.get_misp_object_by_case(case.id)]
         loc_case = case.download()
         del loc_case["computer_assistate_report"]
+        loc_case.pop("computer_assistate_prompt", None)
         # Resolve variables in the case notes as well
         try:
             loc_case['notes'] = resolve_variables(loc_case.get('notes', ''), case.id, None, mark=False)
@@ -1370,7 +1374,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return_dict = loc_case
         return_dict["tasks"] = task_list
         return_dict["misp-objects"] = misp_object_list
-        return_dict["history"] = history
+        # Generated reports are shared with all case viewers, who may not have
+        # permission to read history. Keep that protected source out of the prompt.
 
         model_to_use = model if model else ConfigModule.OLLAMA_MODEL
         if not ConfigModule.OLLAMA_URL or not model_to_use:
@@ -1397,21 +1402,25 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             sys.executable,
             "-c",
             "import json,requests,sys;" \
-            "url=sys.argv[1];payload=json.loads(sys.argv[2]);headers=json.loads(sys.argv[3]);" \
-            "resp=requests.post(url,json=payload,headers=headers,timeout=600);" \
+            "request=json.load(sys.stdin);" \
+            "resp=requests.post(request['url'],json=request['payload'],headers=request['headers'],timeout=600);" \
             "resp.raise_for_status();" \
             "print(resp.text)",
-            url,
-            json.dumps(payload),
-            json.dumps(headers),
         ]
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        # An anonymous private file keeps credentials and case data out of argv.
+        # The child inherits stdin; both descriptors close without a named file
+        # to clean up, including when spawning fails.
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as request_file:
+            json.dump({"url": url, "payload": payload, "headers": headers}, request_file)
+            request_file.seek(0)
+            process = subprocess.Popen(
+                cmd,
+                stdin=request_file,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
 
         # Store process and metadata so we can annotate the final report when done
         input_prompt_desc = prompt if prompt else "auto-generated from case data"
@@ -1420,8 +1429,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # Persist model and prompt to the case record so they are available later
         try:
             case.computer_assistate_model = model_to_use
-            # store full prompt (could be large) — prompt if provided, else the constructed message
-            case.computer_assistate_prompt = prompt if prompt else message
+            case.computer_assistate_prompt = input_prompt_desc
             db.session.add(case)
             db.session.commit()
         except Exception:
@@ -1630,6 +1638,8 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             current_user = User.query.get(user_id)
             instance_list = list()
             for instance in connector.instances:
+                if instance.read_only and res[module].get("type") != "receive_from":
+                    continue
                 if (
                     instance.sharing_scope == "global"
                     or (instance.sharing_scope == "org" and current_user and instance.shared_org_id == current_user.org_id)
@@ -1693,9 +1703,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def remove_connector(self, case_instance_id, current_user=None):
+    def remove_connector(self, cid, case_instance_id, current_user=None):
         case_instance = Case_Connector_Instance.query.get(case_instance_id)
-        if not case_instance:
+        if not case_instance or case_instance.case_id != int(cid):
             return False
         case_id = case_instance.case_id
         try:
@@ -1713,9 +1723,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             return False
         return True
 
-    def edit_connector(self, case_instance_id, request_json, current_user=None):
+    def edit_connector(self, cid, case_instance_id, request_json, current_user=None):
         c = Case_Connector_Instance.query.get(case_instance_id)
-        if c:
+        if c and c.case_id == int(cid):
             c.identifier = request_json["identifier"]
             db.session.commit()
             CommonModel.update_last_modif(c.case_id)
@@ -1822,6 +1832,17 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def _build_case_connector_module_context(self, case_instance_id, loc_case, user):
         """Prepare the common case and connector payload used by case connector modules."""
+        # Scheduled and on-change runs must still have their owner's current
+        # write permission and case membership before accessing the connector.
+        if user.read_only() or not (
+            user.is_admin() or (user.is_misp_editor() and CommonModel.get_present_in_case(loc_case.id, user))
+        ):
+            return None, None, None, {"message": "Action not allowed", "toast_class": "warning-subtle"}
+
+        case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
+        if not case_instance or case_instance.case_id != loc_case.id:
+            return None, None, None, {"message": "Connector instance not found"}
+
         org = CommonModel.get_org(loc_case.owner_org_id)
 
         tasks = []
@@ -1838,10 +1859,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         for cluster in case["clusters"]:
             cluster["galaxy"] = Galaxy.query.get(cluster["galaxy_id"]).to_json()
-
-        case_instance = CommonModel.get_case_connectors_by_id(case_instance_id)
-        if not case_instance:
-            return None, None, None, {"message": "Connector instance not found"}
 
         loc_instance = CommonModel.get_instance(case_instance.instance_id)
         if not loc_instance:
@@ -1871,7 +1888,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def ensure_misp_send_conflict(self, case_instance_id, loc_case, user):
         """Create or refresh a pending send-side MISP collision without running a sync."""
         case, case_instance, loc_instance, instance = self._build_case_sync_context(case_instance_id, loc_case, user)
-        if not case:
+        if not case or loc_instance.read_only:
             return None
         return self._misp_send_remote_change_guard(
             loc_case,
@@ -1889,9 +1906,12 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not case:
             return instance
 
-        modules, _ = get_modules_list()
-        module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
-        direction = "receive" if module_cfg.get("case_task") == "case" and "receive" in module.lower() else "send"
+        modules, module_configs = get_modules_list()
+        if module not in modules:
+            return {"message": "Module not found"}
+        direction = "receive" if module_configs.get(module, {}).get("type") == "receive_from" else "send"
+        if loc_instance.read_only and direction == "send":
+            return {"message": ConnectorModel.READ_ONLY_CONNECTOR_MESSAGE, "toast_class": "warning-subtle"}
         automation_log_message = self.misp_sync_automation_log_message(payload)
 
         remote_change_result = self._misp_send_remote_change_guard(
@@ -2006,7 +2026,6 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         # Record last sync time on successful module execution
         case_instance.last_sync = sync_finished_at
         try:
-            from ..connectors import connectors_core as ConnectorModel
             ConnectorModel.mark_misp_sync_schedule_run(case["id"], case_instance_id, direction, loc_case.last_modif, sync_finished_at)
         except Exception:
             pass
@@ -2020,9 +2039,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         if not case:
             return instance
 
-        modules, _ = get_modules_list()
+        modules, module_configs = get_modules_list()
         if module not in modules:
             return {"message": "Module not found"}
+        if loc_instance.read_only and module_configs.get(module, {}).get("type") != "receive_from":
+            return {"message": ConnectorModel.READ_ONLY_CONNECTOR_MESSAGE, "toast_class": "warning-subtle"}
 
         module_cfg = modules[module].introspection() if hasattr(modules[module], 'introspection') else {}
         if module_cfg.get("case_task") != "case":
@@ -3339,10 +3360,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         return imported_files
 
-    def edit_timeline_event(self, event_id, date_text, description, current_user, additional_note=TIMELINE_ADDITIONAL_NOTE_UNSET):
+    def edit_timeline_event(self, cid, event_id, date_text, description, current_user, additional_note=TIMELINE_ADDITIONAL_NOTE_UNSET):
         """Edit a timeline event"""
         event = self.get_timeline_event(event_id)
-        if not event:
+        if not event or event.case_id != int(cid):
             return None
         date_parsed = self.parse_date(date_text)
         event.date_text = self.format_timeline_event_date(date_parsed)
@@ -3620,10 +3641,10 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         CommonModel.update_last_modif(cid)
         return True
 
-    def edit_timeline_event_link(self, link_id, label, current_user):
+    def edit_timeline_event_link(self, cid, link_id, label, current_user):
         """Edit a link label"""
         link = Case_Timeline_Event_Link.query.get(link_id)
-        if not link:
+        if not link or link.case_id != int(cid):
             return None
         link.label = label or None
         db.session.commit()

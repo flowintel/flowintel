@@ -22,7 +22,10 @@ export default {
         })
 
         async function delete_case(case_id){
-            const res = await fetch('/case/' + case_id.toString() + '/delete')
+            const res = await fetch('/case/' + case_id.toString() + '/delete', {
+                method: 'POST',
+                headers: {'X-CSRFToken': $('#csrf_token').val()}
+            })
             if (await res.status == 200)
                 return window.location.href="/case"
             display_toast(res)
@@ -111,7 +114,10 @@ export default {
                 display_toast({message: "Cannot merge a case into itself", toast_class: "warning-subtle"})
                 return
             }
-            const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + ocid)
+            const res = await fetch('/case/' + props.cases_info.case.id + '/merge/' + ocid, {
+                method: 'POST',
+                headers: {'X-CSRFToken': $('#csrf_token').val()}
+            })
             if(await res.status == 200)
                 return window.location.href = "/case/" + ocid
             display_toast(res)

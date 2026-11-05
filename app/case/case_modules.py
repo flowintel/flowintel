@@ -5,7 +5,7 @@ from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
 from ..db_class.db import Rulezet_Rule, Case_Connector_Instance, Connector_Instance, db
-from ..decorators import misp_editor_required
+from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 
 
@@ -82,6 +82,7 @@ def get_module_counts(cid):
 
 @case_blueprint.route("/<cid>/call_module_case", methods=['GET', 'POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def call_module_case(cid):
     """Run a MISP case sync module."""
@@ -91,7 +92,7 @@ def call_module_case(cid):
             flowintel_log("audit", 403, "Call module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
-        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
             flowintel_log("audit", 403, "Call module on case: Org not assigned to case", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
@@ -109,6 +110,8 @@ def call_module_case(cid):
 
 @case_blueprint.route("/<cid>/call_connector_module_case", methods=['POST'])
 @login_required
+@editor_required
+@misp_editor_required
 def call_connector_module_case(cid):
     """Run a non-MISP connector module on a case."""
     case = CommonModel.get_case(cid)
@@ -117,7 +120,7 @@ def call_connector_module_case(cid):
             flowintel_log("audit", 403, "Call connector module on case: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
-        if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+        if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
             flowintel_log("audit", 403, "Call connector module on case: Org not assigned to case", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
@@ -166,6 +169,7 @@ def get_rulezet_rules(cid):
 
 @case_blueprint.route("/<cid>/rulezet_rule_remove", methods=['POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def remove_rulezet_rule(cid):
     """Remove a stored Rulezet rule for a case."""
@@ -174,6 +178,10 @@ def remove_rulezet_rule(cid):
         if not check_user_private_case(case):
             flowintel_log("audit", 403, "Remove rulezet rule: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+
+        if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
+            flowintel_log("audit", 403, "Remove rulezet rule: Org not assigned to case", User=current_user.email, CaseId=case.id)
+            return {"message": "Action not allowed", 'toast_class': "warning-subtle"}, 403
 
         payload = request.get_json() or {}
         rule = None
@@ -215,6 +223,7 @@ def remove_rulezet_rule(cid):
 
 @case_blueprint.route("/<cid>/remove_module_tab/<connType>", methods=['POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def remove_module_tab(cid, connType):
     """Remove all data and connector linkages for a given connector type from a case."""
@@ -226,7 +235,7 @@ def remove_module_tab(cid, connType):
         flowintel_log("audit", 403, "Remove module tab: Permission denied", User=current_user.email, CaseId=cid)
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
 
-    if not (CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin()):
+    if not (CommonModel.get_present_in_case(case.id, current_user) or current_user.is_admin()):
         flowintel_log("audit", 403, "Remove module tab: Action not allowed", User=current_user.email, CaseId=cid)
         return {"message": "Action not allowed", 'toast_class': "warning-subtle"}, 403
 

@@ -1,5 +1,6 @@
 import copy
 import threading
+import pytest
 
 from app import db
 from app.alerting import alerting_core as AlertingCore
@@ -40,7 +41,7 @@ def setup_source(client):
     )
     assert response.status_code == 200, response.json
 
-
+@pytest.mark.concurrent_db
 def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, monkeypatch):
     setup_source(client)
     response = client.post(
@@ -51,9 +52,9 @@ def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, m
     assert response.status_code == 201
     alert_id = response.json["alert_id"]
 
-    app.config["WTF_CSRF_ENABLED"] = False
+    monkeypatch.setitem(app.config, 'WTF_CSRF_ENABLED', False)
     with app.app_context():
-        admin_id = User.query.filter_by(api_key=ADMIN_KEY).first().id
+        login_id = User.query.filter_by(api_key=ADMIN_KEY).first().get_id()
         cases_before = Case.query.count()
 
     # Hold both requests after the "already linked" check and before either
@@ -74,7 +75,7 @@ def test_concurrent_case_creation_from_one_alert_creates_one_case(client, app, m
         try:
             user_client = app.test_client()
             with user_client.session_transaction() as session:
-                session["_user_id"] = str(admin_id)
+                session["_user_id"] = login_id
                 session["_fresh"] = True
             responses[index] = user_client.post(
                 f"/alerting/api/{alert_id}/case",

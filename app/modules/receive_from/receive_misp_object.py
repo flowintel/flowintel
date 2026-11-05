@@ -2,8 +2,9 @@ import datetime
 import logging
 from dateutil.parser import parse as parse_date
 from pymisp import PyMISP
-import urllib3
-urllib3.disable_warnings()
+
+from app.utils.tls import misp_ssl
+
 logging.getLogger("pymisp").setLevel(logging.WARNING)
 
 DATETIME_FORMAT = '%Y-%m-%dT%H:%M'
@@ -35,7 +36,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         return {"message": "Need to give an identifier for this instance"}
 
     try:
-        misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
+        misp = PyMISP(instance["url"], instance["api_key"], ssl=misp_ssl(), timeout=20)
     except Exception:
         return {"message": "Error connecting to MISP"}
 

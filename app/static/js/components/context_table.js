@@ -1,3 +1,5 @@
+import Pagination from './pagination.js'
+
 /**
  * context_table.js — Table with expandable rows, shared by the Context pages
  * (custom tags, taxonomies, galaxies).
@@ -31,10 +33,11 @@
  * they don't toggle the row.
  */
 
-const { ref, computed, watch } = Vue
+const { ref, watch } = Vue
 
 export default {
     name: 'ContextTable',
+    components: { Pagination },
     delimiters: ['[[', ']]'],
 
     props: {
@@ -99,21 +102,10 @@ export default {
                 </tbody>
             </table>
 
-            <nav v-if="nbPages > 1" class="ctx-pagination" aria-label="Page navigation">
+            <div v-if="nbPages > 1" class="ctx-pagination">
                 <span class="ctx-pagination-info">Page [[ currentPage ]] of [[ nbPages ]]</span>
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item" :class="{disabled: currentPage <= 1}">
-                        <button class="page-link" @click="go(currentPage - 1)" aria-label="Previous"><i class="fa-solid fa-chevron-left fa-xs"></i></button>
-                    </li>
-                    <li v-for="(page, i) in visible_pages" :key="i" class="page-item" :class="{active: page === currentPage, disabled: page === '...'}">
-                        <button v-if="page !== '...'" class="page-link" @click="go(page)">[[ page ]]</button>
-                        <span v-else class="page-link">...</span>
-                    </li>
-                    <li class="page-item" :class="{disabled: currentPage >= nbPages}">
-                        <button class="page-link" @click="go(currentPage + 1)" aria-label="Next"><i class="fa-solid fa-chevron-right fa-xs"></i></button>
-                    </li>
-                </ul>
-            </nav>
+                <Pagination :current-page="currentPage" :nb-pages="nbPages" @page="$emit('page', $event)" />
+            </div>
         </div>
     `,
 
@@ -128,11 +120,6 @@ export default {
                 open_key.value = key
                 emit('row-open', row)
             }
-        }
-
-        function go(page) {
-            if (page < 1 || page > props.nbPages || page === props.currentPage) return
-            emit('page', page)
         }
 
         function col_sort_key(col) {
@@ -156,15 +143,6 @@ export default {
         // A new page or a new search closes the opened row
         watch(() => props.rows, () => { open_key.value = null })
 
-        const visible_pages = computed(() => {
-            const total = props.nbPages
-            const current = props.currentPage
-            if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-            if (current <= 4) return [1, 2, 3, 4, 5, '...', total]
-            if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total]
-            return [1, '...', current - 1, current, current + 1, '...', total]
-        })
-
-        return { open_key, toggle, go, visible_pages, is_sorted, sort_by, sort_icon }
+        return { open_key, toggle, is_sorted, sort_by, sort_icon }
     }
 }

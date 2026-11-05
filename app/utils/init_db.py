@@ -222,6 +222,7 @@ def create_admin():
     role = create_admin_role()
     create_editor_role()
     create_read_only_role()
+    bot_role = Role.query.filter_by(name="Read Only").first()
 
     # Default Icon
     create_default_icon()
@@ -276,8 +277,9 @@ def create_admin():
             last_name=bot_config['last_name'],
             email=bot_email,
             password=generate_api_key(),
-            role_id=role.id,
-            api_key = generate_api_key()
+            role_id=bot_role.id,
+            api_key = generate_api_key(),
+            is_bot=True
         )
         db.session.add(user)
         db.session.commit()

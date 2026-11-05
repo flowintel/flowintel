@@ -77,13 +77,13 @@ def test_get_specific_user(client):
     assert response.json["email"] == "read@read.read"
 
 def test_get_other_user(client):
-    """Read-only user can fetch a specific user by id (no org check on this endpoint)."""
+    """Read-only user cannot fetch another organisation's user when directory scoping is enabled."""
     create_response = create_user_as_admin(client)
     user_id = create_response.json["id"]
 
     response = client.get(f"/api/admin/user/{user_id}", headers={"X-API-KEY": API_KEY})
-    assert response.status_code == 200
-    assert response.json["id"] == user_id
+    assert response.status_code == 404
+    assert response.json["message"] == "User not found"
 
 #########
 ## Org ##

@@ -16,8 +16,10 @@
 {% macro header_actions() %}
 <template v-if="active_tab === 'case-alerts'">
     {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh case alerts', attrs='@click="loadCaseAlerts"') }}
+    {% if not current_user.read_only() %}
     {{ header_link('Mark all as read', icon='fa-solid fa-check-double', attrs='@click="markAllCaseAlertsRead" :disabled="caseAlertUnreadCount === 0"') }}
     {{ header_link('Remove read alerts', icon='fa-solid fa-trash', attrs='@click="deleteReadCaseAlerts" :disabled="caseAlertReadCount === 0"') }}
+    {% endif %}
 </template>
 {% endmacro %}
 
@@ -160,6 +162,7 @@ const initialCaseAlertCfg = {
     IMAP_PASSWORD: {{ cfg.IMAP_PASSWORD|default('')|tojson }}
 };
 const canManageAlertConfig = {{ current_user.is_admin()|tojson }};
+const canManageCaseAlerts = {{ (not current_user.read_only())|tojson }};
 {% endmacro %}
 
 {% macro setup_state() %}
@@ -218,19 +221,19 @@ async function loadCaseAlertLogs() {
 }
 
 async function markCaseAlertRead(a) {
-    if (!a || a.is_read) return
+    if (!canManageCaseAlerts || !a || a.is_read) return
     try {
-        await fetch(`/alerts/api/alerts/${a.id}/read`, {
+        const resp = await fetch(`/alerts/api/alerts/${a.id}/read`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken },
             keepalive: true
         })
-        a.is_read = true
+        if (resp.ok) a.is_read = true
     } catch (e) { }
 }
 
 async function markAllCaseAlertsRead() {
-    if (caseAlertUnreadCount.value === 0) return
+    if (!canManageCaseAlerts || caseAlertUnreadCount.value === 0) return
     try {
         const resp = await fetch('/alerts/api/alerts/read_all', {
             method: 'POST',
@@ -243,7 +246,7 @@ async function markAllCaseAlertsRead() {
 }
 
 async function deleteReadCaseAlerts() {
-    if (caseAlertReadCount.value === 0) return
+    if (!canManageCaseAlerts || caseAlertReadCount.value === 0) return
     try {
         const resp = await fetch('/alerts/api/alerts/delete_read', {
             method: 'POST',

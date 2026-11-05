@@ -50,7 +50,7 @@ class Status(Resource):
 class Result(Resource):
     method_decorators = [api_required]
     def get(self, sid):
-        res = MispModuleModel.get_misp_modules_result(sid)  
-        if res:
+        res = MispModuleModel.get_misp_modules_result(sid)
+        if MispModuleModel.can_read_result(res, get_user_from_api(request.headers)):
             return res.to_json()
         return {"message": "Session not found. It may be not finished yet. /analyzer/misp-modules/status/<sid> to see the status of the query"}

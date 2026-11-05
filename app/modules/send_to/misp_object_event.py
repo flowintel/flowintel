@@ -1,13 +1,12 @@
 import time
 import uuid
 import logging
-import urllib3
 
 from pymisp import MISPAttribute, MISPEvent, MISPObject, MISPObjectReference, PyMISP
 from pymisp.exceptions import InvalidMISPObjectAttribute, InvalidMISPObject, NewAttributeError
 
+from app.utils.tls import misp_ssl
 
-urllib3.disable_warnings()
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -511,7 +510,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     payload: optional dict; conflict follow-ups may pass local ID selectors for targeted syncs
     """
     try:
-        misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
+        misp = PyMISP(instance["url"], instance["api_key"], ssl=misp_ssl(), timeout=20)
     except Exception:
         return {"message": "Error connecting to MISP"}
     flag = False

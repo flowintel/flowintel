@@ -116,7 +116,7 @@ def case_template_view(cid):
 def get_case_template(cid):
     """View a case Template"""
     template = CommonModel.get_case_template(cid)
-    return {"template": template.to_json()}
+    return {"template": template.to_json(current_user)}
 
 @templating_blueprint.route("/case/<cid>/add_task", methods=['GET','POST'])
 @login_required
@@ -226,7 +226,7 @@ def get_all_case_templates():
     templates = CommonModel.get_all_case_templates()
     templates_list = list()
     for template in templates:
-        loc_template = template.to_json()
+        loc_template = template.to_json(current_user)
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list}
@@ -275,7 +275,7 @@ def get_page_case_templates():
 
     templates_list = list()
     for template in templates:
-        loc_template = template.to_json()
+        loc_template = template.to_json(current_user)
         loc_template["current_user_permission"] = CommonModel.get_role(current_user).to_json()
         templates_list.append(loc_template)
     return {"templates": templates_list, "nb_pages": nb_pages}
@@ -287,7 +287,7 @@ def get_template(cid):
     """Get a case template"""
     template = CommonModel.get_case_template(cid)
     if template:
-        return {"template": template.to_json()}
+        return {"template": template.to_json(current_user)}
     return {"message": "Template not found"}
 
 
@@ -299,7 +299,7 @@ def get_template(cid):
 @templating_blueprint.route("/<tid>/get_case_template_connector_instances", methods=['GET'])
 @login_required
 def get_case_template_connector_instances(tid):
-    connector_instances = CommonModel.get_case_template_connector_instances(tid)
+    connector_instances = CommonModel.get_case_template_connector_instances(tid, current_user)
     if connector_instances:
         c_i_formated = list()
         for c_i in connector_instances:
@@ -318,7 +318,7 @@ def get_case_template_connector_instances(tid):
 def add_connector(tid):
     """Add connector instance to template"""
     if CommonModel.get_case_template(tid):
-        if "connector_instances" in request.json and CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances']):
+        if "connector_instances" in request.json and CommonModel.add_connector_instances_to_case_template(tid, request.json['connector_instances'], current_user):
             return {"message": "Connector added successfully", "toast_class": "success-subtle"}, 200
         return {"message": "Need to pass 'connectors'", "toast_class": "warning-subtle"}, 400
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -461,7 +461,7 @@ def remove_task(cid, tid):
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
-@templating_blueprint.route("/delete_task/<tid>", methods=['GET'])
+@templating_blueprint.route("/delete_task/<tid>", methods=['POST'])
 @login_required
 @template_editor_required
 def delete_task(tid):
@@ -475,7 +475,7 @@ def delete_task(tid):
     return {"message":"Template not found", "toast_class": "danger-subtle"}, 404
 
 
-@templating_blueprint.route("/delete_case/<cid>", methods=['GET'])
+@templating_blueprint.route("/delete_case/<cid>", methods=['POST'])
 @login_required
 @template_editor_required
 def delete_case(cid):
@@ -1061,8 +1061,12 @@ def _scan_local_entries(repo):
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     upserted = []
 
-    for tpl_type in ("case", "task"):
-        type_dir = os.path.join(base, tpl_type)
+    folder_types = {"case": "case", "cases": "case", "task": "task", "tasks": "task"}
+    for folder_name in sorted(os.listdir(base)):
+        tpl_type = folder_types.get(folder_name.lower())
+        if tpl_type is None:
+            continue
+        type_dir = os.path.join(base, folder_name)
         if not os.path.isdir(type_dir):
             continue
 
@@ -1084,7 +1088,7 @@ def _scan_local_entries(repo):
             title_ = (tpl.get("title") or tpl.get("name") or filename.replace(".json", "")).strip()
             description_ = (tpl.get("description") or "")[:500]
             version_ = tpl.get("version")
-            relative_path = f"{tpl_type}/{filename}"
+            relative_path = f"{folder_name}/{filename}"
             file_sha = hashlib.sha1(raw_bytes).hexdigest()
 
             entry = Template_Repository_Entry.query.filter_by(

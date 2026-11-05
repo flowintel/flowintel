@@ -4,6 +4,7 @@ import uuid
 
 from werkzeug.utils import secure_filename
 
+from app.utils.tls import misp_ssl
 from app.extensions import db
 from app.db_class.db import Case, Case_Connector_Instance, Case_Org, Case_Template_Connector_Instance, Connector_Icon, Icon_File, Connector, Connector_Instance, Role, User, User_Connector_Instance, Connector_Sync_Log, Case_Misp_Sync_Schedule, Case_Misp_Sync_Conflict, DATETIME_FORMAT_FULL
 
@@ -13,6 +14,7 @@ MISP_SYNC_INTERVALS = {"manual", "daily", "weekly", "monthly"}
 MISP_SYNC_CONFLICT_STRATEGIES = {"ask", "prefer_flowintel", "prefer_misp"}
 MISP_SYNC_RESOLUTIONS = {"prefer_flowintel", "prefer_misp", "skip"}
 MISP_SYNC_COLLISION_ICON = "fa-solid fa-code-compare"
+READ_ONLY_CONNECTOR_MESSAGE = "This connector instance is read only. Receiving data is allowed, but sending is disabled."
 
 
 def as_utc_datetime(value):
@@ -54,7 +56,7 @@ def _misp_get_event_pythonified(loc_instance, api_key, event_identifier):
         return None, None
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -239,11 +241,13 @@ def can_user_manage_instance(instance, user):
     return bool(get_user_instance_both(user_id=user.id, instance_id=instance.id))
 
 
-def normalize_instance_sharing_scope(form_dict, user):
+def normalize_instance_sharing_scope(form_dict, user, instance=None):
     """Normalize legacy and current sharing scope inputs."""
     scope = form_dict.get("sharing_scope")
     if scope in {"personal", "org", "global"}:
         return scope
+    if instance is not None and not scope and "is_global_connector" not in form_dict:
+        return get_instance_sharing_scope(instance)
 
     if form_dict.get("is_global_connector"):
         if user.is_admin():
@@ -498,7 +502,8 @@ def add_connector_instance_core(cid, form_dict, user_id):
         connector_id=cid,
         global_api_key=global_api_key,
         shared_org_id=shared_org_id,
-        sharing_scope=sharing_scope
+        sharing_scope=sharing_scope,
+        read_only=form_dict.get("read_only", False)
     )
     db.session.add(connector)
     db.session.commit()
@@ -562,11 +567,35 @@ def edit_connector_core(cid, form_dict):
         return True
     return False
 
+def instance_edit_requires_api_key(instance, form_dict, user):
+    """Do not move credentials the editor has not supplied to a new URL or scope."""
+    if (form_dict.get("api_key") or "").strip():
+        return False
+    url_changed = (form_dict.get("url", instance.url) or "").strip() != (instance.url or "").strip()
+    scope = normalize_instance_sharing_scope(form_dict, user, instance)
+    scope_changed = scope != get_instance_sharing_scope(instance)
+    if instance.global_api_key and (url_changed or scope_changed or scope == "personal"):
+        return True
+    other_keys = User_Connector_Instance.query.filter(
+        User_Connector_Instance.instance_id == instance.id,
+        User_Connector_Instance.user_id != user.id,
+        User_Connector_Instance.api_key.isnot(None),
+        User_Connector_Instance.api_key != ""
+    ).first()
+    if not other_keys:
+        return False
+    own_key = User_Connector_Instance.query.filter_by(user_id=user.id, instance_id=instance.id).first()
+    return url_changed or (scope != "personal" and not (own_key and own_key.api_key))
+
+
 def edit_connector_instance_core(iid, form_dict):
     instance_db = get_instance(iid)
     if instance_db:
         user = User.query.get(form_dict["acting_user_id"])
-        sharing_scope = normalize_instance_sharing_scope(form_dict, user)
+        if instance_edit_requires_api_key(instance_db, form_dict, user):
+            return False
+        sharing_scope = normalize_instance_sharing_scope(form_dict, user, instance_db)
+        url_changed = (form_dict["url"] or "").strip() != (instance_db.url or "").strip()
         api_key = (form_dict.get("api_key") or "").strip()
         existing_user_instance = User_Connector_Instance.query.filter_by(
             user_id=user.id,
@@ -579,13 +608,18 @@ def edit_connector_instance_core(iid, form_dict):
                 if existing_user_instance and existing_user_instance.api_key
                 else None
             )
-        if not existing_instance_key:
-            any_user_instance = User_Connector_Instance.query.filter_by(instance_id=iid).first()
-            existing_instance_key = any_user_instance.api_key if any_user_instance else None
         saved_api_key = api_key or existing_instance_key or ""
         instance_db.name = form_dict["name"]
         instance_db.url = form_dict["url"]
         instance_db.description = form_dict["description"]
+        if "read_only" in form_dict:
+            instance_db.read_only = form_dict["read_only"]
+        if instance_db.read_only:
+            case_connector_ids = db.session.query(Case_Connector_Instance.id).filter_by(instance_id=instance_db.id)
+            Case_Misp_Sync_Schedule.query.filter(
+                Case_Misp_Sync_Schedule.case_connector_instance_id.in_(case_connector_ids),
+                Case_Misp_Sync_Schedule.direction == "send"
+            ).update({"enabled": False, "next_run_at": None}, synchronize_session=False)
         instance_db.sharing_scope = sharing_scope
         if sharing_scope == "global":
             instance_db.shared_org_id = None
@@ -598,6 +632,12 @@ def edit_connector_instance_core(iid, form_dict):
         else:
             instance_db.shared_org_id = None
             instance_db.global_api_key = None
+            if url_changed:
+                # Other associations must not send their old credentials to the new URL.
+                other_instances = User_Connector_Instance.query.filter_by(instance_id=iid)
+                if existing_user_instance:
+                    other_instances = other_instances.filter(User_Connector_Instance.id != existing_user_instance.id)
+                other_instances.update({"api_key": ""}, synchronize_session=False)
             user_instance = existing_user_instance
             if not user_instance:
                 user_instance = User_Connector_Instance(
@@ -702,7 +742,7 @@ def misp_get_event_objects(loc_instance, api_key, event_identifier):
     """
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -738,7 +778,7 @@ def misp_get_event_reports(loc_instance, api_key, event_identifier):
     """
     try:
         from pymisp import PyMISP
-        misp = PyMISP(loc_instance.url, api_key, ssl=False, timeout=20)
+        misp = PyMISP(loc_instance.url, api_key, ssl=misp_ssl(), timeout=20)
         event = misp.get_event(event_identifier, pythonify=True)
         if isinstance(event, dict) and "errors" in event:
             return None, {"message": "Event not found on MISP instance", "toast_class": "danger-subtle", "status": 404}
@@ -903,6 +943,15 @@ def upsert_misp_sync_schedule(case_id, case_connector_instance_id, data, user):
     normalized, error = normalize_misp_sync_schedule_payload(data)
     if error:
         return None, error
+
+    case_connector = Case_Connector_Instance.query.get(case_connector_instance_id)
+    instance = get_instance(case_connector.instance_id) if case_connector else None
+    if instance and instance.read_only and normalized["enabled"]:
+        from ..utils.utils import get_modules_list
+        _, module_configs = get_modules_list()
+        module_type = module_configs.get(normalized["module_name"], {}).get("type")
+        if normalized["direction"] == "send" or module_type != "receive_from":
+            return None, READ_ONLY_CONNECTOR_MESSAGE
 
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     schedule = Case_Misp_Sync_Schedule.query.filter_by(
@@ -1197,6 +1246,11 @@ def resolve_misp_sync_conflict(conflict_id, resolution, resolution_payload, user
     conflict = Case_Misp_Sync_Conflict.query.get(conflict_id)
     if not conflict:
         return None, "Conflict not found"
+    if conflict.direction == "send" and resolution == "prefer_flowintel":
+        case_connector = Case_Connector_Instance.query.get(conflict.case_connector_instance_id)
+        instance = get_instance(case_connector.instance_id) if case_connector else None
+        if instance and instance.read_only:
+            return None, READ_ONLY_CONNECTOR_MESSAGE
     resolution_payload = resolution_payload if isinstance(resolution_payload, dict) else {}
     detail_token = resolution_payload.get("detail_token")
     if conflict.item_type == "event" and detail_token:
@@ -1317,11 +1371,9 @@ def check_misp_connectivity(instance, current_user=None):
         loc_api_key = user_api_key.api_key
     try:
         from pymisp import PyMISP
-        import urllib3
-        urllib3.disable_warnings()
         
         # Initialize MISP connection - if this succeeds, connectivity is verified
-        misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
+        misp = PyMISP(instance.url, loc_api_key, ssl=misp_ssl(), timeout=20)
         
         return {
             "success": True,
@@ -1350,10 +1402,8 @@ def search_misp_attributes(instance, current_user, query, api_key=None):
 
     try:
         from pymisp import PyMISP
-        import urllib3
-        urllib3.disable_warnings()
 
-        misp = PyMISP(instance.url, api_key, ssl=False, timeout=30)
+        misp = PyMISP(instance.url, api_key, ssl=misp_ssl(), timeout=30)
         search_value = query if "%" in query else f"%{query}%"
         response = misp.search(
             controller="attributes",

@@ -1,4 +1,5 @@
 import { display_toast, create_message } from '../toaster.js'
+import Pagination from '../components/pagination.js'
 const { ref, computed, onMounted, watch, nextTick, reactive } = Vue
 
 const MISP_ATTRIBUTE_TYPES = ref([])
@@ -18,6 +19,7 @@ async function fetch_attr_types() {
 }
 
 export default {
+    components: { Pagination },
     delimiters: ['[[', ']]'],
     props: {
         case_id: Number,
@@ -38,6 +40,8 @@ export default {
         const compact_view = ref(true)
         const tab_view = ref(false)
         const active_tab_type = ref('')
+        const current_page = ref(1)
+        const per_page = 10
         const assigning_attr_id = ref(null)
         const assign_task_state = ref({})
         const expanded_sync_lists = reactive({})
@@ -86,6 +90,20 @@ export default {
         const active_tab_attrs = computed(() => {
             const group = grouped_attrs.value.find(g => g.type === active_tab_type.value)
             return group ? group.attrs : []
+        })
+
+        const visible_attrs = computed(() => tab_view.value ? active_tab_attrs.value : filtered_attrs.value)
+        const total_pages = computed(() => Math.max(1, Math.ceil(visible_attrs.value.length / per_page)))
+        const paginated_attrs = computed(() => {
+            const start = (current_page.value - 1) * per_page
+            return visible_attrs.value.slice(start, start + per_page)
+        })
+
+        watch([search_query, type_filter, show_unsynced_only, tab_view, active_tab_type], () => {
+            current_page.value = 1
+        })
+        watch(total_pages, (pages) => {
+            current_page.value = Math.min(current_page.value, pages)
         })
 
         const visible_column_count = computed(() => {
@@ -402,6 +420,9 @@ export default {
             grouped_attrs,
             tab_types,
             active_tab_attrs,
+            current_page,
+            total_pages,
+            paginated_attrs,
             type_options,
             show_add,
             new_state,
@@ -557,7 +578,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody>
-                            <template v-for="sa in filtered_attrs" :key="sa.id">
+                            <template v-for="sa in paginated_attrs" :key="sa.id">
                                 <tr v-if="editing_id !== sa.id">
                                     <td class="ps-3" style="font-size:0.825rem; word-break:break-all; max-width:280px;">[[ sa.value ]]</td>
                                     <td><span class="badge bg-light text-dark border">[[ sa.type ]]</span></td>
@@ -736,7 +757,7 @@ export default {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template v-for="sa in active_tab_attrs" :key="'tab-row-'+sa.id">
+                                    <template v-for="sa in paginated_attrs" :key="'tab-row-'+sa.id">
                                         <tr v-if="editing_id !== sa.id">
                                             <td class="ps-3" style="font-size:0.825rem; word-break:break-all; max-width:280px;">[[ sa.value ]]</td>
                                             <td><span class="badge bg-light text-dark border">[[ sa.type ]]</span></td>
@@ -879,6 +900,10 @@ export default {
                 </div>
             </template>
         </template>
+        <Pagination v-if="!is_loading" class="mt-2"
+                    :current-page="current_page" :nb-pages="total_pages"
+                    aria-label="Standalone attributes pagination"
+                    @page="current_page = $event" />
     </div>
     `
 }

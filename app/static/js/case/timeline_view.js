@@ -139,6 +139,8 @@ export default {
                 }
 
                 events.push({
+                    // Linkification would rewrite already-sanitized HTML.
+                    autolink: false,
                     start_date: startDate,
                     text: {
                         headline: sanitizeTimelineHtml(headline),

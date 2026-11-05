@@ -7,8 +7,10 @@ from app.notification import notification_core as NotifModel
 
 
 def login(client, user_id):
+    with client.application.app_context():
+        login_id = db.session.get(User, user_id).get_id()
     with client.session_transaction() as session:
-        session["_user_id"] = str(user_id)
+        session["_user_id"] = login_id
         session["_fresh"] = True
 
 def test_notification_api_returns_category_and_type_filters(client, app):

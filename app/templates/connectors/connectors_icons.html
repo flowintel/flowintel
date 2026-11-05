@@ -104,7 +104,10 @@
                 fetchIcons(1)
 
                 async function delete_icon(icon){
-                    const res = await fetch('/connectors/delete_icon/'+icon.id)
+                    const res = await fetch('/connectors/delete_icon/'+icon.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(await res.status == 200){
                         let index = icons_list.value.icons.indexOf(icon)
                         if(index > -1)

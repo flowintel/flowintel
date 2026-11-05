@@ -1,7 +1,9 @@
+import json
+
 from flask import Blueprint, jsonify, redirect, render_template, request, session as flask_session
 from flask_login import current_user, login_required
 
-from ..decorators import misp_editor_required
+from ..decorators import editor_required, misp_editor_required
 from ..utils.logger import flowintel_log
 
 from . import session_class as SessionModel
@@ -49,27 +51,44 @@ def result_to_case():
     analyzer_case_id = flask_session.get("analyzer_case_id", "")
     return render_template("analyzer/misp_modules_result_to_case.html", analyzer_case_id=analyzer_case_id)
 
+def _selected_json_response(key, empty_value):
+    """Decode the form's JSON once and never serve session content as HTML."""
+    value = flask_session.get(key)
+    try:
+        if value is None or value == "":
+            value = empty_value
+        else:
+            value = json.loads(value)
+        response = jsonify(value)
+    except (TypeError, ValueError, RecursionError):
+        response = jsonify({"message": "Invalid selection JSON"})
+        response.status_code = 400
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 @analyzer_blueprint.route("/misp-modules/get_note_selected", methods=['GET', 'POST'])
 @login_required
 def get_note_selected():
     """Get notes selected"""
-    return flask_session.get("note_selected")
+    return _selected_json_response("note_selected", "")
 
 @analyzer_blueprint.route("/misp-modules/get_misp_object_selected", methods=['GET', 'POST'])
 @login_required
 def get_misp_object_selected():
     """Get notes selected"""
-    return flask_session.get("misp_object_selected")
+    return _selected_json_response("misp_object_selected", [])
 
 @analyzer_blueprint.route("/misp-modules/get_misp_attribute_selected", methods=['GET', 'POST'])
 @login_required
 def get_misp_attribute_selected():
     """Get standalone attributes selected"""
-    return flask_session.get("misp_attribute_selected")
+    return _selected_json_response("misp_attribute_selected", [])
 
 
 @analyzer_blueprint.route("/misp-modules/manage_notes_selected", methods=['GET', 'POST'])
 @login_required
+@editor_required
 @misp_editor_required
 def manage_notes_selected():
     """Manage notes selected"""
@@ -81,8 +100,11 @@ def manage_notes_selected():
         flowintel_log("audit", 200, "Analyser results saved to case",
             User=current_user.email, CaseId=case_id)
         return {"case_id": case_id}, 200
+    status = case_id.pop("status", 400)
+    if status == 403:
+        flowintel_log("audit", 403, "Analyser results to case: Action not allowed", User=current_user.email)
     case_id["toast_class"] = "warning-subtle"
-    return case_id, 400
+    return case_id, status
 
 
 
@@ -200,7 +222,7 @@ def misp_module_loading_status(sid):
 def misp_module_result_data(sid):
     """Result page of misp-modules query"""
     res = MispModuleModel.get_misp_modules_result(sid)
-    if res:
+    if MispModuleModel.can_read_result(res, current_user):
         return res.to_json()
     return render_template("404.html"), 404
 

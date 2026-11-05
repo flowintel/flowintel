@@ -39,7 +39,7 @@ if [ "$INSTALL_MODE" = "development" ]; then
 fi
 
 # Install variables
-VENV_DIR="env"
+VENV_DIR="${VENV_DIR:-env}"
 NODE_VERSION="${NODE_VERSION:-20.19.2}"
 NVM_VERSION="v0.40.3"
 PANDOC_RELEASE="3.7"
@@ -194,6 +194,13 @@ if [ -f "requirements.txt" ]; then
   python -m pip install -r requirements.txt
 else
   warn "requirements.txt not found; skipping pip install"
+fi
+if [ ${INSTALL_MODE} = "development" ];then
+  if [ -f "requirements-dev.txt" ]; then
+    python -m pip install -r requirements-dev.txt
+  else
+    warn "requirements-dev.txt not found; skipping pip dev install"
+  fi
 fi
 
 # init submodules

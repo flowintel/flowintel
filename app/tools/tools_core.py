@@ -10,6 +10,7 @@ from werkzeug.datastructures import FileStorage
 
 from sqlalchemy import or_
 
+from app.utils.tls import misp_ssl
 from app.extensions import db
 from app.db_class.db import *
 
@@ -1019,22 +1020,29 @@ def get_misp_stats(current_user, cutoff=None, end=None, case_status="all", limit
 # Case from MISP Event #
 ########################
 
-def get_misp_connector_by_user(user_id):
+def get_misp_connector_by_user(user):
         connector = ConnectorModel.get_connector_by_name("MISP")
         instances_list = []
         if connector:
             for instance in connector.instances:
-                if instance.sharing_scope in {"org", "global"}:
+                if not ConnectorModel.is_instance_visible_to_user(instance, user):
+                    continue
+                if ConnectorModel.get_instance_sharing_scope(instance) in {"org", "global"}:
                     loc_instance = instance.to_json()
-                    if ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                    if ConnectorModel.get_user_instance_both(user_id=user.id, instance_id=instance.id):
                         loc_instance["is_user_global_api"] = True
                     instances_list.append(loc_instance)
-                elif ConnectorModel.get_user_instance_both(user_id=user_id, instance_id=instance.id):
+                else:
                     instances_list.append(instance.to_json())
         return instances_list
 
 def check_connection_misp(misp_instance_id: int, current_user: User):
     instance = Connector_Instance.query.get(misp_instance_id)
+    if not instance or not ConnectorModel.is_instance_visible_to_user(instance, current_user):
+        return "Instance not found"
+    connector = ConnectorModel.get_connector(instance.connector_id)
+    if not connector or (connector.name or "").lower() != "misp":
+        return "Instance not found"
     if instance:
         loc_api_key = ""
         if instance.global_api_key:
@@ -1046,7 +1054,7 @@ def check_connection_misp(misp_instance_id: int, current_user: User):
 
         if loc_api_key:
             try:
-                misp = PyMISP(instance.url, loc_api_key, ssl=False, timeout=20)
+                misp = PyMISP(instance.url, loc_api_key, ssl=misp_ssl(), timeout=20)
             except Exception:
                 return "Error connecting to MISP"
             
@@ -1267,13 +1275,15 @@ def create_case_misp_event(request_form, current_user):
 
     event = misp.get_event(request_form.get("misp_event_id"), pythonify=True)
 
-    case = TemplateModel.create_case_from_template(request_form.get("case_template_id"), request_form.get("case_title"), current_user)
+    case = TemplateModel.create_case_from_template(
+        request_form.get("case_template_id"), request_form.get("case_title"),
+        current_user, is_private=True,
+    )
 
     misp_event_id = request_form.get('misp_event_id')
 
     case.description = event.info
     case.ticket_id = f"MISP Event: {misp_event_id}"
-    case.is_private = True
     case.is_updated_from_misp = True
     db.session.commit()
 

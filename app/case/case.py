@@ -285,7 +285,7 @@ def search():
     return {"message": "No case", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/delete", methods=['GET'])
+@case_blueprint.route("/<cid>/delete", methods=['POST'])
 @login_required
 @editor_required
 def delete(cid):
@@ -368,7 +368,7 @@ def complete_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/remove_org/<oid>", methods=['GET'])
+@case_blueprint.route("/<cid>/remove_org/<oid>", methods=['POST'])
 @login_required
 @editor_required
 def remove_org_case(cid, oid):
@@ -522,7 +522,10 @@ def get_assigned_users(cid, tid):
             flowintel_log("audit", 403, "Get assigned users to task: Private case: Permission denied", User=current_user.email, CaseId=cid, TaskId=tid)
             return {"message": "permission denied", 'toast_class': "danger-subtle"}, 403
         
-        users, _ = TaskModel.get_users_assign_task(tid, current_user)
+        task = CommonModel.get_task(tid)
+        if not task or task.case_id != case.id:
+            return {"message": "Task not found", 'toast_class': "danger-subtle"}, 404
+        users, _ = TaskModel.get_users_assign_task(task.id, current_user)
         return users
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
@@ -570,7 +573,7 @@ def fork_case(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
-@case_blueprint.route("/<cid>/merge/<ocid>", methods=['GET'])
+@case_blueprint.route("/<cid>/merge/<ocid>", methods=['POST'])
 @login_required
 @editor_required
 def merge_case(cid, ocid):
@@ -684,6 +687,10 @@ def history(cid):
             flowintel_log("audit", 403, "Get history: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Get history: Access restricted", User=current_user.email, CaseId=case.id)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+
         history = CommonModel.get_history(case.uuid)
         if history:
             return {"history": history}
@@ -701,7 +708,11 @@ def audit_logs(cid):
             flowintel_log("audit", 403, "Get audit logs: Private case: Permission denied", User=current_user.email, CaseId=cid)
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         
-        audit_logs = CommonModel.get_audit_logs(cid)
+        if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
+            flowintel_log("audit", 403, "Get audit logs: Access restricted", User=current_user.email, CaseId=case.id)
+            return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
+
+        audit_logs = CommonModel.get_audit_logs(case.id)
         if audit_logs:
             return {"audit_logs": audit_logs}
         return {"audit_logs": []}

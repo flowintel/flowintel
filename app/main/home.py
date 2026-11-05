@@ -4,7 +4,8 @@ from flask import Blueprint, render_template, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import desc
 
-from app.db_class.db import Case, Task_User, Task, Notification
+from app.db_class.db import Case, Task_User, Task
+from app.notification import notification_core as NotifModel
 
 from ..case import common_core as CommonModel
 from ..case.CaseCore import CaseModel
@@ -41,10 +42,7 @@ def home_stats():
         ).count() if user_task_ids else 0
         
         # Count unread notifications
-        notifications = Notification.query.filter_by(
-            user_id=current_user.id,
-            is_read=False
-        ).count()
+        notifications = len(NotifModel.get_user_notif(current_user, "true"))
         
         return jsonify({
             "open_cases": open_cases,

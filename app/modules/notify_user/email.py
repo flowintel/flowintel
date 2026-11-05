@@ -7,6 +7,7 @@ from email.header import decode_header
 import datetime
 
 import conf.config_module as Config
+from app.utils.tls import mail_ssl_context
 
 
 module_config = {
@@ -25,7 +26,7 @@ def send_email_notification(recipient_email, subject, body):
     message.attach(MIMEText(body, 'plain'))
 
     server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
-    server.starttls()
+    server.starttls(context=mail_ssl_context())
     server.login(Config.SENDER_EMAIL, Config.SENDER_PASSOWRD)
     server.sendmail(Config.SENDER_EMAIL, recipient_email, message.as_string())
     server.quit()
@@ -77,7 +78,9 @@ def fetch_imap_archive():
 
     messages = []
     try:
-        mail = imaplib.IMAP4_SSL(Config.IMAP_SERVER, Config.IMAP_PORT)
+        mail = imaplib.IMAP4_SSL(
+            Config.IMAP_SERVER, Config.IMAP_PORT, ssl_context=mail_ssl_context()
+        )
         mail.login(Config.IMAP_USER, Config.IMAP_PASSWORD)
         mail.select("INBOX")
 
@@ -110,7 +113,9 @@ def test_imap():
     if not Config.IMAP_SERVER:
         return {"status": "error", "message": "IMAP not configured"}
     try:
-        mail = imaplib.IMAP4_SSL(Config.IMAP_SERVER, Config.IMAP_PORT)
+        mail = imaplib.IMAP4_SSL(
+            Config.IMAP_SERVER, Config.IMAP_PORT, ssl_context=mail_ssl_context()
+        )
         mail.login(Config.IMAP_USER, Config.IMAP_PASSWORD)
         mail.logout()
         return {"status": "ok", "message": "IMAP connection successful"}

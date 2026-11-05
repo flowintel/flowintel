@@ -844,14 +844,14 @@ The table below covers all settings from `template.env` (`.env`):
 | `ENTRA_CLIENT_ID` | Entra application client ID | GUID |
 | `ENTRA_CLIENT_SECRET` | Entra client secret | Secret string |
 | `ENTRA_REDIRECT_URL` | Entra callback URL | `https://<host>/account/entra/callback` |
-| `ENTRA_GROUP_ADMIN` | Entra group mapped to Admin onboarding flow | `FlowintelAdmin` |
-| `ENTRA_GROUP_EDITOR` | Entra group mapped to Editor | `FlowintelEditor` |
-| `ENTRA_GROUP_READONLY` | Entra group mapped to Read Only | `FlowintelReadOnly` |
-| `ENTRA_GROUP_CASE_ADMIN` | Entra group mapped to CaseAdmin | `FlowintelCaseAdmin` |
+| `ENTRA_GROUP_ADMIN` | Entra group object ID mapped to Admin onboarding flow | Group UUID; unset by default |
+| `ENTRA_GROUP_EDITOR` | Entra group object ID mapped to Editor | Group UUID; unset by default |
+| `ENTRA_GROUP_READONLY` | Entra group object ID mapped to Read Only | Group UUID; unset by default |
+| `ENTRA_GROUP_CASE_ADMIN` | Entra group object ID mapped to CaseAdmin | Group UUID; unset by default |
 | `ENTRA_ROLE_CASE_ADMIN` | Flowintel role name for CaseAdmin mapping | `CaseAdmin` |
-| `ENTRA_GROUP_QUEUE_ADMIN` | Entra group mapped to QueueAdmin | `FlowintelQueueAdmin` |
+| `ENTRA_GROUP_QUEUE_ADMIN` | Entra group object ID mapped to QueueAdmin | Group UUID; unset by default |
 | `ENTRA_ROLE_QUEUE_ADMIN` | Flowintel role name for QueueAdmin mapping | `QueueAdmin` |
-| `ENTRA_GROUP_QUEUER` | Entra group mapped to Queuer | `FlowintelQueuer` |
+| `ENTRA_GROUP_QUEUER` | Entra group object ID mapped to Queuer | Group UUID; unset by default |
 | `ENTRA_ROLE_QUEUER` | Flowintel role name for Queuer mapping | `Queuer` |
 | `KEYCLOAK_ENABLED` | Enable Keycloak SSO | `true` or `false` |
 | `KEYCLOAK_BASE_URL` | Keycloak server base URL | `https://keycloak.example.com` |
@@ -963,7 +963,7 @@ INIT_ADMIN_USER = {
 
 **Bot account**
 
-The bot account is used internally for Matrix chat notifications. Flowintel creates this account during installation regardless of whether you plan to use Matrix.
+The bot account is used by the Matrix API relay. Flowintel creates this account during installation regardless of whether you plan to use Matrix. It has a protected bot marker and the Read Only role; changing an ordinary user's name or email does not make that user a bot.
 
 ```python
 INIT_BOT_USER = {
@@ -974,6 +974,22 @@ INIT_BOT_USER = {
 ```
 
 If you do not intend to use Matrix notifications, you can leave this account as it is. It does not need to be deleted and has no administrative privileges.
+
+The relay sends its API key in `X-API-KEY` and the requesting user's registered Matrix ID in `MATRIX-ID`. Authentication, role checks, organisation visibility, ownership and audit use that requesting user. A Read Only user remains Read Only through the relay. A bot key without a valid `MATRIX-ID`, a bot-to-bot request, or an ordinary API key carrying `MATRIX-ID` is refused. This also applies to directory lookups: include the sender's `MATRIX-ID` when resolving their profile; the relay has no global directory exemption.
+
+### Upgrading an existing Matrix relay
+
+Stop the relay, apply the database migrations, and register its known account before restarting it. The migration adds the marker with a false default and does **not** discover bots from names or `INIT_BOT_USER` email, because users can edit both fields.
+
+Identify the actual bot's database user ID from trusted deployment records or the API key configured in the relay. Then run, using the application's environment and replacing `BOT_USER_ID` with that verified numeric ID:
+
+```bash
+env/bin/python bin/register_matrix_bot.py --env production --user-id BOT_USER_ID
+```
+
+Registration marks that account as a relay and moves it to Read Only, preserving its API key and organisation. Only administrators can edit or delete registered bot accounts; OrgAdmins cannot reset their credentials, even within their own organisation. It is safe to repeat registration for the same account. Do not select a normal user's account: registration grants the ability to relay requests for registered Matrix users. Existing unregistered accounts retain their previous roles until explicitly registered, but cannot use `MATRIX-ID`; complete registration before resuming the integration. If Matrix is unused, review or remove the legacy bot's Admin role through normal account administration.
+
+New installations mark only a newly created bot automatically. An existing email collision is never promoted to a relay. Registration is an operator command, not a profile or user-management API field. Matrix ID ownership verification remains the external integration's responsibility.
 
 
 ## Database configuration
@@ -1058,7 +1074,7 @@ When a user signs in for the first time, Flowintel checks their group membership
 
 If a user is a member of multiple groups (for example both `FlowintelQueueAdmin` and `FlowintelReadOnly`), the higher-priority group wins. `FlowintelReadOnly` is checked last so it only applies when none of the more specific groups match.
 
-If your organisation uses different group names, you can customise the mappings with the environment variables shown below.
+The names above are suggested labels. Configure each group's **Object ID** from its Entra group overview using the environment variables below. Flowintel matches group IDs only: display names are not unique and must not grant access.
 
 Flowintel synchronises roles on every SSO login. If a user's Entra ID group membership changes, their Flowintel role is updated the next time they sign in. Be aware that if you manually promote an SSO user to a higher role within Flowintel, that change will be overwritten at their next login unless their Entra ID group membership has also been updated.
 
@@ -1077,22 +1093,24 @@ ENTRA_REDIRECT_URL=https://flowintel.yourdomain.com/account/entra/callback
 
 The `ENTRA_REDIRECT_URL` must exactly match the redirect URI registered in the Azure portal, including the scheme (`https://`). If Flowintel runs behind a reverse proxy, make sure this URL reflects the public-facing address rather than the internal `127.0.0.1` address.
 
-The group and role name mappings can be customised if your Entra ID groups are named differently:
+Configure the object IDs for the roles you use; leave other group mappings unset:
 
 ```bash
-# Entra ID group names
-ENTRA_GROUP_ADMIN=FlowintelAdmin
-ENTRA_GROUP_EDITOR=FlowintelEditor
-ENTRA_GROUP_READONLY=FlowintelReadOnly
-ENTRA_GROUP_CASE_ADMIN=FlowintelCaseAdmin
-ENTRA_GROUP_QUEUE_ADMIN=FlowintelQueueAdmin
-ENTRA_GROUP_QUEUER=FlowintelQueuer
+# Entra ID group object IDs (UUIDs), not display names
+ENTRA_GROUP_ADMIN=<admin-group-object-id>
+ENTRA_GROUP_EDITOR=<editor-group-object-id>
+ENTRA_GROUP_READONLY=<readonly-group-object-id>
+ENTRA_GROUP_CASE_ADMIN=<case-admin-group-object-id>
+ENTRA_GROUP_QUEUE_ADMIN=<queue-admin-group-object-id>
+ENTRA_GROUP_QUEUER=<queuer-group-object-id>
 
 # Flowintel role names for the custom roles
 ENTRA_ROLE_CASE_ADMIN=CaseAdmin
 ENTRA_ROLE_QUEUE_ADMIN=QueueAdmin
 ENTRA_ROLE_QUEUER=Queuer
 ```
+
+**Upgrading an existing Entra deployment:** replace every configured `ENTRA_GROUP_*` display name with the corresponding group object ID, including values in an existing `conf/config.py`. Names and unset mappings grant no role, so users cannot sign in until at least one matching group ID is configured. Group renames do not require a configuration change; deleting and recreating a group does, because its ID changes.
 
 ### SSO behaviour
 
@@ -1103,6 +1121,16 @@ Users whose highest-priority group is `FlowintelAdmin` are initially created wit
 All existing Flowintel administrators receive a notification whenever a new SSO account is created. For users in the Admin group, the notification asks administrators to promote the user if appropriate. For all other users, the notification asks administrators to review the user's organisation assignment. New SSO users are placed in a personal organisation by default, so administrators may want to move them to a shared organisation.
 
 SSO accounts rely entirely on the organisation's Microsoft account for authentication. This means they cannot use the local password reset feature or change the email address associated with their Flowintel account. Administrators can still edit SSO user accounts through the web interface, for example to change a user's role or organisation, but they cannot set a local password for them.
+
+### Account conflicts and organisation assignment for all SSO providers
+
+Entra ID, Keycloak and SimpleSAML sign-in can reuse an existing account only when its email address belongs to that same sign-in provider. A conflicting local account or another provider's account is refused without changing it. Accounts created before the `auth_provider` migration may be marked `local` and are subject to this check.
+
+There is no automatic account-linking flow. Ask an administrator to investigate a conflict and arrange the appropriate account provisioning; simply changing the provider field does not revoke old passwords, API keys or sessions and is not a safe conversion procedure.
+
+Newly provisioned users always receive a new personal organisation, even if another organisation has the same display name. Joining an existing organisation requires an explicit administrator assignment. Existing SSO users retain their current organisation on subsequent sign-ins. These checks do not repair accounts or organisation assignments created before the update.
+
+When sharing a case through the API, use the organisation's `oid` if its name is shared by multiple organisations. Ambiguous name-based requests are rejected without granting access; unique names continue to work.
 
 ## Keycloak SSO (optional)
 
@@ -1213,7 +1241,7 @@ Before moving on to Flowintel, it is worth checking that the token contains the 
 3. Select a user who is a member of one of the Flowintel groups
 4. Click **Generated ID token**
 5. Confirm the JSON contains:
-   - `preferred_username` or `email`
+   - `email` and the boolean claim `email_verified: true`. Flowintel requires a verified email address and does not use `preferred_username` as an identity fallback. Ensure the client's `email` scope is available and users complete email verification in Keycloak.
    - `given_name` and `family_name` (or `name`). If these are empty, open the user in **Users**, fill in **First name** and **Last name**, and save. Keycloak does not require these fields when creating a user, but Flowintel needs them to set up the local account.
    - `groups` array with the user's group names, for example `["FlowintelEditor"]`
 
@@ -1488,10 +1516,42 @@ The `conf/config_module.py` file contains settings for optional features. The de
 You only need to edit `config_module.py` if you're using:
 
 - **SMTP**: For sending email notifications
+- **MISP or mail with a private CA**: For configuring trusted CA bundles
 - **Matrix**: For Matrix chat notifications
 - **Computer-assisted generation**: For AI-powered content generation features
 
 If you're not using these features, leave the file unchanged.
+
+### TLS verification for MISP and mail
+
+All MISP HTTPS connections, SMTP STARTTLS, and IMAP TLS connections verify the
+server certificate and hostname by default. Existing configuration files without
+the following settings also use these secure defaults:
+
+```python
+MISP_VERIFY_SSL = True
+MAIL_VERIFY_SSL = True
+```
+
+MISP uses Requests' default CA bundle and environment settings; mail uses Python's
+system SSL trust defaults. For a private CA, set the corresponding option to an
+absolute path to a PEM CA bundle containing the issuing CA certificates:
+
+```python
+MISP_VERIFY_SSL = "/etc/flowintel/misp-ca.pem"
+MAIL_VERIFY_SSL = "/etc/flowintel/mail-ca.pem"
+```
+
+These settings apply to all MISP clients and both SMTP and IMAP respectively.
+Restart Flowintel and its workers after changing the configuration. Invalid values
+or unusable CA bundles cause connections to fail; they do not disable verification.
+
+**Upgrade note:** Connections that previously accepted self-signed, untrusted,
+expired, or hostname-mismatched certificates will now fail. Configure a trusted CA
+bundle and ensure the certificate matches the server hostname and is valid. An
+explicit Python `False` disables certificate and hostname verification for that
+setting, exposing credentials and data to interception; reserve this for controlled
+testing. MISP connector URLs must use HTTPS to benefit from TLS verification.
 
 ## Chatbot (optional)
 
@@ -1516,6 +1576,10 @@ OLLAMA_MODEL = ""                       # Default model name (optional)
 ```
 
 If `OLLAMA_URL` is not reachable, the chatbot page still loads but the model dropdown stays empty and queries fail with a clear error. Restart Flowintel after changing either configuration file.
+
+The chatbot API tool defaults to a reviewed allow-list of read operations on cases, tasks and templates, including searches. State-changing GET endpoints are excluded as well as ordinary write requests. Administrative API endpoints are always blocked. To explicitly permit other API operations, set `CHATBOT_ALLOW_WRITES = True` in `conf/config_module.py`; this lets the model change data with the chatting user's permissions, including when untrusted case content influences its instructions. Leave it disabled unless that behavior is intended.
+
+AI report requests pass credentials and case content through a private temporary input file inherited by the child process, rather than exposing them in process arguments.
 
 ### Technical background
 
@@ -2413,6 +2477,8 @@ This configures Ubuntu to download and install security updates automatically. R
 This section covers how to upgrade Flowintel to a newer version. Flowintel uses Flask-Migrate (Alembic) for database schema changes, so every upgrade includes a migration step that applies any new or modified tables and columns automatically.
 
 ## Before upgrading
+
+The session-revocation security update changes browser login identifiers. Existing sessions and remember-me cookies from earlier versions are rejected, so all users must log in again after this upgrade. No database migration is needed for this change. Administrator password resets now also rotate the affected user's API key; integrations using that key must be updated.
 
 1. **Read the release notes**. Check the [Flowintel releases page](https://github.com/flowintel/flowintel/releases) for breaking changes, new dependencies, or manual steps that apply to the version you are upgrading to.
 

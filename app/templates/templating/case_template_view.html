@@ -317,7 +317,10 @@
                 }
 
                 async function delete_case(case_template_id){
-                    const res = await fetch("/templating/delete_case/"+case_template_id)
+                    const res = await fetch("/templating/delete_case/"+case_template_id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     return window.location.href = "/templating/cases"
                 }
 

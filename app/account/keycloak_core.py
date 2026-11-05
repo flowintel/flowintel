@@ -11,6 +11,7 @@ from app.extensions import db
 from app.db_class.db import Role, User
 from ..notification import notification_core as NotifModel
 from ..utils.utils import generate_api_key
+from .sso_identity import find_sso_user
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def get_auth_url(redirect_uri, state=None):
     params = {
         "client_id": current_app.config.get("KEYCLOAK_CLIENT_ID", ""),
         "response_type": "code",
-        "scope": "openid",
+        "scope": "openid email profile",
         "redirect_uri": redirect_uri,
     }
     if state:
@@ -83,9 +84,15 @@ def get_or_create_sso_user(token_response):
     if not claims:
         return None, "Could not decode the Keycloak ID token."
 
-    email = (claims.get("email") or claims.get("preferred_username") or "").lower().strip()
-    if not email:
+    email = claims.get("email")
+    if not isinstance(email, str) or not email.strip():
         return None, "No email address found in the Keycloak token."
+    email = email.lower().strip()
+    if claims.get("email_verified") is not True:
+        return None, (
+            "Your Keycloak email address is not verified. "
+            "Verify it in Keycloak before signing in."
+        )
 
     groups = claims.get("groups", [])
 
@@ -130,10 +137,12 @@ def get_or_create_sso_user(token_response):
             "Please ask an administrator to create it."
         )
 
-    user = User.query.filter_by(email=email).first()
+    user, error = find_sso_user(email, "keycloak")
+    if error:
+        return None, error
 
     if user:
-        if user.auth_provider == "keycloak" and user.role_id != target_role.id:
+        if user.role_id != target_role.id:
             user.role_id = target_role.id
             db.session.commit()
         return user, None

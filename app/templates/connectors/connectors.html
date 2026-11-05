@@ -94,7 +94,10 @@
                             <table>
                                 <template v-for="instance in instances_table[connector.id]">
                                     <tr>
-                                        <td title="Name of the instance">[[instance.name]]</td>
+                                        <td title="Name of the instance">
+                                            [[instance.name]]
+                                            <span v-if="instance.read_only" class="badge text-bg-secondary ms-1" title="Receiving is allowed; sending is disabled">Read only</span>
+                                        </td>
                                         <td v-if="instance.sharing_scope !== 'personal'">
                                             <small :title="instance.sharing_scope === 'org' ? 'This instance is shared with your organisation' : 'This instance is shared platform-wide and can only be managed by admins'">
                                                 <span class="badge rounded-pill text-bg-success">[[ instance.sharing_scope === 'org' ? 'Org' : 'Global' ]]</span>
@@ -197,19 +200,8 @@
                                 <span><i class="fa-solid fa-lock me-1"></i>[[ cases_modal_private_count ]] private case<template v-if="cases_modal_private_count > 1">s</template></span>
                             </li>
                         </ul>
-                        <nav v-if="cases_modal_nb_pages > 1" class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item" :class="{ disabled: cases_modal_page === 1 }">
-                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page - 1)">&laquo;</button>
-                                </li>
-                                <li v-for="p in cases_modal_nb_pages" :key="p" class="page-item" :class="{ active: p === cases_modal_page }">
-                                    <button class="page-link" @click="fetchCasesPage(p)">[[ p ]]</button>
-                                </li>
-                                <li class="page-item" :class="{ disabled: cases_modal_page === cases_modal_nb_pages }">
-                                    <button class="page-link" @click="fetchCasesPage(cases_modal_page + 1)">&raquo;</button>
-                                </li>
-                            </ul>
-                        </nav>
+                        <app-pagination class="mt-3" :current-page="cases_modal_page" :nb-pages="cases_modal_nb_pages"
+                                        aria-label="Linked cases pagination" @page="fetchCasesPage"></app-pagination>
                     </template>
                     <p v-else class="text-muted"><i>No cases linked to this instance.</i></p>
                 </div>
@@ -228,10 +220,12 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
+        import Pagination from '/static/js/components/pagination.js'
+        const { createApp, ref, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
 
         createApp({
+            components: { 'app-pagination': Pagination },
             delimiters: ['[[', ']]'],
             setup() {
                 const connectors_list = ref(null)
@@ -276,7 +270,10 @@
                 }
 
                 async function delete_connector(connector){
-                    const res = await fetch('/connectors/delete_connector/'+connector.id)
+                    const res = await fetch('/connectors/delete_connector/'+connector.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     if(await res.status == 200){
                         let index = connectors_list.value.connectors.indexOf(connector)
                         if(index > -1)
@@ -305,7 +302,10 @@
                 }
 
                 async function delete_instance(instance, connector_id){
-                    const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id)
+                    const res = await fetch('/connectors/'+connector_id+'/delete_instance/'+instance.id, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': $('#csrf_token').val()}
+                    })
                     const data = await res.json()
                     if(res.status == 200){
                         let index = instances_table.value[connector_id].indexOf(instance)

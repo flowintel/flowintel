@@ -21,6 +21,7 @@ from flask_login import (
     login_required,
     login_user,
     logout_user,
+    user_loaded_from_cookie,
 )
 
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -83,6 +84,26 @@ def _post_login_redirect(default='/'):
     if is_safe_next_url(target):
         return redirect(target)
     return redirect(default)
+
+
+def _regenerate_session_id():
+    regenerate = getattr(current_app.session_interface, 'regenerate', None)
+    if regenerate is not None:
+        regenerate(session)
+
+
+def _start_user_session(user, remember=False):
+    """Replace pre-authentication state and any previous remembered identity."""
+    session.clear()
+    logout_user()
+    login_user(user, remember=remember)
+    _regenerate_session_id()
+
+
+@user_loaded_from_cookie.connect
+def _rotate_remembered_session(sender, user):
+    # Restoring a remembered login is also an authentication transition.
+    _regenerate_session_id()
 
 
 def check_rate_limit(key_prefix, max_attempts, window):
@@ -171,7 +192,11 @@ def edit_user():
             form_dict.pop('password', None)
             form_dict.pop('password2', None)
         flowintel_log("audit", 200, "User edited", User=current_user.email, UserId=current_user.id)
+        form_dict.pop('current_password', None)
+        password_changed = bool(form_dict.get('password'))
         AccountModel.edit_user_core(form_dict, current_user.id, is_sso=is_sso)
+        if password_changed:
+            _start_user_session(current_user._get_current_object())
         return redirect("/account")
     else:
         form.first_name.data = current_user.first_name
@@ -229,8 +254,7 @@ def login():
             if user is not None and user.password_hash is not None and \
                     user.verify_password(form.password.data):
                 remember = form.remember_me.data
-                session.clear()
-                login_user(user, remember)
+                _start_user_session(user, remember)
                 now = datetime.datetime.now(tz=datetime.timezone.utc)
                 user.last_login = now
                 db.session.add(Login_Event(user_id=user.id, login_date=now))
@@ -371,8 +395,7 @@ def entra_callback():
         flowintel_log("audit", 403, "Entra ID login denied", Reason=error, IP=get_client_ip())
         return redirect(url_for('account.login'))
 
-    session.clear()
-    login_user(user)
+    _start_user_session(user)
     flowintel_log("audit", 200, "Entra ID login successful", Email=user.email)
     flash('Logged in via Microsoft Entra ID.', 'success')
     return _post_login_redirect()
@@ -432,7 +455,7 @@ def keycloak_callback():
         flowintel_log("audit", 403, "Keycloak login denied", Reason=error, IP=get_client_ip())
         return redirect(url_for('account.login'))
 
-    login_user(user)
+    _start_user_session(user)
     flowintel_log("audit", 200, "Keycloak login successful", Email=user.email)
     flash('Logged in via Keycloak.', 'success')
     next_url = request.args.get('next') or '/'
@@ -558,7 +581,7 @@ def simplesaml_callback():
         flowintel_log("audit", 403, "SimpleSAML login denied", Reason=error, IP=get_client_ip())
         return redirect(url_for('account.login'))
 
-    login_user(user)
+    _start_user_session(user)
     flowintel_log("audit", 200, "SimpleSAML login successful", Email=user.email)
 
     flash('Logged in via SimpleSAML.', 'success')

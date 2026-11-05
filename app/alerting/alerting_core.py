@@ -375,6 +375,12 @@ def misp_external_references(event):
     return references
 
 
+def _is_outbound_misp_instance(instance):
+    """Remote MISP credentials must not also authenticate incoming alerts."""
+    connector = Connector.query.get(instance.connector_id) if instance else None
+    return bool(connector and (connector.name or "").strip().lower() == "misp")
+
+
 def connector_from_key(api_key):
     """Return connector identity for an external alert source API key."""
     if not api_key:
@@ -382,6 +388,8 @@ def connector_from_key(api_key):
 
     global_instances = Connector_Instance.query.filter(Connector_Instance.global_api_key.isnot(None)).all()
     for instance in global_instances:
+        if _is_outbound_misp_instance(instance):
+            continue
         if instance.global_api_key and secrets.compare_digest(instance.global_api_key, api_key):
             return {"instance": instance, "user": None}
 
@@ -390,7 +398,7 @@ def connector_from_key(api_key):
         if user_instance.api_key and secrets.compare_digest(user_instance.api_key, api_key):
             instance = Connector_Instance.query.get(user_instance.instance_id)
             user = User.query.get(user_instance.user_id)
-            if instance and user:
+            if instance and user and not _is_outbound_misp_instance(instance):
                 return {"instance": instance, "user": user}
 
     return None
@@ -933,7 +941,11 @@ def create_template_case_from_alert_payload(template_id, alert, user, payload, t
     if not template:
         return None, {"message": "Case template not found"}, 404
 
-    case = TemplateModel.create_case_from_template(template_id, title, user, privileged_case=privileged_case)
+    case = TemplateModel.create_case_from_template(
+        template_id, title, user,
+        privileged_case=privileged_case,
+        is_private=bool(payload.get("is_private", False)),
+    )
     if isinstance(case, dict):
         return None, case, 400
 

@@ -6,6 +6,7 @@ from pymisp import MISPAttribute, MISPEvent, MISPGalaxy, MISPGalaxyCluster, MISP
 import uuid
 
 from flask import current_app
+from app.utils.tls import misp_ssl
 from app.case.CaseCore import FILE_FOLDER
 
 from .misp_object_event import all_object_to_misp, manage_object_creation, _sync_report_event_reports, bump_event_timestamp, create_extended_event, sync_object_references
@@ -413,7 +414,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
     user: id, first_name, last_name, email, role_id, password_hash, api_key, org_id
     """
     try:
-        misp = PyMISP(instance["url"], instance["api_key"], ssl=False, timeout=20)
+        misp = PyMISP(instance["url"], instance["api_key"], ssl=misp_ssl(), timeout=20)
     except Exception:
         return {"message": "Error connecting to MISP"}
     flag = False

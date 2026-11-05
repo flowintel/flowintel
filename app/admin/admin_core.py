@@ -6,6 +6,7 @@ import uuid
 from flask import current_app
 
 from app.extensions import db
+from app.db_class.db import session_user_id
 from app.db_class.db import Cluster, Galaxy, User, Role, Org, Case_Org, Task_User, Taxonomy, Notification, Recurring_Notification, Login_Event, User_Connector_Instance, Misp_Module_Config, Misp_Module_Result
 from ..utils.utils import generate_api_key
 
@@ -18,14 +19,26 @@ def get_users_by_org(org_id):
     """Return all users filtered by organisation"""
     return User.query.filter_by(org_id=org_id).all()
 
-def get_users_page(page, org_id=None, name=None):
-    """Return users by page, optionally filtered by org_id and/or partial name match.
+def user_directory_is_limited(viewer):
+    return current_app.config.get('LIMIT_USER_VIEW_TO_ORG', False) and not viewer.is_admin()
+
+
+def get_visible_users(viewer):
+    """Scope directory queries to the authenticated viewer before selecting rows."""
+    query = User.query
+    if user_directory_is_limited(viewer):
+        if viewer.org_id is None:
+            return query.filter_by(id=viewer.id)
+        return query.filter_by(org_id=viewer.org_id)
+    return query
+
+
+def get_users_page(page, viewer, name=None):
+    """Return visible users by page, optionally filtered by partial name match.
 
     - `name` performs a case-insensitive partial match against `User.first_name` or `User.last_name`.
     """
-    query = User.query
-    if org_id is not None:
-        query = query.filter_by(org_id=org_id)
+    query = get_visible_users(viewer)
     if name:
         query = query.filter(db.or_(User.first_name.ilike(f"%{name}%"), User.last_name.ilike(f"%{name}%")))
     query = query.order_by(db.func.lower(User.first_name), db.func.lower(User.last_name))
@@ -58,12 +71,12 @@ def get_user(id):
     """Return the user"""
     return User.query.get(id)
 
-def get_user_by_lastname(lastname):
+def get_user_by_lastname(lastname, viewer):
     # Case-insensitive partial match for last name
-    return User.query.filter(User.last_name.ilike(f"%{lastname}%")).all()
+    return get_visible_users(viewer).filter(User.last_name.ilike(f"%{lastname}%")).all()
 
-def get_user_by_matrix_id(matrix_id):
-    return User.query.filter_by(matrix_id=matrix_id).first()
+def get_user_by_matrix_id(matrix_id, viewer):
+    return get_visible_users(viewer).filter_by(matrix_id=matrix_id).first()
 
 def get_org(id):
     """Return the org"""
@@ -173,20 +186,16 @@ def get_tag_cluster(cluster_id):
 
 
 def create_default_org(user):
-    """Create a default org for a user who have no org"""
-    o_d = Org.query.filter_by(name=f"{user.first_name} {user.last_name}").first()
-    if not o_d:
-        org = Org(
-            name = f"{user.first_name} {user.last_name}",
-            description = f"Org for user: {user.id}-{user.first_name} {user.last_name}",
-            uuid = str(uuid.uuid4()),
-            default_org = True
-        )
-        db.session.add(org)
-        db.session.commit()
-
-        return org
-    return o_d
+    """Create a fresh default org; a user's name must never grant org membership."""
+    org = Org(
+        name = f"{user.first_name} {user.last_name}",
+        description = f"Org for user: {user.id}-{user.first_name} {user.last_name}",
+        uuid = str(uuid.uuid4()),
+        default_org = True
+    )
+    db.session.add(org)
+    db.session.commit()
+    return org
 
 
 def delete_default_org(user_org_id):
@@ -267,6 +276,7 @@ def admin_edit_user_core(form_dict, id):
     password_changed = "password" in form_dict and form_dict["password"] and user.auth_provider == 'local'
     if password_changed:
         user.password=form_dict["password"]
+        user.api_key = generate_api_key()
     user.role_id = int(form_dict["role"])
     user.org_id = org_change
 
@@ -302,7 +312,7 @@ def _invalidate_user_sessions(user_id):
     if not redis_client:
         return
     for key, data in _iter_user_sessions():
-        if data.get("_user_id") == str(user_id):
+        if session_user_id(data.get("_user_id")) == int(user_id):
             redis_client.delete(key)
 
 
@@ -323,8 +333,8 @@ def list_active_user_sessions(exclude_user_id=None):
     # user_id -> {"count": sessions, "idle": idle of the most recent one}
     active = {}
     for key, data in _iter_user_sessions():
-        user_id = data.get("_user_id")
-        if not user_id or user_id == str(exclude_user_id):
+        user_id = session_user_id(data.get("_user_id"))
+        if not user_id or str(user_id) == str(exclude_user_id):
             continue
 
         ttl = redis_client.ttl(key)

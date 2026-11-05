@@ -335,6 +335,8 @@ export default {
                 }
 
                 loc_list.push({
+                    // Linkification would rewrite HTML built from text nodes.
+                    "autolink": false,
                     "start_date": startDate,
                     "text": {"headline": textToHtml(obj.object_name), "text": buildMispTimelineText(obj)}
                 })

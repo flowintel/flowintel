@@ -99,6 +99,9 @@ def edit_user(uid):
     if not user_modif:
         flash("User not found.", "error")
         return redirect(url_for('admin.users'))
+    if user_modif.is_bot and not current_user.is_admin():
+        flash("Only administrators can edit Matrix bot accounts.", "error")
+        return redirect(url_for('admin.users'))
     
     if current_user.is_pure_org_admin():
         if user_modif.org_id != current_user.org_id:
@@ -181,6 +184,8 @@ def delete_user(uid):
     user = AdminModel.get_user(uid)
     if not user:
         return {"message":"User not found", "toast_class": "danger-subtle"}, 404
+    if user.is_bot and not current_user.is_admin():
+        return {"message":"Only administrators can delete Matrix bot accounts", "toast_class": "danger-subtle"}, 403
     
     if user.id == current_user.id:
         return {"message":"You cannot delete your own account", "toast_class": "danger-subtle"}, 403
@@ -201,16 +206,11 @@ def delete_user(uid):
 @login_required
 def get_users_page():
     """Get all users page"""
-    from conf.config import Config
     
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
     
-    org_id = None
-    if Config.LIMIT_USER_VIEW_TO_ORG and not current_user.is_admin():
-        org_id = current_user.org_id
-    
-    users = AdminModel.get_users_page(page, org_id=org_id, name=name)
+    users = AdminModel.get_users_page(page, current_user, name=name)
     if users:
         users_list = list()
         for user in users:
@@ -381,16 +381,15 @@ def get_orgs():
 @login_required
 def get_org_users():
     """get all user of an org"""
-    from conf.config import Config
     
     data_dict = dict(request.args)
     requested_org_id = int(data_dict["org_id"])
     
-    if Config.LIMIT_USER_VIEW_TO_ORG and not current_user.is_admin():
+    if AdminModel.user_directory_is_limited(current_user):
         if requested_org_id != current_user.org_id:
             return {"users": []}, 403
     
-    users = AdminModel.get_all_user_org(requested_org_id)
+    users = AdminModel.get_visible_users(current_user).filter_by(org_id=requested_org_id).all()
     if users:
         users_list = list()
         for user in users:
@@ -425,7 +424,7 @@ def get_roles():
 def get_role_users():
     """get all user of a role"""
     data_dict = dict(request.args)
-    users = AdminModel.get_all_user_role(data_dict["role_id"])
+    users = AdminModel.get_visible_users(current_user).filter_by(role_id=data_dict["role_id"]).all()
     if users:
         users_list = list()
         for user in users:
@@ -493,7 +492,7 @@ def get_tags():
     tags.sort(key=lambda x: x["name"])
     return {"tags": tags}
 
-@admin_blueprint.route("/taxonomy_status", methods=['GET'])
+@admin_blueprint.route("/taxonomy_status", methods=['POST'])
 @login_required
 @admin_required
 def taxonomy_status():
@@ -584,7 +583,7 @@ def get_clusters():
     clusters.sort(key=lambda x: x["name"])
     return jsonify({"clusters": clusters})
 
-@admin_blueprint.route("/galaxy_status", methods=['GET'])
+@admin_blueprint.route("/galaxy_status", methods=['POST'])
 @login_required
 @admin_required
 def galaxy_status():

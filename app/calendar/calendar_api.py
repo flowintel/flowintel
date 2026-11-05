@@ -26,7 +26,7 @@ manual_event_input = calendar_api.model('ManualCalendarEventInput', {
     'all_day': fields.Boolean(default=True, description='Whether the event lasts all day'),
     'visibility': fields.String(
         enum=['private', 'organisation'], default='private',
-        description='Only the API key owner, or members of their organisation, can view the event',
+        description='Only the acting user, or members of their organisation, can view the event',
     ),
 })
 
@@ -35,7 +35,7 @@ manual_event_input = calendar_api.model('ManualCalendarEventInput', {
 class ManualCalendarEvents(Resource):
     method_decorators = [editor_required, api_required]
 
-    @calendar_api.doc(description='Create a standalone calendar event owned by the API key user. '
+    @calendar_api.doc(description='Create a standalone calendar event owned by the acting user. '
                                 'Returns the saved event under the event key, including its id. '
                                 'Timed dates in the response use UTC.')
     @calendar_api.expect(manual_event_input, validate=False)
@@ -44,7 +44,7 @@ class ManualCalendarEvents(Resource):
     @calendar_api.response(403, 'Invalid API key or read-only user')
     def post(self):
         """Create a manual calendar event."""
-        user = utils.get_user_api(request.headers['X-API-KEY'])
+        user = utils.get_user_from_api(request.headers)
         try:
             event = CalendarModel.create_manual_event(request.get_json(silent=True), user)
         except ValueError as exc:
@@ -68,7 +68,7 @@ class CalendarFeed(Resource):
         
         Returns an ICS calendar file containing cases, tasks and manual events visible to the current user.
         """
-        current_user = utils.get_user_api(request.headers["X-API-KEY"])
+        current_user = utils.get_user_from_api(request.headers)
         
         cases_list = CalendarModel.get_all_cases_for_user(current_user)
         tasks_list = CalendarModel.get_all_tasks_for_user(current_user)

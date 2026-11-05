@@ -8,6 +8,7 @@ from app.db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_
 DATE_FORMAT = '%Y-%m-%d'
 DEFAULT_CATEGORY = "general"
 DEFAULT_NOTIFICATION_TYPE = "info"
+DEADLINE_ICONS = ("fa-solid fa-radiation", "fa-solid fa-skull-crossbones")
 
 ICON_NOTIFICATION_METADATA = {
     "fa-solid fa-hand": ("task", "assignment"),
@@ -123,6 +124,16 @@ def build_notification(message, is_read, user_id, case_id, html_icon, creation_d
 def get_notif(nid):
     return Notification.query.get(nid)
 
+def _visible_deadline_notifications(notifications, user):
+    # Historical deadline notices may predate correct recipient scoping, or
+    # the recipient may since have lost access to the private case.
+    from app.case.common_core import check_user_in_private_cases
+
+    case_ids = {n.case_id for n in notifications if n.html_icon in DEADLINE_ICONS}
+    cases = Case.query.filter(Case.id.in_(case_ids)).all() if case_ids else []
+    visible_ids = {case.id for case in check_user_in_private_cases(cases, user)}
+    return [n for n in notifications if n.html_icon not in DEADLINE_ICONS or n.case_id in visible_ids]
+
 def get_user_notif(user, unread_read, category=None, notification_type=None, sort="newest"):
     unread_only = str(unread_read).lower() == "true"
     query = Notification.query.where(
@@ -136,12 +147,14 @@ def get_user_notif(user, unread_read, category=None, notification_type=None, sor
 
     order_column = Notification.creation_date
     if sort == "oldest":
-        return query.order_by(asc(order_column)).all()
-    if sort == "category":
-        return query.order_by(asc(Notification.category), desc(order_column)).all()
-    if sort == "type":
-        return query.order_by(asc(Notification.notification_type), desc(order_column)).all()
-    return query.order_by(desc(order_column)).all()
+        query = query.order_by(asc(order_column))
+    elif sort == "category":
+        query = query.order_by(asc(Notification.category), desc(order_column))
+    elif sort == "type":
+        query = query.order_by(asc(Notification.notification_type), desc(order_column))
+    else:
+        query = query.order_by(desc(order_column))
+    return _visible_deadline_notifications(query.all(), user)
 
 def read_notification_core(notif_id):
     notif = get_notif(notif_id)
@@ -330,43 +343,77 @@ def create_notification_for_approvers(message, case_id, org_id, html_icon, exclu
     return True
 
 
+def _user_deadline_notification(case_or_task, msg, html_icon, case_id, user_id, target_url, flag_task):
+    candidates = Notification.query.filter_by(
+        user_id=user_id, case_id=case_id, html_icon=html_icon,
+    ).filter(Notification.for_deadline.isnot(None))
+    notification = candidates.filter_by(target_url=target_url).first()
+    if notification:
+        return notification
+
+    # Upgrade legacy notices without trusting another recipient's shared pointer.
+    legacy = candidates.filter(Notification.target_url.is_(None))
+    if case_or_task.notif_deadline_id:
+        notification = legacy.filter_by(id=case_or_task.notif_deadline_id).first()
+        if notification and (not flag_task or (notification.message and notification.message.endswith(f" {msg}"))):
+            return notification
+    # Old task notices contain titles rather than IDs. Only reuse an unambiguous
+    # match; new notices use the stable case/task link even after a rename.
+    if flag_task and Task.query.filter_by(case_id=case_id, title=case_or_task.title).count() != 1:
+        return None
+    return next((n for n in legacy.all() if n.message and n.message.endswith(f" {msg}")), None)
+
+
 def case_task_deadline_notif(case_or_task, msg, html_icon, now, current_user, flag_task=False):
     if case_or_task.deadline:
-        notif_deadline = None
-        if case_or_task.notif_deadline_id:
-            notif_deadline = get_notif(case_or_task.notif_deadline_id)
 
         case_deadline = datetime.datetime.strptime(case_or_task.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
         loc = case_deadline - now
 
         if loc.days > 0 and loc.days <= 10:
+            case_id = case_or_task.case_id if flag_task else case_or_task.id
+            target_url = f"/case/{case_id}"
+            if flag_task:
+                target_url += f"#task-{case_or_task.id}"
+            notif_deadline = _user_deadline_notification(
+                case_or_task, msg, html_icon, case_id, current_user.id, target_url, flag_task,
+            )
             if notif_deadline:
-                if (case_deadline - notif_deadline.for_deadline).days > loc.days:
-                        notif_deadline.message = f"{loc.days} {msg}"
-                        notif_deadline.for_deadline = now
-                        notif_deadline.is_read = False
-                        db.session.commit()
-                else:
-                    if flag_task:
-                        notif_deadline = create_notification_user(f"{loc.days} {msg}", case_or_task.case_id, current_user.id, html_icon)
-                    else:
-                        notif_deadline = create_notification_user(f"{loc.days} {msg}", case_or_task.id, current_user.id, html_icon)
+                if notif_deadline.for_deadline.date() < now.date() or notif_deadline.message != f"{loc.days} {msg}":
+                    notif_deadline.message = f"{loc.days} {msg}"
                     notif_deadline.for_deadline = now
-                    case_or_task.notif_deadline_id = notif_deadline.id
-                    db.session.commit()
+                    notif_deadline.is_read = False
+                    notif_deadline.read_date = None
+                notif_deadline.target_url = target_url
+            else:
+                notif_deadline = create_notification_user(
+                    f"{loc.days} {msg}", case_id, current_user.id, html_icon,
+                    category="deadline", notification_type="deadline", target_url=target_url,
+                )
+                notif_deadline.for_deadline = now
+            case_or_task.notif_deadline_id = notif_deadline.id
+            db.session.commit()
 
 
 def create_notification_deadline(current_user):
     now = datetime.datetime.strptime(datetime.datetime.now(tz=datetime.timezone.utc).strftime(DATE_FORMAT), DATE_FORMAT)
 
-    cases = Case.query.join(Case_Org, Case_Org.org_id==current_user.org_id).all()
+    cases = Case.query.join(Case_Org, Case_Org.case_id == Case.id).filter(
+        Case_Org.org_id == current_user.org_id,
+    ).distinct().all()
     for case in cases:
         msg = f"days remains for case '{case.id}-{case.title}'"
         case_task_deadline_notif(case, msg, "fa-solid fa-radiation", now, current_user)
     
-    tasks = Task.query.join(Task_User, Task_User.user_id==current_user.id).all()
+    from app.case.common_core import can_view_case
+
+    tasks = Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
+        Task_User.user_id == current_user.id,
+    ).distinct().all()
     for task in tasks:
         case = Case.query.get(task.case_id)
+        if not can_view_case(case, current_user):
+            continue
         msg = f"days remains for task '{task.title}' of case '{case.id}-{case.title}'"
         case_task_deadline_notif(task, msg, "fa-solid fa-skull-crossbones", now, current_user, True)
 
