@@ -19,10 +19,16 @@
 <script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr.min.js') }}"></script>
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/calendar/flatpickr.min.css') }}">
+<script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr-monthSelect.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/calendar/flatpickr-monthSelect.css') }}">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/pivotick.umd.js') }}"></script>
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/pivotick.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/timeline_graph.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/history_log.css') }}">
+<script src="{{ url_for('static',filename='js/vendor/calendar/fullcalendar.global.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/case_calendar.css') }}">
 
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/note_template.css') }}">
 
@@ -101,13 +107,31 @@
             <span class="meta-label">Tasks</span>
             <span class="meta-value">[[open_closed.open]] open / [[open_closed.closed]] closed</span>
         </div>
-        {% if case.deadline %}
-        <div class="case-meta-item case-meta-deadline" :title="'Deadline: ' + cases_info.case.deadline">
+        <div v-if="cases_info.case.deadline" class="case-meta-item case-meta-deadline" :title="'Deadline: ' + cases_info.case.deadline">
             <i class="fa-solid fa-hourglass-half fa-fw"></i>
             <span class="meta-label">Deadline</span>
-            <span class="meta-value">[[ dayjs.utc(cases_info.case.deadline).endOf().fromNow() ]]</span>
+            <span class="meta-value">[[ dayjs.utc(cases_info.case.deadline).fromNow() ]]</span>
         </div>
-        {% endif %}
+        <div class="case-meta-item"
+             :title="cases_info.case.is_private ? 'Only the organisations of the case can see it' : 'Anyone on the instance can see it'">
+            <i :class="['fa-solid fa-fw', cases_info.case.is_private ? 'fa-lock' : 'fa-globe']"></i>
+            <span class="meta-label">Visibility</span>
+            <span class="meta-value">[[ cases_info.case.is_private ? 'Private' : 'Public' ]]</span>
+        </div>
+        <div v-if="cases_info.case.time_required" class="case-meta-item" title="Estimated time required">
+            <i class="fa-solid fa-stopwatch fa-fw"></i>
+            <span class="meta-label">Time required</span>
+            <span class="meta-value">[[ cases_info.case.time_required ]]</span>
+        </div>
+        <div class="case-meta-item case-meta-uuid">
+            <i class="fa-solid fa-fingerprint fa-fw"></i>
+            <span class="meta-label">UUID</span>
+            <code class="meta-value">[[ cases_info.case.uuid ]]</code>
+            <button type="button" class="meta-copy-btn" @click="copy_uuid()"
+                    :title="uuid_copied ? 'Copied' : 'Copy the UUID'" :aria-label="uuid_copied ? 'Copied' : 'Copy the UUID'">
+                <i :class="['fa-solid fa-fw', uuid_copied ? 'fa-check' : 'fa-copy']"></i>
+            </button>
+        </div>
         {% if case.recurring_type %}
         <div class="case-meta-item" title="Recurring schedule">
             <i class="fa-solid fa-repeat fa-fw"></i>
@@ -263,7 +287,7 @@
     <ul class="nav nav-tabs" style="margin-bottom: 10px;">
         <li class="nav-item">
             <button class="nav-link active" id="tab-main" aria-current="page" @click="active_tab('main')" style="min-width: 100px;">
-                <i class="fa-solid fa-house fa-sm"></i>
+                <i class="fa-solid fa-house fa-sm me-1"></i><span class="section-title fs-6">Home</span>
             </button>
         </li>
         <li class="nav-item" v-show="is_tab_visible('notes')">
@@ -317,15 +341,15 @@
                 <i class="fa-solid fa-clock-rotate-left fa-sm me-1"></i><span class="section-title fs-6">History</span>
             </button>
         </li>
-        <li class="nav-item" v-show="is_tab_visible('info')">
-            <button class="nav-link" id="tab-info" @click="active_tab('info')">
-                <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title fs-6">Info</span>
+        <li class="nav-item" v-show="is_tab_visible('calendar')">
+            <button class="nav-link" id="tab-calendar" @click="active_tab('calendar')">
+                <i class="fa-solid fa-calendar-days fa-sm me-1"></i><span class="section-title fs-6">Calendar</span>
             </button>
         </li>
         <!-- Manage tabs "+" button -->
         <li class="nav-item ms-1">
-            <button class="nav-link tab-add-btn" @click="open_manage_tabs_modal()" title="Manage tabs">
-                <i class="fa-solid fa-plus fa-sm"></i>
+            <button class="nav-link tab-add-btn" @click="open_manage_tabs_modal()" title="Manage tabs: show, hide or add tabs" aria-label="Manage tabs">
+                <i class="fa-solid fa-pen-to-square fa-sm"></i>
             </button>
         </li>
     </ul>
@@ -613,6 +637,9 @@
             </div>
         </template>
 
+        <template v-else-if="main_tab == 'calendar'">
+            <case_calendar :case_id="cases_info.case.id" @navigate="calendar_navigate"></case_calendar>
+        </template>
         <template v-else-if="main_tab == 'history'">
             <case_history :case_id="cases_info.case.id" :can_view_history="{{ 'true' if current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer() else 'false' }}"></case_history>
         </template>
@@ -879,29 +906,6 @@
             </div>
         </template>
 
-        <template v-if="main_tab == 'info'">
-            <div class="row">
-                <div class="col-auto">
-                    <fieldset class="analyzer-select-case" style="text-align: center;">
-                        <legend class="analyzer-select-case">Time required</legend>
-                        <i>[[cases_info.case.time_required]]</i>
-                    </fieldset>
-                </div>
-                <div class="col-auto">
-                    <fieldset class="analyzer-select-case" style="text-align: center;">
-                        <legend class="analyzer-select-case">Visibility</legend>
-                        <i v-if="cases_info.case.is_private">Private</i>
-                        <i v-else>Public</i>
-                    </fieldset>
-                </div>
-                <div class="col-auto">
-                    <fieldset class="analyzer-select-case" style="text-align: center;">
-                        <legend class="analyzer-select-case">UUID</legend>
-                        <i>[[cases_info.case.uuid]]</i>
-                    </fieldset>
-                </div>
-            </div>
-        </template>
     </div> <!-- Collapse  -->
 </div> <!-- Case-core-style  -->
 
@@ -1109,6 +1113,8 @@
         import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
+        import case_calendar from '/static/js/case/case_calendar.js'
+        import { url_set, url_get, url_list, url_list_toggle, url_clear_prefix } from '/static/js/case/url_state.js'
         import timeline_view from '/static/js/case/timeline_view.js'
         import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
@@ -1134,6 +1140,7 @@
                 casemispconnectors,
                 casefiles,
                 case_history,
+                case_calendar,
                 timeline_view,
                 timeline_graph,
                 note_from_template,
@@ -1306,7 +1313,7 @@
                     'files': 'Files',
                     'timeline': 'Timeline',
                     'history': 'History',
-                    'info': 'Info'
+                    'calendar': 'Calendar'
                 }
                 const core_tab_icons = {
                     'notes': 'fa-solid fa-note-sticky fa-sm',
@@ -1314,7 +1321,7 @@
                     'files': 'fa-solid fa-file fa-sm',
                     'timeline': 'fa-solid fa-timeline fa-sm',
                     'history': 'fa-solid fa-clock-rotate-left fa-sm',
-                    'info': 'fa-solid fa-circle-info fa-sm'
+                    'calendar': 'fa-solid fa-calendar-days fa-sm'
                 }
 
                 function load_hidden_tabs() {
@@ -1787,6 +1794,7 @@
                         cases_info.value = await res.json()
                         loc_tasks_list = cases_info.value.tasks
                         await nextTick()
+                        await restore_url_state()
                         scrollIntoSelectedElement()
                         fetch_open_closed()
                         fetch_case_misp_objects()
@@ -1845,6 +1853,73 @@
                     searchTimer = setTimeout(() => fetch_sorted_tasks(), 300)
                 }
 
+                // Page state kept in the URL (static/js/case/url_state.js): restored once
+                // the case is loaded, then updated by every tab and panel change.
+                const URL_SECTIONS = { tags: 'collapseTags', links: 'collapseLinks', tasks: 'collapseTasks' }
+                let url_state_restored = false
+                // Closing a section closes what is open inside it, so reopening it starts clean
+                function close_section_content(name) {
+                    if (name === 'tasks') {
+                        document.querySelectorAll('#collapseTasks .collapse.show').forEach(el => el.classList.remove('show'))
+                        url_set('task', null)
+                        url_clear_prefix('task_tab_')
+                        if (tasks_tab.value !== 'main') active_task_tab('main')
+                        else url_set('tasks', null)
+                    } else if (name === 'tags') {
+                        // Links is inside Tags: back to its default (open) state
+                        url_list_toggle('hide', 'links', false)
+                        document.getElementById('collapseLinks')?.classList.add('show')
+                        document.querySelectorAll('[data-bs-target="#collapseLinks"]').forEach(btn => {
+                            btn.classList.remove('collapsed')
+                            btn.setAttribute('aria-expanded', 'true')
+                        })
+                    }
+                }
+
+                // Close, without animation, the sections the URL lists as closed
+                // (also after a re-render, e.g. coming back to the main tab)
+                function apply_hidden_sections() {
+                    for (const name of url_list('hide')) {
+                        const el = document.getElementById(URL_SECTIONS[name])
+                        if (!el) continue
+                        el.classList.remove('show')
+                        if (name === 'tasks') document.getElementById('task-collapse')?.style.setProperty('min-height', '0')
+                        document.querySelectorAll(`[data-bs-target="#${URL_SECTIONS[name]}"]`).forEach(btn => {
+                            btn.classList.add('collapsed')
+                            btn.setAttribute('aria-expanded', 'false')
+                        })
+                    }
+                }
+                async function restore_url_state() {
+                    if (url_state_restored) return
+                    url_state_restored = true
+
+                    for (const [name, id] of Object.entries(URL_SECTIONS)) {
+                        // Listen on document: the element can be re-rendered by Vue
+                        document.addEventListener('shown.bs.collapse', (e) => { if (e.target.id === id) url_list_toggle('hide', name, false) })
+                        document.addEventListener('hidden.bs.collapse', (e) => {
+                            if (e.target.id !== id) return
+                            url_list_toggle('hide', name, true)
+                            close_section_content(name)
+                        })
+                    }
+                    // Panels inside a closed section are not kept open
+                    for (const name of url_list('hide')) close_section_content(name)
+                    apply_hidden_sections()
+
+                    const tab = url_get('tab')
+                    const known_tab = tab && (tab in core_tab_labels || tab === 'connectors' || tab.startsWith('connector-'))
+                    if (known_tab && (tab === 'connectors' || is_tab_visible(tab))) {
+                        await active_tab(tab)
+                        await nextTick()
+                        const sub = { notes: ['note', active_subtab_note], timeline: ['timeline', active_subtab_timeline], misp: ['misp', active_subtab_misp] }[tab]
+                        if (sub && url_get(sub[0])) await sub[1](url_get(sub[0]))
+                    } else if (tab) {
+                        url_set('tab', null)
+                    }
+                    if (url_get('tasks') && !url_list('hide').includes('tasks')) await active_task_tab(url_get('tasks'))
+                }
+
                 function scrollIntoSelectedElement() {
                     const url = new URL(location.href)
                     const fragment = url.hash.slice(1)
@@ -1880,14 +1955,80 @@
 
                 // Helper to deactivate all tabs (static + dynamic)
                 function deactivate_all_tabs() {
-                    ;['tab-main','tab-history','tab-notes','tab-misp','tab-info','tab-files','tab-timeline','tab-connectors'].forEach(id => {
+                    ;['tab-main','tab-history','tab-calendar','tab-notes','tab-misp','tab-files','tab-timeline','tab-connectors'].forEach(id => {
                         const el = document.getElementById(id)
                         if (el) el.classList.remove('active')
                     })
                     document.querySelectorAll('.dynamic-connector-tab').forEach(el => el.classList.remove('active'))
                 }
 
+                // Sub-tabs of each main tab: leaving a tab resets them, in the page and in the URL
+                const SUBTABS = {
+                    notes: () => { subtab_note.value = 'case'; url_set('note', null) },
+                    timeline: () => { subtab_timeline.value = 'timeline-view'; url_set('timeline', null) },
+                    misp: () => { subtab_misp.value = 'objects'; url_set('misp', null) },
+                    history: () => url_set('history', null),
+                }
+
+                // A click in the Calendar panel: open the tab, and the task, the item belongs to.
+                // The task may not be on screen: finished tasks are in the other list, the list is
+                // paged and the Tasks section can be folded, so all of that is handled here.
+                async function calendar_navigate(target) {
+                    if (!target || !target.tab) return
+                    // A history / audit line: the History tab picks it up when it mounts
+                    if (target.entry) window.flowintel_history_focus = { sub: target.sub, entry: target.entry }
+                    await active_tab(target.tab)
+                    if (!target.task) {
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                        return
+                    }
+                    const tasks_section = document.getElementById('collapseTasks')
+                    if (tasks_section && !tasks_section.classList.contains('show')) {
+                        bootstrap.Collapse.getOrCreateInstance(tasks_section, { toggle: false }).show()
+                    }
+                    if (tasks_tab.value !== 'main') await active_task_tab('main')
+
+                    const find = () => document.getElementById('collapse' + target.task)
+                    if (!find()) {
+                        // Right list (open / finished), then walk its pages until the task shows
+                        const want_open = !target.completed
+                        if (is_open_cases.value !== want_open) is_open_cases.value = want_open
+                        for (let page = 1; ; page++) {
+                            current_page.value = page
+                            await fetch_sorted_tasks()
+                            await nextTick()
+                            if (find() || page >= total_pages.value) break
+                        }
+                    }
+                    const el = find()
+                    if (!el) {
+                        create_message('This task is hidden by the task filters. Clear them to see it.', 'info-subtle')
+                        return
+                    }
+                    bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show()
+                    const row = document.getElementById('task-' + target.task)
+                    if (row) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        row.classList.add('task-flash')
+                        setTimeout(() => row.classList.remove('task-flash'), 1800)
+                    }
+                }
+
+                // Copy button of the UUID in the case header
+                const uuid_copied = ref(false)
+                async function copy_uuid() {
+                    try {
+                        await navigator.clipboard.writeText(cases_info.value.case.uuid)
+                        uuid_copied.value = true
+                        setTimeout(() => { uuid_copied.value = false }, 1500)
+                    } catch (e) {
+                        create_message('Could not copy the UUID', 'warning-subtle')
+                    }
+                }
+
                 async function active_tab(tab_name){
+                    if (main_tab.value !== tab_name && SUBTABS[main_tab.value]) SUBTABS[main_tab.value]()
+                    url_set('tab', tab_name, 'main')
 
                     if(tab_name == 'main'){
                         main_tab.value = 'main'
@@ -1896,6 +2037,7 @@
                             document.getElementById("tab-main").classList.add("active")
                             await nextTick()
                         }
+                        apply_hidden_sections()
                     }else if(tab_name == 'notes'){
                         let loc_tab = main_tab.value 
                         main_tab.value = 'notes'
@@ -1920,6 +2062,7 @@
                 }
 
                 async function active_subtab_note(tab_name) {
+                    url_set('note', tab_name, 'case')
                     if(tab_name == 'case'){
                         let loc_tab = subtab_note.value 
                         subtab_note.value = tab_name
@@ -1966,6 +2109,7 @@
                 }
 
                 async function active_subtab_timeline(tab_name) {
+                    url_set('timeline', tab_name, 'timeline-view')
                     if(tab_name == 'timeline-view'){
                         subtab_timeline.value = tab_name
                         if ( !document.getElementById("subtab-timeline-view").classList.contains("active") ){
@@ -1983,11 +2127,13 @@
                 }
 
                 async function active_subtab_misp(tab_name) {
+                    url_set('misp', tab_name, 'objects')
                     subtab_misp.value = tab_name
                     await nextTick()
                 }
 
                 async function active_task_tab(tab_name){
+                    url_set('tasks', tab_name, 'main')
                     if(tab_name == 'main'){
                         tasks_tab.value = tab_name
                         if ( !document.getElementById("tab-tasks").classList.contains("active") ){
@@ -2251,6 +2397,18 @@ async function autosave_case_note(){
 
                     // (users refreshed via Vue event emitted by child component)
 
+                    // "See in the calendar" of a task: the Calendar panel opens the task when it
+                    // mounts (or right away if it is already open)
+                    window.addEventListener('calendar-focus-task', async (e) => {
+                        window.flowintel_calendar_focus = { task: e.detail.task }
+                        if (main_tab.value === 'calendar') {
+                            window.dispatchEvent(new CustomEvent('calendar-focus-now'))
+                        } else {
+                            await active_tab('calendar')
+                        }
+                        // The Calendar panel scrolls to the day itself
+                    })
+
                     window.addEventListener('navigate-to-misp-object', async (e) => {
                         misp_spotlight_id.value = e.detail.object_id
                         await active_tab('misp')
@@ -2332,6 +2490,9 @@ async function autosave_case_note(){
                 
     
                 return {
+                    uuid_copied,
+                    calendar_navigate,
+                    copy_uuid,
                     cases_info,
                     status_info,
                     users_in_case,

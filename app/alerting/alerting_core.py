@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import uuid
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 
 from app import db
 from app.case import validation_api as CaseValidation
@@ -510,7 +511,6 @@ def _find_existing_alert(normalized):
 
 
 def _update_existing_alert(existing, normalized):
-    existing.occurrence_count = (existing.occurrence_count or 1) + 1
     existing.last_seen = normalized["last_seen"]
     existing.raw_payload = normalized["raw_payload"]
     existing.observables = normalized["observables"]
@@ -526,6 +526,13 @@ def _update_existing_alert(existing, normalized):
         ]:
             setattr(existing, key, normalized[key])
         existing.is_read = False
+    # Count the occurrence in the database itself (occurrence_count + 1 in one UPDATE):
+    # incrementing the value read earlier would lose occurrences when the same alert
+    # is ingested concurrently, as both requests would read the same count.
+    ExternalAlert.query.filter_by(id=existing.id).update(
+        {ExternalAlert.occurrence_count: func.coalesce(ExternalAlert.occurrence_count, 1) + 1},
+        synchronize_session=False,
+    )
     db.session.commit()
     return existing, False, None
 

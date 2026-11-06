@@ -1,0 +1,344 @@
+/* home.css — Home page: hero with the animated Flowintel mark (macros/_flow_logo.html),
+   the day's numbers, quick actions, and the side panels (my tasks, deadlines, quick access).
+   Colours follow the theme: the hero keeps the page header's brand gradient, panels use
+   the --fi-* / Bootstrap tokens, so light, dark and the other themes all apply. */
+
+/* ---------- Hero ---------- */
+.fl-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 2.4rem 2.6rem;
+    border-radius: 20px;
+    overflow: hidden;
+    color: #fff;
+    background:
+        radial-gradient(1200px 400px at 85% -20%, rgba(124, 200, 240, 0.28), transparent 60%),
+        radial-gradient(600px 300px at 0% 120%, rgba(47, 127, 208, 0.35), transparent 60%),
+        linear-gradient(135deg, #0f2744 0%, #163a63 45%, #23598c 100%);
+    box-shadow: 0 18px 40px rgba(15, 39, 68, 0.22);
+}
+
+/* faint grid behind everything, like a map of the flows */
+.fl-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 32px 32px;
+    -webkit-mask-image: radial-gradient(ellipse at 70% 50%, #000 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse at 70% 50%, #000 0%, transparent 75%);
+    pointer-events: none;
+}
+
+.fl-hero-glow {
+    position: absolute;
+    right: 8%;
+    top: 50%;
+    width: 340px;
+    height: 340px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124, 200, 240, 0.35), transparent 65%);
+    filter: blur(10px);
+    animation: fl-breathe 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.fl-hero-body { position: relative; z-index: 1; min-width: 0; }
+
+.fl-hero-eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.75);
+    text-transform: capitalize;
+}
+.fl-hero-brand {
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #9ad9f7;
+}
+.fl-hero-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); }
+.fl-hero-version {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+    padding: 0.15rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    font-family: var(--bs-font-monospace);
+    font-size: 0.75rem;
+    text-transform: none;
+}
+
+.fl-hero-title {
+    margin: 0.6rem 0 0.4rem;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: #fff;
+    animation: fl-rise 0.7s ease-out both;
+}
+.fl-hero-title span {
+    background: linear-gradient(90deg, #9ad9f7, #ffffff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.fl-hero-sub {
+    max-width: 34rem;
+    margin: 0 0 1.6rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.78);
+    animation: fl-rise 0.7s 0.08s ease-out both;
+}
+
+/* the day's numbers */
+.fl-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.4rem;
+}
+.fl-stat {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 0.55rem;
+    align-items: center;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    text-decoration: none;
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    animation: fl-rise 0.6s ease-out both;
+}
+.fl-stat:nth-child(2) { animation-delay: 0.08s; }
+.fl-stat:nth-child(3) { animation-delay: 0.16s; }
+.fl-stat:nth-child(4) { animation-delay: 0.24s; }
+.fl-stat:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(154, 217, 247, 0.5);
+    color: #fff;
+}
+.fl-stat-icon {
+    grid-row: span 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 10px;
+    background: rgba(154, 217, 247, 0.18);
+    color: #9ad9f7;
+}
+.fl-stat-num { font-size: 1.45rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.fl-stat-label { font-size: 0.75rem; color: rgba(255, 255, 255, 0.72); white-space: nowrap; }
+.fl-stat--warn .fl-stat-icon { background: rgba(255, 193, 7, 0.2); color: #ffd666; }
+.fl-stat--alert .fl-stat-icon { background: rgba(255, 99, 99, 0.22); color: #ff9a9a; }
+.fl-stat--alert::after {
+    content: "";
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff6b6b;
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.6);
+    animation: fl-ping 1.8s ease-out infinite;
+}
+
+/* quick actions */
+.fl-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; animation: fl-rise 0.7s 0.3s ease-out both; }
+.fl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fl-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; transform: translateY(-1px); }
+.fl-btn--primary { border-color: #fff; background: #fff; color: #0f2744; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.fl-btn--primary:hover { background: #eaf6fd; color: #0f2744; }
+
+/* ---------- Animated logo (macros/_flow_logo.html, inline SVG) ---------- */
+.fl-hero-art { position: relative; z-index: 1; display: flex; justify-content: center; }
+.fl-logo {
+    display: block;
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+    overflow: visible;
+    filter: drop-shadow(0 10px 30px rgba(124, 200, 240, 0.25));
+}
+.fl-logo-icon { clip-path: inset(0 100% 0 0); animation: fl-wipe 1.35s 0.25s cubic-bezier(.22, 1, .36, 1) forwards; }
+.fl-logo-nodes { transform-box: fill-box; transform-origin: 0 50%; transform: scale(0); opacity: 0; animation: fl-nodes 0.55s 1.35s cubic-bezier(.34, 1.56, .64, 1) forwards; }
+/* the letters of FLOWINTEL appear one after the other (--i: position of the letter) */
+.fl-logo-letter {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    transform: translateY(12px) scale(0.9);
+    animation: fl-word 0.5s calc(1.75s + var(--i) * 0.09s) cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+@keyframes fl-wipe { to { clip-path: inset(0 0 0 0); } }
+@keyframes fl-nodes { to { transform: scale(1); opacity: 1; } }
+@keyframes fl-word { to { opacity: 1; transform: none; } }
+
+@keyframes fl-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fl-breathe { 0%, 100% { opacity: 0.7; transform: translateY(-50%) scale(1); } 50% { opacity: 1; transform: translateY(-50%) scale(1.08); } }
+
+@keyframes fl-ping { 0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.6); } 100% { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); } }
+
+/* ---------- Layout below the hero ---------- */
+.fl-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 1.5rem;
+    align-items: start;
+}
+.fl-main { min-width: 0; }
+.fl-side { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 1rem; }
+
+.fl-panel {
+    padding: 1.1rem 1.15rem;
+    border: 1px solid var(--fi-border, #e9ecef);
+    border-radius: 16px;
+    background: var(--fi-surface, #fff);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(15, 39, 68, 0.05);
+}
+.fl-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.fl-panel-head h2 { display: flex; align-items: center; gap: 0.55rem; margin: 0; font-size: 1rem; font-weight: 700; }
+.fl-panel-head h2 i { color: var(--fi-accent, #1f3763); }
+.fl-panel-head a { font-size: 0.8rem; font-weight: 600; color: var(--fi-muted, #6c757d); text-decoration: none; }
+.fl-panel-head a:hover { color: var(--fi-accent, #1f3763); }
+.fl-panel-empty { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 0.5rem; color: var(--fi-muted, #6c757d); font-size: 0.88rem; }
+
+.fl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.fl-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 11px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.fl-row:hover { background: var(--fi-raised, #F4F5FE); color: inherit; transform: translateX(2px); }
+.fl-row-bar { flex: 0 0 4px; align-self: stretch; border-radius: 4px; background: var(--fi-border, #dee2e6); }
+.fl-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.fl-row-title { font-size: 0.9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-row-sub { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--fi-muted, #6c757d); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-kind {
+    margin-right: 0.4rem;
+    padding: 0 0.4rem;
+    border-radius: 5px;
+    background: var(--fi-raised, #F4F5FE);
+    color: var(--fi-muted, #6c757d);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 1px;
+}
+
+/* calendar-leaf date */
+.fl-date {
+    flex: 0 0 2.7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.2rem 0;
+    border-radius: 9px;
+    background: var(--fi-raised, #F4F5FE);
+    line-height: 1.05;
+}
+.fl-date-day { font-size: 1.05rem; font-weight: 800; }
+.fl-date-month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; color: var(--fi-muted, #6c757d); }
+
+.fl-due { flex: 0 0 auto; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.fl-due--ok { background: rgba(25, 135, 84, 0.12); color: #198754; }
+.fl-due--soon { background: rgba(232, 115, 12, 0.14); color: #c25e05; }
+.fl-due--late { background: rgba(220, 53, 69, 0.13); color: #dc3545; }
+.fl-row-bar.fl-due--ok { background: #198754; padding: 0; }
+.fl-row-bar.fl-due--soon { background: #e8730c; padding: 0; }
+.fl-row-bar.fl-due--late { background: #dc3545; padding: 0; }
+.fl-date.fl-due--late .fl-date-day { color: #dc3545; }
+.fl-date.fl-due--soon .fl-date-day { color: #c25e05; }
+.fl-date.fl-due--ok, .fl-date.fl-due--soon, .fl-date.fl-due--late { background: var(--fi-raised, #F4F5FE); padding: 0.2rem 0; border-radius: 9px; }
+
+.fl-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.fl-quick a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.75rem 0.3rem;
+    border: 1px solid var(--fi-border, #e9ecef);
+    border-radius: 12px;
+    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.fl-quick a i { font-size: 1.05rem; color: var(--fi-accent, #1f3763); }
+.fl-quick a:hover { border-color: var(--fi-accent, #1f3763); background: var(--fi-raised, #F4F5FE); transform: translateY(-2px); }
+
+/* dark mode: accents readable on navy */
+[data-bs-theme="dark"] .fl-due--ok { color: #75d6a3; }
+[data-bs-theme="dark"] .fl-due--soon { color: #ffb36b; }
+[data-bs-theme="dark"] .fl-due--late, [data-bs-theme="dark"] .fl-date.fl-due--late .fl-date-day { color: #ff8a95; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 1200px) {
+    .fl-layout { grid-template-columns: minmax(0, 1fr); }
+    .fl-side { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+}
+@media (max-width: 992px) {
+    .fl-hero { grid-template-columns: minmax(0, 1fr); padding: 1.8rem 1.5rem; }
+    .fl-hero-art { order: -1; justify-content: flex-start; }
+    .fl-logo { max-width: 260px; }
+    .fl-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fl-hero *, .fl-hero { animation: none !important; transition: none !important; }
+    .fl-logo-icon { clip-path: none; }
+    .fl-logo-nodes, .fl-logo-letter { transform: none; opacity: 1; }
+}
+
+/* the case cards wrap their meta in the narrower main column instead of overflowing */
+.fl-main .case-meta-row { flex-wrap: wrap; row-gap: 6px; }
+.fl-main .case-meta-row > div[style*="margin-left:auto"] { flex-wrap: wrap; }
+
+/* the version chip is a link to its release notes on GitHub */
+a.fl-hero-version { color: rgba(255, 255, 255, 0.85); text-decoration: none; transition: background 0.15s ease; }
+a.fl-hero-version:hover { background: rgba(255, 255, 255, 0.22); color: #fff; }
