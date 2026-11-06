@@ -6,9 +6,10 @@ On creation, user API keys are saved to .community-api-keys.json so that
 the case import script can authenticate as individual community users.
 
 Usage:
-    python3 tests/testdata/init_community_data.py create --api-key <key>
-    python3 tests/testdata/init_community_data.py delete --api-key <key>
-    python3 tests/testdata/init_community_data.py create --api-key <key> --url http://host:port
+    Set FLOWINTEL_ADMIN_API_KEY in the environment, then run:
+    python3 tests/testdata/init_community_data.py create
+    python3 tests/testdata/init_community_data.py delete
+    python3 tests/testdata/init_community_data.py create --url http://host:port
 """
 
 import argparse
@@ -282,10 +283,14 @@ if __name__ == "__main__":
         description="Manage community test data via the Flowintel REST API"
     )
     parser.add_argument("action", choices=["create", "delete"])
-    parser.add_argument("--api-key", required=True, help="Admin API key")
+    parser.add_argument("--api-key", default=os.environ.get("FLOWINTEL_ADMIN_API_KEY"),
+                        help="Admin API key (default: $FLOWINTEL_ADMIN_API_KEY; prefer the "
+                             "environment variable, a command-line value is visible to other local users)")
     parser.add_argument("--url", default=DEFAULT_URL,
                         help=f"Base URL (default: {DEFAULT_URL})")
     args = parser.parse_args()
+    if not args.api_key:
+        parser.error("an admin API key is required: set FLOWINTEL_ADMIN_API_KEY or pass --api-key")
 
     if args.action == "create":
         create(args.url, args.api_key)

@@ -83,8 +83,8 @@ In `/bin` there's a script for installation and for launching
 ./launch.sh -ks              # Kill running sessions
 ./launch.sh -tg              # Update taxonomies and galaxies
 ./launch.sh -mm              # Update MISP modules
-./launch.sh -tdc <key>       # Create community test data
-./launch.sh -dtdc <key>      # Delete community test data
+./launch.sh -tdc            # Create community test data (hidden API-key prompt)
+./launch.sh -dtdc           # Delete community test data (hidden API-key prompt)
 ./launch.sh -tdcc            # Create test cases
 ./launch.sh -dtdcc           # Delete test cases
 ```

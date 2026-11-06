@@ -2528,20 +2528,30 @@ The full community import uses the REST API, so Flowintel must be running. You n
 Run the import through `launch.sh` (the `-tdc` flag stands for "test data community"):
 
 ```bash
-bash launch.sh -tdc <your-admin-api-key>
+bash launch.sh -tdc
 ```
 
-Or call the script directly:
+The launcher prompts for the key without echoing it. For automation, supply `FLOWINTEL_ADMIN_API_KEY` through your environment or secret manager. Do not put the key on the command line.
+
+To call the script directly, first set the environment variable without recording the key in shell history:
+
+```bash
+read -r -s -p "Admin API key: " FLOWINTEL_ADMIN_API_KEY
+echo
+export FLOWINTEL_ADMIN_API_KEY
+```
+
+Then run:
 
 ```bash
 source env/bin/activate
-python3 tests/testdata/init_community_data.py create --api-key <your-admin-api-key>
+python3 tests/testdata/init_community_data.py create
 ```
 
 If Flowintel is running on a non-default address or port, add the `--url` flag:
 
 ```bash
-python3 tests/testdata/init_community_data.py create --api-key <your-admin-api-key> --url http://192.168.1.50:7006
+python3 tests/testdata/init_community_data.py create --url http://192.168.1.50:7006
 ```
 
 The script reads the organisation and user definitions from `test-data-community.json`, creates the roles, organisations and users through the admin API, and prints a summary:
@@ -2691,15 +2701,17 @@ python3 tests/testdata/init_community_cases.py delete
 This removes the users, roles and organisations created by the community data script. You need the admin API key again:
 
 ```bash
-bash launch.sh -dtdc <your-admin-api-key>
+bash launch.sh -dtdc
 ```
 
 Or directly:
 
 ```bash
 source env/bin/activate
-python3 tests/testdata/init_community_data.py delete --api-key <your-admin-api-key>
+python3 tests/testdata/init_community_data.py delete
 ```
+
+The direct command uses `FLOWINTEL_ADMIN_API_KEY` as configured above. The launcher prompts if that variable is unset. Legacy positional keys and `--api-key` remain supported for compatibility, but expose the key in their own process arguments. The launcher no longer forwards the key in the child command line. Run `unset FLOWINTEL_ADMIN_API_KEY` when finished.
 
 The script also deletes the `.community-api-keys.json` file. When removing the full community data set, delete the cases first (with `-dtdcc`), then the users, roles and organisations (with `-dtdc`).
 
@@ -2725,10 +2737,10 @@ This removes all cases, tasks, notes, subtasks, templates, notifications and fil
 | Action | `launch.sh` flag | Direct command |
 |---|---|---|
 | Import sample cases (database) | Built into `-i` (dev init) | `python3 app.py -td` |
-| Create community users, roles and organisations | `-tdc <api-key>` | `python3 tests/testdata/init_community_data.py create --api-key <key>` |
+| Create community users, roles and organisations | `-tdc` | `python3 tests/testdata/init_community_data.py create` |
 | Create community cases | `-tdcc` | `python3 tests/testdata/init_community_cases.py create` |
 | Delete community cases | `-dtdcc` | `python3 tests/testdata/init_community_cases.py delete` |
-| Delete community users, roles and organisations | `-dtdc <api-key>` | `python3 tests/testdata/init_community_data.py delete --api-key <key>` |
+| Delete community users, roles and organisations | `-dtdc` | `python3 tests/testdata/init_community_data.py delete` |
 | Wipe all cases and templates | — | `python3 bin/clean_database.py` |
 
 ## Demo walkthrough: the privileged case workflow
