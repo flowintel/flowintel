@@ -577,6 +577,8 @@ Use the HedgeDoc URL without the `?view` or `?edit` parameters, otherwise Flowin
 
 If an attached file is a TXT, CSV or JSON file, you can convert it to a note. This reads the content of the file and appends it to the case note. CSV files are converted to a Markdown table and JSON arrays of objects are also rendered as tables; other JSON is placed in a fenced code block. The original file is kept after conversion.
 
+Sparse CSV and JSON data that would create an excessively large padded table is kept as original text in a code block instead. Nested JSON values in tables use compact formatting to avoid expanding the note unnecessarily.
+
 This is particularly useful in day-to-day case management. During an investigation, you often receive data as files: a CSV export from a log management system, a JSON response from an API, or a plain text summary from a colleague. Rather than asking everyone to open and read the file separately, you can convert it to a note, which makes the content directly visible on the case page. This keeps the information accessible without requiring a download and means the key data is part of the case narrative rather than buried in an attachment.
 
 ## Task notes

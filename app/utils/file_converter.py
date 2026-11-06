@@ -4,6 +4,7 @@ File conversion file formats to Markdown
 import csv
 import json
 import io
+import re
 from datetime import datetime
 
 
@@ -21,6 +22,22 @@ def convert_txt_to_note(content):
     return content
 
 
+MAX_PADDED_TABLE_CELLS = 50000
+MAX_PADDING_RATIO = 4
+
+
+def _table_too_sparse(n_rows, n_cols, filled_cells):
+    padded = n_rows * n_cols
+    return padded > MAX_PADDED_TABLE_CELLS and padded > MAX_PADDING_RATIO * max(filled_cells, 1)
+
+
+def _fenced_content(content, language):
+    # An uploaded fence must not close the fallback code block.
+    longest = max((len(match.group()) for match in re.finditer(r"`+", content)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}{language}\n{content}\n{fence}"
+
+
 def convert_csv_to_note(content):
     csv_reader = csv.reader(io.StringIO(content))
     rows = list(csv_reader)
@@ -29,6 +46,8 @@ def convert_csv_to_note(content):
         return "Empty CSV file"
     
     max_cols = max(len(row) for row in rows)
+    if _table_too_sparse(len(rows), max_cols, sum(len(row) for row in rows)):
+        return _fenced_content(content, "csv")
     markdown = ''
     
     header_row = rows[0]
@@ -66,6 +85,9 @@ def convert_json_to_note(content):
             if isinstance(item, dict):
                 all_keys.update(item.keys())
         all_keys = sorted(all_keys)
+        filled_cells = sum(len(item) if isinstance(item, dict) else 1 for item in data)
+        if _table_too_sparse(len(data), len(all_keys), filled_cells):
+            return _fenced_content(content, "json")
 
         markdown = ''
 
@@ -85,7 +107,7 @@ def convert_json_to_note(content):
                 for key in all_keys:
                     value = item.get(key, '')
                     if isinstance(value, (dict, list)):
-                        value = json.dumps(value, indent=2)
+                        value = json.dumps(value)
                     markdown += escape_markdown(str(value)) + ' | '
             else:
                 markdown += escape_markdown(str(item)) + ' | '
@@ -95,7 +117,7 @@ def convert_json_to_note(content):
 
         return markdown
     # Fallback
-    return f'```json\n{json.dumps(data, indent=2)}\n```'
+    return _fenced_content(content, "json")
 
 
 def escape_markdown(text):
