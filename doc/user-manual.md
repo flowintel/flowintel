@@ -1088,7 +1088,7 @@ Each repository directory must contain a `manifest.json` file that describes the
 
 Case template JSON files can also contain embedded task templates in a `tasks_template` array. When Flowintel scans the repository, it registers both the case template and each embedded task template as separate entries, so they can be imported individually.
 
-The base directory where Flowintel looks for repositories defaults to `modules/repositories` relative to the project root. This can be changed with the `REPOSITORY_BASE_PATH` setting. If you provide an absolute path, it is used as-is; a relative path is resolved from the project root. More details can be found in the section on administrating Flowintel.
+The base directory where Flowintel looks for repositories defaults to `modules/repositories` relative to the project root. This can be changed with the `REPOSITORY_BASE_PATH` setting. Repository paths must resolve inside this directory. Symlinks for manifests and template files must also stay inside their repository. Move previously registered repositories outside the base into it, or change the configured base before using them. If you provide an absolute path, it is used as-is; a relative path is resolved from the project root. More details can be found in the section on administrating Flowintel.
 
 ### Managing repositories
 
