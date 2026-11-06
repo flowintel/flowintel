@@ -2,6 +2,7 @@ import copy
 import threading
 import pytest
 
+from app import db
 from app.alerting import alerting_core as AlertingCore
 from app.db_class.db import ExternalAlert
 
@@ -50,9 +51,17 @@ def ingest(app):
 
 
 @pytest.mark.concurrent_db
-def test_concurrent_duplicate_ingests_count_every_occurrence(client, app, monkeypatch):
+@pytest.mark.parametrize("initial_count, expected_count", [(1, 3), (5, 7), (None, 3), (0, 3)])
+def test_concurrent_duplicate_ingests_count_every_occurrence(
+    client, app, monkeypatch, initial_count, expected_count
+):
     setup_source(client)
     assert ingest(app).status_code == 201
+
+    with app.app_context():
+        alert = ExternalAlert.query.filter_by(deduplication_key=EVENT["Event"]["uuid"]).one()
+        alert.occurrence_count = initial_count
+        db.session.commit()
 
     # Hold both requests between reading the existing alert and committing
     # the update, so both read the same occurrence_count.
@@ -89,4 +98,4 @@ def test_concurrent_duplicate_ingests_count_every_occurrence(client, app, monkey
     with app.app_context():
         alerts = ExternalAlert.query.filter_by(deduplication_key=EVENT["Event"]["uuid"]).all()
         assert len(alerts) == 1
-        assert alerts[0].occurrence_count == 3
+        assert alerts[0].occurrence_count == expected_count

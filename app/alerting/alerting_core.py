@@ -4,6 +4,7 @@ import secrets
 from urllib.parse import urlparse
 import uuid
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from app import db
@@ -510,7 +511,9 @@ def _find_existing_alert(normalized):
 
 
 def _update_existing_alert(existing, normalized):
-    existing.occurrence_count = (existing.occurrence_count or 1) + 1
+    # Increment in SQL so concurrent ingests cannot overwrite each other's count.
+    # Preserve the existing fallback of treating NULL or zero as one occurrence.
+    existing.occurrence_count = func.coalesce(func.nullif(ExternalAlert.occurrence_count, 0), 1) + 1
     existing.last_seen = normalized["last_seen"]
     existing.raw_payload = normalized["raw_payload"]
     existing.observables = normalized["observables"]
