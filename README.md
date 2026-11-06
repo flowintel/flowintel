@@ -144,7 +144,7 @@ The Makefile is self documented, type ```make help``` for further information.
 
 In a few line, it provide helper targerts to facilitate various Development workflows and keeping Development environments and installation harmonized.
 Examples of usage:
-1. Start the application fully containerised with a MariaDB backend and an empty databse: ```make nuke_volume;make runfull_maria```
+1. Start the application fully containerised with a MariaDB backend and an empty database: ```make nuke_volume;make runfull_maria```
 2. Build the latest local image: ```make build_latest_local```
 3. Run the datastack local Development infrastructure with Postgres: ```make dev_localinfra_postgres_run```
 4. ***Still experimental*** Run the application in it own Python local Virtual Environment alongside the datastack local Development infrastructure with MariaDB: ```make run_maria```
@@ -181,12 +181,12 @@ For the later case, there are 8 variations of them:
 1. composition files making the assumption of a Postgres backend:
 - ```docker-compose-local-flowintel-full-postgres.yml```: latest local image, full stack with all services (database, Valkey, Flowintel), defaults to Postgres (most likely situation for local development with a fully containerised local infrastructure),
 - ```docker-compose-local-flowintel-infra-postgres.yml```: latest local image, datastack infrastructure only (database, Valkey), defaults to Postgres (most likely situation for local development with Flowintel deployment on a development machine with a local Python Virtual Environment and relying on datastack containerised local infrastructure,
-- ```docker-compose-local-flowintel-nodb-postgres.yml```: latest local image, Flowintel and Valkey but ***no*** databse service, defaults to Postgres (most likely situation in Production),
+- ```docker-compose-local-flowintel-nodb-postgres.yml```: latest local image, Flowintel and Valkey but ***no*** database service, defaults to Postgres (most likely situation in Production),
 - ```docker-compose-local-flowintel-single-postgres.yml```: latest local image, single Flowintel service, defaults to Postgres.
 2. composition files making the assumption of a MariaDB backend:
 - ```docker-compose-local-flowintel-full-maria.yml```: latest local image, full stack with all services (database, Valkey, Flowintel), defaults to MariaDB (most likely situation for local development with a fully containerised local infrastructure),
 - ```docker-compose-local-flowintel-infra-maria.yml```: latest local image, datastack infrastructure only (database, Valkey), defaults to MariaDB (most likely situation for local development with Flowintel deployment on a development machine with a local Python Virtual Environment and relying on datastack containerised local infrastructure),
-- ```docker-compose-local-flowintel-nodb-maria.yml```: latest local image, Flowintel and Valkey but ***no*** databse service, defaults to MariaDB (most likely situation in Production),
+- ```docker-compose-local-flowintel-nodb-maria.yml```: latest local image, Flowintel and Valkey but ***no*** database service, defaults to MariaDB (most likely situation in Production),
 - ```docker-compose-local-flowintel-single-maria.yml```: latest local image, single Flowintel service, defaults to MariaDB.
 
 Note: These files are predefined and more easily used in combination with the ```Makefile``` helper.
