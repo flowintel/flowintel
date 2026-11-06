@@ -18,6 +18,9 @@ Flowintel is an open-source platform designed to assist analysts in organizing t
 
 - **Accessible API**: Exposes an API for easy interaction with FlowIntel's functionalities.
 
+  [Look up existing Flowintel cases from MISP](doc/misp-case-lookup.md) using the
+  Flowintel case enrichment module.
+
 - **Advanced Analysis Modules**: Leverages MISP modules for automated enrichment, threat intelligence, and data correlation.
 
 - **User and Workflow Management**: Supports organizational structuring, task assignments, and a queueing system for efficient workload distribution.
