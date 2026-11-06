@@ -519,6 +519,9 @@ def _update_existing_alert(existing, normalized):
     existing.mitre_attack = normalized["mitre_attack"]
     existing.recommended_actions = normalized["recommended_actions"]
     existing.tags = normalized["tags"]
+    # Visibility follows the connector's current scope, even for reviewed alerts.
+    existing.owner_user_id = normalized["owner_user_id"]
+    existing.owner_org_id = normalized["owner_org_id"]
     if existing.review_status not in TERMINAL_REVIEW_STATUSES:
         for key in [
             "title", "description", "message", "severity", "confidence", "category",
