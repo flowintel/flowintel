@@ -19,6 +19,7 @@ from ..utils.note_variables import get_syntax_reference
 from ..decorators import editor_required, admin_required, template_editor_required, misp_editor_required
 from ..utils.utils import get_modules_list, reload_application
 from ..utils.logger import flowintel_log
+from ..utils.csv_utils import csv_safe_cell
 from ..case.common_core import get_all_cases as common_get_all_cases, get_case as common_get_case, check_user_in_private_cases
 from ..case.CaseCore import CaseModel, FILE_FOLDER
 
@@ -198,12 +199,12 @@ def _cases_to_csv(cases):
         row = _csv_row(case, fields)
         row["type"] = "case"
         row["tags"] = _collect_tags(case)
-        writer.writerow(row)
+        writer.writerow({field: csv_safe_cell(value) for field, value in row.items()})
         for task in case.get("tasks", []):
             row = _csv_row(task, fields)
             row["type"] = "task"
             row["tags"] = _collect_tags(task)
-            writer.writerow(row)
+            writer.writerow({field: csv_safe_cell(value) for field, value in row.items()})
     return output.getvalue()
 
 

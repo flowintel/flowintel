@@ -398,6 +398,8 @@ Three formats are available:
 - **CSV**: a flat tabular summary suitable for spreadsheets. Uploaded files are not included in CSV exports.
 - **XML**: a structured representation of the same data as the JSON export.
 
+CSV exports prefix formula-like text with an apostrophe so it is treated as text when opened in a spreadsheet. Numeric values are unchanged. Spreadsheet applications may remove this protection when saving and reopening a CSV; JSON exports preserve the original text for machine processing.
+
 For JSON and XML exports, a tick box labelled **Include uploaded files** packs the file attachments into the resulting archive. Leave it unticked when you only need the case metadata.
 
 ## Forking a case
