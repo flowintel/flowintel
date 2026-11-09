@@ -1,0 +1,99 @@
+/* home.css — Home page side panels (my tasks, upcoming deadlines) next to the last
+   modified cases. Panels use the --fi-* / Bootstrap tokens, so light, dark and the
+   other themes all apply. */
+
+/* ---------- Layout ---------- */
+.fl-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 1.5rem;
+    align-items: start;
+}
+.fl-main { min-width: 0; }
+.fl-side { display: flex; flex-direction: column; gap: 1.25rem; position: sticky; top: 1rem; }
+
+.fl-panel {
+    padding: 1.1rem 1.15rem;
+    border: 1px solid var(--fi-border, #e9ecef);
+    border-radius: 16px;
+    background: var(--fi-surface, #fff);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(15, 39, 68, 0.05);
+}
+.fl-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.fl-panel-head h2 { display: flex; align-items: center; gap: 0.55rem; margin: 0; font-size: 1rem; font-weight: 700; }
+.fl-panel-head h2 i { color: var(--fi-accent, #1f3763); }
+.fl-panel-head a { font-size: 0.8rem; font-weight: 600; color: var(--fi-muted, #6c757d); text-decoration: none; }
+.fl-panel-head a:hover { color: var(--fi-accent, #1f3763); }
+.fl-panel-empty { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 0.5rem; color: var(--fi-muted, #6c757d); font-size: 0.88rem; }
+
+.fl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.fl-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.6rem;
+    border-radius: 11px;
+    color: inherit;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+.fl-row:hover { background: var(--fi-raised, #F4F5FE); color: inherit; transform: translateX(2px); }
+.fl-row-bar { flex: 0 0 4px; align-self: stretch; border-radius: 4px; background: var(--fi-border, #dee2e6); }
+.fl-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.fl-row-title { font-size: 0.9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-row-sub { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--fi-muted, #6c757d); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-kind {
+    margin-right: 0.4rem;
+    padding: 0 0.4rem;
+    border-radius: 5px;
+    background: var(--fi-raised, #F4F5FE);
+    color: var(--fi-muted, #6c757d);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: 1px;
+}
+
+/* calendar-leaf date */
+.fl-date {
+    flex: 0 0 2.7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.2rem 0;
+    border-radius: 9px;
+    background: var(--fi-raised, #F4F5FE);
+    line-height: 1.05;
+}
+.fl-date-day { font-size: 1.05rem; font-weight: 800; }
+.fl-date-month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; color: var(--fi-muted, #6c757d); }
+
+.fl-due { flex: 0 0 auto; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+.fl-due--ok { background: rgba(25, 135, 84, 0.12); color: #198754; }
+.fl-due--soon { background: rgba(232, 115, 12, 0.14); color: #c25e05; }
+.fl-due--late { background: rgba(220, 53, 69, 0.13); color: #dc3545; }
+.fl-row-bar.fl-due--ok { background: #198754; padding: 0; }
+.fl-row-bar.fl-due--soon { background: #e8730c; padding: 0; }
+.fl-row-bar.fl-due--late { background: #dc3545; padding: 0; }
+.fl-date.fl-due--late .fl-date-day { color: #dc3545; }
+.fl-date.fl-due--soon .fl-date-day { color: #c25e05; }
+.fl-date.fl-due--ok, .fl-date.fl-due--soon, .fl-date.fl-due--late { background: var(--fi-raised, #F4F5FE); padding: 0.2rem 0; border-radius: 9px; }
+
+/* dark mode: accents readable on navy */
+[data-bs-theme="dark"] .fl-due--ok { color: #75d6a3; }
+[data-bs-theme="dark"] .fl-due--soon { color: #ffb36b; }
+[data-bs-theme="dark"] .fl-due--late, [data-bs-theme="dark"] .fl-date.fl-due--late .fl-date-day { color: #ff8a95; }
+
+/* ---------- Small screens ---------- */
+@media (max-width: 1200px) {
+    .fl-layout { grid-template-columns: minmax(0, 1fr); }
+    .fl-side { position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .fl-row { transition: none !important; }
+}
+
+/* the case cards wrap their meta in the narrower main column instead of overflowing */
+.fl-main .case-meta-row { flex-wrap: wrap; row-gap: 6px; }
+.fl-main .case-meta-row > div[style*="margin-left:auto"] { flex-wrap: wrap; }
