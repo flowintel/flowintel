@@ -1577,6 +1577,8 @@
                         case_connectors_list.value = loc["case_connectors"]
                         // Auto-add module tabs for any new connector types linked to this case
                         sync_module_tabs_from_connectors()
+                        // the connector tabs exist now: open the tab named in the URL, once
+                        await open_tab_from_url()
                         // refresh module counts when connectors change
                         await fetch_module_counts()
                         // refresh MISP-link badge in the header — modules such as misp_event
@@ -1911,7 +1913,29 @@
                     document.querySelectorAll('.dynamic-connector-tab').forEach(el => el.classList.remove('active'))
                 }
 
+                // The open tab is kept in the URL (?tab=connector-rulezet…), so a reload or a shared
+                // link opens the same tab
+                function set_tab_in_url(tab_name) {
+                    try {
+                        const url = new URL(window.location.href)
+                        if (tab_name && tab_name !== 'main') url.searchParams.set('tab', tab_name)
+                        else url.searchParams.delete('tab')
+                        window.history.replaceState(window.history.state, '', url)
+                    } catch (e) {}
+                }
+                let tab_from_url_done = false
+                async function open_tab_from_url() {
+                    if (tab_from_url_done) return
+                    tab_from_url_done = true
+                    const tab = new URLSearchParams(window.location.search).get('tab')
+                    if (!tab || tab === 'main') return
+                    await nextTick()
+                    if (document.getElementById('tab-' + tab)) await active_tab(tab)
+                    else set_tab_in_url(null)
+                }
+
                 async function active_tab(tab_name){
+                    set_tab_in_url(tab_name)
 
                     if(tab_name == 'main'){
                         main_tab.value = 'main'
@@ -2174,7 +2198,9 @@ async function autosave_case_note(){
                     await fetchCase()
                     autosave_case_note()
 
+                    // the tab named in the URL opens once the connector tabs are known
                     if (can_use_connectors.value) fetch_case_connectors()
+                    else open_tab_from_url()
                     fetch_case_files()
                     await fetch_case_misp_attrs()
 

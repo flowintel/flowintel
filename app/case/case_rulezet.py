@@ -448,3 +448,33 @@ def rulezet_rule_dependencies(cid, ciid, rid):
         return [{**{k: d.get(k) for k in keep}, "in_case": str(d.get("id")) in in_case} for d in items or []]
     return {"requires": rows(data.get("requires")), "required_by": rows(data.get("required_by")),
             "install_order": data.get("install_order") or [], "truncated": bool(data.get("truncated"))}, 200
+
+
+_UUID = re.compile(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', re.I)
+
+
+@case_blueprint.route("/<int:cid>/rulezet/<int:ciid>/resolve", methods=['GET'])
+@login_required
+def rulezet_resolve(cid, ciid):
+    """Rulezet id of a rule given by its UUID (or a URL holding it), to add it to the case.
+    The public search does not return ids, so this needs the API key."""
+    case, err = _readable_case(cid)
+    if err:
+        return err
+    inst, err = _instance_for(case, ciid)
+    if err:
+        return err
+    m = _UUID.search(request.args.get("ref") or "")
+    if not m:
+        return _error("Give a Rulezet rule id, UUID or URL")
+    if not inst["api_key"]:
+        return _error("Add an API key to the connector to add a rule by its UUID (or use its id)", 400, "warning-subtle")
+    wanted = m.group(0).lower()
+    data, err = _call("POST", f"{inst['base']}/api/rule/private/search", inst["api_key"],
+                      json={"search": wanted, "page": 1, "per_page": 10, "paginate": True, "fields": ["id", "uuid"]})
+    if err:
+        return err
+    for r in data.get("rules", []):
+        if str(r.get("uuid") or "").lower() == wanted and r.get("id"):
+            return {"id": r["id"]}, 200
+    return _error("No rule with this UUID on Rulezet", 404, "warning-subtle")

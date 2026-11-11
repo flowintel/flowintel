@@ -171,10 +171,33 @@ export default {
             return false
         }
 
+        const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
+        // Add by id, URL or UUID (a UUID is turned into the rule id by the server)
         async function add_by_id() {
-            const id = parse_id(add_id.value)
-            if (!id) return display_toast({ message: 'Give a Rulezet rule id or URL', toast_class: 'warning-subtle' })
+            let id = parse_id(add_id.value)
+            if (!id && UUID_RE.test(add_id.value)) {
+                adding.value = 'resolve'
+                const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/resolve?ref=${encodeURIComponent(add_id.value.trim())}`)
+                adding.value = null
+                if (!r.ok) return display_toast({ message: r.data.message || 'Rule not found on Rulezet', toast_class: 'warning-subtle' })
+                id = String(r.data.id)
+            }
+            if (!id) return display_toast({ message: 'Give a Rulezet rule id, UUID or URL', toast_class: 'warning-subtle' })
             if (await add_rule(id)) add_id.value = ''
+        }
+
+        // "Write a rule": explain the round trip to Rulezet first, then open its create page
+        const write_modal_el = ref(null)
+        let write_modal = null
+        function open_write_modal() {
+            if (!write_modal) write_modal = new bootstrap.Modal(write_modal_el.value)
+            write_modal.show()
+        }
+        function go_write_rule() {
+            window.open(base_url.value + '/rule/create_rule', '_blank', 'noopener')
+            write_modal.hide()
+            show_search.value = true
         }
 
         // ---- rules of the case ----
@@ -230,7 +253,10 @@ export default {
             }
         }
 
-        onBeforeUnmount(() => { try { resync_modal && resync_modal.dispose() } catch (e) {} })
+        onBeforeUnmount(() => {
+            try { resync_modal && resync_modal.dispose() } catch (e) {}
+            try { write_modal && write_modal.dispose() } catch (e) {}
+        })
 
         async function remove(rule) {
             const ok = await confirmDelete({ title: 'Remove this rule?', message: `"${rule.title}" will be removed from this case (not from Rulezet).` })
@@ -409,7 +435,7 @@ export default {
         return {
             can_manage_rules, selected_instance, base_url, formats, loading_formats, rules, loading_rules,
             show_search, search_q, search_format, search_mine, search, messages, deps, toggle_deps, deps_of, add_missing_deps, searching, run_search, search_page,
-            add_id, adding, add_rule, add_by_id, parse_id, in_case, preview, toggle_preview,
+            add_id, adding, add_rule, add_by_id, write_modal_el, open_write_modal, go_write_rule, parse_id, in_case, preview, toggle_preview,
             open_code, editing, checks, remote, busy, toggle_code, remote_of, rule_url,
             resync, confirm_resync, resync_modal_el, resync_target, remove, copy, download, check_syntax, check_of, check_items, start_edit, cancel_edit, save_edit, publish,
             select_instance, fmt, cves, short_date, line_count,
@@ -431,9 +457,9 @@ export default {
             </select>
             <span class="rz-count"><b>[[ rules.length ]]</b> [[ rules.length === 1 ? 'rule' : 'rules' ]] in this case
                 <span v-if="loading_rules && rules.length" class="spinner-border spinner-border-sm ms-1" title="Updating…"></span></span>
-            <a v-if="base_url" :href="base_url + '/rule/create_rule'" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary ms-auto" title="Write a new rule on Rulezet (opens in a new tab)">
+            <button v-if="base_url" type="button" class="btn btn-sm btn-outline-primary ms-auto" @click="open_write_modal()" title="Write a new rule on Rulezet">
                 <i class="fa-solid fa-pen-to-square me-1"></i>Write a rule
-            </a>
+            </button>
             <button v-if="can_manage_rules" class="btn btn-sm" :class="[show_search ? 'btn-secondary' : 'btn-primary', { 'ms-auto': !base_url }]" @click="show_search = !show_search">
                 <i :class="show_search ? 'fa-solid fa-xmark' : 'fa-solid fa-plus'" class="me-1"></i>[[ show_search ? 'Close' : 'Add rules' ]]
             </button>
@@ -454,9 +480,9 @@ export default {
                     <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>Search
                 </button>
                 <div class="rz-add-id">
-                    <input class="form-control form-control-sm" v-model="add_id" placeholder="Rule id or URL" @keyup.enter="add_by_id()">
-                    <button class="btn btn-outline-primary btn-sm" @click="add_by_id()" :disabled="!!adding" title="Add a rule by its Rulezet id or URL">
-                        <span v-if="adding && adding === parse_id(add_id)" class="spinner-border spinner-border-sm me-1"></span>Add
+                    <input class="form-control form-control-sm" v-model="add_id" placeholder="Rule id, UUID or URL" @keyup.enter="add_by_id()">
+                    <button class="btn btn-outline-primary btn-sm" @click="add_by_id()" :disabled="!!adding" title="Add a rule by its Rulezet id, UUID or URL">
+                        <span v-if="adding && (adding === 'resolve' || adding === parse_id(add_id))" class="spinner-border spinner-border-sm me-1"></span>Add
                     </button>
                 </div>
             </div>
@@ -658,6 +684,36 @@ export default {
                 <smart-editor v-else :model-value="rule.content || ''" mode="code" :language="(rule.format || 'text').toLowerCase()" :readonly="true" min-height="120px" max-height="520px"></smart-editor>
             </div>
         </article>
+
+        <!-- write a rule: explain that it is written on Rulezet, then imported here -->
+        <div class="modal fade" ref="write_modal_el" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content rz-modal">
+                    <div class="modal-header">
+                        <span class="rz-logo rz-modal-logo" role="img" aria-label="Rulezet"><img class="rz-logo-light" src="/static/image/connectors/rulezet.png" alt=""><img class="rz-logo-dark" src="/static/image/connectors/rulezet-dark.png" alt=""></span>
+                        <div class="rz-modal-titles">
+                            <div class="rz-modal-kind">Write a rule</div>
+                            <h5 class="modal-title">You are going to Rulezet</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>New rules are written on Rulezet, which checks them and shares them. The <b>create rule</b> page of
+                           <a :href="base_url" target="_blank" rel="noopener">[[ base_url.replace(/^https?:\\/\\//, '') ]]</a> opens in a new tab.</p>
+                        <ol class="mb-2">
+                            <li>Write and save your rule on Rulezet.</li>
+                            <li>Copy its <b>id</b>, its <b>UUID</b> or simply its <b>URL</b> (shown on the rule's page).</li>
+                            <li>Come back here and paste it in <b>Rule id, UUID or URL</b>, then click <b>Add</b>: the rule is imported into this case.</li>
+                        </ol>
+                        <p class="text-muted small mb-0"><i class="fa-solid fa-key me-1"></i>Adding a rule by its UUID needs an API key on the Rulezet connector; the id or the URL always work.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @click="go_write_rule()"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Go to Rulezet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- resync: diff between the case and Rulezet, conflict warning, sync or cancel -->
         <div class="modal fade" ref="resync_modal_el" tabindex="-1" aria-hidden="true">
