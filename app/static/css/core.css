@@ -999,3 +999,42 @@ a.case-content:hover {
 .log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
 .log-entry:nth-child(odd) { background: #f8f9fa; }
 #log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+
+/* ---- Create / view a role (templates/admin/add_edit_role.html) ---- */
+.role-form { width: 100%; }
+.role-card { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.role-card-title { display: flex; align-items: center; gap: .5rem; font-size: 1rem; font-weight: 700; margin: 0 0 .85rem; }
+.role-card-title > i:first-child { color: #2f6fb0; }
+.role-card-hint { margin-left: auto; font-size: .78rem; font-weight: 500; color: var(--bs-secondary-color); }
+.role-help { font-size: .78rem; color: var(--bs-secondary-color); opacity: .75; cursor: help; }
+.role-help:hover, .role-help:focus { opacity: 1; color: #2f6fb0; outline: none; }
+
+.role-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.role-type {
+    position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: .7rem; row-gap: .15rem;
+    padding: .85rem .9rem; border: 1.5px solid var(--bs-border-color); border-radius: 12px; cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.role-type input { position: absolute; opacity: 0; pointer-events: none; }
+.role-type:hover { border-color: rgba(47, 111, 176, .5); }
+.role-type:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(47, 111, 176, .3); }
+.role-type-icon { grid-row: span 2; display: inline-flex; align-items: center; justify-content: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: var(--rt-bg); color: var(--rt-fg); }
+.role-type-name { font-weight: 700; }
+.role-type-desc { font-size: .8rem; color: var(--bs-secondary-color); }
+.role-type--admin { --rt-fg: #dc3545; --rt-bg: rgba(220, 53, 69, .12); }
+.role-type--editor { --rt-fg: #198754; --rt-bg: rgba(25, 135, 84, .12); }
+.role-type--readonly { --rt-fg: #0aa2c0; --rt-bg: rgba(13, 202, 240, .14); }
+.role-type.is-active { border-color: var(--rt-fg); background: var(--rt-bg); }
+.role-type.is-active::after { content: "\f00c"; font-family: "Font Awesome 6 Free"; font-weight: 900; position: absolute; top: .55rem; right: .7rem; font-size: .8rem; color: var(--rt-fg); }
+.role-type:has(input:disabled) { cursor: default; }
+
+.role-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem 1.2rem; }
+.role-group-title { display: flex; align-items: center; gap: .4rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); margin-bottom: .3rem; }
+.role-perm { display: flex; align-items: center; gap: .6rem; padding: .45rem .55rem; border-radius: 8px; cursor: pointer; }
+.role-perm:hover { background: var(--bs-tertiary-bg); }
+.role-perm-icon { width: 1.8rem; height: 1.8rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: rgba(47, 111, 176, .1); color: #2f6fb0; font-size: .85rem; }
+.role-perm-label { font-weight: 600; font-size: .9rem; }
+.role-perm .form-check-input { width: 2.4em; height: 1.25em; cursor: pointer; }
+#role_extras.is-off .role-groups { opacity: .45; }
+#role_extras.is-off .role-perm { cursor: not-allowed; }
+@media (max-width: 768px) { .role-types, .role-groups { grid-template-columns: 1fr; } }
