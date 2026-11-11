@@ -503,6 +503,8 @@ class Rulezet_Rule(db.Model):
     description = db.Column(db.Text, nullable=True)
     format = db.Column(db.String(32), nullable=True)
     content = db.Column(db.Text, nullable=True)
+    # content as taken from Rulezet (last add / resync): tells local edits from Rulezet changes
+    base_content = db.Column(db.Text, nullable=True)
     version = db.Column(db.String(64), nullable=True)
     date_added = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
@@ -511,6 +513,7 @@ class Rulezet_Rule(db.Model):
             "id": self.id,
             "uuid": self.uuid,
             "case_id": self.case_id,
+            "edited_locally": self.base_content is not None and (self.content or "").strip() != (self.base_content or "").strip(),
             "instance_id": self.instance_id,
             "remote_id": self.remote_id,
             "title": self.title,

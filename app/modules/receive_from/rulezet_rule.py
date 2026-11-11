@@ -117,6 +117,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
         existing.description = description
         existing.format = rule_format
         existing.content = content
+        existing.base_content = content
         existing.version = version
         existing.date_added = datetime.datetime.now(tz=datetime.timezone.utc)
         db_session.session.commit()
@@ -129,6 +130,7 @@ def handler(instance, case, user, case_model=None, db_session=None, payload=None
             description=description,
             format=rule_format,
             content=content,
+            base_content=content,
             version=version,
             date_added=datetime.datetime.now(tz=datetime.timezone.utc)
         )
