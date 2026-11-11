@@ -69,7 +69,7 @@ export default {
                             <span v-if="l.tasks_total" class="clc-progress" :title="l.tasks_closed + ' / ' + l.tasks_total + ' tasks done'">
                                 <span class="clc-bar"><span :style="{ width: progress(l) + '%' }"></span></span>[[ l.tasks_closed ]]/[[ l.tasks_total ]]
                             </span>
-                            <span v-else>No task</span>
+                            <span v-else-if="l.tasks_total === 0">No task</span>
                             <span v-if="l.deadline" :class="['clc-due', { 'is-late': overdue(l) }]" :title="'Deadline: ' + day(l.deadline)">
                                 <i :class="overdue(l) ? 'fa-solid fa-triangle-exclamation' : 'fa-regular fa-calendar'"></i>[[ day(l.deadline) ]]
                             </span>
