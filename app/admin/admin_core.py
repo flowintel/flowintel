@@ -33,16 +33,61 @@ def get_visible_users(viewer):
     return query
 
 
-def get_users_page(page, viewer, name=None):
-    """Return visible users by page, optionally filtered by partial name match.
+def _filter_users(query, name=None, role_type=None, role_id=None, org_id=None):
+    """Filters of the users page, applied on top of the viewer's visible users.
 
-    - `name` performs a case-insensitive partial match against `User.first_name` or `User.last_name`.
+    - `name`: case-insensitive partial match on first name, last name, nickname or email
+    - `role_type`: 'admin', 'read_only' or 'editor' (neither admin nor read only)
+    - `role_id`, `org_id`: one role / one organisation
     """
-    query = get_visible_users(viewer)
     if name:
-        query = query.filter(db.or_(User.first_name.ilike(f"%{name}%"), User.last_name.ilike(f"%{name}%")))
+        like = f"%{name}%"
+        query = query.filter(db.or_(User.first_name.ilike(like), User.last_name.ilike(like),
+                                    User.nickname.ilike(like), User.email.ilike(like)))
+    if role_type in ("admin", "read_only", "editor"):
+        roles = Role.query
+        if role_type == "admin":
+            roles = roles.filter(Role.admin.is_(True))
+        elif role_type == "read_only":
+            roles = roles.filter(Role.read_only.is_(True), Role.admin.isnot(True))
+        else:
+            roles = roles.filter(Role.admin.isnot(True), Role.read_only.isnot(True))
+        query = query.filter(User.role_id.in_([r.id for r in roles.all()] or [-1]))
+    if role_id:
+        query = query.filter(User.role_id == role_id)
+    if org_id:
+        query = query.filter(User.org_id == org_id)
+    return query
+
+
+def get_users_page(page, viewer, name=None, role_type=None, role_id=None, org_id=None):
+    """Return visible users by page, with the filters of _filter_users."""
+    query = _filter_users(get_visible_users(viewer), name, role_type, role_id, org_id)
     query = query.order_by(db.func.lower(User.first_name), db.func.lower(User.last_name))
     return query.paginate(page=page, per_page=20, max_per_page=50)
+
+
+def get_users_facets(viewer):
+    """Counts for the filters of the users page, over the users the viewer can see"""
+    visible = get_visible_users(viewer)
+    roles = {r.id: r for r in Role.query.all()}
+    by_role, by_org = {}, {}
+    types = {"admin": 0, "editor": 0, "read_only": 0}
+    for role_id, org_id in visible.with_entities(User.role_id, User.org_id).all():
+        by_role[role_id] = by_role.get(role_id, 0) + 1
+        by_org[org_id] = by_org.get(org_id, 0) + 1
+        r = roles.get(role_id)
+        types["admin" if r and r.admin else "read_only" if r and r.read_only else "editor"] += 1
+    orgs = {o.id: o.name for o in Org.query.filter(Org.id.in_([o for o in by_org if o] or [-1])).all()}
+    return {
+        "total": sum(by_role.values()),
+        "types": types,
+        "roles": sorted([{"id": rid, "name": roles[rid].name if rid in roles else "Unknown", "count": n,
+                          "kind": "admin" if rid in roles and roles[rid].admin else "read_only" if rid in roles and roles[rid].read_only else "editor"}
+                         for rid, n in by_role.items()], key=lambda x: x["name"].lower()),
+        "orgs": sorted([{"id": oid, "name": orgs.get(oid, "No organisation"), "count": n}
+                        for oid, n in by_org.items()], key=lambda x: x["name"].lower()),
+    }
 
 def get_all_roles():
     """Return all roles"""
@@ -551,3 +596,70 @@ def galaxy_status(galaxy_id):
     gal = get_galaxy(galaxy_id)
     gal.exclude = not gal.exclude
     db.session.commit()
+
+
+def can_see_user_stats(viewer, user):
+    """Activity of a user: admins, the org admins of that user's organisation, and the user"""
+    return viewer.is_admin() or viewer.id == user.id or (viewer.is_org_admin() and viewer.org_id == user.org_id)
+
+
+def get_user_stats(user, viewer, weeks=12):
+    """What the users page shows when a row is opened: tasks, recent work, cases, sign-ins.
+    Cases and tasks are only counted in the cases the viewer can see."""
+    from app.db_class.db import Task, Case
+    from app.case import common_core as CommonModel
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
+    tasks = Task.query.join(Task_User, Task_User.task_id == Task.id).filter(Task_User.user_id == user.id).all()
+    cases = {c.id: c for c in Case.query.filter(Case.id.in_({t.case_id for t in tasks} or {-1})).all()}
+    visible = {cid for cid, c in cases.items() if CommonModel.can_view_case(c, viewer)}
+    tasks = [t for t in tasks if t.case_id in visible]
+
+    def naive(d):
+        return d.replace(tzinfo=None) if d and d.tzinfo else d
+
+    open_tasks = [t for t in tasks if not t.completed]
+    overdue = [t for t in open_tasks if t.deadline and naive(t.deadline) < now]
+    due_week = [t for t in open_tasks if t.deadline and now <= naive(t.deadline) <= now + datetime.timedelta(days=7)]
+
+    # Tasks finished per week, oldest first
+    start = (now - datetime.timedelta(weeks=weeks - 1)).date()
+    start = start - datetime.timedelta(days=start.weekday())
+    finished = [0] * weeks
+    for t in tasks:
+        fd = naive(t.finish_date)
+        if t.completed and fd and fd.date() >= start:
+            i = (fd.date() - start).days // 7
+            if 0 <= i < weeks:
+                finished[i] += 1
+
+    # Cases the user works on, most recently changed first
+    per_case = {}
+    for t in tasks:
+        e = per_case.setdefault(t.case_id, {"open": 0, "total": 0})
+        e["total"] += 1
+        e["open"] += 0 if t.completed else 1
+    recent_cases = sorted(per_case, key=lambda cid: naive(cases[cid].last_modif) or datetime.datetime.min, reverse=True)
+
+    # Sign-ins per day over the last 30 days
+    since = now - datetime.timedelta(days=29)
+    logins = [0] * 30
+    for (d,) in Login_Event.query.filter(Login_Event.user_id == user.id, Login_Event.login_date >= since).with_entities(Login_Event.login_date):
+        i = (naive(d).date() - since.date()).days
+        if 0 <= i < 30:
+            logins[i] += 1
+
+    return {
+        "tasks": {"total": len(tasks), "open": len(open_tasks), "done": len(tasks) - len(open_tasks),
+                  "overdue": len(overdue), "due_week": len(due_week)},
+        "finished_per_week": {"start": start.isoformat(), "counts": finished},
+        "cases": {"total": len(per_case), "open": sum(1 for cid in per_case if not cases[cid].completed),
+                  "recent": [{"id": cid, "title": cases[cid].title, "completed": bool(cases[cid].completed), **per_case[cid]}
+                             for cid in recent_cases[:5]]},
+        "overdue_tasks": [{"id": t.id, "title": t.title, "case_id": t.case_id, "deadline": naive(t.deadline).isoformat()}
+                          for t in sorted(overdue, key=lambda t: naive(t.deadline))[:5]],
+        "logins": {"per_day": logins, "total_30d": sum(logins),
+                   "last": user.last_login.isoformat() if user.last_login else None},
+        "member_since": user.creation_date.isoformat() if user.creation_date else None,
+        "auth_provider": user.auth_provider,
+    }
