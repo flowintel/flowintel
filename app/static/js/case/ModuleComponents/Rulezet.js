@@ -6,9 +6,11 @@
  *   or add one by its Rulezet id / URL.
  * - Each rule of the case: format chip with Rulezet's own logo and colour, metadata,
  *   the rule in a code viewer, copy / download, a "changed on Rulezet" check, resync.
- * - Syntax check by the Rulezet instance, and editing in Flowintel for the rules you
- *   wrote on Rulezet: an edited rule is saved in the case only when Rulezet says it is valid. Rulezet has no API to update a
- *   rule, so "Open in Rulezet" leads to the rule's edit page there (the rule is copied).
+ * - Syntax check by the Rulezet instance (a rule using other rules is compiled with them).
+ * - Editing: an edited rule is saved in the case only when Rulezet says it is valid, then it
+ *   can be sent to Rulezet: a direct update when you are its author there, otherwise (or by
+ *   choice) an edit proposal for its author.
+ * - Dependencies: the rules a rule needs on Rulezet, to add them to the case as well.
  *
  * Server side: app/case/case_rulezet.py (the API key never reaches the browser) and the
  * rulezet_rule module (app/modules/receive_from) used to add / resync a rule.
@@ -57,6 +59,7 @@ export default {
         const show_search = ref(false)
         const search_q = ref('')
         const search_format = ref('')
+        const search_mine = ref(false)  // only my rules on Rulezet (needs an API key)
         const search_page = ref(1)
         const search = ref(null)        // {rules, total, page, pages, can_add}
         const searching = ref(false)
@@ -69,7 +72,9 @@ export default {
         const editing = ref({})         // id -> edited content
         const checks = ref({})          // id -> {valid, errors, warnings} | 'loading'
         const remote = ref({})          // id -> {remote, changed} | 'loading' | 'error'
-        const busy = ref({})            // id -> 'resync' | 'remove' | 'save'
+        const busy = ref({})            // id -> 'resync' | 'remove' | 'save' | 'publish'
+        const messages = ref({})        // id -> message for the author with a proposal
+        const deps = ref({})            // id -> {requires, required_by} | 'loading' | 'error'
 
         const format_map = computed(() => Object.fromEntries(formats.value.map(f => [f.key, f])))
         function fmt(key) {
@@ -122,7 +127,7 @@ export default {
             if (!ciid.value) return
             searching.value = true
             search_page.value = page
-            const params = new URLSearchParams({ q: search_q.value.trim(), format: search_format.value, page })
+            const params = new URLSearchParams({ q: search_q.value.trim(), format: search_format.value, page, mine: search_mine.value ? 1 : 0 })
             const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/search?${params}`)
             searching.value = false
             if (r.ok) search.value = r.data
@@ -262,7 +267,7 @@ export default {
         async function check_syntax(rule) {
             const content = editing.value[rule.id] ?? rule.content
             checks.value = { ...checks.value, [rule.id]: 'loading' }
-            const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/validate`, post_opts({ format: rule.format, content }))
+            const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/validate`, post_opts({ format: rule.format, content, rule_id: rule.id }))
             checks.value = { ...checks.value, [rule.id]: r.ok ? r.data : { valid: false, errors: [r.data.message || 'Check failed'], warnings: [] } }
         }
 
@@ -318,12 +323,59 @@ export default {
             }
         }
 
-        // Rulezet has no API to update a rule: copy it and open its edit page there
-        async function publish(rule) {
+        // Send the edited rule to Rulezet. mode 'edit': direct update (only its author there);
+        // mode 'proposal': an edit proposal the author reviews. Saved in the case as well.
+        async function publish(rule, mode) {
             const rem = remote_of(rule)
-            const url = rem ? rem.remote.edit_url : (base_url.value + '/rule/edit_rule/' + encodeURIComponent(rule.remote_id))
-            await copy(rule)
-            window.open(url, '_blank', 'noopener')
+            if (!rem || !rem.has_key) {
+                // No API key: copy the rule and open its edit page on Rulezet
+                await copy(rule)
+                window.open(base_url.value + '/rule/edit_rule/' + encodeURIComponent(rule.remote_id), '_blank', 'noopener')
+                return
+            }
+            busy.value = { ...busy.value, [rule.id]: 'publish' }
+            const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/rule/${rule.id}/publish`, post_opts({
+                content: editing.value[rule.id], mode, message: messages.value[rule.id] || '',
+                base_last_modif: rem.remote.last_modif,
+            }))
+            busy.value = { ...busy.value, [rule.id]: null }
+            if (r.ok) {
+                display_toast({ message: r.data.message, toast_class: 'success-subtle' })
+                if (r.data.mode === 'proposal' && r.data.url) window.open(r.data.url, '_blank', 'noopener')
+                const e = { ...editing.value }; delete e[rule.id]; editing.value = e
+                const m = { ...messages.value }; delete m[rule.id]; messages.value = m
+                await load_rules()
+            } else {
+                display_toast({ message: r.data.message || 'Could not send the rule to Rulezet', toast_class: 'warning-subtle' })
+                // The rule changed on Rulezet meanwhile: refresh what we know of it
+                if (r.data.conflict) check_remote(rule)
+            }
+        }
+
+        // Rules this rule needs on Rulezet (and the ones needing it)
+        async function toggle_deps(rule) {
+            if (deps.value[rule.id] && deps.value[rule.id] !== 'error') {
+                const d = { ...deps.value }; delete d[rule.id]; deps.value = d
+                return
+            }
+            deps.value = { ...deps.value, [rule.id]: 'loading' }
+            const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/rule/${rule.id}/dependencies`)
+            deps.value = { ...deps.value, [rule.id]: r.ok ? r.data : 'error' }
+        }
+
+        function deps_of(rule) {
+            const d = deps.value[rule.id]
+            return d && typeof d === 'object' ? d : null
+        }
+
+        async function add_missing_deps(rule) {
+            const d = deps_of(rule)
+            if (!d) return
+            for (const dep of d.requires.filter(x => !x.in_case && !in_case(x.id))) await add_rule(dep.id, true)
+            display_toast({ message: 'Rules needed by this rule added to the case', toast_class: 'success-subtle' })
+            deps.value = { ...deps.value, [rule.id]: 'loading' }
+            const r = await get_json(`/case/${props.case_id}/rulezet/${ciid.value}/rule/${rule.id}/dependencies`)
+            deps.value = { ...deps.value, [rule.id]: r.ok ? r.data : 'error' }
         }
 
         function select_instance(ev) {
@@ -332,8 +384,9 @@ export default {
             if (found) selected_instance.value = found
         }
 
-        function cves(rule_or_text) {
-            const raw = typeof rule_or_text === 'string' ? rule_or_text : ''
+        function cves(value) {
+            if (Array.isArray(value)) return value.slice(0, 6)
+            const raw = typeof value === 'string' ? value : ''
             return (raw.match(/(CVE-\d{4}-\d+|GHSA-[\w-]+)/gi) || []).slice(0, 6)
         }
 
@@ -355,7 +408,7 @@ export default {
 
         return {
             can_manage_rules, selected_instance, base_url, formats, loading_formats, rules, loading_rules,
-            show_search, search_q, search_format, search, searching, run_search, search_page,
+            show_search, search_q, search_format, search_mine, search, messages, deps, toggle_deps, deps_of, add_missing_deps, searching, run_search, search_page,
             add_id, adding, add_rule, add_by_id, parse_id, in_case, preview, toggle_preview,
             open_code, editing, checks, remote, busy, toggle_code, remote_of, rule_url,
             resync, confirm_resync, resync_modal_el, resync_target, remove, copy, download, check_syntax, check_of, check_items, start_edit, cancel_edit, save_edit, publish,
@@ -389,6 +442,10 @@ export default {
                 <div class="rz-search-input">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input class="form-control form-control-sm" v-model="search_q" placeholder="Search Rulezet: title, content, author…" @keyup.enter="run_search(1)">
+                </div>
+                <div class="form-check form-switch rz-mine" title="Only the rules you published on Rulezet (needs an API key on the connector)">
+                    <input class="form-check-input" type="checkbox" id="rz-mine" v-model="search_mine" @change="run_search(1)">
+                    <label class="form-check-label small" for="rz-mine">My rules</label>
                 </div>
                 <button class="btn btn-primary btn-sm" @click="run_search(1)" :disabled="searching">
                     <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>Search
@@ -478,7 +535,7 @@ export default {
                         <span v-if="checks[rule.id] === 'loading'" class="spinner-border spinner-border-sm"></span><i v-else class="fa-solid fa-spell-check"></i>
                     </button>
                     <button class="rz-act" @click="copy(rule)" title="Copy the rule"><i class="fa-regular fa-copy"></i></button>
-                    <button v-if="can_manage_rules && editing[rule.id] === undefined && remote_of(rule) && remote_of(rule).owner" class="rz-act rz-act--primary" @click="start_edit(rule)" title="Edit the rule (you are its author on Rulezet)"><i class="fa-solid fa-pen"></i></button>
+                    <button v-if="can_manage_rules && editing[rule.id] === undefined" class="rz-act rz-act--primary" @click="start_edit(rule)" :title="remote_of(rule) && remote_of(rule).owner ? 'Edit the rule (you are its author on Rulezet)' : 'Edit the rule (you can propose the change to its author on Rulezet)'"><i class="fa-solid fa-pen"></i></button>
                     <button v-if="can_manage_rules" class="rz-act rz-act--primary" @click="resync(rule)" :disabled="busy[rule.id] === 'resync'" title="Compare with Rulezet and resync">
                         <span v-if="busy[rule.id] === 'resync'" class="spinner-border spinner-border-sm"></span><i v-else class="fa-solid fa-rotate"></i>
                     </button>
@@ -487,6 +544,7 @@ export default {
                         <div class="rz-menu">
                             <a v-if="rule_url(rule)" :href="rule_url(rule)" target="_blank" rel="noopener" class="rz-menu-item"><i class="fa-solid fa-arrow-up-right-from-square"></i>Open on Rulezet</a>
                             <button class="rz-menu-item" @click="download(rule)"><i class="fa-solid fa-download"></i>Download</button>
+                            <button class="rz-menu-item" @click="toggle_deps(rule)"><i class="fa-solid fa-diagram-project"></i>[[ deps[rule.id] ? 'Hide dependencies' : 'Dependencies' ]]</button>
                             <template v-if="can_manage_rules">
                                 <div class="rz-menu-divider"></div>
                                 <button class="rz-menu-item rz-menu-item--danger" @click="remove(rule)" :disabled="busy[rule.id] === 'remove'"><i class="fa-solid fa-trash"></i>Remove from case</button>
@@ -503,9 +561,40 @@ export default {
                 <span><i class="fa-regular fa-calendar-plus"></i>Added [[ short_date(rule.date_added) ]]</span>
                 <template v-if="remote_of(rule)">
                     <span v-for="c in cves(remote_of(rule).remote.cve_id)" :key="c" class="rz-cve">[[ c ]]</span>
+                    <span v-for="t in remote_of(rule).remote.attacks" :key="'att-' + t" class="rz-attack" title="MITRE ATT&CK technique"><i class="fa-solid fa-crosshairs"></i>[[ t ]]</span>
+                    <span v-for="t in remote_of(rule).remote.tags" :key="'tag-' + t" class="rz-tag"><i class="fa-solid fa-tag"></i>[[ t ]]</span>
                 </template>
             </div>
             <p v-if="rule.description" class="rz-rule-desc">[[ rule.description ]]</p>
+
+            <!-- dependencies on Rulezet -->
+            <div v-if="deps[rule.id]" class="rz-deps">
+                <div v-if="deps[rule.id] === 'loading'" class="text-muted small"><span class="spinner-border spinner-border-sm me-1"></span>Reading the dependencies on Rulezet…</div>
+                <div v-else-if="deps[rule.id] === 'error'" class="text-danger small"><i class="fa-solid fa-circle-exclamation me-1"></i>Could not read the dependencies on Rulezet.</div>
+                <template v-else>
+                    <div class="rz-deps-head">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        <b>Needs</b>
+                        <span v-if="!deps_of(rule).requires.length" class="text-muted">no other rule</span>
+                        <button v-if="can_manage_rules && deps_of(rule).requires.some(d => !d.in_case && !in_case(d.id))" class="btn btn-sm btn-outline-primary ms-auto" @click="add_missing_deps(rule)" :disabled="!!adding">
+                            <span v-if="adding" class="spinner-border spinner-border-sm me-1"></span><i v-else class="fa-solid fa-plus me-1"></i>Add the missing ones to the case
+                        </button>
+                    </div>
+                    <ul v-if="deps_of(rule).requires.length" class="rz-deps-list">
+                        <li v-for="d in deps_of(rule).requires" :key="d.id">
+                            <span class="rz-chip rz-chip--sm" :style="{ '--fmt': fmt(d.format).color }">[[ fmt(d.format).title ]]</span>
+                            <a :href="base_url + '/rule/detail_rule/' + d.id" target="_blank" rel="noopener">[[ d.title ]]</a>
+                            <span v-if="d.depth > 1" class="text-muted small">via another rule</span>
+                            <span v-if="d.in_case || in_case(d.id)" class="rz-in-case ms-auto"><i class="fa-solid fa-check"></i> In case</span>
+                            <button v-else-if="can_manage_rules" class="btn btn-sm btn-link ms-auto" @click="add_rule(d.id)" :disabled="adding === String(d.id)">Add</button>
+                        </li>
+                    </ul>
+                    <div v-if="deps_of(rule).required_by.length" class="rz-deps-head mt-2">
+                        <i class="fa-solid fa-arrow-turn-up"></i><b>Used by</b>
+                        <span class="text-muted">[[ deps_of(rule).required_by.map(d => d.title).join(', ') ]]</span>
+                    </div>
+                </template>
+            </div>
 
             <button type="button" :class="['rz-show', { 'is-open': open_code.has(rule.id) }]" @click="toggle_code(rule)" :aria-expanded="open_code.has(rule.id)">
                 <i class="fa-solid fa-code"></i>
@@ -542,12 +631,22 @@ export default {
             <div v-if="open_code.has(rule.id)" class="rz-code">
                 <template v-if="editing[rule.id] !== undefined">
                     <smart-editor v-model="editing[rule.id]" mode="code" :language="(rule.format || 'text').toLowerCase()" min-height="220px" max-height="560px"></smart-editor>
+                    <input v-if="remote_of(rule) && remote_of(rule).has_key" class="form-control form-control-sm rz-edit-msg" v-model="messages[rule.id]" maxlength="2000"
+                           placeholder="What changed and why (shown on Rulezet with the proposal or in the rule history)">
                     <div class="rz-edit-bar">
                         <button class="btn btn-sm btn-outline-secondary" @click="check_syntax(rule)" :disabled="checks[rule.id] === 'loading'"><i class="fa-solid fa-spell-check me-1"></i>Check syntax</button>
                         <button class="btn btn-sm btn-success" @click="save_edit(rule)" :disabled="busy[rule.id] === 'save'" title="Saved in the case only if Rulezet says the syntax is valid">
                             <span v-if="busy[rule.id] === 'save'" class="spinner-border spinner-border-sm me-1"></span><i v-else class="fa-solid fa-floppy-disk me-1"></i>Save in case
                         </button>
-                        <button class="btn btn-sm btn-outline-primary" @click="publish(rule)" title="Rulezet has no API to update a rule: the rule is copied and its edit page opens on Rulezet, paste it there">
+                        <template v-if="remote_of(rule) && remote_of(rule).has_key">
+                            <button v-if="remote_of(rule).owner" class="btn btn-sm btn-primary" @click="publish(rule, 'edit')" :disabled="busy[rule.id] === 'publish'" title="You are the author: update the rule on Rulezet (new version)">
+                                <span v-if="busy[rule.id] === 'publish'" class="spinner-border spinner-border-sm me-1"></span><i v-else class="fa-solid fa-cloud-arrow-up me-1"></i>Update on Rulezet
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" @click="publish(rule, 'proposal')" :disabled="busy[rule.id] === 'publish'" title="Create an edit proposal on Rulezet for the author to review">
+                                <i class="fa-solid fa-code-pull-request me-1"></i>Propose the change
+                            </button>
+                        </template>
+                        <button v-else class="btn btn-sm btn-outline-primary" @click="publish(rule)" title="No API key on the connector: the rule is copied and its edit page opens on Rulezet, paste it there">
                             <i class="fa-solid fa-cloud-arrow-up me-1"></i>Copy & open on Rulezet
                         </button>
                         <button class="btn btn-sm btn-link" @click="cancel_edit(rule)">Cancel</button>

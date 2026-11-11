@@ -330,3 +330,20 @@ a.rz-rule-title:hover { color: var(--bs-primary); }
 .rz-loading--inline .spinner-border { width: 1rem; height: 1rem; }
 .rz-pill .spinner-border-sm { width: 0.65rem; height: 0.65rem; border-width: 0.12em; vertical-align: -0.05em; }
 .rz-count .spinner-border-sm { width: 0.8rem; height: 0.8rem; border-width: 0.12em; }
+
+/* "My rules" switch in the search bar */
+.rz-mine { display: flex; align-items: center; gap: .35rem; margin: 0 .25rem; white-space: nowrap; }
+
+/* ATT&CK techniques and tags of a rule */
+.rz-attack, .rz-tag { display: inline-flex; align-items: center; gap: .25rem; font-size: .72rem; padding: .05rem .45rem; border-radius: 999px; }
+.rz-attack { background: rgba(220, 53, 69, .1); color: #b02a37; }
+.rz-tag { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+/* Dependencies of a rule on Rulezet */
+.rz-deps { margin: .5rem 0; padding: .6rem .75rem; border: 1px dashed var(--bs-border-color); border-radius: 10px; font-size: .85rem; }
+.rz-deps-head { display: flex; align-items: center; gap: .4rem; }
+.rz-deps-list { list-style: none; margin: .4rem 0 0; padding: 0; }
+.rz-deps-list li { display: flex; align-items: center; gap: .5rem; padding: .2rem 0; border-top: 1px solid var(--bs-border-color-translucent); }
+
+/* Message sent with a change to Rulezet */
+.rz-edit-msg { margin-top: .5rem; }
