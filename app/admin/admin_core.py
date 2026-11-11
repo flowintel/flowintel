@@ -670,3 +670,45 @@ def get_user_stats(user, viewer, weeks=12):
         "member_since": user.creation_date.isoformat() if user.creation_date else None,
         "auth_provider": user.auth_provider,
     }
+
+
+
+def _visible_org_cases(org, viewer):
+    """Cases the organisation takes part in, limited to the ones the viewer can see"""
+    from app.db_class.db import Case
+    from app.case import common_core as CommonModel
+    ids = [co.case_id for co in Case_Org.query.filter_by(org_id=org.id).all()]
+    cases = Case.query.filter(Case.id.in_(ids or [-1])).all()
+    return [c for c in cases if CommonModel.can_view_case(c, viewer)]
+
+
+def get_org_counts(org, viewer):
+    """Numbers shown in the organisations table"""
+    cases = _visible_org_cases(org, viewer)
+    return {
+        "user_count": get_visible_users(viewer).filter_by(org_id=org.id).count(),
+        "case_count": len(cases),
+        "open_case_count": sum(1 for c in cases if not c.completed),
+        "owned_case_count": sum(1 for c in cases if c.owner_org_id == org.id),
+    }
+
+
+def get_org_details(org, viewer):
+    """Opened row of the organisations page: members (with role) and cases"""
+    roles = {r.id: r for r in Role.query.all()}
+    users = []
+    for u in get_visible_users(viewer).filter_by(org_id=org.id).order_by(db.func.lower(User.first_name)).all():
+        d = u.to_json()
+        r = roles.get(u.role_id)
+        d["role"] = r.name if r else "Unknown"
+        d["role_kind"] = "admin" if r and r.admin else "read_only" if r and r.read_only else "editor"
+        if viewer.is_admin():
+            d["last_login"] = u.last_login.isoformat() if u.last_login else None
+        users.append(d)
+    cases = sorted(_visible_org_cases(org, viewer), key=lambda c: c.last_modif or datetime.datetime.min, reverse=True)
+    return {
+        "users": users,
+        "cases": [{"id": c.id, "title": c.title, "completed": bool(c.completed), "owner": c.owner_org_id == org.id,
+                   "last_modif": c.last_modif.isoformat() if c.last_modif else None} for c in cases[:8]],
+        "case_total": len(cases),
+    }

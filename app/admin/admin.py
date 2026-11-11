@@ -385,9 +385,21 @@ def get_orgs():
     if orgs:
         orgs_list = list()
         for org in orgs:
-            orgs_list.append(org.to_json())
-        return {"orgs": orgs_list, "nb_pages": orgs.pages}
-    return {"message": "No orgs"}
+            o = org.to_json()
+            o.update(AdminModel.get_org_counts(org, current_user))
+            orgs_list.append(o)
+        return {"orgs": orgs_list, "nb_pages": orgs.pages, "total": orgs.total}
+    return {"orgs": [], "nb_pages": 0, "total": 0, "message": "No orgs"}
+
+
+@admin_blueprint.route("/org_details/<int:oid>", methods=['GET'])
+@login_required
+def org_details(oid):
+    """Members and cases of an organisation, loaded when its row is opened"""
+    org = AdminModel.get_org(oid)
+    if not org:
+        return {"message": "Organisation not found", "toast_class": "warning-subtle"}, 404
+    return AdminModel.get_org_details(org, current_user), 200
 
 
 @admin_blueprint.route("/get_org_users", methods=['GET','POST'])
