@@ -29,7 +29,6 @@
             @current_filter="filter => current_filter = filter"
             @active_mode="mode => active_mode = mode">
         </my_assignment_filter>
-        {{ header_link("Filter: [[ active_mode.label ]]", icon='fa-solid fa-xmark', title='Clear the filter', attrs='v-if="active_mode && active_mode.mode !== \'ongoing\'" @click="filter_ref?.filter_tasks(\'ongoing\')"') }}
     {% endif %}
 {% endcall %}
 
