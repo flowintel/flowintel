@@ -1096,15 +1096,6 @@ a.case-content:hover {
 #role_extras.is-off .role-groups { opacity: .45; }
 #role_extras.is-off .role-perm { cursor: not-allowed; }
 @media (max-width: 768px) { .role-types, .role-groups { grid-template-columns: 1fr; } }
-/* Admin role in the user card */
-.uchip-admin {
-    display: inline-flex; align-items: center; gap: .3rem;
-    padding: .1rem .55rem; border-radius: 999px;
-    background: linear-gradient(135deg, #dc3545, #b02a37); color: #fff;
-    font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
-    box-shadow: 0 1px 4px rgba(220, 53, 69, .35);
-}
-.uchip-admin i { font-size: .68rem; }
 
 /* Account chip at the top right (navbar.html) */
 .nav-me.uchip--chip { cursor: pointer; background: transparent; }
@@ -1140,3 +1131,12 @@ a.case-content:hover {
 .upick-name { font-size: .88rem; font-weight: 600; }
 .upick-sub { font-size: .75rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upick-none { padding: .5rem; font-size: .82rem; color: var(--bs-secondary-color); }
+
+/* organisation and role in the user card: same badges as the admin pages */
+.uchip-card-badges { display: flex; flex-wrap: wrap; gap: .35rem; margin: .25rem 0 .1rem; }
+.uchip-org { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; background: rgba(31, 55, 99, .1); color: #1f3763; font-size: .76rem; font-weight: 600; white-space: nowrap; }
+[data-bs-theme="dark"] .uchip-org { color: #9ec2f0; background: rgba(158, 194, 240, .12); }
+.uchip-role { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; font-size: .76rem; font-weight: 700; white-space: nowrap; background: var(--r-bg); color: var(--r-fg); }
+.uchip-role--admin { --r-fg: #fff; --r-bg: linear-gradient(135deg, #dc3545, #b02a37); }
+.uchip-role--editor { --r-fg: #198754; --r-bg: rgba(25, 135, 84, .12); }
+.uchip-role--read_only { --r-fg: #0a8aa3; --r-bg: rgba(13, 202, 240, .14); }

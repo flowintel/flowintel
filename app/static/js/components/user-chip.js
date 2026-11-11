@@ -25,6 +25,9 @@
  */
 const { ref, computed, onBeforeUnmount, nextTick } = Vue
 
+// Icons of the three role kinds, as on the admin pages
+const ROLE_ICON = { admin: 'fa-solid fa-crown', editor: 'fa-solid fa-pen', read_only: 'fa-solid fa-eye' }
+
 // Colours that sit well with the Flowintel blue and stay readable with white initials
 const PALETTE = ['#1f3763', '#2f6fb0', '#0f7b6c', '#6f42c1', '#b2456e', '#c25b12', '#4d7a1f', '#5a6b7c', '#8a5a00', '#1d6a96']
 
@@ -157,7 +160,7 @@ export default {
 
         onBeforeUnmount(() => { clearTimeout(show_timer); clearTimeout(hide_timer); if (close_open_card === hide_now) close_open_card = null })
 
-        return { is_me, root, open, card, loading, pos, copied, full_name, initials, color, has_card, show, hide, hide_now, copy_email, on_key }
+        return { ROLE_ICON, is_me, root, open, card, loading, pos, copied, full_name, initials, color, has_card, show, hide, hide_now, copy_email, on_key }
     },
     template: `
     <span ref="root" v-bind="$attrs" :class="['uchip', 'uchip--' + variant, 'uchip--' + size, { 'uchip--hover': has_card }]"
@@ -190,11 +193,12 @@ export default {
                         <i :class="['fa-solid', copied ? 'fa-check' : 'fa-copy']"></i>
                     </button>
                 </div>
-                <div v-if="card.org" class="uchip-card-row"><i class="fa-solid fa-building fa-fw"></i><span>[[ card.org.name ]]</span></div>
-                <div v-if="card.role" class="uchip-card-row">
-                    <i class="fa-solid fa-user-shield fa-fw"></i>
-                    <span v-if="card.role_admin" class="uchip-admin" title="Full access to the instance"><i class="fa-solid fa-shield-halved"></i>[[ card.role ]]</span>
-                    <span v-else>[[ card.role ]]</span>
+                <!-- organisation and role: the same badges as the Users / Roles / Organisations pages -->
+                <div v-if="card.org || card.role" class="uchip-card-badges">
+                    <span v-if="card.org" class="uchip-org" title="Organisation"><i class="fa-solid fa-building"></i>[[ card.org.name ]]</span>
+                    <span v-if="card.role" :class="['uchip-role', 'uchip-role--' + (card.role_kind || (card.role_admin ? 'admin' : 'editor'))]" title="Role">
+                        <i :class="ROLE_ICON[card.role_kind || (card.role_admin ? 'admin' : 'editor')]"></i>[[ card.role ]]
+                    </span>
                 </div>
                 <div class="uchip-card-stats">
                     <span title="Open tasks assigned to this user, in the cases you can see"><b>[[ card.open_tasks ]]</b> open [[ card.open_tasks === 1 ? 'task' : 'tasks' ]]</span>

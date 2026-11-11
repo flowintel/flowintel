@@ -105,6 +105,8 @@ def get_user_card(user_id, viewer):
         card["email"] = user.email
         card["role"] = role.name if role else None
         card["role_admin"] = bool(role and role.admin)
+        # same three kinds as the badges of the admin pages
+        card["role_kind"] = "admin" if role and role.admin else "read_only" if role and role.read_only else "editor"
         card["member_since"] = user.creation_date.strftime('%Y-%m-%d') if user.creation_date else None
     # Account activity: admins only
     if is_admin:
