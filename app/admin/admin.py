@@ -421,15 +421,16 @@ def get_roles():
     """get all roles"""
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
-    roles = AdminModel.get_roles_page(page, name=name)
+    role_type = request.args.get('role_type', None, type=str)
+    roles = AdminModel.get_roles_page(page, name=name, role_type=role_type)
     if roles:
         roles_list = list()
         for role in roles:
             role_dict = role.to_json()
             role_dict["user_count"] = AdminModel.count_users_with_role(role.id)
             roles_list.append(role_dict)
-        return {"roles": roles_list, "nb_pages": roles.pages}
-    return {"message": "No roles"}
+        return {"roles": roles_list, "nb_pages": roles.pages, "total": roles.total}
+    return {"roles": [], "nb_pages": 0, "total": 0, "message": "No roles"}
 
 
 @admin_blueprint.route("/get_role_users", methods=['GET','POST'])
@@ -444,6 +445,8 @@ def get_role_users():
             u = user.to_json()
             o = AdminModel.get_org(user.org_id)
             u["org"] = o.name if o else "No Organization"
+            if current_user.is_admin():
+                u["last_login"] = user.last_login.isoformat() if user.last_login else None
             users_list.append(u)
 
         return {"users": users_list}

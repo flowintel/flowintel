@@ -1,593 +1,394 @@
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .rl-card { border: 1px solid var(--bs-border-color); border-radius: 12px; overflow: hidden; background: var(--bs-body-bg); }
+    .rl-table { margin: 0; }
+    .rl-table thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); font-weight: 600; white-space: nowrap; background: var(--bs-tertiary-bg); }
+    .rl-table td { vertical-align: middle; }
+    .rl-row { cursor: pointer; }
+    .rl-row--open > td { border-bottom-color: transparent; }
+    .rl-caret { width: .9rem; margin-right: .35rem; font-size: .7rem; color: var(--bs-secondary-color); transition: transform .15s ease; }
+    .rl-caret.is-open { transform: rotate(90deg); color: #2f6fb0; }
+    .rl-name { font-weight: 600; }
+    .rl-system { margin-left: .4rem; font-size: .7rem; padding: .05rem .45rem; border-radius: 999px; background: var(--bs-secondary-bg); color: var(--bs-secondary-color); font-weight: 600; }
+    .rl-desc { display: block; font-size: .8rem; color: var(--bs-secondary-color); margin-left: 1.25rem; max-width: 60ch; }
+    .rl-type { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; font-size: .76rem; font-weight: 700; white-space: nowrap; background: var(--r-bg); color: var(--r-fg); }
+    .rl-type--admin { --r-fg: #fff; --r-bg: linear-gradient(135deg, #dc3545, #b02a37); }
+    .rl-type--editor { --r-fg: #198754; --r-bg: rgba(25, 135, 84, .12); }
+    .rl-type--read_only { --r-fg: #0a8aa3; --r-bg: rgba(13, 202, 240, .14); }
+    .rl-perms { display: flex; flex-wrap: wrap; gap: .25rem; }
+    .rl-perm { display: inline-flex; align-items: center; gap: .3rem; padding: .08rem .45rem; border-radius: 6px; font-size: .72rem; background: rgba(47, 111, 176, .1); color: #2f6fb0; white-space: nowrap; }
+    .rl-users { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .rl-users b { font-size: .95rem; }
+    .rl-actions { white-space: nowrap; text-align: right; }
+    .rl-actions .btn { padding: .2rem .45rem; }
+    .rl-empty { padding: 2.5rem 1rem; text-align: center; color: var(--bs-secondary-color); }
+    .rl-detail-row > td { background: var(--bs-tertiary-bg); padding: .9rem 1rem 1.1rem; cursor: default; }
+    .rl-panels { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: .7rem; }
+    .rl-panel { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 10px; padding: .75rem .85rem; min-width: 0; }
+    .rl-panel h6 { font-size: .82rem; font-weight: 700; margin-bottom: .6rem; display: flex; align-items: center; gap: .4rem; }
+    .rl-panel h6 small { font-weight: 400; color: var(--bs-secondary-color); }
+    .rl-user-wrap { max-height: 320px; overflow-y: auto; }
+    .rl-user-table th { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); font-weight: 600; border-bottom-width: 1px; position: sticky; top: 0; background: var(--bs-body-bg); }
+    .rl-user-table td { vertical-align: middle; font-size: .84rem; border-color: var(--bs-border-color-translucent); }
+    .rl-user-table tr:last-child td { border-bottom: 0; }
+    .rl-nick { display: block; margin-left: 1.7rem; font-size: .74rem; color: var(--bs-secondary-color); }
+    .rl-mail { font-size: .78rem; color: var(--bs-secondary-color); }
+    .rl-mail:hover { color: #2f6fb0; }
+    .rl-meta-cell { font-size: .78rem; color: var(--bs-secondary-color); white-space: nowrap; }
+    .rl-user-list { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; }
+    .rl-user-list li { display: flex; align-items: center; gap: .6rem; padding: .3rem 0; border-top: 1px solid var(--bs-border-color-translucent); font-size: .84rem; }
+    .rl-user-list li:first-child { border-top: 0; }
+    .rl-meta { margin-left: auto; font-size: .74rem; color: var(--bs-secondary-color); white-space: nowrap; }
+    .rl-org { display: inline-flex; align-items: center; gap: .3rem; padding: .08rem .45rem; border-radius: 999px; background: rgba(31, 55, 99, .1); color: #1f3763; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+    [data-bs-theme="dark"] .rl-org { color: #9ec2f0; background: rgba(158, 194, 240, .12); }
+    .rl-orgbars li { display: grid; grid-template-columns: minmax(0, 1fr) 2.5rem; gap: .5rem; align-items: center; font-size: .8rem; padding: .2rem 0; }
+    .rl-orgbar { height: 6px; border-radius: 3px; background: var(--bs-secondary-bg); overflow: hidden; margin-top: .2rem; }
+    .rl-orgbar > span { display: block; height: 100%; background: #2f6fb0; border-radius: 3px; }
+    .rl-matrix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem .8rem; font-size: .82rem; }
+    .rl-matrix span { display: flex; align-items: center; gap: .4rem; }
+    .rl-matrix .is-on { color: var(--bs-body-color); }
+    .rl-matrix .is-off { color: var(--bs-secondary-color); opacity: .6; }
+    .rl-matrix .is-on i { color: #198754; }
+    /* edit form inside the opened row */
+    .rl-edit { display: grid; gap: .8rem; }
+    .rl-types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+    .rl-type-card { display: flex; align-items: center; gap: .5rem; padding: .55rem .7rem; border: 1.5px solid var(--bs-border-color); border-radius: 10px; cursor: pointer; font-weight: 600; font-size: .88rem; }
+    .rl-type-card input { position: absolute; opacity: 0; pointer-events: none; }
+    .rl-type-card.is-active { border-color: var(--r-fg2); background: var(--r-bg2); }
+    .rl-type-card--admin { --r-fg2: #dc3545; --r-bg2: rgba(220, 53, 69, .1); }
+    .rl-type-card--editor { --r-fg2: #198754; --r-bg2: rgba(25, 135, 84, .1); }
+    .rl-type-card--read_only { --r-fg2: #0aa2c0; --r-bg2: rgba(13, 202, 240, .12); }
+    .rl-type-card i { color: var(--r-fg2); }
+    .rl-switches { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .2rem .8rem; }
+    .rl-switches.is-off { opacity: .45; }
+    .rl-switches .form-check { display: flex; align-items: center; gap: .5rem; padding-left: 2.6em; margin: 0; }
+    .rl-help { font-size: .75rem; color: var(--bs-secondary-color); opacity: .75; cursor: help; }
+    @media (max-width: 992px) { .rl-panels { grid-template-columns: 1fr; } .rl-types { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .rl-hide-sm { display: none; } }
+</style>
+{% endblock %}
 
 {% block content %}
     {% call(section) page_header('Roles', 'fa-solid fa-user-shield', 'Permission sets given to users.') %}
         {% if section == 'stats' %}
             <template v-if="roles_list">
-                {{ header_stat('fa-solid fa-user-shield', '[[ roles_list.roles.length ]]', "[[ roles_list.roles.length === 1 ? 'role' : 'roles' ]]", title='Roles listed', attrs='v-if="roles_list.nb_pages <= 1"') }}
-                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ roles_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+                {{ header_stat('fa-solid fa-user-shield', '[[ roles_list.total ]]', "[[ roles_list.total === 1 ? 'role' : 'roles' ]]", title='Roles listed') }}
+                {{ header_stat('fa-solid fa-users', '[[ users_total ]]', "[[ users_total === 1 ? 'user' : 'users' ]]", title='Users with these roles') }}
             </template>
         {% elif section == 'toolbar' %}
-            {{ header_search('Search roles by name') }}
+            {{ header_search('Search roles by name', model='search_query') }}
+            {{ header_segmented([
+                {'value': '', 'label': 'All'},
+                {'value': 'admin', 'label': 'Admin', 'icon': 'fa-solid fa-crown'},
+                {'value': 'editor', 'label': 'Editor', 'icon': 'fa-solid fa-pen'},
+                {'value': 'read_only', 'label': 'Read only', 'icon': 'fa-solid fa-eye'},
+            ], "role_type === '{value}'", "role_type = '{value}'", aria='Role type') }}
             {% if current_user.is_admin() %}
                 {{ header_button('New role', href='/admin/add_role', title='Add role') }}
             {% endif %}
         {% endif %}
     {% endcall %}
 
-
-    <div class="case-core-style">
-        <template v-if="roles_list">
-            <template v-for="role in roles_list.roles">
-                <div class="list-group" style="margin-bottom: 10px;">
-                    <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
-                        <!-- Normal view -->
-                        <a v-if="editing_role !== role.id" @click="extend_collapse(role.id)" class="list-group-item list-group-item-action case-index-list">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1 fi-list-title">
-                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ role.id ]]- [[ role.name ]]
-                                    <i v-if="is_system_role(role.id)" class="fa-solid fa-shield-halved ms-2" style="color: #6c757d;" title="System role"></i>
-                                    <span v-if="role.admin" class="badge bg-danger ms-2">Admin</span>
-                                    <span v-else-if="role.read_only" class="badge bg-info ms-2">Read Only</span>
-                                    <span v-else class="badge bg-success ms-2">
-                                        Editor
-                                        <i v-if="role.org_admin" class="fa-solid fa-users ms-1" title="Also Org Admin"></i>
-                                        <i v-if="role.case_admin" class="fa-solid fa-briefcase ms-1" title="Also Case Admin"></i>
-                                        <i v-if="role.queue_admin" class="fa-solid fa-clipboard-check ms-1" title="Also Queue Admin"></i>
-                                        <i v-if="role.queuer" class="fa-solid fa-list-check ms-1" title="Also Queuer"></i>
-                                        <i v-if="role.audit_viewer" class="fa-solid fa-file-lines ms-1" title="Also Audit Viewer"></i>
-                                        <i v-if="role.template_editor" class="fa-solid fa-folder ms-1" title="Also Template Editor"></i>
-                                        <i v-if="role.misp_editor" class="fa-solid fa-share-nodes ms-1" title="Also MISP Editor"></i>
-                                        <i v-if="role.importer" class="fa-solid fa-file-import ms-1" title="Also Importer"></i>
-                                    </span>
-                                </h5>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <small v-if="role.description" class="text-muted">[[ role.description ]]</small>
-                                <small v-else class="text-muted"><i>No description</i></small>
-                            </div>
-                        </a>
-                        
-                        <!-- Edit mode -->
-                        <div v-if="editing_role === role.id" class="list-group-item case-index-list" style="flex: 1;">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Role ID: [[ role.id ]]</label>
-                                <span v-if="is_system_role(role.id)" class="badge bg-secondary ms-2">System Role - View Only</span>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Role name</label>
-                                <input type="text" class="form-control" v-model="edit_data.name" :disabled="is_system_role(role.id)">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Description</label>
-                                <textarea class="form-control" rows="2" v-model="edit_data.description" :disabled="is_system_role(role.id)"></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Permissions</label>
-                                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.875rem;">
-                                    <i class="fa-solid fa-info-circle me-1"></i>
-                                    <strong>Note:</strong> Select one of the three role types below. Additional permissions apply to the Editor role only. An Admin already possesses all additional permissions, and a Read Only cannot have any additional permissions.
+    <div class="rl-card">
+        <div class="table-responsive">
+            <table class="table table-hover rl-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Type</th>
+                        <th class="rl-hide-sm">Extra permissions</th>
+                        <th>Users</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="!roles_list"><td colspan="5" class="rl-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the roles…</td></tr>
+                    <tr v-else-if="!roles_list.roles.length"><td colspan="5" class="rl-empty"><i class="fa-solid fa-user-shield fa-lg d-block mb-2"></i>No role matches the filters.</td></tr>
+                    <template v-for="role in (roles_list ? roles_list.roles : [])" :key="role.id">
+                        <tr :class="['rl-row', { 'rl-row--open': opened.has(role.id) }]" @click="toggle_row(role, $event)" :aria-expanded="opened.has(role.id)">
+                            <td>
+                                <i :class="['fa-solid fa-chevron-right rl-caret', { 'is-open': opened.has(role.id) }]"></i>
+                                <span class="rl-name">[[ role.name ]]</span>
+                                <span v-if="is_system_role(role.id)" class="rl-system" title="Built-in role: it cannot be changed or deleted"><i class="fa-solid fa-lock fa-xs me-1"></i>system</span>
+                                <span class="rl-desc text-truncate" :title="role.description">[[ role.description || 'No description' ]]</span>
+                            </td>
+                            <td><span :class="['rl-type', 'rl-type--' + kind(role)]"><i :class="KIND_ICON[kind(role)]"></i>[[ KIND_LABEL[kind(role)] ]]</span></td>
+                            <td class="rl-hide-sm">
+                                <div v-if="kind(role) === 'editor' && extras(role).length" class="rl-perms">
+                                    <span v-for="p in extras(role)" :key="p.key" class="rl-perm" :title="p.help"><i :class="p.icon"></i>[[ p.label ]]</span>
                                 </div>
-                                
-                                <!-- Role Types -->
-                                <div class="mb-3">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <h6 class="mb-0 fw-bold">System role</h6>
-                                    </div>
-                                    <table class="table table-sm table-bordered mb-0">
-                                        <tbody>
-                                            <tr>
-                                                <td title="Full administrative access to all features"><i class="fa-solid fa-shield-halved me-2" style="color: #dc3545;"></i>Admin</td>
-                                                <td style="width: 100px; text-align: center;">
-                                                    <input type="checkbox" class="form-check-input" v-model="edit_data.admin" @change="handleAdminChange" :disabled="is_system_role(role.id)">
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td title="User can only view data, cannot make changes"><i class="fa-solid fa-eye me-2" style="color: #0dcaf0;"></i>Read Only</td>
-                                                <td style="text-align: center;">
-                                                    <input type="checkbox" class="form-check-input" v-model="edit_data.read_only" @change="handleReadOnlyChange" :disabled="is_system_role(role.id)">
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td title="Can create and edit content, but not perform admin functions"><i class="fa-solid fa-pen me-2" style="color: #198754;"></i>Editor</td>
-                                                <td style="text-align: center;">
-                                                    <input type="checkbox" class="form-check-input" :checked="is_editor" @change="handleEditorChange" :disabled="is_system_role(role.id)">
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- Additional Permissions -->
-                                <div class="mb-3">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <h6 class="mb-0 fw-bold text-muted">Additional permissions <small>(Editor only)</small></h6>
-                                    </div>
-                                    
-                                    <!-- Organisation Management -->
-                                    <div class="mb-2">
-                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-building me-1"></i>Organisation management</small>
-                                        <table class="table table-sm table-bordered mb-0 mt-1">
-                                            <tbody>
-                                                <tr>
-                                                    <td title="Allows a user to add, create or edit users within an organisation">Org Admin</td>
-                                                    <td style="width: 100px; text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.org_admin" @change="handleOrgAdminChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- Privileged Case Permissions -->
-                                    <div class="mb-2">
-                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-lock me-1"></i>Privileged cases</small>
-                                        <table class="table table-sm table-bordered mb-0 mt-1">
-                                            <tbody>
-                                                <tr>
-                                                    <td title="Can create and complete cases, and can edit a case to a privileged case">Case Admin</td>
-                                                    <td style="width: 100px; text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.case_admin" @change="handleCaseAdminChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td title="Can approve a task for privileged cases">Queue Admin</td>
-                                                    <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.queue_admin" @change="handleQueueAdminChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td title="Can request a task for privileged cases">Queuer</td>
-                                                    <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.queuer" @change="handleQueuerChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- Audit & Logging -->
-                                    <div class="mb-2">
-                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-file-lines me-1"></i>Audit & Logging</small>
-                                        <table class="table table-sm table-bordered mb-0 mt-1">
-                                            <tbody>
-                                                <tr>
-                                                    <td title="Allows users to view history and audit logs">Audit Viewer</td>
-                                                    <td style="width: 100px; text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.audit_viewer" @change="handleAuditViewerChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <div>
-                                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-gear me-1"></i>Editor tools</small>
-                                        <table class="table table-sm table-bordered mb-0 mt-1">
-                                            <tbody>
-                                                <tr>
-                                                    <td title="Allows users to manage case, task or note templates">Template Editor</td>
-                                                    <td style="width: 100px; text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.template_editor" @change="handleTemplateEditorChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td title="Allows users to sync data with MISP and manage MISP objects and connectors">MISP Editor</td>
-                                                    <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.misp_editor" @change="handleMispEditorChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td title="Allows users to import data via the analyser / MISP module">Importer</td>
-                                                    <td style="text-align: center;">
-                                                        <input type="checkbox" class="form-check-input" v-model="edit_data.importer" @change="handleImporterChange" :disabled="is_system_role(role.id)">
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Buttons -->
-                        {% if current_user.is_admin() %}
-                            <div v-if="editing_role !== role.id">
-                                <div>
-                                    <button 
-                                        class="btn btn-primary btn-sm" 
-                                        @click="edit_role(role)" 
-                                        type="button" 
-                                        :title="is_system_role(role.id) ? 'View role' : 'Edit role'">
-                                        <i :class="is_system_role(role.id) ? 'fa-solid fa-eye fa-fw' : 'fa-solid fa-pen-to-square fa-fw'"></i>
+                                <span v-else-if="kind(role) === 'admin'" class="text-muted small">All</span>
+                                <span v-else class="text-muted small">—</span>
+                            </td>
+                            <td class="rl-users"><b>[[ role.user_count ]]</b> <span class="text-muted small">[[ role.user_count === 1 ? 'user' : 'users' ]]</span></td>
+                            <td class="rl-actions">
+                                {% if current_user.is_admin() %}
+                                <button class="btn btn-sm btn-outline-primary" type="button" @click.stop="start_edit(role)"
+                                        :title="is_system_role(role.id) ? 'View the permissions' : 'Edit the role'">
+                                    <i :class="is_system_role(role.id) ? 'fa-solid fa-eye' : 'fa-solid fa-pen-to-square'"></i>
+                                </button>
+                                <span :title="is_system_role(role.id) ? 'Built-in roles cannot be deleted' : role.user_count > 0 ? 'Cannot delete: ' + role.user_count + ' user(s) have this role' : 'Delete the role'">
+                                    <button class="btn btn-sm btn-outline-danger ms-1" type="button" data-bs-toggle="modal" :data-bs-target="'#delete_role_modal_'+role.id"
+                                            :disabled="is_system_role(role.id) || role.user_count > 0" @click.stop>
+                                        <i class="fa-solid fa-trash"></i>
                                     </button>
+                                </span>
+                                <div class="modal fade text-start" :id="'delete_role_modal_'+role.id" tabindex="-1" aria-hidden="true" @click.stop>
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h1 class="modal-title fs-5">Delete the role '[[ role.name ]]'?</h1>
+                                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                <button class="btn btn-danger" @click="delete_role(role)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span v-if="is_system_role(role.id)" title="Cannot delete system role">
-                                        <button 
-                                            class="btn btn-danger btn-sm" 
-                                            disabled 
-                                            type="button">
-                                            <i class="fa-solid fa-trash fa-fw"></i>
-                                        </button>
-                                    </span>
-                                    <span v-else-if="role.user_count > 0" :title="'Cannot delete: ' + role.user_count + ' user(s) associated with this role'">
-                                        <button 
-                                            class="btn btn-danger btn-sm" 
-                                            disabled 
-                                            type="button">
-                                            <i class="fa-solid fa-trash fa-fw"></i>
-                                        </button>
-                                    </span>
-                                    <button 
-                                        v-else
-                                        class="btn btn-danger btn-sm" 
-                                        type="button" 
-                                        title="Delete role" 
-                                        data-bs-toggle="modal" 
-                                        :data-bs-target="'#delete_role_modal_'+role.id">
-                                        <i class="fa-solid fa-trash fa-fw"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div v-else>
-                                <div>
-                                    <button 
-                                        v-if="!is_system_role(role.id)"
-                                        class="btn btn-success btn-sm" 
-                                        @click="save_role(role)" 
-                                        type="button" 
-                                        title="Save">
-                                        <i class="fa-solid fa-floppy-disk fa-fw"></i>
-                                    </button>
-                                </div>
-                                <div>
-                                    <button class="btn btn-secondary btn-sm" @click="cancel_edit()" type="button" title="Cancel">
-                                        <i class="fa-solid fa-xmark fa-fw"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        {% endif %}
-                    </div>
-                    
-                    <!-- Delete modal -->
-                    <div class="modal fade" :id="'delete_role_modal_'+role.id" tabindex="-1" aria-labelledby="delete_role_modal" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="delete_role_modal">Delete role '[[role.name]]' ?</h1>
-                                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button class="btn btn-danger" @click="delete_role(role)">
-                                        <i class="fa-solid fa-trash"></i> Confirm
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
 
-                <div class="collapse" :id="'collapse'+role.id" style="margin-bottom: 20px;">
-                    <div class="card card-body" :id="'card-body_'+role.id" style="background-color: whitesmoke;">
-                        <template v-if="users_table">
-                            <template v-if="users_table[role.id]">
-                                <table>
-                                    <tr>
-                                        <th>Id</th>
-                                        <th>First name</th>
-                                        <th>Last name</th>
-                                        <th>Nickname</th>
-                                        <th>Email</th>
-                                        <th>Organisation</th>
-                                    </tr>
-                                    <template v-for="user in users_table[role.id]">
-                                        <tr>
-                                            <td title="Id">[[user.id]]</td>
-                                            <td title="First name">[[user.first_name]]</td>
-                                            <td title="last name">[[user.last_name]]</td>
-                                            <td title="Nickname">[[user.nickname]]</td>
-                                            <td title="Email">[[user.email]]</td>
-                                            <td title="Organisation">[[user.org]]</td>
-                                        </tr>
-                                    </template>
-                                </table>
-                            </template>
-                            <template v-else>
-                                <i>No users with this role</i>
-                            </template>
-                        </template>
-                        <template v-else>
-                            Loading...
-                        </template>
-                    </div>
-                </div>
-            </template>
-        </template>
-        <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
+                        <!-- opened row: users of the role (loaded on first open), permissions, or the edit form -->
+                        <tr v-if="opened.has(role.id)" class="rl-detail-row">
+                            <td colspan="5">
+                                <!-- edit -->
+                                <div v-if="editing_role === role.id" class="rl-panel rl-edit">
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-semibold mb-1">Name</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="edit_data.name" :disabled="is_system_role(role.id)">
+                                        </div>
+                                        <div class="col-md-8">
+                                            <label class="form-label small fw-semibold mb-1">Description</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="edit_data.description" :disabled="is_system_role(role.id)">
+                                        </div>
+                                    </div>
+                                    <div class="rl-types" role="radiogroup" aria-label="Role type">
+                                        <label v-for="k in ['admin', 'editor', 'read_only']" :key="k" :class="['rl-type-card', 'rl-type-card--' + k, { 'is-active': edit_kind === k }]">
+                                            <input type="radio" :value="k" :checked="edit_kind === k" @change="set_edit_kind(k)" :disabled="is_system_role(role.id)">
+                                            <i :class="KIND_ICON[k]"></i>[[ KIND_LABEL[k] ]]
+                                        </label>
+                                    </div>
+                                    <div :class="['rl-switches', { 'is-off': edit_kind !== 'editor' }]">
+                                        <div v-for="p in PERMS" :key="p.key" class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" role="switch" :id="'perm-' + role.id + '-' + p.key"
+                                                   v-model="edit_data[p.key]" :disabled="is_system_role(role.id) || edit_kind !== 'editor'">
+                                            <label class="form-check-label small" :for="'perm-' + role.id + '-' + p.key">[[ p.label ]]</label>
+                                            <i class="fa-solid fa-circle-question rl-help" :title="p.help"></i>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button v-if="!is_system_role(role.id)" class="btn btn-sm btn-primary" type="button" @click="save_role(role)"><i class="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                                        <button class="btn btn-sm btn-secondary" type="button" @click="cancel_edit()">[[ is_system_role(role.id) ? 'Close' : 'Cancel' ]]</button>
+                                        <span v-if="is_system_role(role.id)" class="text-muted small align-self-center"><i class="fa-solid fa-lock me-1"></i>Built-in role: view only</span>
+                                    </div>
+                                </div>
+
+                                <!-- details -->
+                                <div v-else class="rl-panels">
+                                    <section class="rl-panel">
+                                        <h6><i class="fa-solid fa-users"></i>Users <small>[[ role.user_count ]] with this role</small></h6>
+                                        <div v-if="role_users[role.id] === 'loading'" class="text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>
+                                        <div v-else-if="!role_users[role.id] || !role_users[role.id].length" class="text-muted small fst-italic">No user with this role.</div>
+                                        <div v-else class="rl-user-wrap">
+                                            <table class="table table-sm rl-user-table mb-0">
+                                                <thead>
+                                                    <tr><th>User</th><th>Organisation</th><th v-if="role_users[role.id][0].last_login !== undefined" class="rl-hide-sm">Last login</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="u in role_users[role.id]" :key="u.id">
+                                                        <td>
+                                                            <user_chip :user="u" variant="inline" size="sm"></user_chip>
+                                                            <span class="rl-nick">
+                                                                <a :href="'mailto:' + u.email" class="rl-mail">[[ u.email ]]</a><template v-if="u.nickname"> · @[[ u.nickname ]]</template>
+                                                            </span>
+                                                        </td>
+                                                        <td><span class="rl-org"><i class="fa-solid fa-building"></i>[[ u.org ]]</span></td>
+                                                        <td v-if="u.last_login !== undefined" class="rl-hide-sm rl-meta-cell">[[ u.last_login ? since(u.last_login) : 'never' ]]</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
+                                    <div class="d-grid gap-2">
+                                        <section class="rl-panel">
+                                            <h6><i class="fa-solid fa-sliders"></i>Permissions</h6>
+                                            <div v-if="kind(role) === 'admin'" class="small"><i class="fa-solid fa-crown text-danger me-1"></i>Full access to the instance, every permission included.</div>
+                                            <div v-else-if="kind(role) === 'read_only'" class="small"><i class="fa-solid fa-eye me-1"></i>Can see the cases it has access to, cannot change anything.</div>
+                                            <div v-else class="rl-matrix">
+                                                <span v-for="p in PERMS" :key="p.key" :class="role[p.key] ? 'is-on' : 'is-off'" :title="p.help">
+                                                    <i :class="role[p.key] ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'"></i>[[ p.label ]]
+                                                </span>
+                                            </div>
+                                        </section>
+                                        <section v-if="org_split(role.id).length" class="rl-panel">
+                                            <h6><i class="fa-solid fa-building"></i>By organisation</h6>
+                                            <ul class="list-unstyled m-0 rl-orgbars">
+                                                <li v-for="o in org_split(role.id)" :key="o.name">
+                                                    <div>[[ o.name ]]<div class="rl-orgbar"><span :style="{ width: o.pct + '%' }"></span></div></div>
+                                                    <b class="text-end">[[ o.count ]]</b>
+                                                </li>
+                                            </ul>
+                                        </section>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
     </div>
+
+    <app-pagination v-if="roles_list && roles_list.nb_pages > 1" class="my-3" :current-page="current_page" :nb-pages="roles_list.nb_pages"
+                    @page="fetchRoles"></app-pagination>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed, onMounted } = Vue
-        import {display_toast, message_list} from '../../static/js/toaster.js'
+        const { createApp, ref, computed, watch } = Vue
+        import {display_toast, message_list} from '/static/js/toaster.js'
+        import Pagination from '/static/js/components/pagination.js'
+        import user_chip from '/static/js/components/user-chip.js'
+
+        // Extra permissions of the Editor type (same texts as the create role page)
+        const PERMS = [
+            { key: 'org_admin', label: 'Org Admin', icon: 'fa-solid fa-users-gear', help: 'Can add, create and edit the users of their own organisation.' },
+            { key: 'case_admin', label: 'Case Admin', icon: 'fa-solid fa-briefcase', help: 'Can create and complete cases, and turn a case into a privileged case.' },
+            { key: 'queue_admin', label: 'Queue Admin', icon: 'fa-solid fa-list-check', help: 'Approves the tasks requested in privileged cases.' },
+            { key: 'queuer', label: 'Queuer', icon: 'fa-solid fa-hand', help: 'Can request a task in a privileged case; a Queue Admin approves it.' },
+            { key: 'audit_viewer', label: 'Audit Viewer', icon: 'fa-solid fa-user-shield', help: 'Can read the history and the audit logs of cases.' },
+            { key: 'template_editor', label: 'Template Editor', icon: 'fa-solid fa-clone', help: 'Can create and edit case, task and note templates.' },
+            { key: 'misp_editor', label: 'MISP Editor', icon: 'fa-solid fa-plug', help: 'Can sync with MISP, manage MISP objects and use connectors in cases.' },
+            { key: 'importer', label: 'Importer', icon: 'fa-solid fa-file-import', help: 'Can import data into cases with the analyser and the MISP modules.' },
+        ]
+        const KIND_LABEL = { admin: 'Admin', editor: 'Editor', read_only: 'Read only' }
+        const KIND_ICON = { admin: 'fa-solid fa-crown', editor: 'fa-solid fa-pen', read_only: 'fa-solid fa-eye' }
 
         createApp({
+            components: { 'app-pagination': Pagination, user_chip },
             delimiters: ['[[', ']]'],
             setup() {
                 const roles_list = ref(null)
-                const users_table = ref({})
                 const current_page = ref(1)
                 const search_query = ref('')
-                
+                const role_type = ref('')
+                const opened = ref(new Set())
+                const role_users = ref({})
                 const editing_role = ref(null)
-                const edit_data = ref({
-                    name: '',
-                    description: '',
-                    admin: false,
-                    read_only: false,
-                    org_admin: false,
-                    case_admin: false,
-                    queue_admin: false,
-                    queuer: false,
-                    audit_viewer: false,
-                    template_editor: false,
-                    misp_editor: false,
-                    importer: false
-                })
+                const edit_data = ref({})
                 const system_roles = [1, 2, 3]
 
-                // Computed property for editor checkbox
-                const is_editor = computed(() => {
-                    return !edit_data.value.admin && !edit_data.value.read_only
-                })
-
+                function is_system_role(id) { return system_roles.includes(id) }
+                function kind(role) { return role.admin ? 'admin' : role.read_only ? 'read_only' : 'editor' }
+                function extras(role) { return PERMS.filter(p => role[p.key]) }
+                function since(d) { return window.dayjs ? window.dayjs.utc(d).fromNow() : d }
+                const users_total = computed(() => roles_list.value ? roles_list.value.roles.reduce((n, r) => n + (r.user_count || 0), 0) : 0)
 
                 async function fetchRoles(page) {
-                    roles_list.value = null
-                    let url = 'get_roles?page=' + page
-                    if (search_query.value) {
-                        url += '&name=' + encodeURIComponent(search_query.value)
-                    }
-                    const res = await fetch(url)
-                    let loc = await res.json()
-                    roles_list.value = loc
+                    const params = new URLSearchParams({ page })
+                    if (search_query.value) params.set('name', search_query.value)
+                    if (role_type.value) params.set('role_type', role_type.value)
+                    const res = await fetch('get_roles?' + params)
+                    roles_list.value = res.ok ? await res.json() : { roles: [], nb_pages: 0, total: 0 }
                     current_page.value = page
                 }
 
-                async function extend_collapse(role_id){
-                    const res = await fetch('get_role_users?role_id='+role_id)
-                    let loc = await res.json()
-                    users_table.value[role_id] = loc["users"]
-
-                    const collapseElementList = document.querySelectorAll('#collapse'+role_id)
-                    const collapseList = [...collapseElementList].map(collapseEl => new bootstrap.Collapse(collapseEl))
+                // Users of a role: loaded the first time its row is opened
+                async function load_users(role) {
+                    if (role_users.value[role.id] && role_users.value[role.id] !== 'loading') return
+                    role_users.value = { ...role_users.value, [role.id]: 'loading' }
+                    const res = await fetch('get_role_users?role_id=' + role.id)
+                    const data = res.ok ? await res.json() : {}
+                    role_users.value = { ...role_users.value, [role.id]: data.users || [] }
                 }
 
-                function is_system_role(role_id) {
-                    return system_roles.includes(role_id)
+                function open_row(role) {
+                    const s = new Set(opened.value); s.add(role.id); opened.value = s
+                    load_users(role)
                 }
 
-                async function delete_role(role){
-                    const res = await fetch('/admin/delete_role/'+role.id, {
-                        method: 'POST',
-                        headers: { "X-CSRFToken": $("#csrf_token").val() }
-                    })
-                    if(await res.status == 200){
-                        let index = roles_list.value.roles.indexOf(role)
-                        if(index > -1)
-                            roles_list.value.roles.splice(index, 1)
-                        $("#delete_role_modal_"+role.id).modal("hide")
+                function toggle_row(role, ev) {
+                    if (ev && ev.target.closest('a, button, .uchip, .modal')) return
+                    if (opened.value.has(role.id)) {
+                        const s = new Set(opened.value); s.delete(role.id); opened.value = s
+                        if (editing_role.value === role.id) editing_role.value = null
+                    } else {
+                        open_row(role)
                     }
-                    display_toast(res)
                 }
 
-                async function save_role(role){
-                    const res = await fetch('/admin/edit_role/'+role.id, {
+                function org_split(role_id) {
+                    const users = role_users.value[role_id]
+                    if (!Array.isArray(users) || !users.length) return []
+                    const counts = {}
+                    for (const u of users) counts[u.org] = (counts[u.org] || 0) + 1
+                    const max = Math.max(...Object.values(counts))
+                    return Object.entries(counts).map(([name, count]) => ({ name, count, pct: Math.round(count / max * 100) }))
+                        .sort((a, b) => b.count - a.count)
+                }
+
+                // ---- edit (in the opened row) ----
+                const edit_kind = computed(() => edit_data.value.admin ? 'admin' : edit_data.value.read_only ? 'read_only' : 'editor')
+                function start_edit(role) {
+                    edit_data.value = { name: role.name, description: role.description || '', admin: !!role.admin, read_only: !!role.read_only,
+                                        ...Object.fromEntries(PERMS.map(p => [p.key, !!role[p.key]])) }
+                    editing_role.value = role.id
+                    open_row(role)
+                }
+                function cancel_edit() { editing_role.value = null }
+                function set_edit_kind(k) {
+                    edit_data.value.admin = k === 'admin'
+                    edit_data.value.read_only = k === 'read_only'
+                    if (k === 'read_only') PERMS.forEach(p => { edit_data.value[p.key] = false })
+                }
+
+                async function save_role(role) {
+                    const res = await fetch('/admin/edit_role/' + role.id, {
                         method: 'POST',
-                        headers: { 
-                            "X-CSRFToken": $("#csrf_token").val(),
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            name: edit_data.value.name,
-                            description: edit_data.value.description,
-                            admin: edit_data.value.admin,
-                            read_only: edit_data.value.read_only,
-                            org_admin: edit_data.value.org_admin,
-                            case_admin: edit_data.value.case_admin,
-                            queue_admin: edit_data.value.queue_admin,
-                            queuer: edit_data.value.queuer,
-                            audit_viewer: edit_data.value.audit_viewer,
-                            template_editor: edit_data.value.template_editor,
-                            misp_editor: edit_data.value.misp_editor,
-                            importer: edit_data.value.importer
-                        })
+                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                        body: JSON.stringify(edit_data.value)
                     })
-                    if(await res.status == 200){
-                        role.name = edit_data.value.name
-                        role.description = edit_data.value.description
-                        role.admin = edit_data.value.admin
-                        role.read_only = edit_data.value.read_only
-                        role.org_admin = edit_data.value.org_admin
-                        role.case_admin = edit_data.value.case_admin
-                        role.queue_admin = edit_data.value.queue_admin
-                        role.queuer = edit_data.value.queuer
-                        role.audit_viewer = edit_data.value.audit_viewer
-                        role.template_editor = edit_data.value.template_editor
-                        role.misp_editor = edit_data.value.misp_editor
-                        role.importer = edit_data.value.importer
+                    if (res.status == 200) {
+                        Object.assign(role, edit_data.value)
                         editing_role.value = null
                     }
                     display_toast(res)
                 }
 
-                function edit_role(role) {
-                    editing_role.value = role.id
-                    edit_data.value.name = role.name
-                    edit_data.value.description = role.description || ''
-                    edit_data.value.admin = role.admin
-                    edit_data.value.read_only = role.read_only
-                    edit_data.value.org_admin = role.org_admin || false
-                    edit_data.value.case_admin = role.case_admin || false
-                    edit_data.value.queue_admin = role.queue_admin || false
-                    edit_data.value.queuer = role.queuer || false
-                    edit_data.value.audit_viewer = role.audit_viewer || false
-                    edit_data.value.template_editor = role.template_editor || false
-                    edit_data.value.misp_editor = role.misp_editor || false
-                    edit_data.value.importer = role.importer || false
-                }
-
-                function cancel_edit() {
-                    editing_role.value = null
-                    edit_data.value.name = ''
-                    edit_data.value.description = ''
-                    edit_data.value.admin = false
-                    edit_data.value.read_only = false
-                    edit_data.value.org_admin = false
-                    edit_data.value.case_admin = false
-                    edit_data.value.queue_admin = false
-                    edit_data.value.queuer = false
-                    edit_data.value.audit_viewer = false
-                    edit_data.value.template_editor = false
-                    edit_data.value.misp_editor = false
-                    edit_data.value.importer = false
-                }
-
-                function handleAdminChange() {
-                    if (edit_data.value.admin) {
-                        edit_data.value.read_only = false
+                async function delete_role(role) {
+                    const res = await fetch('/admin/delete_role/' + role.id, {
+                        method: 'POST',
+                        headers: { "X-CSRFToken": $("#csrf_token").val() }
+                    })
+                    if (res.status == 200) {
+                        $("#delete_role_modal_" + role.id).modal("hide")
+                        await fetchRoles(current_page.value)
                     }
+                    display_toast(res)
                 }
 
-                function handleReadOnlyChange() {
-                    if (edit_data.value.read_only) {
-                        edit_data.value.admin = false
-                        edit_data.value.org_admin = false
-                        edit_data.value.case_admin = false
-                        edit_data.value.queue_admin = false
-                        edit_data.value.queuer = false
-                        edit_data.value.audit_viewer = false
-                        edit_data.value.template_editor = false
-                        edit_data.value.misp_editor = false
-                        edit_data.value.importer = false
-                    }
-                }
-
-                function handleEditorChange(event) {
-                    if (event.target.checked) {
-                        edit_data.value.admin = false
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleOrgAdminChange() {
-                    if (edit_data.value.org_admin) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleCaseAdminChange() {
-                    if (edit_data.value.case_admin) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleQueueAdminChange() {
-                    if (edit_data.value.queue_admin) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleQueuerChange() {
-                    if (edit_data.value.queuer) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleAuditViewerChange() {
-                    if (edit_data.value.audit_viewer) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleTemplateEditorChange() {
-                    if (edit_data.value.template_editor) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleMispEditorChange() {
-                    if (edit_data.value.misp_editor) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                function handleImporterChange() {
-                    if (edit_data.value.importer) {
-                        edit_data.value.read_only = false
-                    }
-                }
-
-                let roles_search_timer = null
-                function debounceRoles(fn, delay=300){
-                    return (...args) => {
-                        if (roles_search_timer) clearTimeout(roles_search_timer)
-                        roles_search_timer = setTimeout(() => fn(...args), delay)
-                    }
-                }
-                const debouncedRolesSearch = debounceRoles(async (q) => {
-                    search_query.value = q
-                    await fetchRoles(1)
-                }, 300)
-
-                function onInput(e){
-                    const q = e.target.value
-                    debouncedRolesSearch(q || '')
-                }
-
+                let timer = null
+                watch(search_query, () => { clearTimeout(timer); timer = setTimeout(() => fetchRoles(1), 300) })
+                watch(role_type, () => fetchRoles(1))
 
                 fetchRoles(1)
 
-    
                 return {
-                    message_list,
-                    roles_list,
-                    users_table,
-                    extend_collapse,
-                    current_page,
-                    fetchRoles,
-                    onInput,
-                    editing_role,
-                    edit_data,
-                    edit_role,
-                    cancel_edit,
-                    is_system_role,
-                    delete_role,
-                    save_role,
-                    handleAdminChange,
-                    handleReadOnlyChange,
-                    handleEditorChange,
-                    handleOrgAdminChange,
-                    handleCaseAdminChange,
-                    handleQueueAdminChange,
-                    handleQueuerChange,
-                    handleAuditViewerChange,
-                    handleTemplateEditorChange,
-                    handleMispEditorChange,
-                    handleImporterChange,
-                    is_editor
+                    message_list, roles_list, current_page, search_query, role_type, opened, role_users, editing_role, edit_data,
+                    PERMS, KIND_LABEL, KIND_ICON, users_total, edit_kind,
+                    fetchRoles, is_system_role, kind, extras, since, toggle_row, org_split,
+                    start_edit, cancel_edit, set_edit_kind, save_role, delete_role
                 }
             }
         }).mount('#main-container')
-
     </script>
 {% endblock %}

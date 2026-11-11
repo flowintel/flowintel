@@ -105,12 +105,19 @@ def get_orgs_page(page, name=None):
     query = query.order_by(db.func.lower(Org.name))
     return query.paginate(page=page, per_page=20, max_per_page=50)
 
-def get_roles_page(page, name=None):
-    """Return roles by page, optionally filtered by partial case-insensitive name."""
+def get_roles_page(page, name=None, role_type=None):
+    """Return roles by page, optionally filtered by partial case-insensitive name
+    and by type: 'admin', 'read_only' or 'editor' (neither of them)."""
     query = Role.query
     if name:
         query = query.filter(Role.name.ilike(f"%{name}%"))
-    return query.paginate(page=page, per_page=20, max_per_page=50)
+    if role_type == "admin":
+        query = query.filter(Role.admin.is_(True))
+    elif role_type == "read_only":
+        query = query.filter(Role.read_only.is_(True), Role.admin.isnot(True))
+    elif role_type == "editor":
+        query = query.filter(Role.admin.isnot(True), Role.read_only.isnot(True))
+    return query.order_by(Role.id).paginate(page=page, per_page=20, max_per_page=50)
 
 def get_user(id):
     """Return the user"""
