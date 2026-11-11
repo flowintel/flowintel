@@ -1164,3 +1164,37 @@ a.case-content:hover {
 .morg-modal-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: #1f3763; color: #fff; }
 .morg-modal-sub { font-size: .8rem; color: var(--bs-secondary-color); }
 .morg-error { color: var(--bs-danger); font-size: .82rem; margin-top: .4rem; }
+
+/* ---- linked cases (static/js/components/case-links.js): two at a time, ← → to page ---- */
+.clk-carousel { display: flex; align-items: center; gap: .25rem; min-width: 0; }
+.clk-arrow { flex: 0 0 auto; border: 0; background: none; padding: .15rem .35rem; color: var(--bs-secondary-color); border-radius: 6px; }
+.clk-arrow:hover:not(:disabled) { color: #2f6fb0; background: rgba(47, 111, 176, .08); }
+.clk-arrow:disabled { opacity: .3; }
+.clk-pager { display: flex; align-items: center; justify-content: center; gap: .3rem; margin-top: .3rem; }
+.clk-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bs-border-color); cursor: pointer; }
+.clk-dot.is-active { background: #2f6fb0; }
+.clk-range { margin-left: .4rem; font-size: .7rem; color: var(--bs-secondary-color); }
+
+/* small linked-case cards, two per row */
+.clk-cards { flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.clc { display: flex; align-items: flex-start; gap: .55rem; min-width: 0; height: 100%; padding: .5rem .6rem; border: 1px solid var(--bs-border-color); border-left: 4px solid #2f6fb0; border-radius: 9px; background: var(--bs-body-bg); cursor: pointer; transition: box-shadow .15s ease, border-color .15s ease; }
+.clc:hover { box-shadow: 0 3px 10px rgba(0, 0, 0, .08); border-color: rgba(47, 111, 176, .5); }
+.clc:hover .clc-title { color: #2f6fb0; }
+.clc:focus-visible { outline: 2px solid #2f6fb0; outline-offset: 2px; }
+.clc.is-done { border-left-color: #198754; }
+.clc.is-overdue { border-left-color: #dc3545; }
+.clc-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 1.9rem; height: 1.9rem; border-radius: 8px; background: rgba(47, 111, 176, .12); color: #2f6fb0; font-size: .85rem; }
+.clc.is-done .clc-icon { background: rgba(25, 135, 84, .12); color: #198754; }
+.clc-body { flex: 1 1 0; min-width: 0; }
+.clc-sub { display: flex; align-items: center; gap: .35rem; font-size: .7rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; }
+.clc-sub .badge { font-size: .62rem; max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+.clc-title { font-weight: 600; font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clc-facts { display: flex; align-items: center; gap: .7rem; font-size: .72rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; }
+.clc-progress { display: inline-flex; align-items: center; gap: .35rem; }
+.clc-bar { display: inline-block; width: 46px; height: 4px; border-radius: 2px; background: var(--bs-secondary-bg); overflow: hidden; }
+.clc-bar > span { display: block; height: 100%; background: #198754; }
+.clc-due { display: inline-flex; align-items: center; gap: .25rem; }
+.clc-due.is-late { color: #dc3545; font-weight: 600; }
+.clc-remove { flex: 0 0 auto; border: 0; background: none; padding: .1rem .3rem; border-radius: 6px; color: var(--bs-secondary-color); }
+.clc-remove:hover { color: var(--bs-danger); background: rgba(220, 53, 69, .08); }
+@media (max-width: 576px) { .clk-cards { grid-template-columns: 1fr; } }
