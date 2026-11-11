@@ -1116,3 +1116,27 @@ a.case-content:hover {
 /* "you" next to the signed-in user's chip */
 .uchip > .uchip-me { flex: 0 0 auto; }
 .uchip--avatar .uchip-avatar--me { box-shadow: 0 0 0 2px var(--bs-body-bg), 0 0 0 4px #2f6fb0; }
+
+/* ---- user-picker component (static/js/components/user-picker.js) ---- */
+.upick { position: relative; min-width: 260px; flex: 1 1 260px; }
+.upick-box {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; min-height: 2.25rem;
+    padding: .25rem 2rem .25rem .4rem; border: 1px solid var(--bs-border-color); border-radius: 10px;
+    background: var(--bs-body-bg); cursor: text; transition: border-color .15s ease, box-shadow .15s ease;
+}
+.upick--open .upick-box { border-color: rgba(47, 111, 176, .6); box-shadow: 0 0 0 3px rgba(47, 111, 176, .15); }
+.upick--disabled .upick-box { opacity: .6; cursor: not-allowed; }
+.upick-input { flex: 1 1 80px; min-width: 80px; border: 0; outline: none; background: transparent; color: var(--bs-body-color); font-size: .88rem; padding: .15rem .2rem; }
+.upick-caret { position: absolute; right: .7rem; top: .75rem; font-size: .7rem; color: var(--bs-secondary-color); pointer-events: none; transition: transform .15s ease; }
+.upick--open .upick-caret { transform: rotate(180deg); }
+.upick-menu {
+    position: absolute; z-index: 1060; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: .3rem; list-style: none;
+    max-height: 280px; overflow-y: auto; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+}
+.upick-option { display: flex; align-items: center; gap: .6rem; padding: .35rem .5rem; border-radius: 8px; cursor: pointer; }
+.upick-option.is-active { background: rgba(47, 111, 176, .1); }
+.upick-text { display: flex; flex-direction: column; min-width: 0; }
+.upick-name { font-size: .88rem; font-weight: 600; }
+.upick-sub { font-size: .75rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upick-none { padding: .5rem; font-size: .82rem; color: var(--bs-secondary-color); }

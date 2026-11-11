@@ -1828,12 +1828,6 @@
                         display_toast(res)
                     }else{
                         users_in_case.value = await res.json()
-                        await nextTick()
-                        // reinitialize select2 on user selects so new options render
-                        $('.select2-selectUser').each(function () {
-                            try { $(this).select2('destroy') } catch (e) { }
-                            $(this).select2({ width: 'element' })
-                        })
                     }
                 }
                 get_all_users_case()

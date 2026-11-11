@@ -166,11 +166,6 @@ export default {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
-		function select2_change(tid) {
-			$('.select2-selectUser' + tid).select2({ width: 'element' })
-			$('.select2-container').css("min-width", "200px")
-		}
-
 
 		async function select_tab_task(tab_name) {
 			if (tab_name == 'main') {
@@ -246,7 +241,6 @@ export default {
 
 		// Vue function
 		Vue.onMounted(() => {
-			select2_change(props.task.id)
 			is_mounted = true
 
 			// Listen for newly created standalone attributes and update task link list
@@ -255,7 +249,6 @@ export default {
 
 		})
 		Vue.onUpdated(() => {
-			select2_change(props.task.id)
 			// do not initialize mermaid before the page is mounted
 			if (is_mounted) {
 				$('#task_modules_select_' + props.task.id).on('change.select2', function (e) {
