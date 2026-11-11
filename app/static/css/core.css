@@ -1140,3 +1140,27 @@ a.case-content:hover {
 .uchip-role--admin { --r-fg: #fff; --r-bg: linear-gradient(135deg, #dc3545, #b02a37); }
 .uchip-role--editor { --r-fg: #198754; --r-bg: rgba(25, 135, 84, .12); }
 .uchip-role--read_only { --r-fg: #0a8aa3; --r-bg: rgba(13, 202, 240, .14); }
+
+/* ---- org-picker component (static/js/components/org-picker.js), shares the user-picker styles ---- */
+.opick-chip { padding-right: .3rem; }
+.opick-chip .uchip-remove { color: inherit; opacity: .7; }
+.opick-chip .uchip-remove:hover { opacity: 1; color: var(--bs-danger); }
+.opick-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border-radius: 7px; background: #1f3763; color: #fff; font-size: .72rem; }
+
+/* case: organisations of the case and their modals */
+.morg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .55rem; }
+.morg-card { display: flex; align-items: center; gap: .7rem; padding: .6rem .7rem; border: 1px solid var(--bs-border-color); border-radius: 10px; background: var(--bs-body-bg); min-width: 0; transition: border-color .15s ease, box-shadow .15s ease; }
+.morg-card:hover { border-color: rgba(47, 111, 176, .45); box-shadow: 0 2px 8px rgba(0, 0, 0, .06); }
+.morg-card.is-owner { border-color: rgba(25, 135, 84, .45); background: color-mix(in srgb, #198754 4%, var(--bs-body-bg)); }
+.morg-card-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 2.3rem; height: 2.3rem; border-radius: 9px; background: #1f3763; color: #fff; }
+.morg-card.is-owner .morg-card-icon { background: #198754; }
+.morg-card-text { min-width: 0; flex: 1 1 auto; }
+.morg-card-name { font-weight: 600; display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; }
+.morg-card-desc { font-size: .78rem; color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.morg-owner { display: inline-flex; align-items: center; gap: .25rem; padding: .05rem .45rem; border-radius: 999px; font-size: .68rem; font-weight: 700; background: rgba(25, 135, 84, .14); color: #198754; }
+.morg-remove { flex: 0 0 auto; border: 0; background: none; padding: .25rem .35rem; border-radius: 6px; color: var(--bs-secondary-color); }
+.morg-remove:hover { color: var(--bs-danger); background: rgba(220, 53, 69, .08); }
+.morg-modal .modal-header { gap: .75rem; }
+.morg-modal-icon { display: inline-flex; align-items: center; justify-content: center; width: 2.3rem; height: 2.3rem; border-radius: 10px; background: #1f3763; color: #fff; }
+.morg-modal-sub { font-size: .8rem; color: var(--bs-secondary-color); }
+.morg-error { color: var(--bs-danger); font-size: .82rem; margin-top: .4rem; }
