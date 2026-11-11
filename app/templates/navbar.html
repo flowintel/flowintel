@@ -1,5 +1,4 @@
 
-{% import 'macros/role_badge.html' as role_badge %}
 	<!-- Navbar -->
 <nav id="main-navbar" class="navbar navbar-expand-lg topbar" style="padding: 10px 0;">
     <!-- Container wrapper -->
@@ -101,18 +100,19 @@
             <!-- Avatar -->
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle hidden-arrow d-flex align-items-center" href="#"
-                    id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    {{ role_badge.render_role_badge(
-                        current_user.is_admin(),
-                        current_user.read_only(),
-                        compact=true
-                    ) }}
+                    id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false"
+                    title="My account">
+                    <user_chip :user="me" no-card no-you class="nav-me"></user_chip>
+                    {% if current_user.is_admin() %}
+                    <i class="fa-solid fa-crown nav-me-admin" title="Admin" aria-label="Admin"></i>
+                    {% endif %}
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownMenuLink">
                     <li>
-                        <span class="dropdown-item-text fw-semibold">
-                            {{ current_user.first_name|vue_escape }} {{ current_user.last_name|vue_escape }}
-                        </span>
+                        <div class="dropdown-item-text nav-me-head">
+                            <user_chip :user="me" variant="inline" no-card no-you></user_chip>
+                            <div class="nav-me-mail text-truncate">{{ current_user.email|vue_escape }}</div>
+                        </div>
                     </li>
                     <li><hr class="dropdown-divider"></li>
                     <li>
@@ -134,10 +134,14 @@
 <script type="module">
     const { createApp, ref, onMounted, onBeforeUnmount } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
+    import user_chip from '/static/js/components/user-chip.js'
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: { user_chip },
         setup() {
+            // The signed-in user, for the account chip at the top right
+            const me = {{ {"id": current_user.id, "first_name": current_user.first_name, "last_name": current_user.last_name, "nickname": current_user.nickname} | tojson }}
             const result_search = ref([])
             const notif_list = ref(null)
             const search_query = ref('')
@@ -250,6 +254,7 @@
             })
 
             return {
+                me,
                 onInput,
                 result_search,
                 notif_list,

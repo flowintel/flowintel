@@ -4,11 +4,13 @@ import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
+import user_chip from '/static/js/components/user-chip.js'
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
 		subtask,
-		TaskUrlTool
+		TaskUrlTool,
+		user_chip
 	},
 	props: {
 		cases_info: Object,
@@ -250,8 +252,8 @@ export default {
 					</div>
 					<hr>
 					<div v-if="task.users.length">
-						<div v-for="user in task.users">
-							<span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
+						<div v-for="user in task.users" class="d-flex align-items-center gap-1 mb-1">
+							<user_chip :user="user" class="me-1"></user_chip>
 							<button v-if="(cases_info.current_user.id != user.id) && (task.can_edit && cases_info.present_in_case || cases_info.permission.admin)" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
 							<button v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
 

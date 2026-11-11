@@ -97,14 +97,9 @@
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <div v-if="task.users.length">
-                                <template v-for="user in task.users">
-                                    <span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
-                                        <i class="fa-solid fa-user"></i> [[user.nickname]]
-                                    </span>
-                                    <span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
-                                        <i class="fa-solid fa-user"></i> [[user.last_name]]
-                                    </span>
-                                </template>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <user_chip v-for="user in task.users" :key="user.id" :user="user" size="sm"></user_chip>
+                                </div>
                             </div>
 
                             <div v-else>
@@ -174,13 +169,15 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         import smart_render from '/static/js/components/smart-render.js'
+        import user_chip from '/static/js/components/user-chip.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
                 'app-pagination': Pagination,
                 my_assignment_filter,
-                smart_render
+                smart_render,
+                user_chip
             },
             setup() {
                 const tasks_list = ref(null)
