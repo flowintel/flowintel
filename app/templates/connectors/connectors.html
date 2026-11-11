@@ -21,6 +21,21 @@
         {% endif %}
     {% endcall %}
 
+    {% if suggest_rulezet and current_user.is_admin() %}
+    <div v-if="!rulezet_hint_hidden" class="connector-suggest">
+        <img class="connector-suggest-logo" src="{{ url_for('static', filename='image/connectors/rulezet.png') }}" alt="Rulezet">
+        <div class="connector-suggest-text">
+            <div class="connector-suggest-title">Rulezet <span class="badge text-bg-light border">Suggested · not set up</span></div>
+            <div class="connector-suggest-desc">Detection rules (YARA, Sigma, Suricata…) shared on <a href="https://rulezet.org" target="_blank" rel="noopener">rulezet.org</a>: search them, add them to cases, check their syntax and edit them from Flowintel.</div>
+        </div>
+        <form method="post" action="/connectors/suggested/rulezet" class="ms-auto d-flex gap-2 align-items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="button" class="btn btn-sm btn-link text-muted" @click="hide_rulezet_hint()" title="Hide this suggestion">Dismiss</button>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fa-solid fa-plus me-1"></i>Set up</button>
+        </form>
+    </div>
+    {% endif %}
+
     <template v-if="connectors_list">
         <template v-for="connector in connectors_list.connectors">
             <div class="list-group" style="margin-bottom: 10px;">
@@ -229,6 +244,14 @@
             delimiters: ['[[', ']]'],
             setup() {
                 const connectors_list = ref(null)
+                // Suggested Rulezet connector: hidden for this browser once dismissed
+                const RULEZET_HINT_KEY = 'flowintel_hide_rulezet_suggestion'
+                const rulezet_hint_hidden = ref(false)
+                try { rulezet_hint_hidden.value = localStorage.getItem(RULEZET_HINT_KEY) === '1' } catch (e) {}
+                function hide_rulezet_hint() {
+                    rulezet_hint_hidden.value = true
+                    try { localStorage.setItem(RULEZET_HINT_KEY, '1') } catch (e) {}
+                }
                 const instances_table = ref({})
                 const search_query = ref('')
                 let searchTimer = null
@@ -384,6 +407,8 @@
                 return {
                     message_list,
                     connectors_list,
+                    rulezet_hint_hidden,
+                    hide_rulezet_hint,
                     instances_table,
                     search_query,
                     extend_collapse,

@@ -632,7 +632,7 @@ export default {
                 <template v-if="editing[rule.id] !== undefined">
                     <smart-editor v-model="editing[rule.id]" mode="code" :language="(rule.format || 'text').toLowerCase()" min-height="220px" max-height="560px"></smart-editor>
                     <input v-if="remote_of(rule) && remote_of(rule).has_key" class="form-control form-control-sm rz-edit-msg" v-model="messages[rule.id]" maxlength="2000"
-                           placeholder="What changed and why (shown on Rulezet with the proposal or in the rule history)">
+                           placeholder="What changed and why (empty: &quot;Change proposed from Flowintel.&quot;)">
                     <div class="rz-edit-bar">
                         <button class="btn btn-sm btn-outline-secondary" @click="check_syntax(rule)" :disabled="checks[rule.id] === 'loading'"><i class="fa-solid fa-spell-check me-1"></i>Check syntax</button>
                         <button class="btn btn-sm btn-success" @click="save_edit(rule)" :disabled="busy[rule.id] === 'save'" title="Saved in the case only if Rulezet says the syntax is valid">

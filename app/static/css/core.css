@@ -1025,3 +1025,16 @@ a.case-content:hover {
   height: 22px;
   vertical-align: middle;
 }
+
+/* Connectors page: a suggested connector that is not set up yet (e.g. Rulezet) */
+.connector-suggest {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    margin-bottom: 1rem; padding: .85rem 1rem;
+    border: 1px dashed var(--bs-border-color); border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+.connector-suggest-logo { height: 36px; width: auto; }
+.connector-suggest-text { flex: 1 1 320px; min-width: 0; }
+.connector-suggest-title { font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.connector-suggest-title .badge { font-weight: 500; font-size: .7rem; }
+.connector-suggest-desc { font-size: .85rem; color: var(--bs-secondary-color); }

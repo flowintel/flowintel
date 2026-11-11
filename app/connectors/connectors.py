@@ -32,7 +32,24 @@ def _set_instance_sharing_scope_choices(form, user):
 @login_required
 def connectors():
     """connectors' index page"""
-    return render_template("connectors/connectors.html")
+    # Rulezet is suggested (not created) until a Rulezet connector exists, so people know it is available
+    return render_template("connectors/connectors.html", suggest_rulezet=ConnectorModel.get_connector_by_name_ci("rulezet") is None)
+
+
+@connector_blueprint.route("/suggested/rulezet", methods=['POST'])
+@login_required
+@admin_required
+def setup_rulezet():
+    """Create the suggested Rulezet connector, then open the form of its first instance"""
+    connector = ConnectorModel.get_connector_by_name_ci("rulezet")
+    if not connector:
+        connector = ConnectorModel.add_connector_core({
+            "name": "Rulezet",
+            "description": "Detection rules (YARA, Sigma, Suricata…) shared on Rulezet: search them, add them to cases, check and edit them.",
+            "icon_select": ConnectorModel.get_icon_id_by_name_ci("rulezet") or "None",
+        })
+        flowintel_log("audit", 200, "Connector created", Connector=connector.name, ConnectorId=connector.id, By=current_user.email)
+    return redirect(f"/connectors/{connector.id}/add_instance?url=https://rulezet.org&name=Rulezet")
 
 @connector_blueprint.route("/connectors_icons", methods=['GET'])
 @login_required
@@ -192,6 +209,12 @@ def add_instance(cid):
                 )
                 return redirect("/connectors")
             return render_template("connectors/add_instance.html", form=form, edit_mode=False)
+        # Values suggested by a link (e.g. the Rulezet setup)
+        if request.method == 'GET':
+            if request.args.get("url") and not form.url.data:
+                form.url.data = request.args.get("url")[:64]
+            if request.args.get("name") and not form.name.data:
+                form.name.data = request.args.get("name")[:64]
         return render_template("connectors/add_instance.html", form=form, edit_mode=False)
     return render_template("404.html")
 

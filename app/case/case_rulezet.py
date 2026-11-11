@@ -387,7 +387,11 @@ def rulezet_publish_rule(cid, ciid, rid):
     if err:
         return err
     mode = "edit" if payload.get("mode") == "edit" else "proposal"
-    body = {"content": content, "mode": mode, "message": str(payload.get("message") or "")[:2000]}
+    # Without a message from the user, say where the change comes from. Nothing about the
+    # case itself is sent: it may be private.
+    message = str(payload.get("message") or "").strip()[:2000] or \
+        ("Change proposed from Flowintel." if mode == "proposal" else "Edited from Flowintel.")
+    body = {"content": content, "mode": mode, "message": message}
     if payload.get("base_last_modif"):
         body["base_last_modif"] = str(payload["base_last_modif"])
 
