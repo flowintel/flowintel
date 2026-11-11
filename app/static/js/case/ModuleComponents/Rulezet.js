@@ -431,7 +431,10 @@ export default {
             </select>
             <span class="rz-count"><b>[[ rules.length ]]</b> [[ rules.length === 1 ? 'rule' : 'rules' ]] in this case
                 <span v-if="loading_rules && rules.length" class="spinner-border spinner-border-sm ms-1" title="Updating…"></span></span>
-            <button v-if="can_manage_rules" class="btn btn-sm ms-auto" :class="show_search ? 'btn-secondary' : 'btn-primary'" @click="show_search = !show_search">
+            <a v-if="base_url" :href="base_url + '/rule/create_rule'" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary ms-auto" title="Write a new rule on Rulezet (opens in a new tab)">
+                <i class="fa-solid fa-pen-to-square me-1"></i>Write a rule
+            </a>
+            <button v-if="can_manage_rules" class="btn btn-sm" :class="[show_search ? 'btn-secondary' : 'btn-primary', { 'ms-auto': !base_url }]" @click="show_search = !show_search">
                 <i :class="show_search ? 'fa-solid fa-xmark' : 'fa-solid fa-plus'" class="me-1"></i>[[ show_search ? 'Close' : 'Add rules' ]]
             </button>
         </div>
