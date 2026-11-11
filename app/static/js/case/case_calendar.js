@@ -19,12 +19,10 @@ const KINDS = [
     { key: 'seen', label: 'First / last seen', icon: 'fa-solid fa-eye', color: '#20a0a0', hint: 'First seen and last seen of MISP attributes' },
     { key: 'sync', label: 'MISP sync', icon: 'fa-solid fa-rotate', color: '#e8730c', hint: 'Sync runs, next scheduled sync, conflicts' },
     { key: 'file', label: 'Files', icon: 'fa-solid fa-paperclip', color: '#198754', hint: 'Files uploaded to the case and its tasks' },
-    { key: 'history', label: 'History', icon: 'fa-solid fa-clock-rotate-left', color: '#6c757d', hint: 'Every line of the case history' },
-    { key: 'audit', label: 'Audit', icon: 'fa-solid fa-user-shield', color: '#adb5bd', hint: 'Audit log of the case' },
 ]
-// At first the case itself, its tasks, the incident timeline and MISP syncs, so the month
+// At first the case itself, its tasks and MISP syncs, so the month
 // stays readable. Deadlines and everything else are one chip away.
-const HIDDEN_BY_DEFAULT = ['deadline', 'file', 'misp', 'seen', 'history', 'audit']
+const HIDDEN_BY_DEFAULT = ['deadline', 'timeline', 'file', 'misp', 'seen']
 
 function date_only(iso) {
     const d = new Date(iso)
@@ -46,7 +44,6 @@ export default {
     setup(props, { emit }) {
         const items = ref([])
         const loading = ref(true)
-        const include_logs = ref(false)
         const search = ref('')
         const hidden = ref(new Set(HIDDEN_BY_DEFAULT))
         const holder = ref(null)
@@ -274,7 +271,7 @@ export default {
         function target_label(target) {
             if (!target) return 'Open'
             if (target.task) return 'Open the task'
-            return { main: 'Open the case', timeline: 'Open the timeline', misp: 'Open MISP', files: 'Open the files', history: 'Open the history' }[target.tab] || 'Open'
+            return { main: 'Open the case', timeline: 'Open the timeline', misp: 'Open MISP', files: 'Open the files' }[target.tab] || 'Open'
         }
 
         function refresh_events() {
@@ -312,7 +309,6 @@ export default {
             if (res.status === 200) {
                 const data = await res.json()
                 items.value = data.items
-                include_logs.value = data.include_logs
             }
             loading.value = false
         }
@@ -374,7 +370,7 @@ export default {
             window.flowintel_calendar_focus = null
             const rank = it => ({ task: 0, deadline: 1 })[it.kind] ?? 2
             const item = items.value
-                .filter(it => it.target && it.target.task === pending.task && it.kind !== 'history' && it.kind !== 'audit')
+                .filter(it => it.target && it.target.task === pending.task)
                 .sort((a, b) => rank(a) - rank(b) || (a.start < b.start ? 1 : -1))[0]
             if (!item) {
                 create_message('Nothing dated for this task in the calendar', 'info-subtle')
@@ -444,7 +440,7 @@ export default {
         })
 
         return {
-            items, loading, include_logs, search, hidden, shown_kinds, filtered_out, holder, month_picker, counts, kinds, visible,
+            items, loading, search, hidden, shown_kinds, filtered_out, holder, month_picker, counts, kinds, visible,
             modal_el, preview, preview_pos, opened,
             toggle_kind, show_all, reset_kinds, go_today, period_info, kind_info, item_label, format_when, target_label, go_to,
         }
@@ -489,9 +485,6 @@ export default {
             <span class="text-muted small"><b>[[ visible.length ]]</b> / [[ items.length ]] items</span>
         </div>
         <input ref="month_picker" class="form-control ccal-month-picker" placeholder="Select month">
-        <div v-if="!loading && !include_logs" class="form-text mb-2">
-            <i class="fa-solid fa-lock me-1"></i>History and audit entries need the Admin, Case Admin or Audit Viewer permission.
-        </div>
         <div v-if="loading" class="text-muted py-4 text-center"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>
         <div ref="holder" class="ccal-calendar"></div>
 

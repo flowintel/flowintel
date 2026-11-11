@@ -8,7 +8,6 @@ Gathers, in one list of calendar items:
   - timeline events: the date of the event itself
   - MISP objects and references: creation; MISP attributes: creation, first seen, last seen
   - MISP connectors: sync runs, next scheduled sync, sync conflicts
-  - the case history and, for users allowed to read it, the audit log
 
 Each item: {id, kind, title, start, end?, all_day, detail, target, meta, status, body}
 `target` tells the page where to go on click: {"tab": ..., "task": id}.
@@ -16,7 +15,6 @@ Each item: {id, kind, title, start, end?, all_day, detail, target, meta, status,
 Bootstrap-coloured badge, `body` a longer text (description, note, comment).
 """
 import datetime
-import re
 
 from ..db_class.db import (
     Task, File, Case_Timeline_Event, Case_Misp_Object, Case_Misp_Object_Reference,
@@ -25,7 +23,6 @@ from ..db_class.db import (
 )
 from . import common_core as CommonModel
 
-_LOG_LINE = re.compile(r'^\[(.*?)\]\((.*?)\):?\s*(.*)$')
 
 
 def _iso(value):
@@ -73,25 +70,6 @@ class _Collector:
         })
 
 
-def _log_entries(lines, kind, out, local_dates):
-    """History and audit lines are "[YYYY-MM-DD HH:MM](user): text", in local server time."""
-    for i, line in enumerate(lines or []):
-        m = _LOG_LINE.match(line)
-        if not m:
-            continue
-        try:
-            date = datetime.datetime.strptime(m.group(1), '%Y-%m-%d %H:%M')
-        except ValueError:
-            continue
-        if local_dates:
-            date = date.astimezone()
-        # The exact line, so the History tab can scroll to it and outline it
-        go = {"tab": "history", "sub": "history-audit" if kind == "audit" else "history-case",
-              "entry": {"date": m.group(1), "user": m.group(2), "text": m.group(3)}}
-        out.add(kind, i, _short(m.group(3)), date, detail=m.group(2), target=go, body=m.group(3),
-                meta=[("By", m.group(2)), ("When", m.group(1))])
-
-
 def _period(created, deadline, finish, time_required):
     """How long a task or the case runs, for the progress bar of its preview"""
     if not created:
@@ -104,7 +82,7 @@ def _fmt(value):
     return f"{value:%Y-%m-%d %H:%M}" if value else None
 
 
-def get_case_calendar(case, include_logs):
+def get_case_calendar(case):
     out = _Collector()
     cid = case.id
     statuses = {st.id: {"name": st.name, "style": st.bootstrap_style} for st in Status.query.all()}
@@ -179,39 +157,41 @@ def get_case_calendar(case, include_logs):
     objects = Case_Misp_Object.query.filter_by(case_id=cid).all()
     object_name = {o.id: o.name for o in objects}
     for o in objects:
-        out.add("misp", f"object-{o.id}", f"MISP object: {o.name}", o.creation_date, target={"tab": "misp"},
+        out.add("misp", f"object-{o.id}", f"MISP object: {o.name}", o.creation_date, target={"tab": "misp", "misp_object": o.id},
                 meta=[("Template", o.name), ("UUID", o.uuid), ("Attributes", Misp_Attribute.query.filter_by(case_misp_object_id=o.id).count()),
                       ("Created", _fmt(o.creation_date))])
     for r in Case_Misp_Object_Reference.query.filter_by(case_id=cid).all():
+        # A reference is shown on its source object, else on the object it points to
+        ref_obj = r.source_object_id or r.referenced_object_id
+        ref_go = {"tab": "misp", "misp_object": ref_obj} if ref_obj else \
+            {"tab": "misp", "misp_attr": r.source_attribute_id or r.referenced_attribute_id}
         out.add("misp", f"ref-{r.id}", f"MISP reference: {r.relationship_type or 'relationship'}",
-                r.creation_date, detail=_short(r.comment, 200), target={"tab": "misp"})
+                r.creation_date, detail=_short(r.comment, 200), target=ref_go)
     for a in Misp_Attribute.query.filter_by(case_id=cid).all():
         where = f"Object: {object_name.get(a.case_misp_object_id, '')}" if a.case_misp_object_id else "Standalone attribute"
         label = f"{a.type} {_short(a.value, 50)}"
+        # An attribute of an object opens that object, a standalone one its row in the Attributes sub-tab
+        attr_go = {"tab": "misp", "misp_object": a.case_misp_object_id} if a.case_misp_object_id else \
+            {"tab": "misp", "misp_attr": a.id}
         am = [("Type", a.type), ("Value", a.value), ("Relation", a.object_relation), ("In", where),
               ("IDS", "Yes" if a.ids_flag else "No"), ("First seen", _fmt(a.first_seen)), ("Last seen", _fmt(a.last_seen))]
-        out.add("misp", f"attr-{a.id}", f"MISP attribute: {label}", a.creation_date, detail=where, target={"tab": "misp"},
+        out.add("misp", f"attr-{a.id}", f"MISP attribute: {label}", a.creation_date, detail=where, target=attr_go,
                 meta=am, body=a.comment)
         if a.first_seen:
-            out.add("seen", f"first-{a.id}", f"First seen: {label}", a.first_seen, detail=where, target={"tab": "misp"}, meta=am, body=a.comment)
+            out.add("seen", f"first-{a.id}", f"First seen: {label}", a.first_seen, detail=where, target=attr_go, meta=am, body=a.comment)
         if a.last_seen:
-            out.add("seen", f"last-{a.id}", f"Last seen: {label}", a.last_seen, detail=where, target={"tab": "misp"}, meta=am, body=a.comment)
+            out.add("seen", f"last-{a.id}", f"Last seen: {label}", a.last_seen, detail=where, target=attr_go, meta=am, body=a.comment)
 
     for log in Connector_Sync_Log.query.filter_by(case_id=cid).all():
         out.add("sync", f"log-{log.id}", f"MISP sync {log.direction or ''}: {log.status or ''}".strip(), log.timestamp,
-                detail=_short(log.message, 200), target={"tab": "misp"}, body=log.message,
+                detail=_short(log.message, 200), target={"tab": "misp", "misp_sub": "sync"}, body=log.message,
                 meta=[("Direction", log.direction), ("Result", log.status), ("Synced", log.objects_synced), ("Failed", log.objects_failed)])
     for sch in Case_Misp_Sync_Schedule.query.filter_by(case_id=cid, enabled=True).all():
         if sch.next_run_at:
             out.add("sync", f"next-{sch.id}", f"Next MISP {sch.direction or 'sync'} ({sch.interval})", sch.next_run_at,
-                    target={"tab": "misp"})
+                    target={"tab": "misp", "misp_sub": "sync"})
     for c in Case_Misp_Sync_Conflict.query.filter_by(case_id=cid).all():
         out.add("sync", f"conflict-{c.id}", f"MISP conflict on {c.item_type or 'item'} ({c.status})", c.created_at,
-                target={"tab": "misp"})
-
-    # History and audit
-    if include_logs:
-        _log_entries(CommonModel.get_history(case.uuid), "history", out, local_dates=True)
-        _log_entries(CommonModel.get_audit_logs(cid), "audit", out, local_dates=True)
+                target={"tab": "misp", "misp_sub": "collision"})
 
     return out.items

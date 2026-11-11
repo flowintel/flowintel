@@ -13,55 +13,25 @@
 {%endblock%}
 
 {% block content %}
-    <!-- Hero: greeting, the day's numbers, quick actions and the animated Flowintel mark -->
-    <section class="fl-hero" aria-labelledby="fl-hero-title">
-        <div class="fl-hero-glow" aria-hidden="true"></div>
-        <div class="fl-hero-body">
-            <div class="fl-hero-eyebrow">
-                <span class="fl-hero-brand">Flowintel</span>
-                <span class="fl-hero-dot" aria-hidden="true"></span>
-                <span>[[ today ]]</span>
-                <a v-if="version" class="fl-hero-version" :href="'https://github.com/flowintel/flowintel/releases/tag/' + version.trim()" target="_blank" rel="noopener noreferrer" title="Release notes of this version on GitHub"><i class="fa-solid fa-code-branch"></i>v[[ version.trim() ]]<i class="fa-solid fa-arrow-up-right-from-square fa-2xs"></i></a>
-            </div>
-            <h1 id="fl-hero-title" class="fl-hero-title">[[ greeting ]], <span>{{ current_user.first_name }}</span></h1>
-            <p class="fl-hero-sub">Cases, tasks and intelligence, flowing in one place. Here is what is waiting for you.</p>
-
-            <div class="fl-stats">
-                <a href="/case/" class="fl-stat" title="Open cases you can access">
-                    <span class="fl-stat-icon"><i class="fa-solid fa-folder-open"></i></span>
-                    <span class="fl-stat-num">[[ home_stats ? home_stats.open_cases : '–' ]]</span>
-                    <span class="fl-stat-label">open cases</span>
-                </a>
-                <a href="/my_assignment/" class="fl-stat" title="Tasks assigned to you">
-                    <span class="fl-stat-icon"><i class="fa-solid fa-list-check"></i></span>
-                    <span class="fl-stat-num">[[ home_stats ? home_stats.assigned_tasks : '–' ]]</span>
-                    <span class="fl-stat-label">tasks for you</span>
-                </a>
-                <a href="/calendar/" :class="['fl-stat', { 'fl-stat--warn': overview && overview.due_this_week }]" title="Deadlines of open cases and tasks in the next 7 days, overdue included">
-                    <span class="fl-stat-icon"><i class="fa-solid fa-hourglass-half"></i></span>
-                    <span class="fl-stat-num">[[ overview ? overview.due_this_week : '–' ]]</span>
-                    <span class="fl-stat-label">due this week</span>
-                </a>
-                <a href="/notification/" :class="['fl-stat', { 'fl-stat--alert': home_stats && home_stats.notifications }]" title="Unread notifications">
-                    <span class="fl-stat-icon"><i class="fa-solid fa-bell"></i></span>
-                    <span class="fl-stat-num">[[ home_stats ? home_stats.notifications : '–' ]]</span>
-                    <span class="fl-stat-label">notifications</span>
-                </a>
-            </div>
-
-            <div class="fl-actions">
-                {% if not current_user.read_only() %}
-                <a href="/case/create_case" class="fl-btn fl-btn--primary"><i class="fa-solid fa-plus"></i>New case</a>
-                {% endif %}
-                <a href="/my_assignment/" class="fl-btn"><i class="fa-solid fa-list-check"></i>My tasks</a>
-                <a href="/calendar/" class="fl-btn"><i class="fa-solid fa-calendar-days"></i>Calendar</a>
-                <a href="/case/" class="fl-btn"><i class="fa-solid fa-folder-tree"></i>All cases</a>
-            </div>
-        </div>
-        <div class="fl-hero-art">
-            {% include 'macros/_flow_logo.html' %}
-        </div>
-    </section>
+    <!-- Welcome header -->
+    {% set welcome = 'Welcome back, ' ~ current_user.first_name ~ ' ' ~ current_user.last_name %}
+    {% call(section) page_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
+        {% if section == 'aside' %}
+            <span class="ctx-version" v-if="version" title="Flowintel version"><i class="fa-solid fa-code-branch"></i>v[[ version ]]</span>
+        {% elif section == 'stats' %}
+            {{ header_stat('fa-solid fa-folder-open', "[[ home_stats.open_cases ]]", "open [[ home_stats.open_cases === 1 ? 'case' : 'cases' ]]",
+                           href='/case/', title='Open cases you can access', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-list-check', "[[ home_stats.assigned_tasks ]]", "[[ home_stats.assigned_tasks === 1 ? 'task' : 'tasks' ]] assigned",
+                           href='/my_assignment/', title='Tasks assigned to you', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-bell', "[[ home_stats.notifications ]]", "[[ home_stats.notifications === 1 ? 'notification' : 'notifications' ]]",
+                           href='/notification/', title='Unread notifications', alert='home_stats.notifications > 0', attrs='v-if="home_stats"') }}
+            {{ header_stat('fa-solid fa-spinner fa-spin', label='Loading...', attrs='v-if="!home_stats"') }}
+        {% elif section == 'actions' %}
+            {% if not current_user.read_only() %}
+                {{ header_button('New case', href='/case/create_case', title='Create a case') }}
+            {% endif %}
+        {% endif %}
+    {% endcall %}
 
     <div class="fl-layout">
     <div class="fl-main">
@@ -206,7 +176,7 @@
     </div>
     </div>
 
-    <!-- Side column: the user's tasks, deadlines coming up, quick access -->
+    <!-- Side column: the user's tasks and upcoming deadlines -->
     <aside class="fl-side">
         <section class="fl-panel">
             <header class="fl-panel-head">
@@ -257,17 +227,6 @@
             </ul>
         </section>
 
-        <section class="fl-panel">
-            <header class="fl-panel-head"><h2><i class="fa-solid fa-compass"></i>Quick access</h2></header>
-            <div class="fl-quick">
-                <a href="/case/"><i class="fa-solid fa-folder-open"></i>Cases</a>
-                <a href="/calendar/"><i class="fa-solid fa-calendar-days"></i>Calendar</a>
-                <a href="/templating/cases"><i class="fa-solid fa-layer-group"></i>Templates</a>
-                <a href="/alerting/"><i class="fa-solid fa-triangle-exclamation"></i>Alert triage</a>
-                <a href="/analyzer/misp-modules"><i class="fa-solid fa-flask"></i>Analyzer</a>
-                <a href="/notification/"><i class="fa-solid fa-bell"></i>Notifications</a>
-            </div>
-        </section>
     </aside>
     </div>
 {% endblock %}
@@ -289,11 +248,6 @@
             const expandedCases = ref({})
             const expandedTags = ref({})
             const overview = ref(null)
-
-            // Greeting and date of the hero
-            const hour = new Date().getHours()
-            const greeting = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-            const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
             // Deadline helpers of the side panels: "in 3 days", "2 days late"...
             function days_to(deadline) {
@@ -456,7 +410,7 @@
                 objectsCount,
                 standaloneAttrsCount,
                 deadlineSoon,
-                overview, greeting, today, due_label, due_class, day_of, month_of
+                overview, due_label, due_class, day_of, month_of
             }
         }
     }).mount('#main-container')

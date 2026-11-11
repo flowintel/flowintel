@@ -107,30 +107,11 @@
             <span class="meta-label">Tasks</span>
             <span class="meta-value">[[open_closed.open]] open / [[open_closed.closed]] closed</span>
         </div>
-        <div v-if="cases_info.case.deadline" class="case-meta-item case-meta-deadline" :title="'Deadline: ' + cases_info.case.deadline">
-            <i class="fa-solid fa-hourglass-half fa-fw"></i>
-            <span class="meta-label">Deadline</span>
-            <span class="meta-value">[[ dayjs.utc(cases_info.case.deadline).fromNow() ]]</span>
-        </div>
         <div class="case-meta-item"
              :title="cases_info.case.is_private ? 'Only the organisations of the case can see it' : 'Anyone on the instance can see it'">
             <i :class="['fa-solid fa-fw', cases_info.case.is_private ? 'fa-lock' : 'fa-globe']"></i>
             <span class="meta-label">Visibility</span>
             <span class="meta-value">[[ cases_info.case.is_private ? 'Private' : 'Public' ]]</span>
-        </div>
-        <div v-if="cases_info.case.time_required" class="case-meta-item" title="Estimated time required">
-            <i class="fa-solid fa-stopwatch fa-fw"></i>
-            <span class="meta-label">Time required</span>
-            <span class="meta-value">[[ cases_info.case.time_required ]]</span>
-        </div>
-        <div class="case-meta-item case-meta-uuid">
-            <i class="fa-solid fa-fingerprint fa-fw"></i>
-            <span class="meta-label">UUID</span>
-            <code class="meta-value">[[ cases_info.case.uuid ]]</code>
-            <button type="button" class="meta-copy-btn" @click="copy_uuid()"
-                    :title="uuid_copied ? 'Copied' : 'Copy the UUID'" :aria-label="uuid_copied ? 'Copied' : 'Copy the UUID'">
-                <i :class="['fa-solid fa-fw', uuid_copied ? 'fa-check' : 'fa-copy']"></i>
-            </button>
         </div>
         {% if case.recurring_type %}
         <div class="case-meta-item" title="Recurring schedule">
@@ -344,6 +325,11 @@
         <li class="nav-item" v-show="is_tab_visible('calendar')">
             <button class="nav-link" id="tab-calendar" @click="active_tab('calendar')">
                 <i class="fa-solid fa-calendar-days fa-sm me-1"></i><span class="section-title fs-6">Calendar</span>
+            </button>
+        </li>
+        <li class="nav-item" v-show="is_tab_visible('info')">
+            <button class="nav-link" id="tab-info" @click="active_tab('info')">
+                <i class="fa-solid fa-circle-info fa-sm me-1"></i><span class="section-title fs-6">Info</span>
             </button>
         </li>
         <!-- Manage tabs "+" button -->
@@ -639,6 +625,32 @@
 
         <template v-else-if="main_tab == 'calendar'">
             <case_calendar :case_id="cases_info.case.id" @navigate="calendar_navigate"></case_calendar>
+        </template>
+        <template v-else-if="main_tab == 'info'">
+            <div class="cd-stats">
+                <div :class="['cd-stat', { 'cd-stat--warn': cases_info.case.deadline && dayjs.utc(cases_info.case.deadline).isBefore(dayjs()) }]"
+                     :title="cases_info.case.deadline ? 'Deadline: ' + cases_info.case.deadline : 'No deadline set'">
+                    <span class="cd-stat-icon"><i class="fa-solid fa-hourglass-half"></i></span>
+                    <span class="cd-stat-num">[[ cases_info.case.deadline ? dayjs.utc(cases_info.case.deadline).format('YYYY-MM-DD') : '–' ]]</span>
+                    <span class="cd-stat-label">deadline<template v-if="cases_info.case.deadline"> · [[ dayjs.utc(cases_info.case.deadline).fromNow() ]]</template></span>
+                </div>
+                <div class="cd-stat" title="Estimated time required">
+                    <span class="cd-stat-icon"><i class="fa-solid fa-stopwatch"></i></span>
+                    <span class="cd-stat-num">[[ cases_info.case.time_required || '–' ]]</span>
+                    <span class="cd-stat-label">time required</span>
+                </div>
+                <div class="cd-stat" title="Recurring schedule">
+                    <span class="cd-stat-icon"><i class="fa-solid fa-repeat"></i></span>
+                    <span class="cd-stat-num">{% if case.recurring_type %}{{ case.recurring_type|vue_escape }}{% else %}–{% endif %}</span>
+                    <span class="cd-stat-label">recurring{% if case.recurring_date %} · {{ case.recurring_date|vue_escape }}{% endif %}</span>
+                </div>
+                <button type="button" class="cd-stat cd-stat--uuid" @click="copy_uuid()"
+                        :title="uuid_copied ? 'Copied' : 'Click to copy the UUID'">
+                    <span class="cd-stat-icon"><i :class="['fa-solid', uuid_copied ? 'fa-check' : 'fa-fingerprint']"></i></span>
+                    <code class="cd-stat-num">[[ cases_info.case.uuid ]]</code>
+                    <span class="cd-stat-label">[[ uuid_copied ? 'copied!' : 'UUID · click to copy' ]]</span>
+                </button>
+            </div>
         </template>
         <template v-else-if="main_tab == 'history'">
             <case_history :case_id="cases_info.case.id" :can_view_history="{{ 'true' if current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer() else 'false' }}"></case_history>
@@ -1313,7 +1325,8 @@
                     'files': 'Files',
                     'timeline': 'Timeline',
                     'history': 'History',
-                    'calendar': 'Calendar'
+                    'calendar': 'Calendar',
+                    'info': 'Info'
                 }
                 const core_tab_icons = {
                     'notes': 'fa-solid fa-note-sticky fa-sm',
@@ -1321,7 +1334,8 @@
                     'files': 'fa-solid fa-file fa-sm',
                     'timeline': 'fa-solid fa-timeline fa-sm',
                     'history': 'fa-solid fa-clock-rotate-left fa-sm',
-                    'calendar': 'fa-solid fa-calendar-days fa-sm'
+                    'calendar': 'fa-solid fa-calendar-days fa-sm',
+                    'info': 'fa-solid fa-circle-info fa-sm'
                 }
 
                 function load_hidden_tabs() {
@@ -1955,7 +1969,7 @@
 
                 // Helper to deactivate all tabs (static + dynamic)
                 function deactivate_all_tabs() {
-                    ;['tab-main','tab-history','tab-calendar','tab-notes','tab-misp','tab-files','tab-timeline','tab-connectors'].forEach(id => {
+                    ;['tab-main','tab-history','tab-calendar','tab-info','tab-notes','tab-misp','tab-files','tab-timeline','tab-connectors'].forEach(id => {
                         const el = document.getElementById(id)
                         if (el) el.classList.remove('active')
                     })
@@ -1975,9 +1989,22 @@
                 // paged and the Tasks section can be folded, so all of that is handled here.
                 async function calendar_navigate(target) {
                     if (!target || !target.tab) return
-                    // A history / audit line: the History tab picks it up when it mounts
-                    if (target.entry) window.flowintel_history_focus = { sub: target.sub, entry: target.entry }
+                    // A MISP object (or an attribute of one): open it alone in the Objects sub-tab
+                    if (target.misp_object) {
+                        window.dispatchEvent(new CustomEvent('navigate-to-misp-object', { detail: { object_id: target.misp_object } }))
+                        return
+                    }
+                    // A standalone MISP attribute: the Attributes sub-tab scrolls to its row
+                    if (target.misp_attr) {
+                        window.flowintel_misp_attr_focus = target.misp_attr
+                        await active_tab('misp')
+                        if (subtab_misp.value === 'attributes') window.dispatchEvent(new CustomEvent('misp-attr-focus-now'))
+                        else await active_subtab_misp('attributes')
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                        return
+                    }
                     await active_tab(target.tab)
+                    if (target.misp_sub) await active_subtab_misp(target.misp_sub)
                     if (!target.task) {
                         window.scrollTo({ top: 0, behavior: 'smooth' })
                         return

@@ -707,10 +707,8 @@ def case_calendar(cid):
         return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
     if not check_user_private_case(case):
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
-    # History and audit follow the same rule as the History tab
-    include_logs = current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()
     from .case_calendar_core import get_case_calendar
-    return {"items": get_case_calendar(case, include_logs), "include_logs": include_logs}, 200
+    return {"items": get_case_calendar(case)}, 200
 
 
 @case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
