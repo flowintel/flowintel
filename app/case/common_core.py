@@ -197,6 +197,19 @@ def search(text: str, current_user: User) -> List[Case]:
     cases = Case.query.where(or_(*filters), Case.completed==False).paginate(page=1, per_page=30, max_per_page=50)
     return check_user_in_private_cases(cases, current_user)
 
+def search_by_attribute_value(value: str, current_user: User) -> List[Case]:
+    """Find visible cases with an exact attribute value, including completed cases."""
+    object_case_ids = db.session.query(Case_Misp_Object.case_id).join(
+        Misp_Attribute, Misp_Attribute.case_misp_object_id == Case_Misp_Object.id
+    ).filter(Misp_Attribute.value == value)
+    standalone_case_ids = db.session.query(Misp_Attribute.case_id).filter(
+        Misp_Attribute.case_misp_object_id.is_(None),
+        Misp_Attribute.value == value,
+    )
+    case_ids = object_case_ids.union(standalone_case_ids)
+    cases = Case.query.filter(Case.id.in_(case_ids)).order_by(Case.id).all()
+    return check_user_in_private_cases(cases, current_user)
+
 def get_all_org_case(case):
     """Return a list of all orgs in a case"""
     return Org.query.join(Case_Org, Case_Org.case_id==case.id).where(Case_Org.org_id==Org.id).all()
@@ -815,13 +828,22 @@ def download_audit_logs_md(case):
         return {"message": "Error generating audit logs markdown", "toast_class": "danger-subtle"}, 500
 
     
+_HISTORY_LINE_BREAKS = re.compile(r"[\r\n\v\f\x1c\x1d\x1e\x85\u2028\u2029]+")
+
+
+def _history_one_line(value):
+    """Keep user-authored content within one splitlines()-delimited event."""
+    return _HISTORY_LINE_BREAKS.sub(" ", str(value if value is not None else ""))
+
+
 def save_history(case_uuid, current_user, message):
     """Save historic message of a case"""
     create_specific_dir(HISTORY_DIR)
     path_history = os.path.join(HISTORY_DIR, str(case_uuid))
     with open(path_history, "a") as write_history:
         now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-        write_history.write(f"[{now}]({current_user.first_name} {current_user.last_name}): {message.rstrip()}\n")
+        author = _history_one_line(f"{current_user.first_name} {current_user.last_name}")
+        write_history.write(f"[{now}]({author}): {_history_one_line(message).rstrip()}\n")
 
 def append_history_file(case, merging):
     """Append case history to the merging case history"""
@@ -830,7 +852,7 @@ def append_history_file(case, merging):
     path_merging_history = os.path.join(HISTORY_DIR, str(merging.uuid))
     with open(path_case_history, "r") as src, open(path_merging_history, "a") as dst:
         for line in src:
-            dst.write(f"{line} (merge from {case.id} - {case.title})")
+            dst.write(f"{_history_one_line(line).rstrip()} (merge from {case.id} - {_history_one_line(case.title)})\n")
 
 
 def update_last_modif(case_id):

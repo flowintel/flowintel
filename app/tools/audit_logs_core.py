@@ -16,6 +16,7 @@ from ..case.common_core import HISTORY_DIR
 
 from ..utils.log_paths import resolve_log_file_path
 from ..utils.logger import flowintel_log
+from ..utils.csv_utils import csv_safe_cell
 
 
 # [YYYY-MM-DD HH:MM](user): action
@@ -279,7 +280,7 @@ def rows_to_csv(rows, fields):
     writer = csv.DictWriter(output, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     for r in rows:
-        writer.writerow({f: ("" if r.get(f) is None else r.get(f)) for f in fields})
+        writer.writerow({f: csv_safe_cell(r.get(f)) for f in fields})
     return output.getvalue()
 
 

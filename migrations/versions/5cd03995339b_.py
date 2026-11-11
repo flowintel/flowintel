@@ -28,28 +28,30 @@ def upgrade():
         case_connector_id = connection.execute(sa.text("SELECT case_id, instance_id, identifier FROM case__connector__id")).fetchall()
 
         for cci in case_connector_id:
-            case_connector = connection.execute(sa.text(f"SELECT id FROM case__connector__instance WHERE case__connector__instance.case_id={cci.case_id} and case__connector__instance.instance_id={cci.instance_id}")).fetchall()
+            case_connector = connection.execute(
+                sa.text("SELECT id FROM case__connector__instance WHERE case__connector__instance.case_id = :case_id and case__connector__instance.instance_id = :instance_id"),
+                {"case_id": cci.case_id, "instance_id": cci.instance_id}
+            ).fetchall()
             for c_c in case_connector:
-                if cci.identifier:
-                    ident = cci.identifier
-                else:
-                    ident = "null"
+                ident = cci.identifier if cci.identifier else None
                 connection.execute(
-                    sa.text(f"UPDATE case__connector__instance SET identifier = {ident} WHERE id = {c_c.id}")
+                    sa.text("UPDATE case__connector__instance SET identifier = :ident WHERE id = :id"),
+                    {"ident": ident, "id": c_c.id}
                 )
 
     if 'task__connector__id' in existing_tables:
         task_connector_id = connection.execute(sa.text("SELECT task_id, instance_id, identifier FROM task__connector__id")).fetchall()
 
         for tci in task_connector_id:
-            task_connector = connection.execute(sa.text(f"SELECT id FROM task__connector__instance WHERE task__connector__instance.task_id={tci.task_id} and task__connector__instance.instance_id={tci.instance_id}")).fetchall()
+            task_connector = connection.execute(
+                sa.text("SELECT id FROM task__connector__instance WHERE task__connector__instance.task_id = :task_id and task__connector__instance.instance_id = :instance_id"),
+                {"task_id": tci.task_id, "instance_id": tci.instance_id}
+            ).fetchall()
             for t_c in task_connector:
-                if tci.identifier:
-                    ident = tci.identifier
-                else:
-                    ident = "null"
+                ident = tci.identifier if tci.identifier else None
                 connection.execute(
-                    sa.text(f"UPDATE task__connector__instance SET identifier = {ident} WHERE id = {t_c.id}")
+                    sa.text("UPDATE task__connector__instance SET identifier = :ident WHERE id = :id"),
+                    {"ident": ident, "id": t_c.id}
                 )
 
     if 'case__connector__id' in existing_tables:

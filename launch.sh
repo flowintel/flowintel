@@ -542,26 +542,46 @@ function init_db_docker {
     #python3 app.py -td
 }
 
+# The admin API key is handed to the helper through the environment, never on its
+# command line (argv is readable by every local user via ps / /proc/<pid>/cmdline).
+# Prefer FLOWINTEL_ADMIN_API_KEY or the hidden prompt. Positional keys are legacy.
+function read_admin_api_key {
+    local api_key="${FLOWINTEL_ADMIN_API_KEY:-}"
+    if [ -n "${1:-}" ]; then
+        echo "Warning: passing the API key as an argument exposes it to other local users; use FLOWINTEL_ADMIN_API_KEY or the prompt." >&2
+        if [ -z "$api_key" ]; then
+            api_key="$1"
+        fi
+    fi
+    if [ -z "$api_key" ] && [ -t 0 ]; then
+        read -r -s -p "Admin API key: " api_key
+        echo >&2
+    fi
+    printf '%s' "$api_key"
+}
+
 function test_data_community {
-    local api_key="$1"
+    local api_key
+    api_key="$(read_admin_api_key "$1")"
     if [ -z "$api_key" ]; then
-        echo "Usage: launch.sh -tdc <admin_api_key>"
+        echo "Usage: FLOWINTEL_ADMIN_API_KEY=<admin_api_key> launch.sh -tdc   (or run launch.sh -tdc and enter the key at the prompt)"
         exit 1
     fi
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_data.py create --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
+    FLOWINTEL_ADMIN_API_KEY="$api_key" python3 tests/testdata/init_community_data.py create --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function delete_test_data_community {
-    local api_key="$1"
+    local api_key
+    api_key="$(read_admin_api_key "$1")"
     if [ -z "$api_key" ]; then
-        echo "Usage: launch.sh -dtdc <admin_api_key>"
+        echo "Usage: FLOWINTEL_ADMIN_API_KEY=<admin_api_key> launch.sh -dtdc   (or run launch.sh -dtdc and enter the key at the prompt)"
         exit 1
     fi
     prepare_app_run
     get_app_url_port
-    python3 tests/testdata/init_community_data.py delete --api-key "$api_key" --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
+    FLOWINTEL_ADMIN_API_KEY="$api_key" python3 tests/testdata/init_community_data.py delete --url "http://$FLOWINTEL_APP_HOST:$FLOWINTEL_APP_PORT"
 }
 
 function test_data_cases {

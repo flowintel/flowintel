@@ -398,6 +398,8 @@ Three formats are available:
 - **CSV**: a flat tabular summary suitable for spreadsheets. Uploaded files are not included in CSV exports.
 - **XML**: a structured representation of the same data as the JSON export.
 
+CSV exports prefix formula-like text with an apostrophe so it is treated as text when opened in a spreadsheet. Numeric values are unchanged. This also applies to audit-log CSV exports. Spreadsheet applications may remove this protection when saving and reopening a CSV; JSON exports preserve the original text for machine processing.
+
 For JSON and XML exports, a tick box labelled **Include uploaded files** packs the file attachments into the resulting archive. Leave it unticked when you only need the case metadata.
 
 ## Forking a case
@@ -576,6 +578,8 @@ Use the HedgeDoc URL without the `?view` or `?edit` parameters, otherwise Flowin
 ![user-manual-diagrams/files-convert.png](user-manual-diagrams/files-convert.png)
 
 If an attached file is a TXT, CSV or JSON file, you can convert it to a note. This reads the content of the file and appends it to the case note. CSV files are converted to a Markdown table and JSON arrays of objects are also rendered as tables; other JSON is placed in a fenced code block. The original file is kept after conversion.
+
+Sparse CSV and JSON data that would create an excessively large padded table is kept as original text in a code block instead. Nested JSON values in tables use compact formatting to avoid expanding the note unnecessarily.
 
 This is particularly useful in day-to-day case management. During an investigation, you often receive data as files: a CSV export from a log management system, a JSON response from an API, or a plain text summary from a colleague. Rather than asking everyone to open and read the file separately, you can convert it to a note, which makes the content directly visible on the case page. This keeps the information accessible without requiring a download and means the key data is part of the case narrative rather than buried in an attachment.
 
@@ -1086,7 +1090,7 @@ Each repository directory must contain a `manifest.json` file that describes the
 
 Case template JSON files can also contain embedded task templates in a `tasks_template` array. When Flowintel scans the repository, it registers both the case template and each embedded task template as separate entries, so they can be imported individually.
 
-The base directory where Flowintel looks for repositories defaults to `modules/repositories` relative to the project root. This can be changed with the `REPOSITORY_BASE_PATH` setting. If you provide an absolute path, it is used as-is; a relative path is resolved from the project root. More details can be found in the section on administrating Flowintel.
+The base directory where Flowintel looks for repositories defaults to `modules/repositories` relative to the project root. This can be changed with the `REPOSITORY_BASE_PATH` setting. Repository paths must resolve inside this directory. Symlinks for manifests and template files must also stay inside their repository. Move previously registered repositories outside the base into it, or change the configured base before using them. If you provide an absolute path, it is used as-is; a relative path is resolved from the project root. More details can be found in the section on administrating Flowintel.
 
 ### Managing repositories
 
@@ -2526,20 +2530,30 @@ The full community import uses the REST API, so Flowintel must be running. You n
 Run the import through `launch.sh` (the `-tdc` flag stands for "test data community"):
 
 ```bash
-bash launch.sh -tdc <your-admin-api-key>
+bash launch.sh -tdc
 ```
 
-Or call the script directly:
+The launcher prompts for the key without echoing it. For automation, supply `FLOWINTEL_ADMIN_API_KEY` through your environment or secret manager. Do not put the key on the command line.
+
+To call the script directly, first set the environment variable without recording the key in shell history:
+
+```bash
+read -r -s -p "Admin API key: " FLOWINTEL_ADMIN_API_KEY
+echo
+export FLOWINTEL_ADMIN_API_KEY
+```
+
+Then run:
 
 ```bash
 source env/bin/activate
-python3 tests/testdata/init_community_data.py create --api-key <your-admin-api-key>
+python3 tests/testdata/init_community_data.py create
 ```
 
 If Flowintel is running on a non-default address or port, add the `--url` flag:
 
 ```bash
-python3 tests/testdata/init_community_data.py create --api-key <your-admin-api-key> --url http://192.168.1.50:7006
+python3 tests/testdata/init_community_data.py create --url http://192.168.1.50:7006
 ```
 
 The script reads the organisation and user definitions from `test-data-community.json`, creates the roles, organisations and users through the admin API, and prints a summary:
@@ -2689,15 +2703,17 @@ python3 tests/testdata/init_community_cases.py delete
 This removes the users, roles and organisations created by the community data script. You need the admin API key again:
 
 ```bash
-bash launch.sh -dtdc <your-admin-api-key>
+bash launch.sh -dtdc
 ```
 
 Or directly:
 
 ```bash
 source env/bin/activate
-python3 tests/testdata/init_community_data.py delete --api-key <your-admin-api-key>
+python3 tests/testdata/init_community_data.py delete
 ```
+
+The direct command uses `FLOWINTEL_ADMIN_API_KEY` as configured above. The launcher prompts if that variable is unset. Legacy positional keys and `--api-key` remain supported for compatibility, but expose the key in their own process arguments. The launcher no longer forwards the key in the child command line. Run `unset FLOWINTEL_ADMIN_API_KEY` when finished.
 
 The script also deletes the `.community-api-keys.json` file. When removing the full community data set, delete the cases first (with `-dtdcc`), then the users, roles and organisations (with `-dtdc`).
 
@@ -2723,10 +2739,10 @@ This removes all cases, tasks, notes, subtasks, templates, notifications and fil
 | Action | `launch.sh` flag | Direct command |
 |---|---|---|
 | Import sample cases (database) | Built into `-i` (dev init) | `python3 app.py -td` |
-| Create community users, roles and organisations | `-tdc <api-key>` | `python3 tests/testdata/init_community_data.py create --api-key <key>` |
+| Create community users, roles and organisations | `-tdc` | `python3 tests/testdata/init_community_data.py create` |
 | Create community cases | `-tdcc` | `python3 tests/testdata/init_community_cases.py create` |
 | Delete community cases | `-dtdcc` | `python3 tests/testdata/init_community_cases.py delete` |
-| Delete community users, roles and organisations | `-dtdc <api-key>` | `python3 tests/testdata/init_community_data.py delete --api-key <key>` |
+| Delete community users, roles and organisations | `-dtdc` | `python3 tests/testdata/init_community_data.py delete` |
 | Wipe all cases and templates | — | `python3 bin/clean_database.py` |
 
 ## Demo walkthrough: the privileged case workflow

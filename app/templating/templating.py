@@ -857,6 +857,8 @@ def repository_check(rid):
         return {"reachable": False, "error": "No local path configured for this repository"}, 200
 
     base = _repo_base_path(repo.local_path)
+    if base is None:
+        return {"reachable": False, "error": REPO_PATH_OUTSIDE_BASE}, 200
     if not os.path.isdir(base):
         flowintel_log("audit", 200, "Template repository check — path not found",
                       User=current_user.email, RepositoryId=repo.id, Name=repo.name, Path=repo.local_path)
@@ -986,15 +988,49 @@ def _annotate_local_grouped(entries_list):
     }
 
 
-def _repo_base_path(local_path):
-    if os.path.isabs(local_path):
-        return local_path
+REPO_PATH_OUTSIDE_BASE = "Local path must be inside REPOSITORY_BASE_PATH"
+
+
+def _resolve_repo_path(path):
     project_root = os.path.dirname(current_app.root_path)
-    return os.path.normpath(os.path.join(project_root, local_path))
+    return os.path.realpath(os.path.join(project_root, path))
+
+
+def _repo_base_path(local_path):
+    """Confine repository roots, including symlinks, to the configured directory."""
+    if not local_path:
+        return None
+    try:
+        configured_root = current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories')
+        if not configured_root:
+            return None
+        root = _resolve_repo_path(configured_root)
+        path = _resolve_repo_path(local_path)
+        if os.path.commonpath([root, path]) == root:
+            return path
+    except (TypeError, ValueError, OSError):
+        pass
+    return None
+
+
+def _repo_child_path(base, relative_path):
+    """Resolve a file or directory without following links out of its repository."""
+    base = _repo_base_path(base)
+    if base is None:
+        return None
+    try:
+        path = os.path.realpath(os.path.join(base, relative_path))
+        if path != base and os.path.commonpath([base, path]) == base:
+            return path
+    except (TypeError, ValueError, OSError):
+        pass
+    return None
 
 
 def _read_manifest(base):
-    manifest_path = os.path.join(base, "manifest.json")
+    manifest_path = _repo_child_path(base, "manifest.json")
+    if manifest_path is None:
+        return None, REPO_PATH_OUTSIDE_BASE if _repo_base_path(base) is None else "Invalid manifest path"
     if not os.path.isfile(manifest_path):
         return None, "manifest.json not found"
     try:
@@ -1010,9 +1046,10 @@ def _read_entry_file(repo, entry):
     if not repo or not repo.local_path:
         return None, "Repository has no local path configured"
     base = _repo_base_path(repo.local_path)
-    filepath = os.path.normpath(os.path.join(base, entry.download_url))
-    # Guard against path traversal
-    if not filepath.startswith(base + os.sep):
+    if base is None:
+        return None, REPO_PATH_OUTSIDE_BASE
+    filepath = _repo_child_path(base, entry.download_url)
+    if filepath is None:
         return None, "Invalid file path"
     if not os.path.isfile(filepath):
         return None, f"File not found: {entry.download_url}"
@@ -1055,6 +1092,8 @@ def _scan_local_entries(repo):
     if not repo.local_path:
         return [], "No local path configured for this repository"
     base = _repo_base_path(repo.local_path)
+    if base is None:
+        return [], REPO_PATH_OUTSIDE_BASE
     if not os.path.isdir(base):
         return [], f"Local path not found: {repo.local_path}"
 
@@ -1066,14 +1105,20 @@ def _scan_local_entries(repo):
         tpl_type = folder_types.get(folder_name.lower())
         if tpl_type is None:
             continue
-        type_dir = os.path.join(base, folder_name)
+        type_dir = _repo_child_path(base, folder_name)
+        if type_dir is None:
+            db.session.rollback()
+            return [], "Invalid template directory path"
         if not os.path.isdir(type_dir):
             continue
 
         for filename in sorted(os.listdir(type_dir)):
             if not filename.endswith(".json"):
                 continue
-            filepath = os.path.join(type_dir, filename)
+            filepath = _repo_child_path(base, os.path.join(folder_name, filename))
+            if filepath is None:
+                db.session.rollback()
+                return [], "Invalid template file path"
             try:
                 with open(filepath, "rb") as f:
                     raw_bytes = f.read()
@@ -1517,23 +1562,23 @@ def repositories_scan():
     base_rel = current_app.config.get('REPOSITORY_BASE_PATH', 'modules/repositories')
     base = _repo_base_path(base_rel)
 
-    if not os.path.isdir(base):
+    if base is None or not os.path.isdir(base):
         return {"base_path": base_rel, "found": [], "error": f"Directory not found: {base_rel}"}, 200
 
     existing_paths = {r.local_path for r in Template_Repository.query.with_entities(Template_Repository.local_path).all()}
 
     found = []
     for entry in sorted(os.listdir(base)):
-        full = os.path.join(base, entry)
-        if not os.path.isdir(full):
+        full = _repo_child_path(base, entry)
+        if full is None or not os.path.isdir(full):
             continue
         rel_path = f"{base_rel}/{entry}"
-        has_manifest = os.path.isfile(os.path.join(full, 'manifest.json'))
+        manifest_path = _repo_child_path(full, 'manifest.json')
+        has_manifest = manifest_path is not None and os.path.isfile(manifest_path)
         name = entry
         if has_manifest:
             try:
-                with open(os.path.join(full, 'manifest.json'), 'r', encoding='utf-8') as f:
-                    mf = json.load(f)
+                mf, _ = _read_manifest(full)
                 name = mf.get('name') or entry
             except Exception:
                 pass
@@ -1567,6 +1612,9 @@ def repository_add():
     local_path = (data.get("local_path") or "").strip()
     if not name or not local_path:
         return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
+
+    if _repo_base_path(local_path) is None:
+        return {"message": REPO_PATH_OUTSIDE_BASE, "toast_class": "warning-subtle"}, 400
 
     if Template_Repository.query.filter_by(local_path=local_path).first():
         return {"message": "A repository with this local path already exists", "toast_class": "warning-subtle"}, 400
@@ -1616,6 +1664,9 @@ def repository_edit(rid):
     local_path = (data.get("local_path") or "").strip()
     if not name or not local_path:
         return {"message": "Name and local path are required", "toast_class": "warning-subtle"}, 400
+
+    if _repo_base_path(local_path) is None:
+        return {"message": REPO_PATH_OUTSIDE_BASE, "toast_class": "warning-subtle"}, 400
 
     if Template_Repository.query.filter(
         Template_Repository.local_path == local_path,

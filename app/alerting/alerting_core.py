@@ -4,8 +4,8 @@ import secrets
 from urllib.parse import urlparse
 import uuid
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.case import validation_api as CaseValidation
@@ -511,6 +511,9 @@ def _find_existing_alert(normalized):
 
 
 def _update_existing_alert(existing, normalized):
+    # Increment in SQL so concurrent ingests cannot overwrite each other's count.
+    # Preserve the existing fallback of treating NULL or zero as one occurrence.
+    existing.occurrence_count = func.coalesce(func.nullif(ExternalAlert.occurrence_count, 0), 1) + 1
     existing.last_seen = normalized["last_seen"]
     existing.raw_payload = normalized["raw_payload"]
     existing.observables = normalized["observables"]
@@ -519,6 +522,9 @@ def _update_existing_alert(existing, normalized):
     existing.mitre_attack = normalized["mitre_attack"]
     existing.recommended_actions = normalized["recommended_actions"]
     existing.tags = normalized["tags"]
+    # Visibility follows the connector's current scope, even for reviewed alerts.
+    existing.owner_user_id = normalized["owner_user_id"]
+    existing.owner_org_id = normalized["owner_org_id"]
     if existing.review_status not in TERMINAL_REVIEW_STATUSES:
         for key in [
             "title", "description", "message", "severity", "confidence", "category",
@@ -526,13 +532,6 @@ def _update_existing_alert(existing, normalized):
         ]:
             setattr(existing, key, normalized[key])
         existing.is_read = False
-    # Count the occurrence in the database itself (occurrence_count + 1 in one UPDATE):
-    # incrementing the value read earlier would lose occurrences when the same alert
-    # is ingested concurrently, as both requests would read the same count.
-    ExternalAlert.query.filter_by(id=existing.id).update(
-        {ExternalAlert.occurrence_count: func.coalesce(ExternalAlert.occurrence_count, 1) + 1},
-        synchronize_session=False,
-    )
     db.session.commit()
     return existing, False, None
 
