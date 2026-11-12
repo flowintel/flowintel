@@ -1,0 +1,370 @@
+/* case_calendar.js: the Calendar panel of a case.
+   Same look as the Calendar page (calendar_custom.css: solid rounded bars, white text,
+   month picker) with Flowintel's filter chips (page_header.css), on theme colours. */
+
+/* Filter button + search, laid out like the task list bar of the case */
+.ccal-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.25rem 0 1.25rem;
+}
+.ccal-search-group { flex: 1 1 18rem; max-width: 30rem; flex-wrap: nowrap; gap: 0.5rem; }
+.ccal-search-group .ccal-search-input { border-radius: 0.375rem !important; }
+.ccal-filter-btn { white-space: nowrap; border-radius: 0.375rem !important; }
+
+.ccal-show-menu {
+    width: 340px;
+    padding: 0;
+    border-radius: 12px;
+    border-color: var(--bs-border-color);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+}
+.ccal-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+}
+.ccal-menu-actions { display: inline-flex; align-items: center; gap: 0.35rem; text-transform: none; letter-spacing: 0; }
+.ccal-menu-actions button { border: 0; padding: 0; background: none; color: var(--bs-primary); font-size: 0.8rem; font-weight: 600; }
+.ccal-menu-actions button:hover { text-decoration: underline; }
+
+.ccal-menu-list { max-height: 60vh; overflow-y: auto; padding: 0.35rem; }
+.ccal-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0;
+    padding: 0.5rem 0.6rem;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+.ccal-menu-row:hover { background: var(--bs-tertiary-bg); }
+.ccal-menu-icon {
+    flex: 0 0 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--ccal-c) 14%, transparent);
+    color: var(--ccal-c);
+    font-size: 0.8rem;
+    transition: opacity 0.12s ease, filter 0.12s ease;
+}
+.ccal-menu-row:not(.on) .ccal-menu-icon { opacity: 0.45; filter: grayscale(1); }
+.ccal-menu-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ccal-menu-label { font-size: 0.88rem; font-weight: 600; color: var(--bs-body-color); }
+.ccal-menu-row:not(.on) .ccal-menu-label { color: var(--bs-secondary-color); }
+.ccal-menu-count {
+    margin-left: 0.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--bs-secondary-bg);
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.ccal-menu-hint {
+    font-size: 0.74rem;
+    color: var(--bs-secondary-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ccal-menu-row .form-switch .form-check-input { cursor: pointer; }
+.ccal-menu-row .form-switch .form-check-input:checked { background-color: var(--ccal-c); border-color: var(--ccal-c); }
+
+.ccal-month-picker {
+    display: block;
+    max-width: 360px;
+    margin: 0 auto 1.25rem;
+    text-align: center;
+}
+
+/* Calendar */
+.ccal-calendar {
+    --fc-border-color: var(--bs-border-color);
+    --fc-page-bg-color: var(--bs-body-bg);
+    --fc-neutral-bg-color: var(--bs-tertiary-bg);
+    --fc-list-event-hover-bg-color: var(--bs-tertiary-bg);
+    --fc-today-bg-color: color-mix(in srgb, var(--bs-primary) 8%, transparent);
+    --fc-now-indicator-color: #dc3545;
+    --fc-bg-event-opacity: 0.16;
+}
+.ccal-calendar a { color: inherit; text-decoration: none; }
+.ccal-calendar .fc-toolbar-title { font-size: 1.25rem; }
+.ccal-calendar .fc-header-toolbar.fc-toolbar { margin-bottom: 1.25rem; }
+
+/* Events: the Calendar page's rounded bars */
+.ccal-calendar .fc-daygrid-event.ccal-event {
+    border-radius: 8px;
+    padding: 1px 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    margin-bottom: 2px;
+}
+.ccal-calendar .fc-timegrid-event.ccal-event { border-radius: 6px; }
+.ccal-ev {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    color: #fff;
+    line-height: 1.35;
+}
+.ccal-ev-icon { flex: 0 0 auto; font-size: 0.7rem; opacity: 0.9; }
+.ccal-ev-time { flex: 0 0 auto; font-size: 0.75rem; opacity: 0.9; font-variant-numeric: tabular-nums; }
+.ccal-ev-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; font-size: 0.88rem; }
+
+/* Deadlines: the whole day is tinted (background event), the entry itself is bold red text */
+.ccal-calendar .fc-bg-event.ccal-deadline-bg { opacity: var(--fc-bg-event-opacity); }
+.ccal-calendar .fc-daygrid-event.ccal-deadline {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none;
+}
+.ccal-deadline .ccal-ev { color: #b02a37; }
+.ccal-deadline .ccal-ev-title { font-weight: 700; }
+[data-bs-theme="dark"] .ccal-deadline .ccal-ev { color: #f1aeb5; }
+
+/* "Task" / "Case" tag on a deadline */
+.ccal-ev-tag {
+    flex: 0 0 auto;
+    padding: 0 5px;
+    border-radius: 4px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+/* Straight-to button, on hover (always in the list view and on touch screens) */
+.ccal-ev-go {
+    flex: 0 0 auto;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    color: #fff;
+    font-size: 0.6rem;
+}
+.ccal-deadline .ccal-ev-go { background: #dc3545; }
+.ccal-event:hover .ccal-ev-go,
+.ccal-calendar .fc-list-event .ccal-ev-go { display: inline-flex; }
+.ccal-ev-go:hover { filter: brightness(1.2); }
+@media (hover: none) { .ccal-ev-go { display: inline-flex; } }
+
+/* List view: plain rows, the colour stays on the dot */
+.ccal-calendar .fc-list-event .ccal-ev { color: var(--bs-body-color); }
+.ccal-calendar .fc-list-event .ccal-ev-icon { color: var(--ccal-c); }
+.ccal-calendar .fc-list-event .ccal-ev-go { background: var(--ccal-c); }
+.ccal-calendar .fc-list-day-cushion { background: var(--bs-secondary-bg); }
+.ccal-calendar .fc-daygrid-more-link { font-size: 0.78rem; font-weight: 600; color: var(--bs-primary); }
+.ccal-calendar .fc-popover { background: var(--bs-body-bg); border-color: var(--bs-border-color); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18); border-radius: 10px; overflow: hidden; }
+.ccal-calendar .fc-popover-header { background: var(--bs-secondary-bg); }
+
+/* Hover preview */
+.ccal-preview {
+    position: fixed;
+    z-index: 10000; /* above FullCalendar's "+N more" popover (9999) */
+    width: 320px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-top: 3px solid var(--ccal-c);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+    font-size: 0.82rem;
+    pointer-events: none;
+}
+.ccal-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.ccal-preview-kind { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ccal-c); }
+.ccal-preview-title { font-weight: 700; font-size: 0.92rem; line-height: 1.3; overflow-wrap: anywhere; }
+.ccal-preview-when { margin-top: 3px; color: var(--bs-secondary-color); }
+.ccal-preview-meta {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 10px;
+    margin: 8px 0 0;
+    padding-top: 8px;
+    border-top: 1px dashed var(--bs-border-color);
+}
+.ccal-preview-meta dt { font-weight: 600; color: var(--bs-secondary-color); font-size: 0.75rem; }
+.ccal-preview-meta dd { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ccal-preview-body {
+    margin-top: 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--bs-tertiary-bg);
+    color: var(--bs-secondary-color);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+.ccal-preview-hint { margin-top: 6px; font-size: 0.7rem; color: var(--bs-secondary-color); text-align: right; }
+
+/* Detail modal: same structure as the Calendar page's (calendar_custom.css), on theme colours */
+.ccal-modal { border: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 38px rgba(0, 0, 0, 0.18); }
+.ccal-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--ccal-c) 14%, var(--bs-body-bg)) 0%, var(--bs-body-bg) 70%);
+}
+.ccal-modal-icon {
+    flex: 0 0 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--ccal-c) 18%, transparent);
+    color: var(--ccal-c);
+}
+.ccal-modal-titles { min-width: 0; }
+.ccal-modal-kind { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ccal-c); }
+.ccal-modal .modal-title { font-weight: 700; font-size: 1.08rem; margin: 0; overflow-wrap: anywhere; }
+.ccal-modal-body { padding: 1rem 1.2rem 1.1rem; }
+.ccal-modal-footer { border-top: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); padding: 0.85rem 1.2rem; }
+
+.ccal-meta-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; }
+.ccal-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+.ccal-meta-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--bs-secondary-color); }
+.ccal-meta-value { font-size: 0.9rem; font-weight: 600; overflow-wrap: anywhere; }
+
+.ccal-section {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 11px;
+    background: var(--bs-body-bg);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+.ccal-section-title { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: var(--bs-secondary-color); margin-bottom: 0.5rem; }
+.ccal-body {
+    margin: 0;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+    white-space: pre-wrap;
+    font-family: inherit;
+    font-size: 0.87rem;
+    line-height: 1.42;
+    max-height: 40vh;
+    overflow: auto;
+}
+
+@media (max-width: 768px) {
+    .ccal-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ccal-preview { display: none; }
+}
+
+/* Item of a finished task: faded and struck through, with a check instead of its icon.
+   Month view fades the bar; list view only greys the text (the row stays readable). */
+.ccal-calendar .fc-daygrid-event.ccal-done { opacity: 0.5; filter: grayscale(0.6); }
+.ccal-calendar .fc-daygrid-event.ccal-done:hover { opacity: 0.85; filter: none; }
+.ccal-done .ccal-ev-title { text-decoration: line-through; text-decoration-thickness: 1px; }
+.ccal-calendar .fc-list-event.ccal-done .ccal-ev-title,
+.ccal-calendar .fc-list-event.ccal-done .fc-list-event-time { color: var(--bs-secondary-color); }
+.ccal-calendar .fc-list-event.ccal-done .ccal-ev-icon { color: #198754; }
+
+/* "New" / "Done" tag on a task entry, readable on its blue bar */
+.ccal-ev-tag.ccal-ev-tag-task { background: rgba(255, 255, 255, 0.25); }
+.ccal-calendar .fc-list-event .ccal-ev-tag-task { background: var(--ccal-c); }
+
+/* Duration of a task / the case in its preview and detail: created → deadline or end */
+.ccal-period { --ccal-p: #0d6efd; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--bs-border-color); }
+.ccal-period-done { --ccal-p: #198754; }
+.ccal-period-soon { --ccal-p: #e8730c; }
+.ccal-period-late { --ccal-p: #dc3545; }
+.ccal-period-ends { display: flex; justify-content: space-between; gap: 8px; font-size: 0.72rem; color: var(--bs-secondary-color); margin-bottom: 4px; }
+.ccal-period-track { height: 6px; border-radius: 999px; background: var(--bs-secondary-bg); overflow: hidden; }
+.ccal-period-fill { height: 100%; border-radius: 999px; background: var(--ccal-p); }
+.ccal-period-status { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 5px; font-size: 0.78rem; font-weight: 600; color: var(--ccal-p); }
+.ccal-period-req { font-weight: 500; color: var(--bs-secondary-color); white-space: nowrap; }
+.ccal-period-lg { margin-top: 0; padding: 0.75rem 0.9rem; border: 1px solid var(--bs-border-color); border-radius: 11px; background: var(--bs-tertiary-bg); }
+.ccal-period-lg .ccal-period-track { height: 9px; }
+.ccal-period-lg .ccal-period-ends { font-size: 0.8rem; }
+.ccal-period-lg .ccal-period-status { font-size: 0.88rem; }
+
+/* Day and entry reached from "See in the calendar" */
+.ccal-calendar .fc-daygrid-day.ccal-day-focus {
+    background: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+    box-shadow: inset 0 0 0 2px var(--bs-primary);
+    animation: ccal-day-focus 1.8s ease-out;
+}
+.ccal-calendar .fc-daygrid-day.ccal-day-focus .fc-daygrid-day-number {
+    margin: 3px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--bs-primary);
+    color: #fff;
+    font-weight: 700;
+}
+.ccal-calendar .fc-event.ccal-ev-focus { box-shadow: 0 0 0 2px var(--bs-body-bg), 0 0 0 4px var(--bs-primary); }
+@keyframes ccal-day-focus {
+    0%, 35% { box-shadow: inset 0 0 0 2px var(--bs-primary), 0 0 0 6px color-mix(in srgb, var(--bs-primary) 35%, transparent); }
+    100% { box-shadow: inset 0 0 0 2px var(--bs-primary); }
+}
+
+/* Info tab: four stat cards (deadline, time required, recurring, UUID), same look as the home stats */
+.cd-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin: 1rem 0; }
+.cd-stat {
+    position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto;
+    column-gap: .65rem; row-gap: .2rem; align-items: center; text-align: left;
+    padding: .85rem .9rem; border: 1px solid var(--bs-border-color); border-radius: 14px;
+    background: var(--bs-body-bg); color: var(--bs-body-color); font: inherit;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05); transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    animation: cd-stat-in .35s ease both;
+}
+.cd-stat:nth-child(2) { animation-delay: .06s; }
+.cd-stat:nth-child(3) { animation-delay: .12s; }
+.cd-stat:nth-child(4) { animation-delay: .18s; }
+.cd-stat:hover { transform: translateY(-2px); border-color: rgba(13,110,253,.45); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.cd-stat-icon {
+    grid-row: span 2; display: inline-flex; align-items: center; justify-content: center;
+    width: 2.3rem; height: 2.3rem; border-radius: 10px; background: rgba(13,110,253,.12); color: #0d6efd;
+}
+.cd-stat-num { font-size: 1.2rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cd-stat-label { font-size: .75rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cd-stat--warn .cd-stat-icon { background: rgba(220,53,69,.14); color: #dc3545; }
+.cd-stat--uuid { cursor: pointer; }
+.cd-stat--uuid .cd-stat-num { font-size: .8rem; font-weight: 600; color: var(--bs-body-color); white-space: normal; word-break: break-all; }
+@keyframes cd-stat-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 992px) { .cd-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 576px) { .cd-stats { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .cd-stat { animation: none; transition: none; } }

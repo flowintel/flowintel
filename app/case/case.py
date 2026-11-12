@@ -698,6 +698,19 @@ def history(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<int:cid>/calendar", methods=['GET'])
+@login_required
+def case_calendar(cid):
+    """Everything dated in a case, for its Calendar panel"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+    from .case_calendar_core import get_case_calendar
+    return {"items": get_case_calendar(case)}, 200
+
+
 @case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
 @login_required
 def audit_logs(cid):
