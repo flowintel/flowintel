@@ -3,105 +3,260 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .usr-card { border: 1px solid var(--bs-border-color); border-radius: 12px; overflow: hidden; background: var(--bs-body-bg); }
+    .usr-table { margin: 0; }
+    .usr-table thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); font-weight: 600; white-space: nowrap; background: var(--bs-tertiary-bg); }
+    .usr-table td { vertical-align: middle; }
+    .usr-nick { font-size: .78rem; color: var(--bs-secondary-color); margin-left: 2rem; }
+    .usr-mail { font-size: .85rem; }
+    .usr-matrix { display: block; font-size: .74rem; color: var(--bs-secondary-color); font-family: var(--bs-font-monospace); }
+    .usr-org { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; background: rgba(31, 55, 99, .1); color: #1f3763; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+    [data-bs-theme="dark"] .usr-org { color: #9ec2f0; background: rgba(158, 194, 240, .12); }
+    .usr-role { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; font-size: .76rem; font-weight: 700; white-space: nowrap; background: var(--r-bg); color: var(--r-fg); }
+    .usr-role--admin { --r-fg: #fff; --r-bg: linear-gradient(135deg, #dc3545, #b02a37); }
+    .usr-role--editor { --r-fg: #198754; --r-bg: rgba(25, 135, 84, .12); }
+    .usr-role--read_only { --r-fg: #0a8aa3; --r-bg: rgba(13, 202, 240, .14); }
+    .usr-login { font-size: .82rem; white-space: nowrap; }
+    .usr-actions { white-space: nowrap; text-align: right; }
+    .usr-actions .btn { padding: .2rem .45rem; }
+    .usr-empty { padding: 2.5rem 1rem; text-align: center; color: var(--bs-secondary-color); }
+    .usr-me-row { background: rgba(47, 111, 176, .04); }
+    .usr-pick { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid var(--bs-border-color); border-radius: 999px; background: var(--bs-body-bg); padding: .2rem .7rem .2rem .3rem; font-size: .83rem; color: var(--bs-body-color); }
+    .usr-pick:hover { border-color: rgba(47, 111, 176, .55); }
+    .usr-pick-all { padding-left: .45rem; }
+    .usr-pick-menu { max-height: 320px; overflow-y: auto; padding: .35rem; border-radius: 10px; }
+    .usr-pick-menu .dropdown-item { display: flex; align-items: center; gap: .6rem; border-radius: 6px; padding: .3rem .5rem; font-size: .85rem; }
+    .usr-pick-menu .dropdown-item.active, .usr-pick-menu .dropdown-item:active { background: rgba(47, 111, 176, .12); color: var(--bs-body-color); }
+    .usr-pick-count { margin-left: auto; font-size: .74rem; color: var(--bs-secondary-color); }
+    .usr-row--clickable { cursor: pointer; }
+    .usr-caret { width: .9rem; margin-right: .35rem; font-size: .7rem; color: var(--bs-secondary-color); transition: transform .15s ease; }
+    .usr-caret.is-open { transform: rotate(90deg); color: #2f6fb0; }
+    .usr-row--open > td { border-bottom-color: transparent; }
+    .usr-detail-row > td { background: var(--bs-tertiary-bg); padding: .9rem 1rem 1.1rem; }
+    .usr-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .6rem; margin-bottom: .8rem; }
+    .usr-kpi { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 10px; padding: .55rem .7rem; display: flex; flex-direction: column; }
+    .usr-kpi-num { font-size: 1.3rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .usr-kpi-label { font-size: .74rem; color: var(--bs-secondary-color); }
+    .usr-kpi--bad .usr-kpi-num { color: var(--bs-danger); }
+    .usr-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .6rem; }
+    .usr-panel { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: 10px; padding: .7rem .8rem; min-width: 0; }
+    .usr-panel h6 { font-size: .82rem; font-weight: 700; margin-bottom: .6rem; }
+    .usr-panel h6 small { font-weight: 400; color: var(--bs-secondary-color); margin-left: .3rem; }
+    .usr-bars { display: flex; align-items: flex-end; gap: 3px; height: 70px; }
+    .usr-bars--thin { gap: 2px; }
+    .usr-bar { flex: 1 1 0; height: 100%; display: flex; align-items: flex-end; }
+    .usr-bar-fill { width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: #2f6fb0; }
+    .usr-bar-fill--alt { background: #0f7b6c; }
+    .usr-bar:hover .usr-bar-fill { filter: brightness(1.25); }
+    .usr-bars-axis { display: flex; justify-content: space-between; font-size: .68rem; color: var(--bs-secondary-color); margin-top: .25rem; }
+    .usr-panel-foot { display: flex; justify-content: space-between; font-size: .76rem; color: var(--bs-secondary-color); margin-top: .5rem; }
+    .usr-list { list-style: none; margin: 0; padding: 0; }
+    .usr-list li { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-top: 1px solid var(--bs-border-color-translucent); font-size: .84rem; }
+    .usr-list li:first-child { border-top: 0; }
+    .usr-list a { color: inherit; min-width: 0; display: inline-flex; gap: .4rem; align-items: center; }
+    .usr-list a:hover { color: #2f6fb0; }
+    .usr-list-meta { margin-left: auto; white-space: nowrap; font-size: .74rem; color: var(--bs-secondary-color); }
+    @media (max-width: 992px) { .usr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 768px) { .usr-hide-sm { display: none; } }
+</style>
+{% endblock %}
 
 {% block content %}
     {% call(section) page_header('Users', 'fa-solid fa-users', 'Accounts that can sign in to this Flowintel instance.') %}
         {% if section == 'stats' %}
-            <template v-if="users_list">
-                {{ header_stat('fa-solid fa-users', '[[ users_list.users.length ]]', "[[ users_list.users.length === 1 ? 'user' : 'users' ]]", title='Users listed', attrs='v-if="users_list.nb_pages <= 1"') }}
-                {{ header_stat('fa-solid fa-book-open', '[[ current_page ]] / [[ users_list.nb_pages ]]', 'pages', title='Pagination', attrs='v-else') }}
+            <template v-if="facets">
+                {{ header_stat('fa-solid fa-users', '[[ facets.total ]]', "[[ facets.total === 1 ? 'user' : 'users' ]]", title='Users you can see') }}
+                {{ header_stat('fa-solid fa-crown', '[[ facets.types.admin ]]', "[[ facets.types.admin === 1 ? 'admin' : 'admins' ]]", href='#', title='Show the admins', attrs='@click.prevent="set_type(\'admin\')"') }}
+                {{ header_stat('fa-solid fa-building', '[[ facets.orgs.length ]]', "[[ facets.orgs.length === 1 ? 'organisation' : 'organisations' ]]", title='Organisations of these users') }}
             </template>
         {% elif section == 'toolbar' %}
-            {{ header_search('Search users by name') }}
+            {{ header_search('Search a name, nickname or email', model='search_query') }}
+            {{ header_segmented([
+                {'value': '', 'label': 'All'},
+                {'value': 'admin', 'label': 'Admin', 'icon': 'fa-solid fa-crown'},
+                {'value': 'editor', 'label': 'Editor', 'icon': 'fa-solid fa-pen'},
+                {'value': 'read_only', 'label': 'Read only', 'icon': 'fa-solid fa-eye'},
+            ], "role_type === '{value}'", "set_type('{value}')", aria='Role type') }}
+            <!-- Role / Org pickers: dropdowns that show the same badges as the table -->
+            <div class="ctx-select dropdown">
+                <span>Role</span>
+                <button type="button" class="usr-pick dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span v-if="current_role" :class="['usr-role', 'usr-role--' + current_role.kind]"><i :class="role_icon(current_role.kind)"></i>[[ current_role.name ]]</span>
+                    <span v-else class="usr-pick-all">All roles</span>
+                </button>
+                <ul class="dropdown-menu usr-pick-menu">
+                    <li><button type="button" :class="['dropdown-item', { active: !role_id }]" @click="role_id = ''">All roles</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li v-for="r in (facets ? facets.roles : [])" :key="r.id">
+                        <button type="button" :class="['dropdown-item', { active: role_id === String(r.id) }]" @click="role_id = String(r.id)">
+                            <span :class="['usr-role', 'usr-role--' + r.kind]"><i :class="role_icon(r.kind)"></i>[[ r.name ]]</span>
+                            <span class="usr-pick-count">[[ r.count ]]</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="ctx-select dropdown">
+                <span>Org</span>
+                <button type="button" class="usr-pick dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span v-if="current_org" class="usr-org"><i class="fa-solid fa-building"></i>[[ current_org.name ]]</span>
+                    <span v-else class="usr-pick-all">All organisations</span>
+                </button>
+                <ul class="dropdown-menu usr-pick-menu">
+                    <li><button type="button" :class="['dropdown-item', { active: !org_id }]" @click="org_id = ''">All organisations</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li v-for="o in (facets ? facets.orgs : [])" :key="o.id">
+                        <button type="button" :class="['dropdown-item', { active: org_id === String(o.id) }]" @click="org_id = String(o.id)">
+                            <span class="usr-org"><i class="fa-solid fa-building"></i>[[ o.name ]]</span>
+                            <span class="usr-pick-count">[[ o.count ]]</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <button v-if="has_filters" type="button" class="ctx-ghost-btn" @click="clear_filters()" title="Clear the filters"><i class="fa-solid fa-xmark fa-sm"></i>Clear</button>
             {% if current_user.is_admin() or current_user.is_org_admin() %}
                 {{ header_button('New user', href='/admin/add_user', title='Add user') }}
             {% endif %}
         {% endif %}
     {% endcall %}
 
-
-    <app-pagination v-if="users_list" class="my-3" :current-page="current_page" :nb-pages="users_list.nb_pages"
-                    @page="fetchUsers"></app-pagination>
-
-    <div class="case-core-style">
-        <template v-if="users_list">
-            <template v-for="user in users_list.users">
-                <div class="list-group" style="margin-bottom: 10px;">
-                    <div style="display:flex; border-top-left-radius: 15px; border-top-right-radius: 15px;">
-                        <a class="list-group-item list-group-item-action case-index-list">
-                            <div class="d-flex w-100 justify-content-between align-items-center">
-                                <h5 class="mb-1 fi-list-title">
-                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: #6c757d;"></i>[[ user.id ]]- [[ user.first_name ]] [[ user.last_name ]]
-                                </h5>
-                                <span v-if="user.nickname" title="nickname" class="badge bg-primary d-flex align-items-center">
-                                    <i class="fa-solid fa-user me-1"></i>[[user.nickname]]
+    <div class="usr-card">
+        <div class="table-responsive">
+            <table class="table table-hover usr-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th class="usr-hide-sm">Email</th>
+                        <th>Organisation</th>
+                        <th>Role</th>
+                        {% if current_user.is_admin() %}<th class="usr-hide-sm">Last login</th>{% endif %}
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="!users_list"><td colspan="6" class="usr-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the users…</td></tr>
+                    <tr v-else-if="!users_list.users.length"><td colspan="6" class="usr-empty"><i class="fa-solid fa-user-slash fa-lg d-block mb-2"></i>No user matches the filters.</td></tr>
+                    <template v-for="user in (users_list ? users_list.users : [])" :key="user.id">
+                    <tr :class="{ 'usr-me-row': user.id === me_id, 'usr-row--open': opened.has(user.id), 'usr-row--clickable': can_see_stats(user) }"
+                        @click="toggle_row(user, $event)" :aria-expanded="can_see_stats(user) ? opened.has(user.id) : null">
+                        <td>
+                            <i v-if="can_see_stats(user)" :class="['fa-solid fa-chevron-right usr-caret', { 'is-open': opened.has(user.id) }]"></i>
+                            <user_chip :user="user" variant="inline"></user_chip>
+                            <div v-if="user.nickname" class="usr-nick">@[[ user.nickname ]]</div>
+                        </td>
+                        <td class="usr-hide-sm">
+                            <a class="usr-mail" :href="'mailto:' + user.email">[[ user.email ]]</a>
+                            <span v-if="user.matrix_id" class="usr-matrix" title="Matrix ID">[[ user.matrix_id ]]</span>
+                        </td>
+                        <td><a href="#" class="usr-org text-decoration-none" @click.prevent="org_id = String(user.org_id)" title="Show this organisation only"><i class="fa-solid fa-building"></i>[[ user.org_name ]]</a></td>
+                        <td>
+                            <a href="#" class="text-decoration-none" @click.prevent="role_id = String(user.role_id)" title="Show this role only">
+                                <span :class="['usr-role', 'usr-role--' + (user.role_admin ? 'admin' : user.role_read_only ? 'read_only' : 'editor')]">
+                                    <i :class="user.role_admin ? 'fa-solid fa-crown' : user.role_read_only ? 'fa-solid fa-eye' : 'fa-solid fa-pen'"></i>[[ user.role ]]
                                 </span>
-                            </div>
-                            <div class="d-flex w-100 justify-content-between">
-                                <small class="text-muted" title="email adress">[[ user.email ]]</small>
-                            </div>
-                            <div v-if="user.matrix_id" class="d-flex w-100 justify-content-between">
-                                <small class="text-muted" title="matrix id">[[ user.matrix_id ]]</small>
-                            </div>
-                            <div class="d-flex w-100 justify-content-start mt-2">
-                                <span title="Organisation" class="badge bg-primary me-2">
-                                    <i class="fa-solid fa-users me-1"></i>[[ user.org_name ]]
-                                </span>
-                                <span v-if="user.role.toLowerCase() === 'admin'" class="badge bg-danger" title="Role">
-                                    <i class="fa-solid fa-shield-halved me-1"></i>[[ user.role ]]
-                                </span>
-                                <span v-else-if="user.role.toLowerCase() === 'read only'" class="badge bg-info" title="Role">
-                                    <i class="fa-solid fa-eye me-1"></i>[[ user.role ]]
-                                </span>
-                                <span v-else class="badge bg-success" title="Role">
-                                    <i class="fa-solid fa-pen me-1"></i>[[ user.role ]]
-                                </span>
-                            </div>
-                        </a>
-                        <div v-if="can_manage_user(user)">
-                            <div>
-                                <a class="btn btn-primary" :href="`/admin/edit_user/${user.id}`" type="button" title="Edit the user">
-                                    <i class="fa-solid fa-pen-to-square fa-fw"></i>
-                                </a>
-                            </div>
-                            <div>
-                                <button class="btn btn-danger" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id">
-                                    <i class="fa-solid fa-trash fa-fw"></i>
+                            </a>
+                        </td>
+                        {% if current_user.is_admin() %}
+                        <td class="usr-hide-sm usr-login">
+                            <span v-if="user.last_login" :title="user.last_login">[[ since(user.last_login) ]]</span>
+                            <span v-else class="text-muted fst-italic">never</span>
+                        </td>
+                        {% endif %}
+                        <td class="usr-actions">
+                            <template v-if="can_manage_user(user)">
+                                <a class="btn btn-sm btn-outline-primary" :href="`/admin/edit_user/${user.id}`" title="Edit the user"><i class="fa-solid fa-pen-to-square"></i></a>
+                                <button class="btn btn-sm btn-outline-danger ms-1" type="button" title="Delete the user" data-bs-toggle="modal" :data-bs-target="'#delete_user_modal_'+user.id" :disabled="user.id === me_id">
+                                    <i class="fa-solid fa-trash"></i>
                                 </button>
-                            </div>
-                        </div>
-                        <!-- Modal delete user -->
-                        <div v-if="can_manage_user(user)" class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-labelledby="delete_user_modal" aria-hidden="true">
-                                <div class="modal-dialog ">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h1 class="modal-title fs-5" id="delete_user_modal">Delete '[[user.first_name]] [[user.last_name]]' ?</h1>
-                                            <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            <button class="btn btn-danger" @click="delete_user(user)">
-                                                <i class="fa-solid fa-trash"></i> Confirm
-                                            </button>
+                                <div class="modal fade" :id="'delete_user_modal_'+user.id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content text-start">
+                                            <div class="modal-header">
+                                                <h1 class="modal-title fs-5">Delete '[[user.first_name]] [[user.last_name]]'?</h1>
+                                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                <button class="btn btn-danger" @click="delete_user(user)"><i class="fa-solid fa-trash"></i> Confirm</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                            </template>
+                        </td>
+                    </tr>
+                    <!-- opened row: activity of the user, loaded on first open -->
+                    <tr v-if="opened.has(user.id)" class="usr-detail-row">
+                        <td colspan="6">
+                            <div v-if="stats[user.id] === 'loading'" class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-2"></span>Loading the activity…</div>
+                            <div v-else-if="stats[user.id] === 'error'" class="text-danger small py-2"><i class="fa-solid fa-circle-exclamation me-1"></i>Could not load the activity of this user.</div>
+                            <div v-else-if="stats[user.id]" class="usr-detail">
+                                <div class="usr-kpis">
+                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].tasks.open ]]</span><span class="usr-kpi-label">open tasks</span></div>
+                                    <div :class="['usr-kpi', { 'usr-kpi--bad': stats[user.id].tasks.overdue }]"><span class="usr-kpi-num">[[ stats[user.id].tasks.overdue ]]</span><span class="usr-kpi-label">overdue</span></div>
+                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].tasks.due_week ]]</span><span class="usr-kpi-label">due this week</span></div>
+                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].tasks.done ]]</span><span class="usr-kpi-label">tasks done</span></div>
+                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].cases.open ]]</span><span class="usr-kpi-label">open cases</span></div>
+                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].logins.total_30d ]]</span><span class="usr-kpi-label">sign-ins (30 days)</span></div>
+                                </div>
+                                <div class="usr-panels">
+                                    <section class="usr-panel">
+                                        <h6>Tasks finished per week <small>last 12 weeks</small></h6>
+                                        <div class="usr-bars" role="img" :aria-label="'Tasks finished per week: ' + stats[user.id].finished_per_week.counts.join(', ')">
+                                            <div v-for="(n, i) in stats[user.id].finished_per_week.counts" :key="i" class="usr-bar"
+                                                 :title="week_label(stats[user.id].finished_per_week.start, i) + ': ' + n + (n === 1 ? ' task' : ' tasks')">
+                                                <span class="usr-bar-fill" :style="{ height: bar_height(n, stats[user.id].finished_per_week.counts) }"></span>
+                                            </div>
+                                        </div>
+                                        <div class="usr-bars-axis"><span>[[ week_label(stats[user.id].finished_per_week.start, 0) ]]</span><span>this week</span></div>
+                                    </section>
+                                    <section class="usr-panel">
+                                        <h6>Sign-ins <small>last 30 days</small></h6>
+                                        <div class="usr-bars usr-bars--thin" role="img" :aria-label="'Sign-ins per day: ' + stats[user.id].logins.per_day.join(', ')">
+                                            <div v-for="(n, i) in stats[user.id].logins.per_day" :key="i" class="usr-bar" :title="day_label(i) + ': ' + n + (n === 1 ? ' sign-in' : ' sign-ins')">
+                                                <span class="usr-bar-fill usr-bar-fill--alt" :style="{ height: bar_height(n, stats[user.id].logins.per_day) }"></span>
+                                            </div>
+                                        </div>
+                                        <div class="usr-bars-axis"><span>30 days ago</span><span>today</span></div>
+                                        <div class="usr-panel-foot">
+                                            <span><i class="fa-solid fa-right-to-bracket me-1"></i>Last: [[ stats[user.id].logins.last ? since(stats[user.id].logins.last) : 'never' ]]</span>
+                                            <span class="text-uppercase">[[ stats[user.id].auth_provider ]]</span>
+                                        </div>
+                                    </section>
+                                    <section class="usr-panel">
+                                        <h6>Cases <small>[[ stats[user.id].cases.total ]] with tasks assigned</small></h6>
+                                        <ul v-if="stats[user.id].cases.recent.length" class="usr-list">
+                                            <li v-for="c in stats[user.id].cases.recent" :key="c.id">
+                                                <a :href="'/case/' + c.id" class="text-truncate" :title="c.title"><i :class="c.completed ? 'fa-solid fa-circle-check text-success' : 'fa-solid fa-briefcase'"></i>[[ c.title ]]</a>
+                                                <span class="usr-list-meta">[[ c.open ]] / [[ c.total ]] open</span>
+                                            </li>
+                                        </ul>
+                                        <div v-else class="text-muted small">No task assigned in a case you can see.</div>
+                                    </section>
+                                    <section v-if="stats[user.id].overdue_tasks.length" class="usr-panel">
+                                        <h6 class="text-danger">Overdue tasks</h6>
+                                        <ul class="usr-list">
+                                            <li v-for="t in stats[user.id].overdue_tasks" :key="t.id">
+                                                <a :href="'/case/' + t.case_id + '#task-' + t.id" class="text-truncate" :title="t.title"><i class="fa-solid fa-clock-rotate-left text-danger"></i>[[ t.title ]]</a>
+                                                <span class="usr-list-meta">[[ since(t.deadline) ]]</span>
+                                            </li>
+                                        </ul>
+                                    </section>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-        </template>
-        <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
+                        </td>
+                    </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
     </div>
-    
 
-    <app-pagination v-if="users_list" class="my-3" :current-page="current_page" :nb-pages="users_list.nb_pages"
+    <app-pagination v-if="users_list && users_list.nb_pages > 1" class="my-3" :current-page="current_page" :nb-pages="users_list.nb_pages"
                     @page="fetchUsers"></app-pagination>
 {% endblock %}
 
@@ -109,17 +264,23 @@
 {% block script %}
     <script type="module">
         import Pagination from '/static/js/components/pagination.js'
-        const { createApp, ref } = Vue
+        import user_chip from '/static/js/components/user-chip.js'
+        const { createApp, ref, computed, watch } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
 
         createApp({
-            components: { 'app-pagination': Pagination },
+            components: { 'app-pagination': Pagination, user_chip },
             delimiters: ['[[', ']]'],
             setup() {
                 const users_list = ref(null)
+                const facets = ref(null)
                 const current_page = ref(1)
                 const search_query = ref('')
-                
+                const role_type = ref('')
+                const role_id = ref('')
+                const org_id = ref('')
+                const me_id = {{ current_user.id }}
+
                 const is_admin = {{ 'true' if current_user.is_admin() else 'false' }}
                 const is_org_admin = {{ 'true' if current_user.is_org_admin() else 'false' }}
                 const current_user_org_id = {{ current_user.org_id if current_user.org_id else 'null' }}
@@ -130,68 +291,92 @@
                     return false
                 }
 
+                function role_icon(kind) { return kind === 'admin' ? 'fa-solid fa-crown' : kind === 'read_only' ? 'fa-solid fa-eye' : 'fa-solid fa-pen' }
+                const current_role = computed(() => facets.value && role_id.value ? facets.value.roles.find(r => String(r.id) === role_id.value) : null)
+                const current_org = computed(() => facets.value && org_id.value ? facets.value.orgs.find(o => String(o.id) === org_id.value) : null)
+                const role_options = computed(() => [{ value: '', label: 'All roles' }, ...((facets.value && facets.value.roles) || []).map(r => ({ value: String(r.id), label: `${r.name} (${r.count})` }))])
+                const org_options = computed(() => [{ value: '', label: 'All organisations' }, ...((facets.value && facets.value.orgs) || []).map(o => ({ value: String(o.id), label: `${o.name} (${o.count})` }))])
+                const has_filters = computed(() => !!(search_query.value || role_type.value || role_id.value || org_id.value))
 
                 async function fetchUsers(page) {
-                    users_list.value = null
-                    let url = 'get_users_page?page=' + page
-                    if (search_query.value) {
-                        url += '&name=' + encodeURIComponent(search_query.value)
+                    const params = new URLSearchParams({ page })
+                    if (search_query.value) params.set('name', search_query.value)
+                    if (role_type.value) params.set('role_type', role_type.value)
+                    if (role_id.value) params.set('role_id', role_id.value)
+                    if (org_id.value) params.set('org_id', org_id.value)
+                    const res = await fetch('get_users_page?' + params)
+                    if (res.ok) {
+                        users_list.value = await res.json()
+                        current_page.value = page
+                    } else {
+                        users_list.value = { users: [], nb_pages: 0 }
                     }
-                    const res = await fetch(url)
-                    let loc = await res.json()
-                    users_list.value = loc
-                    current_page.value = page
                 }
+
+                async function fetchFacets() {
+                    const res = await fetch('get_users_facets')
+                    if (res.ok) facets.value = await res.json()
+                }
+
+                // dayjs is a page global, not visible from the template
+                function since(d) { return window.dayjs ? window.dayjs.utc(d).fromNow() : d }
+
+                // Opened rows: stats are loaded the first time a row is opened, then kept
+                const opened = ref(new Set())
+                const stats = ref({})
+                function can_see_stats(user) { return is_admin || user.id === me_id || (is_org_admin && user.org_id === current_user_org_id) }
+                async function toggle_row(user, ev) {
+                    if (!can_see_stats(user)) return
+                    if (ev && ev.target.closest('a, button, .uchip, .modal, .dropdown-menu')) return
+                    const s = new Set(opened.value)
+                    if (s.has(user.id)) { s.delete(user.id); opened.value = s; return }
+                    s.add(user.id); opened.value = s
+                    if (stats.value[user.id] && stats.value[user.id] !== 'error') return
+                    stats.value = { ...stats.value, [user.id]: 'loading' }
+                    const res = await fetch('/admin/user_stats/' + user.id)
+                    stats.value = { ...stats.value, [user.id]: res.ok ? await res.json() : 'error' }
+                }
+                function bar_height(n, all) {
+                    const max = Math.max(1, ...all)
+                    return n ? Math.max(6, Math.round(n / max * 100)) + '%' : '0'
+                }
+                function week_label(start, i) {
+                    const d = new Date(start); d.setDate(d.getDate() + i * 7)
+                    return 'Week of ' + d.toISOString().slice(0, 10)
+                }
+                function day_label(i) {
+                    const d = new Date(); d.setDate(d.getDate() - (29 - i))
+                    return d.toISOString().slice(0, 10)
+                }
+
+                function set_type(t) { role_type.value = t; role_id.value = '' }
+                function clear_filters() { search_query.value = ''; role_type.value = ''; role_id.value = ''; org_id.value = '' }
+
+                let timer = null
+                watch(search_query, () => { clearTimeout(timer); timer = setTimeout(() => fetchUsers(1), 300) })
+                watch([role_type, role_id, org_id], () => fetchUsers(1))
 
                 async function delete_user(user){
                     const res = await fetch('/admin/delete_user/'+user.id, {
                         method: 'POST',
                         headers: { "X-CSRFToken": $("#csrf_token").val() }
                     })
-                    if(await res.status == 200){
-                        let index = users_list.value.users.indexOf(user)
-                        if(index > -1)
-                            users_list.value.users.splice(index, 1)
+                    if(res.status == 200){
                         $("#delete_user_modal_"+user.id).modal("hide")
-                        fetchUsers(current_page.value)
+                        await Promise.all([fetchUsers(current_page.value), fetchFacets()])
                     }
                     display_toast(res)
                 }
-                
-
-                let users_search_timer = null
-                function debounceUsers(fn, delay=300){
-                    return (...args) => {
-                        if (users_search_timer) clearTimeout(users_search_timer)
-                        users_search_timer = setTimeout(() => fn(...args), delay)
-                    }
-                }
-                const debouncedUsersSearch = debounceUsers(async (q) => {
-                    search_query.value = q
-                    await fetchUsers(1)
-                }, 300)
-
-                function onInput(e){
-                    const q = e.target.value
-                    debouncedUsersSearch(q || '')
-                }
-
 
                 fetchUsers(1)
+                fetchFacets()
 
-
-    
                 return {
-                    message_list,
-                    users_list,
-                    delete_user,
-                    current_page,
-                    fetchUsers,
-                    onInput,
-                    can_manage_user
+                    message_list, users_list, facets, current_page, fetchUsers, delete_user, can_manage_user,
+                    search_query, role_type, role_id, org_id, role_options, org_options, has_filters,
+                    set_type, clear_filters, me_id, since, role_icon, current_role, current_org, opened, stats, can_see_stats, toggle_row, bar_height, week_label, day_label
                 }
             }
         }).mount('#main-container')
-
     </script>
 {% endblock %}

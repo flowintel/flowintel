@@ -560,12 +560,8 @@
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
-                            <button v-if="can_edit_case" class="btn btn-primary btn-sm me-1" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
+                            <button v-if="can_edit_case" class="btn btn-primary btn-sm" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
                                 <i class="fa-solid fa-paperclip fa-sm"></i>+
-                            </button>
-                            <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" 
-                                data-bs-target="#collapseLinks" aria-expanded="true" aria-controls="collapseLinks">
-                                <i class="fa-solid fa-chevron-up fa-sm"></i>
                             </button>
                         </div>
                         <div class="d-flex align-items-center">
@@ -573,20 +569,8 @@
                             <span class="badge text-bg-secondary ms-2">[[cases_info.case.link_to.length]]</span>
                         </div>
                         <hr class="fading-line-2 mt-2 mb-2">
-                        <div class="collapse show" id="collapseLinks">
-                            <div class="row mt-2">
-                                <div class="col-6 link-style-first" v-for="case_link in cases_info.case.link_to">
-                                    <a :href="`/case/${case_link.id}`" class="ms-4 text-decoration-none text-reset p-1">
-                                        [[case_link.title]]
-                                    </a>
-                                    <button class="btn btn-outline-danger btn-sm ms-4"
-                                    @click="remove_case_link(cases_info, case_link)"
-                                    title="Remove link from case">
-                                        <i class="fa-solid fa-trash fa-sm"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <case_links class="mt-2" :links="cases_info.case.link_to" :statuses="status_info ? status_info.status : []" :removable="can_edit_case"
+                                    @remove="(l) => remove_case_link(cases_info, l)"></case_links>
                     </div>
                 </div>
                 <div class="col">
@@ -1114,6 +1098,7 @@
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import smart_render from '/static/js/components/smart-render.js'
+        import case_links from '/static/js/components/case-links.js'
         import smart_editor from '/static/js/components/smart-editor.js'
         import tag_filter from '/static/js/components/tag_filter.js'
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
@@ -1122,6 +1107,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                case_links,
                 'app-pagination': Pagination,
                 case_tasks,
                 hedgedoc_template,
@@ -1792,11 +1778,6 @@
                         fetch_case_misp_objects()
                         resolveAndSetNotes()
                         await fetch_sorted_tasks()
-
-                        $('.select2-select-add-orgs').select2({
-                            theme: 'bootstrap-5',
-                            width: '50%'
-                        })
                     }
                 }
                 
@@ -1828,12 +1809,6 @@
                         display_toast(res)
                     }else{
                         users_in_case.value = await res.json()
-                        await nextTick()
-                        // reinitialize select2 on user selects so new options render
-                        $('.select2-selectUser').each(function () {
-                            try { $(this).select2('destroy') } catch (e) { }
-                            $(this).select2({ width: 'element' })
-                        })
                     }
                 }
                 get_all_users_case()

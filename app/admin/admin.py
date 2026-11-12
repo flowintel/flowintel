@@ -209,20 +209,33 @@ def get_users_page():
     
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
-    
-    users = AdminModel.get_users_page(page, current_user, name=name)
-    if users:
-        users_list = list()
-        for user in users:
-            u = user.to_json()
-            r = AdminModel.get_role(user.role_id)
-            u["role"] = r.name if r else "Unknown"
-            u["org_id"] = user.org_id
-            org = AdminModel.get_org(user.org_id) if user.org_id else None
-            u["org_name"] = org.name if org else "No Organization"
-            users_list.append(u)
-        return {"users": users_list, "nb_pages": users.pages}
-    return {"message": "No Users"}, 404
+    role_type = request.args.get('role_type', None, type=str)
+    role_id = request.args.get('role_id', None, type=int)
+    org_id = request.args.get('org_id', None, type=int)
+
+    users = AdminModel.get_users_page(page, current_user, name=name, role_type=role_type, role_id=role_id, org_id=org_id)
+    users_list = list()
+    for user in users:
+        u = user.to_json()
+        r = AdminModel.get_role(user.role_id)
+        u["role"] = r.name if r else "Unknown"
+        u["role_admin"] = bool(r and r.admin)
+        u["role_read_only"] = bool(r and r.read_only and not r.admin)
+        u["org_id"] = user.org_id
+        org = AdminModel.get_org(user.org_id) if user.org_id else None
+        u["org_name"] = org.name if org else "No Organization"
+        # Account activity is for admins only (same rule as the user card)
+        if current_user.is_admin():
+            u["last_login"] = user.last_login.isoformat() if user.last_login else None
+        users_list.append(u)
+    return {"users": users_list, "nb_pages": users.pages, "total": users.total}
+
+
+@admin_blueprint.route("/get_users_facets", methods=['GET'])
+@login_required
+def get_users_facets():
+    """Counts by role type, role and organisation for the filters of the users page"""
+    return AdminModel.get_users_facets(current_user), 200
 
 
 
@@ -372,9 +385,21 @@ def get_orgs():
     if orgs:
         orgs_list = list()
         for org in orgs:
-            orgs_list.append(org.to_json())
-        return {"orgs": orgs_list, "nb_pages": orgs.pages}
-    return {"message": "No orgs"}
+            o = org.to_json()
+            o.update(AdminModel.get_org_counts(org, current_user))
+            orgs_list.append(o)
+        return {"orgs": orgs_list, "nb_pages": orgs.pages, "total": orgs.total}
+    return {"orgs": [], "nb_pages": 0, "total": 0, "message": "No orgs"}
+
+
+@admin_blueprint.route("/org_details/<int:oid>", methods=['GET'])
+@login_required
+def org_details(oid):
+    """Members and cases of an organisation, loaded when its row is opened"""
+    org = AdminModel.get_org(oid)
+    if not org:
+        return {"message": "Organisation not found", "toast_class": "warning-subtle"}, 404
+    return AdminModel.get_org_details(org, current_user), 200
 
 
 @admin_blueprint.route("/get_org_users", methods=['GET','POST'])
@@ -408,15 +433,16 @@ def get_roles():
     """get all roles"""
     page = request.args.get('page', 1, type=int)
     name = request.args.get('name', None, type=str)
-    roles = AdminModel.get_roles_page(page, name=name)
+    role_type = request.args.get('role_type', None, type=str)
+    roles = AdminModel.get_roles_page(page, name=name, role_type=role_type)
     if roles:
         roles_list = list()
         for role in roles:
             role_dict = role.to_json()
             role_dict["user_count"] = AdminModel.count_users_with_role(role.id)
             roles_list.append(role_dict)
-        return {"roles": roles_list, "nb_pages": roles.pages}
-    return {"message": "No roles"}
+        return {"roles": roles_list, "nb_pages": roles.pages, "total": roles.total}
+    return {"roles": [], "nb_pages": 0, "total": 0, "message": "No roles"}
 
 
 @admin_blueprint.route("/get_role_users", methods=['GET','POST'])
@@ -431,6 +457,8 @@ def get_role_users():
             u = user.to_json()
             o = AdminModel.get_org(user.org_id)
             u["org"] = o.name if o else "No Organization"
+            if current_user.is_admin():
+                u["last_login"] = user.last_login.isoformat() if user.last_login else None
             users_list.append(u)
 
         return {"users": users_list}
@@ -605,3 +633,15 @@ def bulk_galaxy_status():
     AdminModel.bulk_set_exclude(Galaxy, galaxy_ids, exclude)
     action = "disabled" if exclude else "enabled"
     return {"message": f"{len(galaxy_ids)} galaxies {action}", "toast_class": "success-subtle"}, 200
+
+
+@admin_blueprint.route("/user_stats/<int:uid>", methods=['GET'])
+@login_required
+def user_stats(uid):
+    """Activity of a user, loaded when their row is opened on the users page"""
+    user = AdminModel.get_visible_users(current_user).filter_by(id=uid).first()
+    if not user:
+        return {"message": "User not found", "toast_class": "warning-subtle"}, 404
+    if not AdminModel.can_see_user_stats(current_user, user):
+        return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
+    return AdminModel.get_user_stats(user, current_user), 200

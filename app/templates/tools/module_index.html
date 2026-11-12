@@ -1,83 +1,187 @@
-<!-- 
+<!--
     Author: David Cruciani
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_search, header_segmented %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .mod-table { margin: 0; }
+    .mod-table thead th {
+        font-size: .76rem; text-transform: uppercase; letter-spacing: .04em;
+        color: var(--bs-secondary-color); font-weight: 600; white-space: nowrap;
+        background: var(--bs-tertiary-bg); border-bottom-width: 1px;
+    }
+    .mod-table td { vertical-align: top; padding-top: .7rem; padding-bottom: .7rem; }
+    .mod-card { border: 1px solid var(--bs-border-color); border-radius: 12px; overflow: hidden; background: var(--bs-body-bg); }
+    .mod-name { display: flex; align-items: center; gap: .65rem; min-width: 220px; }
+    .mod-icon {
+        flex: 0 0 auto; width: 2.1rem; height: 2.1rem; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: var(--mod-bg); color: var(--mod-fg);
+    }
+    .mod-title { font-weight: 600; }
+    .mod-key { font-family: var(--bs-font-monospace); font-size: .74rem; color: var(--bs-secondary-color); }
+    .mod-desc { white-space: pre-line; tab-size: 2; font-size: .86rem; margin: 0; max-width: 70ch; }
+    .mod-desc.is-clamped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .mod-more { border: 0; background: none; padding: 0; font-size: .78rem; color: #2f6fb0; }
+    .mod-pill {
+        display: inline-flex; align-items: center; gap: .35rem; padding: .18rem .6rem; border-radius: 999px;
+        font-size: .76rem; font-weight: 600; white-space: nowrap; background: var(--mod-bg); color: var(--mod-fg);
+    }
+    .mod-type--send_to { --mod-fg: #2f6fb0; --mod-bg: rgba(47, 111, 176, .12); }
+    .mod-type--receive_from { --mod-fg: #198754; --mod-bg: rgba(25, 135, 84, .12); }
+    .mod-type--notify_user { --mod-fg: #c25b12; --mod-bg: rgba(194, 91, 18, .12); }
+    .mod-type--other { --mod-fg: #6c757d; --mod-bg: rgba(108, 117, 125, .12); }
+    .mod-scope { display: inline-flex; align-items: center; gap: .3rem; font-size: .82rem; white-space: nowrap; }
+    .mod-scope i { color: var(--bs-secondary-color); }
+    .mod-conn { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .5rem; border-radius: 6px; border: 1px solid var(--bs-border-color); font-size: .76rem; font-family: var(--bs-font-monospace); }
+    .mod-empty { padding: 2.5rem 1rem; text-align: center; color: var(--bs-secondary-color); }
+    @media (max-width: 768px) { .mod-hide-sm { display: none; } }
+</style>
+{% endblock %}
 
 {% block content %}
-    {% call(section) page_header('Modules', 'fa-solid fa-puzzle-piece', 'Modules available on this instance.') %}{% endcall %}
+    {% call(section) page_header('Modules', 'fa-solid fa-puzzle-piece', 'Modules available on this instance: what they do, where they apply and which connector they use.') %}
+        {% if section == 'stats' %}
+            {{ header_stat('fa-solid fa-puzzle-piece', "[[ all_modules.length ]]", "[[ all_modules.length === 1 ? 'module' : 'modules' ]]", title='Modules loaded') }}
+            {{ header_stat('fa-solid fa-paper-plane', "[[ count('send_to') ]]", 'send to', title='Modules that send data to a connector') }}
+            {{ header_stat('fa-solid fa-inbox', "[[ count('receive_from') ]]", 'receive from', title='Modules that bring data from a connector') }}
+            {{ header_stat('fa-solid fa-bell', "[[ count('notify_user') ]]", 'notify', title='Modules that notify a user') }}
+        {% elif section == 'toolbar' %}
+            {{ header_search('Search a module, a connector, a description…', model='search') }}
+            {{ header_segmented([
+                {'value': 'all', 'label': 'All'},
+                {'value': 'send_to', 'label': 'Send to', 'icon': 'fa-solid fa-paper-plane'},
+                {'value': 'receive_from', 'label': 'Receive from', 'icon': 'fa-solid fa-inbox'},
+                {'value': 'notify_user', 'label': 'Notify user', 'icon': 'fa-solid fa-bell'},
+            ], "type_filter === '{value}'", "type_filter = '{value}'", aria='Module type') }}
+            <button type="button" class="ctx-ghost-btn ctx-push" @click="reload()" :disabled="reloading" title="Reload the modules from disk">
+                <i :class="['fa-solid fa-arrow-rotate-right fa-sm', { 'fa-spin': reloading }]"></i>Reload
+            </button>
+        {% endif %}
+    {% endcall %}
 
-    <button class="btn btn-primary" @click="reload()"><i class="fa-solid fa-arrow-rotate-right"></i> Reload</button>
-
-    <table class="table case-core-style" style="margin-top: 10px; border-radius: 0">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Apply to</th>
-                <th>Type</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr v-for="module, key in modules_list">
-                <td>[[key]]</td>
-                <td><pre class="description">[[ module.config.description ]]</pre></td>
-                <td>
-                    <span v-if="module.config.case_task === 'case'" class="badge text-bg-primary">
-                        <i class="fa-solid fa-folder me-1"></i>Case
-                    </span>
-                    <span v-else-if="module.config.case_task === 'task'" class="badge text-bg-success">
-                        <i class="fa-solid fa-list-check me-1"></i>Task
-                    </span>
-                    <span v-else class="badge text-bg-secondary">[[ module.config.case_task ]]</span>
-                </td>
-                <td>
-                    <span v-if="module.type === 'notify_user'">
-                        <i class="fa-solid fa-bell me-1"></i>Notify user
-                    </span>
-                    <span v-else-if="module.type === 'send_to'">
-                        <i class="fa-solid fa-paper-plane me-1"></i>Send to
-                    </span>
-                    <span v-else-if="module.type === 'receive_from'">
-                        <i class="fa-solid fa-inbox me-1"></i>Receive from
-                    </span>
-                    <span v-else>[[ module.type ]]</span>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="mod-card">
+        <div class="table-responsive">
+            <table class="table table-hover mod-table">
+                <thead>
+                    <tr>
+                        <th>Module</th>
+                        <th>Type</th>
+                        <th>Applies to</th>
+                        <th class="mod-hide-sm">Connector</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="loading"><td colspan="5" class="mod-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the modules…</td></tr>
+                    <tr v-else-if="!visible.length">
+                        <td colspan="5" class="mod-empty">
+                            <i class="fa-solid fa-puzzle-piece fa-lg d-block mb-2"></i>
+                            [[ all_modules.length ? 'No module matches the filters.' : 'No module loaded on this instance.' ]]
+                        </td>
+                    </tr>
+                    <tr v-for="m in visible" :key="m.key">
+                        <td>
+                            <div class="mod-name">
+                                <span :class="['mod-icon', 'mod-type--' + type_info(m.type).key]"><i :class="type_info(m.type).icon"></i></span>
+                                <div>
+                                    <div class="mod-title">[[ pretty(m.key) ]]</div>
+                                    <div class="mod-key">[[ m.key ]]</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span :class="['mod-pill', 'mod-type--' + type_info(m.type).key]"><i :class="type_info(m.type).icon"></i>[[ type_info(m.type).label ]]</span></td>
+                        <td>
+                            <span v-if="m.scope === 'case'" class="mod-scope"><i class="fa-solid fa-folder"></i>Case</span>
+                            <span v-else-if="m.scope === 'task'" class="mod-scope"><i class="fa-solid fa-list-check"></i>Task</span>
+                            <span v-else class="mod-scope">[[ m.scope || '—' ]]</span>
+                        </td>
+                        <td class="mod-hide-sm">
+                            <span v-if="m.connector" class="mod-conn"><i class="fa-solid fa-plug fa-xs"></i>[[ m.connector ]]</span>
+                            <span v-else class="text-muted small">—</span>
+                        </td>
+                        <td>
+                            <p v-if="m.description" :class="['mod-desc', { 'is-clamped': !expanded.has(m.key) && is_long(m.description) }]">[[ m.description ]]</p>
+                            <span v-else class="text-muted small fst-italic">No description</span>
+                            <button v-if="is_long(m.description)" type="button" class="mod-more" @click="toggle(m.key)">[[ expanded.has(m.key) ? 'Show less' : 'Show more' ]]</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% endblock %}
 
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted, nextTick } = Vue
+        const { createApp, ref, computed } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+
+        const TYPES = {
+            send_to: { key: 'send_to', label: 'Send to', icon: 'fa-solid fa-paper-plane' },
+            receive_from: { key: 'receive_from', label: 'Receive from', icon: 'fa-solid fa-inbox' },
+            notify_user: { key: 'notify_user', label: 'Notify user', icon: 'fa-solid fa-bell' },
+        }
 
         createApp({
             delimiters: ['[[', ']]'],
             setup() {
-                const modules_list = ref([])
+                const modules_list = ref({})
+                const loading = ref(true)
+                const reloading = ref(false)
+                const search = ref('')
+                const type_filter = ref('all')
+                const expanded = ref(new Set())
 
-                async function fetch_module(){
+                // {key: {type, config}} -> a flat, sorted list
+                const all_modules = computed(() => Object.entries(modules_list.value || {}).map(([key, m]) => ({
+                    key,
+                    type: m.type,
+                    scope: m.config && m.config.case_task,
+                    connector: m.config && m.config.connector,
+                    description: ((m.config && m.config.description) || '').replace(/\t/g, '  '),
+                })).sort((a, b) => (a.type || '').localeCompare(b.type || '') || a.key.localeCompare(b.key)))
+
+                const visible = computed(() => {
+                    const q = search.value.toLowerCase()
+                    return all_modules.value.filter(m =>
+                        (type_filter.value === 'all' || m.type === type_filter.value) &&
+                        (!q || [m.key, m.type, m.scope, m.connector, m.description].some(v => (v || '').toLowerCase().includes(q))))
+                })
+
+                function count(type) { return all_modules.value.filter(m => m.type === type).length }
+                function type_info(type) { return TYPES[type] || { key: 'other', label: type || 'Other', icon: 'fa-solid fa-puzzle-piece' } }
+                function pretty(key) { return key.replace(/_/g, ' ').replace(/\bmisp\b/gi, 'MISP').replace(/^./, c => c.toUpperCase()) }
+                function is_long(text) { return !!text && (text.length > 140 || text.split('\n').length > 2) }
+                function toggle(key) {
+                    const s = new Set(expanded.value)
+                    s.has(key) ? s.delete(key) : s.add(key)
+                    expanded.value = s
+                }
+
+                async function fetch_module() {
                     const res = await fetch("/tools/get_modules")
-                    let loc = await res.json()
-                    modules_list.value = loc["modules"]
+                    if (res.ok) modules_list.value = (await res.json())["modules"] || {}
+                    loading.value = false
                 }
                 fetch_module()
 
-                async function reload(){
+                async function reload() {
+                    reloading.value = true
                     const res = await fetch("/tools/reload_module")
                     display_toast(res)
-                    
                     await fetch_module()
+                    reloading.value = false
                 }
 
                 return {
-                    message_list,
-                    modules_list,
-                    reload
+                    message_list, all_modules, visible, loading, reloading, search, type_filter, expanded,
+                    count, type_info, pretty, is_long, toggle, reload
                 }
             }
         }).mount('#main-container')

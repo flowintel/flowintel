@@ -18,278 +18,143 @@
         {% endif %}
     {% endcall %}
 
-    <form action="" method="post" class="case-core-style">
+    {% set ro = is_system_role %}
+    {% macro perm(field, icon, label, help) -%}
+        <label class="role-perm" for="{{ field.id }}">
+            <span class="role-perm-icon"><i class="{{ icon }}"></i></span>
+            <span class="role-perm-text">
+                <span class="role-perm-label">{{ label }}
+                    <i class="fa-solid fa-circle-question role-help" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ help }}"></i>
+                </span>
+            </span>
+            <span class="form-check form-switch mb-0 ms-auto">
+                {{ field(class_="form-check-input role-extra", role="switch", disabled=ro) }}
+            </span>
+        </label>
+    {%- endmacro %}
+
+    <form action="" method="post" class="role-form">
         {{ form.hidden_tag() }}
-        {% if edit_mode and role %}
-            {{form.role_id(value=role.id)}}
-        {% endif %}
-        <div class="modal-body">
-            <div class="row">
-                <div class="mb-3 w-100">
-                    {{form.name.label(class_="col-form-label")}}<span class="text-danger">*</span>:
-                    {% if is_system_role %}
-                        {{form.name(class_="form-control", readonly=true)}}
-                    {% else %}
-                        {{form.name(class_="form-control")}}
-                    {% endif %}
-                    {% if form.name.errors %}
-                        <div style="color: red;">{{form.name.errors[0] | safe}}</div>
-                    {%endif%}
+        {% if edit_mode and role %}{{ form.role_id(value=role.id) }}{% endif %}
+
+        <!-- the real fields, driven by the role type cards -->
+        <span class="d-none">{{ form.admin(id="admin_checkbox", disabled=ro) }}{{ form.read_only(id="read_only_checkbox", disabled=ro) }}</span>
+
+        <section class="role-card">
+            <h2 class="role-card-title"><i class="fa-solid fa-id-badge"></i>Role</h2>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label" for="{{ form.name.id }}">Name <span class="text-danger">*</span></label>
+                    {{ form.name(class_="form-control", placeholder="e.g. Analyst, SOC lead…", readonly=ro) }}
+                    {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors[0] }}</div>{% endif %}
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label" for="{{ form.description.id }}">Description</label>
+                    {{ form.description(class_="form-control", rows=1, placeholder="What people with this role do", readonly=ro) }}
+                    {% if form.description.errors %}<div class="invalid-feedback d-block">{{ form.description.errors[0] }}</div>{% endif %}
                 </div>
             </div>
-            <div class="mb-3">
-                <label for="description" class="col-form-label">Description:</label>
-                {% if is_system_role %}
-                    {{form.description(class_="form-control", rows=4, readonly=true)}}
-                {% else %}
-                    {{form.description(class_="form-control", rows=4)}}
-                {% endif %}
-                {% if form.description.errors %}
-                    <div style="color: red;">{{form.description.errors[0] | safe}}</div>
-                {%endif%}
+        </section>
+
+        <section class="role-card">
+            <h2 class="role-card-title"><i class="fa-solid fa-layer-group"></i>Role type
+                <i class="fa-solid fa-circle-question role-help" tabindex="0" data-bs-toggle="tooltip"
+                   title="Every role is one of these three. Admin can do everything, Read only can only look, Editor works on cases and can get extra permissions below."></i>
+            </h2>
+            <div class="role-types" role="radiogroup" aria-label="Role type">
+                <label class="role-type role-type--admin">
+                    <input type="radio" name="role_type" value="admin" {% if ro %}disabled{% endif %}>
+                    <span class="role-type-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                    <span class="role-type-name">Admin</span>
+                    <span class="role-type-desc">Full access: every case, user, organisation and setting of the instance.</span>
+                </label>
+                <label class="role-type role-type--editor">
+                    <input type="radio" name="role_type" value="editor" {% if ro %}disabled{% endif %}>
+                    <span class="role-type-icon"><i class="fa-solid fa-pen"></i></span>
+                    <span class="role-type-name">Editor</span>
+                    <span class="role-type-desc">Creates and works on cases and tasks of its organisation. Can get extra permissions.</span>
+                </label>
+                <label class="role-type role-type--readonly">
+                    <input type="radio" name="role_type" value="read_only" {% if ro %}disabled{% endif %}>
+                    <span class="role-type-icon"><i class="fa-solid fa-eye"></i></span>
+                    <span class="role-type-name">Read only</span>
+                    <span class="role-type-desc">Can see the cases it has access to, but cannot change anything.</span>
+                </label>
             </div>
+        </section>
 
-            <div class="mb-3">
-                <label class="col-form-label fw-bold">Permissions:</label>
-                <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.875rem;">
-                    <i class="fa-solid fa-info-circle me-1"></i>
-                    <strong>Note:</strong> Select one of the three role types below. Additional permissions apply to the Editor role only. An Admin already possesses all additional permissions, and a Read Only cannot have any additional permissions.
+        <section class="role-card" id="role_extras">
+            <h2 class="role-card-title"><i class="fa-solid fa-sliders"></i>Extra permissions
+                <span class="role-card-hint" id="role_extras_hint"></span>
+            </h2>
+            <div class="role-groups">
+                <div class="role-group">
+                    <div class="role-group-title"><i class="fa-solid fa-building"></i>Organisation</div>
+                    {{ perm(form.org_admin, 'fa-solid fa-users-gear', 'Org Admin', 'Can add, create and edit the users of their own organisation.') }}
                 </div>
-                
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <h6 class="mb-0 fw-bold">System role</h6>
-                    </div>
-                    <table class="table table-sm table-bordered mb-0">
-                        <tbody>
-                            <tr>
-                                <td title="Full administrative access to all features"><i class="fa-solid fa-shield-halved me-2" style="color: #dc3545;"></i>Admin</td>
-                                <td style="width: 100px; text-align: center;">
-                                    {% if is_system_role %}
-                                        {{form.admin(id="admin_checkbox", class_="form-check-input", disabled=true)}}
-                                    {% else %}
-                                        {{form.admin(id="admin_checkbox", class_="form-check-input")}}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td title="User can only view data, cannot make changes"><i class="fa-solid fa-eye me-2" style="color: #0dcaf0;"></i>Read Only</td>
-                                <td style="text-align: center;">
-                                    {% if is_system_role %}
-                                        {{form.read_only(id="read_only_checkbox", class_="form-check-input", disabled=true)}}
-                                    {% else %}
-                                        {{form.read_only(id="read_only_checkbox", class_="form-check-input")}}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td title="Can create and edit content, but not perform admin functions"><i class="fa-solid fa-pen me-2" style="color: #198754;"></i>Editor</td>
-                                <td style="text-align: center;">
-                                    {% if is_system_role %}
-                                        <input type="checkbox" id="editor_checkbox" class="form-check-input" disabled>
-                                    {% else %}
-                                        <input type="checkbox" id="editor_checkbox" class="form-check-input">
-                                    {% endif %}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="role-group">
+                    <div class="role-group-title"><i class="fa-solid fa-lock"></i>Privileged cases</div>
+                    {{ perm(form.case_admin, 'fa-solid fa-briefcase', 'Case Admin', 'Can create and complete cases, and turn a case into a privileged case.') }}
+                    {{ perm(form.queue_admin, 'fa-solid fa-list-check', 'Queue Admin', 'Approves the tasks requested in privileged cases.') }}
+                    {{ perm(form.queuer, 'fa-solid fa-hand', 'Queuer', 'Can request a task in a privileged case; a Queue Admin approves it.') }}
                 </div>
-
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <h6 class="mb-0 fw-bold text-muted">Additional permissions <small>(Editor only)</small></h6>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-building me-1"></i>Organisation management</small>
-                        <table class="table table-sm table-bordered mb-0 mt-1">
-                            <tbody>
-                                <tr>
-                                    <td title="Allows a user to add, create or edit users within an organisation">Org Admin</td>
-                                    <td style="width: 100px; text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.org_admin(id="org_admin_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.org_admin(id="org_admin_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mb-2">
-                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-lock me-1"></i>Privileged cases</small>
-                        <table class="table table-sm table-bordered mb-0 mt-1">
-                            <tbody>
-                                <tr>
-                                    <td title="Can create and complete cases, and can edit a case to a privileged case">Case Admin</td>
-                                    <td style="width: 100px; text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.case_admin(id="case_admin_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.case_admin(id="case_admin_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td title="Can approve a task for privileged cases">Queue Admin</td>
-                                    <td style="text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.queue_admin(id="queue_admin_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td title="Can request a task for privileged cases">Queuer</td>
-                                    <td style="text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.queuer(id="queuer_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.queuer(id="queuer_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="mb-2">
-                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-file-lines me-1"></i>Audit & Logging</small>
-                        <table class="table table-sm table-bordered mb-0 mt-1">
-                            <tbody>
-                                <tr>
-                                    <td title="Allows users to view history and audit logs">Audit Viewer</td>
-                                    <td style="width: 100px; text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.audit_viewer(id="audit_viewer_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.audit_viewer(id="audit_viewer_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div>
-                        <small class="text-muted fw-semibold ps-2"><i class="fa-solid fa-gear me-1"></i>Editor tools</small>
-                        <table class="table table-sm table-bordered mb-0 mt-1">
-                            <tbody>
-                                <tr>
-                                    <td title="Allows users to manage case, task or note templates">Template Editor</td>
-                                    <td style="width: 100px; text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.template_editor(id="template_editor_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.template_editor(id="template_editor_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td title="Allows users to sync data with MISP and manage MISP objects and connectors">MISP Editor</td>
-                                    <td style="text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.misp_editor(id="misp_editor_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.misp_editor(id="misp_editor_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td title="Allows users to import data via the analyser / MISP module">Importer</td>
-                                    <td style="text-align: center;">
-                                        {% if is_system_role %}
-                                            {{form.importer(id="importer_checkbox", class_="form-check-input", disabled=true)}}
-                                        {% else %}
-                                            {{form.importer(id="importer_checkbox", class_="form-check-input")}}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="role-group">
+                    <div class="role-group-title"><i class="fa-solid fa-file-lines"></i>Audit &amp; logging</div>
+                    {{ perm(form.audit_viewer, 'fa-solid fa-user-shield', 'Audit Viewer', 'Can read the history and the audit logs of cases.') }}
+                </div>
+                <div class="role-group">
+                    <div class="role-group-title"><i class="fa-solid fa-toolbox"></i>Tools</div>
+                    {{ perm(form.template_editor, 'fa-solid fa-clone', 'Template Editor', 'Can create and edit case, task and note templates.') }}
+                    {{ perm(form.misp_editor, 'fa-solid fa-plug', 'MISP Editor', 'Can sync with MISP, manage MISP objects and use connectors in cases.') }}
+                    {{ perm(form.importer, 'fa-solid fa-file-import', 'Importer', 'Can import data into cases with the analyser and the MISP modules.') }}
                 </div>
             </div>
-        </div>
+        </section>
+
         <div class="d-flex gap-2">
-            <a class="btn btn-secondary" href="{{ url_for('admin.roles') }}">{% if is_system_role %}Close{% else %}Cancel{% endif %}</a>
-            {% if not is_system_role %}
-                {{form.submit(class_="btn btn-primary", value="Save" if edit_mode else "Create")}}
-            {% endif %}
+            <a class="btn btn-secondary" href="{{ url_for('admin.roles') }}">{% if ro %}Close{% else %}Cancel{% endif %}</a>
+            {% if not ro %}{{ form.submit(class_="btn btn-primary", value="Save" if edit_mode else "Create role") }}{% endif %}
         </div>
     </form>
 {% endblock %}
 
 {% block script %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const adminCheckbox = document.getElementById('admin_checkbox');
-            const readOnlyCheckbox = document.getElementById('read_only_checkbox');
-            const editorCheckbox = document.getElementById('editor_checkbox');
-            const orgAdminCheckbox = document.getElementById('org_admin_checkbox');
-            const caseAdminCheckbox = document.getElementById('case_admin_checkbox');
-            const queueAdminCheckbox = document.getElementById('queue_admin_checkbox');
-            const queuerCheckbox = document.getElementById('queuer_checkbox');
-            const auditViewerCheckbox = document.getElementById('audit_viewer_checkbox');
-            const templateEditorCheckbox = document.getElementById('template_editor_checkbox');
-            const mispEditorCheckbox = document.getElementById('misp_editor_checkbox');
-            const importerCheckbox = document.getElementById('importer_checkbox');
-            
-            if (adminCheckbox && readOnlyCheckbox && editorCheckbox && orgAdminCheckbox && caseAdminCheckbox && queueAdminCheckbox && queuerCheckbox && auditViewerCheckbox && templateEditorCheckbox && mispEditorCheckbox && importerCheckbox) {
-                function updateEditorState() {
-                    editorCheckbox.checked = !adminCheckbox.checked && !readOnlyCheckbox.checked;
-                }
-                
-                updateEditorState();
-                
-                adminCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        readOnlyCheckbox.checked = false;
-                    }
-                    updateEditorState();
-                });
-                
-                readOnlyCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        adminCheckbox.checked = false;
-                        orgAdminCheckbox.checked = false;
-                        caseAdminCheckbox.checked = false;
-                        queueAdminCheckbox.checked = false;
-                        queuerCheckbox.checked = false;
-                        auditViewerCheckbox.checked = false;
-                        templateEditorCheckbox.checked = false;
-                        mispEditorCheckbox.checked = false;
-                        importerCheckbox.checked = false;
-                    }
-                    updateEditorState();
-                });
-                
-                // When editor is checked, uncheck admin and read_only
-                editorCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        adminCheckbox.checked = false;
-                        readOnlyCheckbox.checked = false;
-                    }
-                });
-                
-                // Additional permissions force Editor role
-                [orgAdminCheckbox, caseAdminCheckbox, queueAdminCheckbox, queuerCheckbox, auditViewerCheckbox, templateEditorCheckbox, mispEditorCheckbox, importerCheckbox].forEach(function(checkbox) {
-                    checkbox.addEventListener('change', function() {
-                        if (this.checked) {
-                            readOnlyCheckbox.checked = false;
-                        }
-                        updateEditorState();
-                    });
-                });
-            }
-        });
-    </script>
     <script type="module">
-        const { createApp } = Vue;
+        const { createApp, nextTick } = Vue;
         createApp({ delimiters: ['[[', ']]'], setup() {} }).mount('#main-container');
+
+        // After Vue has mounted the page: role type cards drive the admin / read_only fields,
+        // extra permissions only make sense for an Editor
+        await nextTick();
+        const admin = document.getElementById('admin_checkbox');
+        const readOnly = document.getElementById('read_only_checkbox');
+        const radios = [...document.querySelectorAll('input[name="role_type"]')];
+        const extras = [...document.querySelectorAll('.role-extra')];
+        const extrasBox = document.getElementById('role_extras');
+        const hint = document.getElementById('role_extras_hint');
+        const locked = radios.some(r => r.disabled);
+
+        function current() { return admin.checked ? 'admin' : readOnly.checked ? 'read_only' : 'editor'; }
+        function render() {
+            const type = current();
+            radios.forEach(r => { r.checked = r.value === type; r.closest('.role-type').classList.toggle('is-active', r.checked); });
+            extrasBox.classList.toggle('is-off', type !== 'editor');
+            hint.textContent = type === 'admin' ? 'An Admin already has all of them'
+                : type === 'read_only' ? 'Not available for Read only' : 'For the Editor role';
+            extras.forEach(c => {
+                if (type === 'read_only') c.checked = false;
+                if (!locked) c.disabled = type !== 'editor';
+            });
+        }
+        radios.forEach(r => r.addEventListener('change', () => {
+            admin.checked = r.value === 'admin';
+            readOnly.checked = r.value === 'read_only';
+            render();
+        }));
+        render();
+        // The disabled extra switches would not be sent: enable them right before submit
+        document.querySelector('.role-form').addEventListener('submit', () => { if (!locked) extras.forEach(c => c.disabled = false); });
+
+        document.querySelectorAll('.role-form [data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
     </script>
 {% endblock %}

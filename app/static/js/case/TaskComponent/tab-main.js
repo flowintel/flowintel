@@ -4,11 +4,15 @@ import { confirmDelete } from '/static/js/confirm.js'
 const { ref, computed } = Vue
 import subtask from './subtask.js'
 import TaskUrlTool from './TaskUrlTool.js'
+import user_chip from '/static/js/components/user-chip.js'
+import user_picker from '/static/js/components/user-picker.js'
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
 		subtask,
-		TaskUrlTool
+		TaskUrlTool,
+		user_chip,
+		user_picker
 	},
 	props: {
 		cases_info: Object,
@@ -38,9 +42,12 @@ export default {
 			return getStatusHint(props.task, props.status_info)
 		})
 
+		// Users picked in the Assign section, not assigned yet
+		const users_to_assign = ref([])
+
 		async function assign_user_task() {
 			// Assign users present in the case to the task
-			let users_select = $('#selectUser' + props.task.id).val()
+			let users_select = users_to_assign.value.map(String)
 			if (users_select.length) {
 				const res_msg = await fetch(
 					'/case/' + props.task.case_id + '/assign_users/' + props.task.id, {
@@ -64,6 +71,7 @@ export default {
 					}
 				}
 				await display_toast(res_msg)
+				if (res_msg.status == 200) users_to_assign.value = []
 			}
 		}
 
@@ -220,6 +228,7 @@ export default {
 			statusHint,
 
 			assign_user_task,
+			users_to_assign,
 			change_status,
 			notify_user,
 			present_user_in_task,
@@ -241,17 +250,18 @@ export default {
 				</div>
 				<div class="task-section-body">
 					<div v-if="users_in_case">
-						<select data-placeholder="Users" multiple :class="['select2-selectUser'+task.id, 'select2-selectUser']" :name="'selectUser'+task.id" :id="'selectUser'+task.id" style="min-width:200px">
-							<template v-for="user in users_in_case.users_list">
-								<option :value="user.id" v-if="present_user_in_task(task.users, user) == -1">[[user.first_name]] [[user.last_name]]</option>
-							</template>
-						</select>
-						<button class="btn btn-primary" @click="assign_user_task()">Assign</button>
+						<div class="d-flex flex-wrap align-items-start gap-2">
+							<user_picker v-model="users_to_assign" :users="users_in_case.users_list" :exclude="task.users.map(u => u.id)"
+										 placeholder="Pick the users to assign…"></user_picker>
+							<button class="btn btn-primary" @click="assign_user_task()" :disabled="!users_to_assign.length">
+								<i class="fa-solid fa-user-plus me-1"></i>Assign
+							</button>
+						</div>
 					</div>
 					<hr>
 					<div v-if="task.users.length">
-						<div v-for="user in task.users">
-							<span style="margin-right: 5px"><i class="fa-solid fa-user"></i> [[user.first_name]] [[user.last_name]]</span>
+						<div v-for="user in task.users" class="d-flex align-items-center gap-1 mb-1">
+							<user_chip :user="user" class="me-1"></user_chip>
 							<button v-if="(cases_info.current_user.id != user.id) && (task.can_edit && cases_info.present_in_case || cases_info.permission.admin)" class="btn btn-primary btn-sm" data-bs-toggle="modal" :data-bs-target="'#notify_modal_'+task.id+'_'+user.id" title="Use a module to notify user"><i class="fa-solid fa-bell"></i></button>
 							<button v-if="task.can_edit && cases_info.present_in_case || cases_info.permission.admin" class="btn btn-danger btn-sm" @click="remove_assigned_user(user.id)"><i class="fa-solid fa-trash"></i></button>
 

@@ -1,5 +1,6 @@
 <!--
-    Note Variables Reference Page
+    Note Variables Reference Page: a playground to try @variables on a real case / task,
+    and the full reference (click a variable to insert it).
 -->
 
 {% extends 'base.html' %}
@@ -7,34 +8,244 @@
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 {{ super() }}
+<style>
+    .nv-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+    .nv-card { border: 1px solid var(--bs-border-color); border-radius: 12px; background: var(--bs-body-bg); }
+    .nv-card-head { display: flex; align-items: center; gap: .5rem; padding: .6rem .9rem; border-bottom: 1px solid var(--bs-border-color); font-weight: 700; }
+    .nv-card-head > i { color: #2f6fb0; }
+    .nv-card-head .nv-sub { margin-left: auto; font-weight: 400; font-size: .78rem; color: var(--bs-secondary-color); }
+    .nv-card-body { padding: .8rem .9rem; }
+    .nv-context { display: flex; flex-wrap: wrap; gap: .75rem; align-items: end; margin-bottom: 1rem; }
+    .nv-context label { font-size: .74rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); display: block; margin-bottom: .2rem; }
+    .nv-context .form-select { min-width: 260px; }
+    .nv-examples { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+    .nv-example { border: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); border-radius: 999px; padding: .15rem .65rem; font-size: .78rem; }
+    .nv-example:hover { border-color: #2f6fb0; color: #2f6fb0; }
+    .nv-preview { min-height: 220px; }
+    .nv-stats { display: flex; gap: 1rem; font-size: .78rem; color: var(--bs-secondary-color); }
+    .nv-stats b { color: var(--bs-body-color); }
+    .nv-stats .nv-bad b { color: var(--bs-danger); }
+    .nv-reference code { cursor: copy; }
+    .nv-reference code:hover { background: rgba(47, 111, 176, .15); color: #2f6fb0; }
+    .nv-fold { position: relative; max-height: 380px; overflow: hidden; }
+    .nv-fold::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; background: linear-gradient(to bottom, transparent, var(--bs-body-bg)); pointer-events: none; }
+    .nv-fold.is-open { max-height: none; overflow: visible; }
+    .nv-fold.is-open::after { display: none; }
+    .nv-fold .cv-body, .nv-fold .cv-md-body, .nv-fold [style*="max-height"] { max-height: none !important; overflow: visible !important; }
+    .nv-fold-btn { display: flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; margin-top: .5rem; padding: .45rem; border: 1px dashed var(--bs-border-color); border-radius: 8px; background: var(--bs-tertiary-bg); font-size: .85rem; font-weight: 600; color: #2f6fb0; }
+    .nv-fold-btn:hover { border-color: #2f6fb0; }
+    .nv-hint { font-size: .8rem; color: var(--bs-secondary-color); }
+    @media (max-width: 992px) { .nv-grid { grid-template-columns: 1fr; } }
+</style>
 {% endblock %}
 
 {% block content %}
 
-{% call(section) page_header('Variable syntax', 'fa-solid fa-code', 'Variables available in note templates and case or task notes.') %}{% endcall %}
-<div class="case-core-style">
-    <div id="vars-ref">
-        <div class="markdown-render-result">
-            <smart_render :code="reference" language="markdown" :simple="true"></smart_render>
-        </div>
+{% call(section) page_header('Variable syntax', 'fa-solid fa-code', 'Try note variables on one of your cases, then copy them into notes and templates.') %}{% endcall %}
+
+<!-- context: the case (and task) the variables are resolved against -->
+<div class="nv-context">
+    <div>
+        <label for="nv-case">Case</label>
+        <select id="nv-case" class="form-select form-select-sm" v-model="case_id">
+            <option :value="null">— Pick a case —</option>
+            <option v-for="c in cases" :key="c.id" :value="c.id">#[[ c.id ]] · [[ c.title ]]</option>
+        </select>
     </div>
+    <div>
+        <label for="nv-task">Task <span class="text-lowercase fw-normal">(for @this.task.*)</span></label>
+        <select id="nv-task" class="form-select form-select-sm" v-model="task_id" :disabled="!tasks.length">
+            <option :value="null">[[ case_id && !tasks.length ? 'No task in this case' : '— None —' ]]</option>
+            <option v-for="t in tasks" :key="t.id" :value="t.id">#[[ t.id ]] · [[ t.title ]]</option>
+        </select>
+    </div>
+    <span v-if="loading_case" class="text-muted small mb-1"><span class="spinner-border spinner-border-sm me-1"></span>Loading…</span>
+    <span v-else-if="!cases.length && cases_loaded" class="text-muted small mb-1">You have no case to try the variables on.</span>
 </div>
+
+<div class="nv-grid mb-3">
+    <section class="nv-card">
+        <div class="nv-card-head"><i class="fa-solid fa-pen"></i>Try it <span class="nv-sub">type <code>@</code> for suggestions</span></div>
+        <div class="nv-card-body">
+            <div class="nv-examples">
+                <button v-for="ex in examples" :key="ex.label" type="button" class="nv-example" @click="insert(ex.text)" :title="ex.text">[[ ex.label ]]</button>
+                <button type="button" class="nv-example" @click="text = ''" title="Clear the editor"><i class="fa-solid fa-eraser me-1"></i>Clear</button>
+            </div>
+            <smart_editor v-model="text" mode="markdown" :allow-at-variables="true" :allow-file-import="false" min-height="260px" max-height="480px"
+                          placeholder="Write a note with @variables…"></smart_editor>
+        </div>
+    </section>
+
+    <section class="nv-card">
+        <div class="nv-card-head">
+            <i class="fa-solid fa-eye"></i>Result
+            <span v-if="resolving" class="spinner-border spinner-border-sm ms-1"></span>
+            <span class="nv-sub nv-stats" v-if="case_id">
+                <span><b>[[ found ]]</b> [[ found === 1 ? 'variable' : 'variables' ]]</span>
+                <span :class="{ 'nv-bad': unresolved }" title="Unknown variables, or values this case / task does not have"><b>[[ unresolved ]]</b> not resolved</span>
+            </span>
+        </div>
+        <div class="nv-card-body nv-preview">
+            <div v-if="!case_id" class="text-muted small"><i class="fa-solid fa-arrow-up me-1"></i>Pick a case to see the variables resolved with its real values.</div>
+            <div v-else class="markdown-render-result">
+                <smart_render :code="resolved" language="markdown" :simple="true"></smart_render>
+            </div>
+        </div>
+    </section>
+</div>
+
+<section class="nv-card">
+    <div class="nv-card-head">
+        <i class="fa-solid fa-book"></i>Reference
+        <span class="nv-sub">click a variable to add it to the editor</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" @click="download_reference()" title="Download the reference as a Markdown file">
+            <i class="fa-solid fa-download me-1"></i>Download .md
+        </button>
+    </div>
+    <div class="nv-card-body nv-reference" @click="reference_click">
+        <!-- folded: a preview of the start, "Show all" opens the whole page (no inner scroll) -->
+        <div :class="['nv-fold', { 'is-open': reference_open }]">
+            <smart_render :code="reference" language="markdown" :simple="false" title="note-variables-reference.md" max-height="none"></smart_render>
+        </div>
+        <button type="button" class="nv-fold-btn" @click.stop="reference_open = !reference_open" :aria-expanded="reference_open">
+            <i :class="['fa-solid', reference_open ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+            [[ reference_open ? 'Show less' : 'Show all' ]]
+        </button>
+    </div>
+</section>
 
 {% endblock %}
 
 {% block script %}
 <script type="module">
-    const { createApp, ref } = Vue
+    const { createApp, ref, watch, computed, onMounted } = Vue
     import smart_render from '/static/js/components/smart-render.js'
+    import smart_editor from '/static/js/components/smart-editor.js'
+    import { loadNoteVariables } from '/static/js/components/markdown-render.js'
+    import { display_toast, message_list } from '/static/js/toaster.js'
+
+    const STORE = 'flowintel_note_vars_playground'
+    const DEFAULT_TEXT = `## @this.case.title
+
+Status: **@this.case.status** · deadline @this.case.deadline
+Organisations: @this.case.orgs
+
+Task: @this.task.title (@this.task.status), assigned to @this.task.assigned_users
+
+Written by @user.full_name on @today`
+
     createApp({
         delimiters: ['[[', ']]'],
-        components: {
-            smart_render
-        },
+        components: { smart_render, smart_editor },
         setup() {
             const reference = {{ reference|tojson|safe }}
-            return { reference }
+
+            const cases = ref([])
+            const cases_loaded = ref(false)
+            const case_id = ref(null)
+            const tasks = ref([])
+            const task_id = ref(null)
+            const loading_case = ref(false)
+            const resolving = ref(false)
+            const resolved = ref('')
+
+            let saved = {}
+            try { saved = JSON.parse(localStorage.getItem(STORE) || '{}') } catch (e) {}
+            const text = ref(saved.text ?? DEFAULT_TEXT)
+
+            const examples = [
+                { label: 'Case summary', text: '**@this.case.title** (#@this.case.id) · @this.case.status · @this.case.owner_org' },
+                { label: 'Current task', text: '@this.task.title: @this.task.status, due @this.task.deadline' },
+                { label: '1st task of the case', text: '@this.case.tasks.1.title' },
+                { label: 'Tags', text: 'Tags: @this.case.tags' },
+                { label: 'Signature', text: '— @user.full_name (@user.org), @now' },
+                { label: 'Link', text: '[Open the case](@this.case.link)' },
+            ]
+
+            // Variables written in the editor, and the ones still there after resolving
+            const VAR_RE = /@(?:this|case|task|user|me)\.[\w.]+|@(?:now|today)\b/g
+            const found = computed(() => (text.value.match(VAR_RE) || []).length)
+            const unresolved = computed(() => {
+                if (!resolved.value) return 0
+                return (resolved.value.replace(/⟪[^⟫]*⟫/g, '').match(VAR_RE) || []).length
+            })
+
+            async function load_cases() {
+                const res = await fetch('/case/search?text=')
+                if (res.ok) cases.value = ((await res.json()).cases || []).sort((a, b) => b.id - a.id)
+                cases_loaded.value = true
+                const keep = cases.value.find(c => c.id === saved.case_id)
+                case_id.value = keep ? keep.id : (cases.value[0] ? cases.value[0].id : null)
+            }
+
+            async function load_tasks(cid) {
+                tasks.value = []
+                if (!cid) return
+                loading_case.value = true
+                const res = await fetch(`/case/${cid}/get_case_info`)
+                loading_case.value = false
+                if (!res.ok) return display_toast(res)
+                tasks.value = (await res.json()).tasks || []
+                const keep = tasks.value.find(t => t.id === saved.task_id)
+                task_id.value = keep ? keep.id : (tasks.value[0] ? tasks.value[0].id : null)
+                saved.task_id = null
+            }
+
+            // Resolve on the server (same code as notes), 400 ms after the last keystroke
+            let timer = null
+            let run = 0
+            async function resolve() {
+                if (!case_id.value) { resolved.value = ''; return }
+                const mine = ++run
+                resolving.value = true
+                try {
+                    if (!window.FlowintelNoteVariables) await loadNoteVariables()
+                    const out = await window.FlowintelNoteVariables.resolveNoteVariables(case_id.value, text.value, task_id.value, true)
+                    if (mine === run) resolved.value = out
+                } finally {
+                    if (mine === run) resolving.value = false
+                }
+            }
+            function schedule() { clearTimeout(timer); timer = setTimeout(resolve, 400) }
+
+            function save() {
+                try { localStorage.setItem(STORE, JSON.stringify({ text: text.value, case_id: case_id.value, task_id: task_id.value })) } catch (e) {}
+            }
+
+            watch(case_id, async (cid) => { await load_tasks(cid); schedule(); save() })
+            watch(task_id, () => { schedule(); save() })
+            watch(text, () => { schedule(); save() })
+
+            function insert(snippet) {
+                text.value = (text.value && !text.value.endsWith('\n') ? text.value + '\n' : text.value) + snippet
+            }
+
+            // Click on a `@variable` of the reference: add it to the editor
+            function reference_click(e) {
+                const code = e.target.closest('code')
+                if (!code) return
+                const v = code.textContent.trim()
+                if (!v.startsWith('@')) return
+                insert(v)
+                display_toast({ message: `${v} added to the editor`, toast_class: 'success-subtle' })
+            }
+
+            const reference_open = ref(false)
+            function download_reference() {
+                const blob = new Blob([reference], { type: 'text/markdown' })
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(blob)
+                a.download = 'flowintel-note-variables.md'
+                a.click()
+                setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+            }
+
+            onMounted(load_cases)
+
+            return { message_list, reference, cases, cases_loaded, case_id, tasks, task_id, loading_case, resolving, resolved, text,
+                     examples, found, unresolved, insert, reference_click, reference_open, download_reference }
         }
     }).mount('#main-container')
 </script>
