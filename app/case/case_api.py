@@ -59,7 +59,7 @@ class GetCases(Resource):
     def get(self):
         user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_all_cases(user)
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(user) for case in cases]}, 200
 
 @case_ns.route('/<cid>')
 @case_ns.doc(description='Get a case', params={'cid': 'id of a case'})
@@ -68,9 +68,10 @@ class GetCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            if not check_user_private_case(case, request.headers):
+            user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, user):
                 return {"message": "Permission denied"}, 403
-            case_json = case.to_json()
+            case_json = case.to_json(user)
             orgs = CommonModel.get_orgs_in_case(cid)
             case_json["orgs"] = list()
             for org in orgs:
@@ -272,7 +273,7 @@ class GetCasesNotCompleted(Resource):
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_case_by_completed(False, current_user)
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     
 @case_ns.route('/completed')
 @case_ns.doc(description='Get all completed cases')
@@ -281,7 +282,7 @@ class GetCasesCompleted(Resource):
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_case_by_completed(True, current_user)
-        return {"cases": [case.to_json() for case in cases]}, 200    
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     
 @case_ns.route('/title', methods=["POST"])
 @case_ns.doc(description='Get a case by title')
@@ -293,7 +294,7 @@ class GetCaseTitle(Resource):
             current_user = utils.get_user_from_api(request.headers)
             case = CommonModel.get_case_by_title(request.json["title"], current_user)
             if case:
-                case_json = case.to_json()
+                case_json = case.to_json(current_user)
                 orgs = CommonModel.get_orgs_in_case(case.id)
                 case_json["orgs"] = [{"id": org.id, "uuid": org.uuid, "name": org.name} for org in orgs]            
                 return case_json, 200
@@ -547,7 +548,7 @@ class SearchCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             cases = CommonModel.search(request.json["search"], current_user)
             if cases:
-                return {"cases": [case.to_json() for case in cases]}, 200
+                return {"cases": [case.to_json(current_user) for case in cases]}, 200
             return {"message": "No case", 'toast_class': "danger-subtle"}, 404
         return {"message": "Please enter terms"}, 400
     

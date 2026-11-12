@@ -1548,7 +1548,7 @@ def search_attr_with_value(attr_value: str, current_user: User, start_date: str 
             ).first()
 
         if case and case.id not in seen_case_ids:
-            list_case.append(case.to_json())
+            list_case.append(case.to_json(current_user))
             seen_case_ids.add(case.id)
 
     return list_case

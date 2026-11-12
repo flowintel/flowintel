@@ -234,7 +234,8 @@ class Case(db.Model):
             return "auto-generated from case data"
         return self.computer_assistate_prompt
 
-    def to_json(self):
+    def to_json(self, user=None):
+        """Serialize case data with only links visible to user, or public links by default."""
         json_dict = {
             "id": self.id,
             "uuid": self.uuid,
@@ -283,8 +284,18 @@ class Case(db.Model):
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Custom_Tags.case_id==self.id).all()]
         
-        json_dict["link_to"] = [{"id": clc.id, "title": clc.title, "description": clc.description} for clc in Case.query.join(Case_Link_Case, Case_Link_Case.case_id_2==Case.id)\
-                                                    .where(Case_Link_Case.case_id_1==self.id).all()]
+        linked_cases = Case.query.join(Case_Link_Case, Case_Link_Case.case_id_2 == Case.id)\
+            .where(Case_Link_Case.case_id_1 == self.id).all()
+        if user is not None and user.is_authenticated:
+            from app.case.common_core import check_user_in_private_cases
+            linked_cases = check_user_in_private_cases(linked_cases, user)
+        else:
+            # Callers without an acting user must not expose private linked cases.
+            linked_cases = [case for case in linked_cases if not case.is_private]
+        json_dict["link_to"] = [
+            {"id": case.id, "title": case.title, "description": case.description}
+            for case in linked_cases
+        ]
 
         return json_dict
     

@@ -226,7 +226,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 from app.utils.utils import get_modules_list
                 modules, _ = get_modules_list()
                 if "webhook" in modules:
-                    case_json = case.to_json()
+                    case_json = case.to_json(user)
                     case_json["status"] = CommonModel.get_status(case.status_id).name
                     case_json["org_name"] = user.Org.name if user.Org else ""
                     dummy_task = {"id": 0, "title": "", "case_id": case.id}
@@ -732,7 +732,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def regroup_case_info_core(self, case, user, misp_icon):
         """Regroup all information if a case"""
 
-        case_loc = case.to_json()
+        case_loc = case.to_json(user)
         case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
         case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
         case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
@@ -801,7 +801,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return {"message": "Error, title already exist"}
             case = CommonModel.get_case(cid)
 
-            case_json = case.to_json()
+            case_json = case.to_json(user)
             case_json["title"] = case_title_fork
 
             if case.deadline:
@@ -1851,7 +1851,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc_task["status"] = CommonModel.get_status(task.status_id).name
             tasks.append(loc_task)
 
-        case = loc_case.to_json()
+        case = loc_case.to_json(user)
         case["org_name"] = org.name
         case["org_uuid"] = org.uuid
         case["tasks"] = tasks

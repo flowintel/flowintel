@@ -94,7 +94,7 @@ def view(cid):
         if not check_user_private_case(case, present_in_case):
             flowintel_log("audit", 403, "View of a case: No access to private case", User=current_user.email, CaseId=cid)
             return render_template("404.html")
-        return render_template("case/case_view.html", case=case.to_json(), present_in_case=present_in_case)
+        return render_template("case/case_view.html", case=case.to_json(current_user), present_in_case=present_in_case)
     return render_template("404.html")
 
 
@@ -268,7 +268,7 @@ def get_case(cid):
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         return None, 200
-    return case.to_json(), 200
+    return case.to_json(current_user), 200
 
 
 @case_blueprint.route("/search", methods=['GET'])
@@ -281,7 +281,7 @@ def search():
     cases = CommonModel.search(text_search, current_user)
     flowintel_log("audit", 200, "Search cases", User=current_user.email, SearchText=text_search)
     if cases:
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     return {"message": "No case", 'toast_class': "danger-subtle"}, 404
 
 
@@ -329,7 +329,7 @@ def get_case_info(cid):
         except Exception:
             files_list = []
 
-        case_json = case.to_json()
+        case_json = case.to_json(current_user)
         case_json["misp_icon"] = CommonModel.get_misp_connector_icon() or ""
         case_json["has_misp_event"] = CommonModel.case_has_misp_event(case.id)
 
