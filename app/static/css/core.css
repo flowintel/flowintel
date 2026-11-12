@@ -999,3 +999,42 @@ a.case-content:hover {
 .log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
 .log-entry:nth-child(odd) { background: #f8f9fa; }
 #log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+/* Icon of a module tab of a case (connector icon, e.g. Rulezet) */
+.module-tab-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: -3px;
+}
+
+/* Single-colour icon of a module tab (an SVG used as a mask, drawn in the text colour) */
+.module-tab-mono {
+  display: inline-block;
+  width: 1.45em;
+  height: 1.15em;
+  vertical-align: -0.22em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+/* Rulezet logo next to a case title (when the connector has no uploaded icon); light / dark
+   versions switched by .rz-logo in css/case/rulezet.css */
+.case-rulezet-mark {
+  width: 30px;
+  height: 22px;
+  vertical-align: middle;
+}
+
+/* Connectors page: a suggested connector that is not set up yet (e.g. Rulezet) */
+.connector-suggest {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    margin-bottom: 1rem; padding: .85rem 1rem;
+    border: 1px dashed var(--bs-border-color); border-radius: 10px;
+    background: var(--bs-tertiary-bg);
+}
+.connector-suggest-logo { height: 36px; width: auto; }
+.connector-suggest-text { flex: 1 1 320px; min-width: 0; }
+.connector-suggest-title { font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.connector-suggest-title .badge { font-weight: 500; font-size: .7rem; }
+.connector-suggest-desc { font-size: .85rem; color: var(--bs-secondary-color); }

@@ -22,6 +22,8 @@
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/pivotick.umd.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/rulezet.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/diff-view.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/pivotick.css') }}">
 
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/note_template.css') }}">
@@ -60,6 +62,11 @@
                 </span>
                 <span v-if="cases_info && cases_info.case.has_misp_event && cases_info.case.misp_icon" title="Linked to MISP event">
                     <img :src="'/static/icons/' + cases_info.case.misp_icon" style="max-width: 24px; vertical-align: middle;">
+                </span>
+                <span v-if="cases_info && cases_info.case.has_rulezet" title="Rulezet module active on this case">
+                    <img v-if="cases_info.case.rulezet_icon" :src="'/static/icons/' + cases_info.case.rulezet_icon"
+                         alt="Rulezet" style="max-width: 24px; vertical-align: middle;">
+                    <span v-else class="rz-logo case-rulezet-mark" role="img" aria-label="Rulezet"><img class="rz-logo-light" src="/static/image/connectors/rulezet.png" alt=""><img class="rz-logo-dark" src="/static/image/connectors/rulezet-dark.png" alt=""></span>
                 </span>
             </div>
         </div>
@@ -296,7 +303,9 @@
         <li class="nav-item" v-for="connType in active_module_tabs" :key="connType"
             v-show="is_tab_visible('connector-' + connType.toLowerCase())">
             <button class="nav-link dynamic-connector-tab" :id="'tab-connector-' + connType.toLowerCase()" @click="active_tab('connector-' + connType.toLowerCase())">
-                <i class="fa-solid fa-puzzle-piece fa-sm me-1"></i>
+                <span v-if="module_mono_icon(connType)" class="module-tab-mono me-1" :style="{ '--icon': 'url(' + module_mono_icon(connType) + ')' }" aria-hidden="true"></span>
+                <img v-else-if="module_icon(connType)" :src="module_icon(connType)" alt="" class="module-tab-icon me-1">
+                <i v-else class="fa-solid fa-puzzle-piece fa-sm me-1"></i>
                 <span class="section-title fs-6 me-1">[[ connType ]] </span>
                 <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]"> [[ module_counts[connType] ]]</span>
             </button>
@@ -387,7 +396,7 @@
                             <div class="col-12 col-lg-6" v-for="connType in visible_module_tabs" :key="'visible-' + connType">
                                 <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
                                     <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
-                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
+                                        <span class="text-truncate"><span v-if="module_mono_icon(connType)" class="module-tab-mono me-2" :style="{ '--icon': 'url(' + module_mono_icon(connType) + ')' }" aria-hidden="true"></span><img v-else-if="module_icon(connType)" :src="module_icon(connType)" alt="" class="module-tab-icon me-2"><i v-else class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
                                         <span class="badge text-bg-light border">Module</span>
                                         <span class="badge text-bg-success-subtle text-success-emphasis border border-success-subtle">Visible</span>
                                         <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]">[[ module_counts[connType] ]]</span>
@@ -431,7 +440,7 @@
                             <div class="col-12 col-lg-6" v-for="connType in hidden_module_tabs" :key="connType">
                                 <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
                                     <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
-                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
+                                        <span class="text-truncate"><span v-if="module_mono_icon(connType)" class="module-tab-mono me-2" :style="{ '--icon': 'url(' + module_mono_icon(connType) + ')' }" aria-hidden="true"></span><img v-else-if="module_icon(connType)" :src="module_icon(connType)" alt="" class="module-tab-icon me-2"><i v-else class="fa-solid fa-puzzle-piece me-2"></i>[[ connType ]]</span>
                                         <span class="badge text-bg-light border">Module</span>
                                         <span class="badge text-bg-secondary">Hidden</span>
                                         <span class="badge text-bg-secondary" v-if="module_counts && module_counts[connType]">[[ module_counts[connType] ]]</span>
@@ -456,7 +465,7 @@
                             <div class="col-12 col-lg-6" v-for="typeName in available_modules_to_add" :key="typeName">
                                 <div class="border rounded d-flex justify-content-between align-items-center px-2 py-2 gap-2">
                                     <div class="d-flex align-items-center gap-1 text-nowrap overflow-hidden" style="font-size:0.85rem; min-width:0;">
-                                        <span class="text-truncate"><i class="fa-solid fa-puzzle-piece me-2"></i>[[ typeName ]]</span>
+                                        <span class="text-truncate"><span v-if="module_mono_icon(typeName)" class="module-tab-mono me-2" :style="{ '--icon': 'url(' + module_mono_icon(typeName) + ')' }" aria-hidden="true"></span><img v-else-if="module_icon(typeName)" :src="module_icon(typeName)" alt="" class="module-tab-icon me-2"><i v-else class="fa-solid fa-puzzle-piece me-2"></i>[[ typeName ]]</span>
                                         <span class="badge text-bg-light border">Module</span>
                                         <span class="badge text-bg-info-subtle text-info-emphasis border border-info-subtle">Available</span>
                                     </div>
@@ -1181,6 +1190,20 @@
 
                 const case_connectors_list = ref([])
                 const all_connectors_list = ref([])
+                // Icon of each connector type (uploaded on the connector), for the module tabs
+                const connector_icons = ref({})
+                // Built-in single-colour icons for module types that ship with Flowintel: drawn
+                // in the tab's text colour like the other tab icons (CSS mask, core.css)
+                const MONO_MODULE_ICONS = { rulezet: '/static/image/connectors/rulezet-mono.svg' }
+                function module_mono_icon(typeName) {
+                    return typeName ? MONO_MODULE_ICONS[typeName.toLowerCase()] || null : null
+                }
+                // Otherwise the image uploaded on the connector, if any
+                function module_icon(typeName) {
+                    if (!typeName || module_mono_icon(typeName)) return null
+                    const uploaded = connector_icons.value[typeName]
+                    return uploaded ? '/static/icons/' + uploaded : null
+                }
                 const modules = ref()
                 const task_modules = ref()
 
@@ -1554,6 +1577,8 @@
                         case_connectors_list.value = loc["case_connectors"]
                         // Auto-add module tabs for any new connector types linked to this case
                         sync_module_tabs_from_connectors()
+                        // the connector tabs exist now: open the tab named in the URL, once
+                        await open_tab_from_url()
                         // refresh module counts when connectors change
                         await fetch_module_counts()
                         // refresh MISP-link badge in the header — modules such as misp_event
@@ -1642,6 +1667,7 @@
                     }else{
                         let loc = await res.json()
                         all_connectors_list.value = loc["connectors"]
+                        connector_icons.value = loc["icons"] || {}
                         // Now that we have the connector type map, sync module tabs
                         sync_module_tabs_from_connectors()
                     }
@@ -1887,7 +1913,29 @@
                     document.querySelectorAll('.dynamic-connector-tab').forEach(el => el.classList.remove('active'))
                 }
 
+                // The open tab is kept in the URL (?tab=connector-rulezet…), so a reload or a shared
+                // link opens the same tab
+                function set_tab_in_url(tab_name) {
+                    try {
+                        const url = new URL(window.location.href)
+                        if (tab_name && tab_name !== 'main') url.searchParams.set('tab', tab_name)
+                        else url.searchParams.delete('tab')
+                        window.history.replaceState(window.history.state, '', url)
+                    } catch (e) {}
+                }
+                let tab_from_url_done = false
+                async function open_tab_from_url() {
+                    if (tab_from_url_done) return
+                    tab_from_url_done = true
+                    const tab = new URLSearchParams(window.location.search).get('tab')
+                    if (!tab || tab === 'main') return
+                    await nextTick()
+                    if (document.getElementById('tab-' + tab)) await active_tab(tab)
+                    else set_tab_in_url(null)
+                }
+
                 async function active_tab(tab_name){
+                    set_tab_in_url(tab_name)
 
                     if(tab_name == 'main'){
                         main_tab.value = 'main'
@@ -2150,7 +2198,9 @@ async function autosave_case_note(){
                     await fetchCase()
                     autosave_case_note()
 
+                    // the tab named in the URL opens once the connector tabs are known
                     if (can_use_connectors.value) fetch_case_connectors()
+                    else open_tab_from_url()
                     fetch_case_files()
                     await fetch_case_misp_attrs()
 
@@ -2332,6 +2382,8 @@ async function autosave_case_note(){
                 
     
                 return {
+                    module_icon,
+                    module_mono_icon,
                     cases_info,
                     status_info,
                     users_in_case,

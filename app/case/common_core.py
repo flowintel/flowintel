@@ -558,6 +558,32 @@ def get_misp_connector_icon():
     )
     return icon.uuid if icon else None
 
+def get_connector_icon(connector_name):
+    """Return the icon UUID of a connector (by name, case-insensitive), or None."""
+    icon = (
+        Icon_File.query
+        .join(Connector_Icon, Connector_Icon.file_icon_id == Icon_File.id)
+        .join(Connector, Connector.icon_id == Connector_Icon.id)
+        .filter(db.func.lower(Connector.name) == connector_name.lower())
+        .first()
+    )
+    return icon.uuid if icon else None
+
+
+def case_has_connector(case_id, connector_name):
+    """Check whether a connector type (by name, case-insensitive) is linked to a case."""
+    return (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+        .join(Connector, Connector_Instance.connector_id == Connector.id)
+        .filter(
+            Case_Connector_Instance.case_id == case_id,
+            db.func.lower(Connector.name) == connector_name.lower(),
+        )
+        .first() is not None
+    )
+
+
 def case_has_misp_event(case_id):
     """Check whether a case is linked to a MISP event via a connector instance."""
     return (

@@ -30,8 +30,10 @@ def get_connectors():
                 loc.append(instance.to_json())
         if loc:
             connectors_dict[connector.name] = loc
-    
-    return jsonify({"connectors": connectors_dict}), 200
+
+    # Icon of each connector type, for the module tabs of a case (uuid of the uploaded file)
+    icons = {name: CommonModel.get_connector_icon(name) for name in connectors_dict}
+    return jsonify({"connectors": connectors_dict, "icons": {k: v for k, v in icons.items() if v}}), 200
 
 @case_blueprint.route("/get_case_modules", methods=['GET'])
 @login_required
