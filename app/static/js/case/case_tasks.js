@@ -432,7 +432,7 @@ export default {
 
 			<div class="mb-2">
 				<div class="d-flex w-100 justify-content-between">
-					<div style="display: flex;" v-if="task.galaxies">
+					<div class="task-galaxy-row" v-if="task.galaxies && task.galaxies.length">
 						<template v-for="galaxy in task.galaxies">
 							<div :title="'Description:\\n' + galaxy.description">
 								<span class="cluster">
@@ -445,11 +445,13 @@ export default {
 					<div v-else></div>
 				</div>
 				<div class="d-flex w-100 justify-content-between">
-					<div style="display: flex;" v-if="task.clusters">
+					<div class="task-galaxy-row" v-if="task.clusters && task.clusters.length">
 						<template v-for="cluster in task.clusters">
 							<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
-								<span v-html="mapIcon(cluster.icon)"></span>
-								[[cluster.tag]]
+								<span class="cluster">
+									<span v-html="mapIcon(cluster.icon)"></span>
+									[[cluster.tag]]
+								</span>
 							</div>
 						</template>
 					</div>

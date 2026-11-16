@@ -280,6 +280,14 @@ legend.analyzer-select-case {
   font-size: 15px;
 }
 
+/* Galaxies and clusters of a task, in the case's task list: same badges as the case, wrapped with a gap */
+.task-galaxy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-bottom: 4px;
+}
+
 .subtask-tree {
   border-left: 2px solid grey;
   border-bottom: 2px solid grey;
