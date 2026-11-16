@@ -82,7 +82,7 @@ def _fmt(value):
     return f"{value:%Y-%m-%d %H:%M}" if value else None
 
 
-def get_case_calendar(case):
+def get_case_calendar(case, include_sync=False):
     out = _Collector()
     cid = case.id
     statuses = {st.id: {"name": st.name, "style": st.bootstrap_style} for st in Status.query.all()}
@@ -182,6 +182,9 @@ def get_case_calendar(case):
         if a.last_seen:
             out.add("seen", f"last-{a.id}", f"Last seen: {label}", a.last_seen, detail=where, target=attr_go, meta=am, body=a.comment)
 
+    # MISP sync items need the MISP editor permission (see the route)
+    if not include_sync:
+        return out.items
     for log in Connector_Sync_Log.query.filter_by(case_id=cid).all():
         out.add("sync", f"log-{log.id}", f"MISP sync {log.direction or ''}: {log.status or ''}".strip(), log.timestamp,
                 detail=_short(log.message, 200), target={"tab": "misp", "misp_sub": "sync"}, body=log.message,

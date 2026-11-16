@@ -708,7 +708,10 @@ def case_calendar(cid):
     if not check_user_private_case(case):
         return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
     from .case_calendar_core import get_case_calendar
-    return {"items": get_case_calendar(case)}, 200
+    # MISP sync logs, schedules and conflicts are only for those allowed on the sync
+    # endpoints themselves (misp_editor_required): leave them out for everyone else
+    include_sync = current_user.is_admin() or current_user.is_misp_editor()
+    return {"items": get_case_calendar(case, include_sync=include_sync)}, 200
 
 
 @case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
