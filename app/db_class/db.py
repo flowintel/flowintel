@@ -235,7 +235,7 @@ class Case(db.Model):
         return self.computer_assistate_prompt
 
     def to_json(self, user=None):
-        """Serialize case data with only links visible to user, or public links by default."""
+        """Serialize case data with viewer-scoped connector metadata and case links."""
         json_dict = {
             "id": self.id,
             "uuid": self.uuid,
@@ -278,8 +278,19 @@ class Case(db.Model):
         json_dict["tags"] = [tag.to_json() for tag in Tags.query.join(Case_Tags, Case_Tags.tag_id==Tags.id).filter_by(case_id=self.id).all()]
         json_dict["clusters"] = [cluster.to_json() for cluster in Cluster.query.join(Case_Galaxy_Tags, Case_Galaxy_Tags.case_id==self.id)\
                                                     .where(Cluster.id==Case_Galaxy_Tags.cluster_id).all()]
-        json_dict["connectors"] = [connector.to_json() for connector in Connector_Instance.query.join(Case_Connector_Instance, Case_Connector_Instance.instance_id==Connector_Instance.id)\
-                                                    .where(Case_Connector_Instance.case_id==self.id).all()]
+        json_dict["connectors"] = []
+        if user is not None and user.is_authenticated:
+            from app.case.common_core import can_access_all_case_connectors
+            from app.connectors.connectors_core import is_instance_visible_to_user
+
+            can_view_all = can_access_all_case_connectors(self.id, user)
+            connectors = Connector_Instance.query.join(
+                Case_Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id
+            ).where(Case_Connector_Instance.case_id == self.id).all()
+            json_dict["connectors"] = [
+                connector.to_json() for connector in connectors
+                if can_view_all or is_instance_visible_to_user(connector, user)
+            ]
         
         json_dict["custom_tags"] = [custom_tag.to_json() for custom_tag in Custom_Tags.query.join(Case_Custom_Tags, Case_Custom_Tags.custom_tag_id==Custom_Tags.id)\
                                                     .where(Case_Custom_Tags.case_id==self.id).all()]
