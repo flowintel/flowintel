@@ -207,7 +207,7 @@
                                                         <td>
                                                             <user_chip :user="u" variant="inline" size="sm"></user_chip>
                                                             <span class="rl-nick">
-                                                                <a :href="'mailto:' + u.email" class="rl-mail">[[ u.email ]]</a><template v-if="u.nickname"> · @[[ u.nickname ]]</template>
+                                                                <a v-if="u.email" :href="'mailto:' + u.email" class="rl-mail">[[ u.email ]]</a><template v-if="u.nickname"><template v-if="u.email"> · </template>@[[ u.nickname ]]</template>
                                                             </span>
                                                         </td>
                                                         <td><span class="rl-org"><i class="fa-solid fa-building"></i>[[ u.org ]]</span></td>

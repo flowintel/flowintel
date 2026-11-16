@@ -216,18 +216,8 @@ def get_users_page():
     users = AdminModel.get_users_page(page, current_user, name=name, role_type=role_type, role_id=role_id, org_id=org_id)
     users_list = list()
     for user in users:
-        u = user.to_json()
-        r = AdminModel.get_role(user.role_id)
-        u["role"] = r.name if r else "Unknown"
-        u["role_admin"] = bool(r and r.admin)
-        u["role_read_only"] = bool(r and r.read_only and not r.admin)
-        u["org_id"] = user.org_id
-        org = AdminModel.get_org(user.org_id) if user.org_id else None
-        u["org_name"] = org.name if org else "No Organization"
-        # Account activity is for admins only (same rule as the user card)
-        if current_user.is_admin():
-            u["last_login"] = user.last_login.isoformat() if user.last_login else None
-        users_list.append(u)
+        # Name and organisation for all, email and role for the same organisation, activity for admins
+        users_list.append(AdminModel.user_json_for(user, current_user))
     return {"users": users_list, "nb_pages": users.pages, "total": users.total}
 
 
@@ -439,7 +429,7 @@ def get_roles():
         roles_list = list()
         for role in roles:
             role_dict = role.to_json()
-            role_dict["user_count"] = AdminModel.count_users_with_role(role.id)
+            role_dict["user_count"] = AdminModel.users_seeing_roles(current_user).filter_by(role_id=role.id).count()
             roles_list.append(role_dict)
         return {"roles": roles_list, "nb_pages": roles.pages, "total": roles.total}
     return {"roles": [], "nb_pages": 0, "total": 0, "message": "No roles"}
@@ -450,16 +440,11 @@ def get_roles():
 def get_role_users():
     """get all user of a role"""
     data_dict = dict(request.args)
-    users = AdminModel.get_visible_users(current_user).filter_by(role_id=data_dict["role_id"]).all()
+    # Who has a role is only shown where the viewer may see roles: everyone for admins,
+    # their own organisation for the others
+    users = AdminModel.users_seeing_roles(current_user).filter_by(role_id=data_dict["role_id"]).all()
     if users:
-        users_list = list()
-        for user in users:
-            u = user.to_json()
-            o = AdminModel.get_org(user.org_id)
-            u["org"] = o.name if o else "No Organization"
-            if current_user.is_admin():
-                u["last_login"] = user.last_login.isoformat() if user.last_login else None
-            users_list.append(u)
+        users_list = [AdminModel.user_json_for(user, current_user) for user in users]
 
         return {"users": users_list}
     return {"message": "No user with this role"}

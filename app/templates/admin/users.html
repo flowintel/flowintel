@@ -149,12 +149,14 @@
                             <div v-if="user.nickname" class="usr-nick">@[[ user.nickname ]]</div>
                         </td>
                         <td class="usr-hide-sm">
-                            <a class="usr-mail" :href="'mailto:' + user.email">[[ user.email ]]</a>
+                            <a v-if="user.email" class="usr-mail" :href="'mailto:' + user.email">[[ user.email ]]</a>
+                            <span v-else class="text-muted" title="Only shown to the user's organisation">&mdash;</span>
                             <span v-if="user.matrix_id" class="usr-matrix" title="Matrix ID">[[ user.matrix_id ]]</span>
                         </td>
                         <td><a href="#" class="usr-org text-decoration-none" @click.prevent="org_id = String(user.org_id)" title="Show this organisation only"><i class="fa-solid fa-building"></i>[[ user.org_name ]]</a></td>
                         <td>
-                            <a href="#" class="text-decoration-none" @click.prevent="role_id = String(user.role_id)" title="Show this role only">
+                            <span v-if="!user.role" class="text-muted" title="Only shown to the user's organisation">&mdash;</span>
+                            <a v-else href="#" class="text-decoration-none" @click.prevent="role_id = String(user.role_id)" title="Show this role only">
                                 <span :class="['usr-role', 'usr-role--' + (user.role_admin ? 'admin' : user.role_read_only ? 'read_only' : 'editor')]">
                                     <i :class="user.role_admin ? 'fa-solid fa-crown' : user.role_read_only ? 'fa-solid fa-eye' : 'fa-solid fa-pen'"></i>[[ user.role ]]
                                 </span>
@@ -201,7 +203,7 @@
                                     <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].tasks.due_week ]]</span><span class="usr-kpi-label">due this week</span></div>
                                     <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].tasks.done ]]</span><span class="usr-kpi-label">tasks done</span></div>
                                     <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].cases.open ]]</span><span class="usr-kpi-label">open cases</span></div>
-                                    <div class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].logins.total_30d ]]</span><span class="usr-kpi-label">sign-ins (30 days)</span></div>
+                                    <div v-if="stats[user.id].logins" class="usr-kpi"><span class="usr-kpi-num">[[ stats[user.id].logins.total_30d ]]</span><span class="usr-kpi-label">sign-ins (30 days)</span></div>
                                 </div>
                                 <div class="usr-panels">
                                     <section class="usr-panel">
@@ -214,7 +216,7 @@
                                         </div>
                                         <div class="usr-bars-axis"><span>[[ week_label(stats[user.id].finished_per_week.start, 0) ]]</span><span>this week</span></div>
                                     </section>
-                                    <section class="usr-panel">
+                                    <section v-if="stats[user.id].logins" class="usr-panel">
                                         <h6>Sign-ins <small>last 30 days</small></h6>
                                         <div class="usr-bars usr-bars--thin" role="img" :aria-label="'Sign-ins per day: ' + stats[user.id].logins.per_day.join(', ')">
                                             <div v-for="(n, i) in stats[user.id].logins.per_day" :key="i" class="usr-bar" :title="day_label(i) + ': ' + n + (n === 1 ? ' sign-in' : ' sign-ins')">

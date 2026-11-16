@@ -144,9 +144,9 @@
                                                     <tr v-for="u in details[org.id].users" :key="u.id">
                                                         <td>
                                                             <user_chip :user="u" variant="inline" size="sm"></user_chip>
-                                                            <span class="og-under"><a :href="'mailto:' + u.email">[[ u.email ]]</a><template v-if="u.nickname"> · @[[ u.nickname ]]</template></span>
+                                                            <span class="og-under"><a v-if="u.email" :href="'mailto:' + u.email">[[ u.email ]]</a><template v-if="u.nickname"><template v-if="u.email"> · </template>@[[ u.nickname ]]</template></span>
                                                         </td>
-                                                        <td><span :class="['og-role', 'og-role--' + u.role_kind]"><i :class="KIND_ICON[u.role_kind]"></i>[[ u.role ]]</span></td>
+                                                        <td><span v-if="u.role" :class="['og-role', 'og-role--' + u.role_kind]"><i :class="KIND_ICON[u.role_kind]"></i>[[ u.role ]]</span><span v-else class="text-muted" title="Only shown to the user's organisation">&mdash;</span></td>
                                                         <td v-if="u.last_login !== undefined" class="og-hide-sm og-meta">[[ u.last_login ? since(u.last_login) : 'never' ]]</td>
                                                         {% if current_user.is_admin() %}
                                                         <td class="text-end"><a class="btn btn-sm btn-link p-0" :href="'/admin/edit_user/' + u.id" title="Edit the user"><i class="fa-solid fa-pen-to-square"></i></a></td>

@@ -33,7 +33,54 @@ def get_visible_users(viewer):
     return query
 
 
-def _filter_users(query, name=None, role_type=None, role_id=None, org_id=None):
+def sees_role_of(viewer, user):
+    """Email, role and account details of a user: admins and the user's own organisation,
+    as on the user card. Everyone else only gets the name and the organisation."""
+    return viewer.is_admin() or (viewer.org_id is not None and viewer.org_id == user.org_id)
+
+
+def users_seeing_roles(viewer):
+    """Users whose role the viewer may see: all for admins, their organisation otherwise"""
+    query = get_visible_users(viewer)
+    if viewer.is_admin():
+        return query
+    if viewer.org_id is None:
+        return query.filter(User.id == viewer.id)
+    return query.filter(User.org_id == viewer.org_id)
+
+
+def user_json_for(user, viewer, role=None, org=None):
+    """A user as the admin pages show it, limited to what the viewer may see (see sees_role_of)"""
+    role = role if role is not None else (Role.query.get(user.role_id) if user.role_id else None)
+    org = org if org is not None else (Org.query.get(user.org_id) if user.org_id else None)
+    u = {
+        "id": user.id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "nickname": user.nickname,
+        "org_id": user.org_id,
+        "org_name": org.name if org else "No Organization",
+        "org": org.name if org else "No Organization",
+    }
+    if sees_role_of(viewer, user):
+        u.update({
+            "email": user.email,
+            "matrix_id": user.matrix_id,
+            "creation_date": user.creation_date.strftime('%Y-%m-%d %H:%M') if user.creation_date else None,
+            "role_id": user.role_id,
+            "role": role.name if role else "Unknown",
+            "role_admin": bool(role and role.admin),
+            "role_read_only": bool(role and role.read_only and not role.admin),
+            "role_kind": "admin" if role and role.admin else "read_only" if role and role.read_only else "editor",
+        })
+    # Account activity: admins only
+    if viewer.is_admin():
+        u["last_login"] = user.last_login.isoformat() if user.last_login else None
+        u["auth_provider"] = user.auth_provider
+    return u
+
+
+def _filter_users(query, name=None, role_type=None, role_id=None, org_id=None, viewer=None):
     """Filters of the users page, applied on top of the viewer's visible users.
 
     - `name`: case-insensitive partial match on first name, last name, nickname or email
@@ -42,8 +89,16 @@ def _filter_users(query, name=None, role_type=None, role_id=None, org_id=None):
     """
     if name:
         like = f"%{name}%"
-        query = query.filter(db.or_(User.first_name.ilike(like), User.last_name.ilike(like),
-                                    User.nickname.ilike(like), User.email.ilike(like)))
+        fields = [User.first_name.ilike(like), User.last_name.ilike(like), User.nickname.ilike(like)]
+        # Searching by email would tell an email the viewer may not see
+        if viewer is None or viewer.is_admin():
+            fields.append(User.email.ilike(like))
+        elif viewer.org_id is not None:
+            fields.append(db.and_(User.org_id == viewer.org_id, User.email.ilike(like)))
+        query = query.filter(db.or_(*fields))
+    # Filtering by role would tell the role of people outside the viewer's organisation
+    if (role_type or role_id) and viewer is not None and not viewer.is_admin():
+        query = query.filter(User.org_id == viewer.org_id) if viewer.org_id is not None else query.filter(User.id == viewer.id)
     if role_type in ("admin", "read_only", "editor"):
         roles = Role.query
         if role_type == "admin":
@@ -62,7 +117,7 @@ def _filter_users(query, name=None, role_type=None, role_id=None, org_id=None):
 
 def get_users_page(page, viewer, name=None, role_type=None, role_id=None, org_id=None):
     """Return visible users by page, with the filters of _filter_users."""
-    query = _filter_users(get_visible_users(viewer), name, role_type, role_id, org_id)
+    query = _filter_users(get_visible_users(viewer), name, role_type, role_id, org_id, viewer=viewer)
     query = query.order_by(db.func.lower(User.first_name), db.func.lower(User.last_name))
     return query.paginate(page=page, per_page=20, max_per_page=50)
 
@@ -74,13 +129,16 @@ def get_users_facets(viewer):
     by_role, by_org = {}, {}
     types = {"admin": 0, "editor": 0, "read_only": 0}
     for role_id, org_id in visible.with_entities(User.role_id, User.org_id).all():
-        by_role[role_id] = by_role.get(role_id, 0) + 1
         by_org[org_id] = by_org.get(org_id, 0) + 1
+        # Roles are only counted where the viewer may see them (see sees_role_of)
+        if not viewer.is_admin() and (viewer.org_id is None or org_id != viewer.org_id):
+            continue
+        by_role[role_id] = by_role.get(role_id, 0) + 1
         r = roles.get(role_id)
         types["admin" if r and r.admin else "read_only" if r and r.read_only else "editor"] += 1
     orgs = {o.id: o.name for o in Org.query.filter(Org.id.in_([o for o in by_org if o] or [-1])).all()}
     return {
-        "total": sum(by_role.values()),
+        "total": sum(by_org.values()),
         "types": types,
         "roles": sorted([{"id": rid, "name": roles[rid].name if rid in roles else "Unknown", "count": n,
                           "kind": "admin" if rid in roles and roles[rid].admin else "read_only" if rid in roles and roles[rid].read_only else "editor"}
@@ -665,10 +723,11 @@ def get_user_stats(user, viewer, weeks=12):
                              for cid in recent_cases[:5]]},
         "overdue_tasks": [{"id": t.id, "title": t.title, "case_id": t.case_id, "deadline": naive(t.deadline).isoformat()}
                           for t in sorted(overdue, key=lambda t: naive(t.deadline))[:5]],
-        "logins": {"per_day": logins, "total_30d": sum(logins),
-                   "last": user.last_login.isoformat() if user.last_login else None},
         "member_since": user.creation_date.isoformat() if user.creation_date else None,
-        "auth_provider": user.auth_provider,
+        # Account activity: admins and the user themself (an org admin sees the work, not the sign-ins)
+        **({"logins": {"per_day": logins, "total_30d": sum(logins),
+                       "last": user.last_login.isoformat() if user.last_login else None},
+            "auth_provider": user.auth_provider} if viewer.is_admin() or viewer.id == user.id else {}),
     }
 
 
@@ -698,13 +757,7 @@ def get_org_details(org, viewer):
     roles = {r.id: r for r in Role.query.all()}
     users = []
     for u in get_visible_users(viewer).filter_by(org_id=org.id).order_by(db.func.lower(User.first_name)).all():
-        d = u.to_json()
-        r = roles.get(u.role_id)
-        d["role"] = r.name if r else "Unknown"
-        d["role_kind"] = "admin" if r and r.admin else "read_only" if r and r.read_only else "editor"
-        if viewer.is_admin():
-            d["last_login"] = u.last_login.isoformat() if u.last_login else None
-        users.append(d)
+        users.append(user_json_for(u, viewer, role=roles.get(u.role_id), org=org))
     cases = sorted(_visible_org_cases(org, viewer), key=lambda c: c.last_modif or datetime.datetime.min, reverse=True)
     return {
         "users": users,
