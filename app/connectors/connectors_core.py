@@ -432,11 +432,6 @@ def get_connector_by_name_ci(name):
     return Connector.query.filter(db.func.lower(Connector.name) == name.lower()).first()
 
 
-def get_icon_id_by_name_ci(name):
-    icon = Connector_Icon.query.filter(db.func.lower(Connector_Icon.name) == name.lower()).first()
-    return icon.id if icon else None
-
-
 def get_default_icon():
     """Return the default icon"""
     return Connector_Icon.query.filter_by(name="default").first()

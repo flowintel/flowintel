@@ -168,6 +168,41 @@ def create_misp_ail_connector():
         db.session.commit()
 
 
+def create_rulezet_connector():
+    """Rulezet connector, there by default as MISP and AIL: an instance is added to use it"""
+    icon_file = Icon_File.query.filter_by(name="rulezet-icon.png").first()
+    if not icon_file:
+        icon_file = Icon_File(
+            name="rulezet-icon.png",
+            uuid="92448cb5-953f-466b-ad47-ffd9e3fe7fda"
+        )
+        db.session.add(icon_file)
+        db.session.commit()
+
+    icon = Connector_Icon.query.filter_by(name="rulezet").first()
+    if not icon:
+        icon = Connector_Icon(
+            name="rulezet",
+            description="Rulezet icon.",
+            uuid=str(uuid.uuid4()),
+            file_icon_id=icon_file.id
+        )
+        db.session.add(icon)
+        db.session.commit()
+
+    connector = Connector.query.filter(db.func.lower(Connector.name) == "rulezet").first()
+    if not connector:
+        connector = Connector(
+            name="Rulezet",
+            description="Detection rules (YARA, Sigma, Suricata…) shared on Rulezet: search them, add them to cases, check and edit them.",
+            uuid=str(uuid.uuid4()),
+            icon_id=icon.id
+        )
+        db.session.add(connector)
+        db.session.commit()
+    return connector
+
+
 def create_default_icon():
     icon_file = Icon_File.query.filter_by(name="lambda.png").first()
     if not icon_file:
@@ -227,6 +262,7 @@ def create_admin():
     # Default Icon
     create_default_icon()
     create_misp_ail_connector()
+    create_rulezet_connector()
 
     # Admin user
     admin_config = current_app.config.get('INIT_ADMIN_USER')
