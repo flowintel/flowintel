@@ -2720,24 +2720,33 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
     
 
-    def check_correlation_attr(self, case_id: int, attribute: Misp_Attribute) -> list:
-        """Get a list of case containing the same attribute value"""
-        if not attribute.disable_correlation:
-            attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
-            loc = []
-            for loc_attr in attributes:
-                # standalone attribute - use case_id directly
-                if loc_attr.case_misp_object_id is None:
-                    cid = loc_attr.case_id
-                else:
-                    parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
-                    if parent is None:
-                        continue
-                    cid = parent.case_id
-                if cid and not cid in loc and not cid == case_id:
-                    loc.append(cid)
-            return loc
-        return []
+    def _get_misp_attribute_case_id(self, attribute):
+        """Resolve object ownership before consulting the standalone case column."""
+        if attribute is None:
+            return None
+        if attribute.case_misp_object_id is not None:
+            parent = self.get_misp_object(attribute.case_misp_object_id)
+            return parent.case_id if parent else None
+        return attribute.case_id
+
+    def check_correlation_attr(self, case_id, attribute: Misp_Attribute, user=None) -> list:
+        """Return visible matching case IDs for an attribute in the visible source case."""
+        if user is None or not user.is_authenticated:
+            return []
+        case = CommonModel.get_case(case_id)
+        if not CommonModel.can_view_case(case, user):
+            return []
+        if self._get_misp_attribute_case_id(attribute) != case.id or attribute.disable_correlation:
+            return []
+
+        case_ids = []
+        for match in Misp_Attribute.query.filter_by(value=attribute.value).all():
+            cid = self._get_misp_attribute_case_id(match)
+            if cid and cid != case.id and cid not in case_ids:
+                case_ids.append(cid)
+        cases = Case.query.filter(Case.id.in_(case_ids)).all()
+        visible_ids = {match.id for match in CommonModel.check_user_in_private_cases(cases, user)}
+        return [cid for cid in case_ids if cid in visible_ids]
 
     ################################
     # Standalone MISP Attributes   #

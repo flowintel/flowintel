@@ -55,7 +55,7 @@ def get_case_misp_object(cid):
         for object in misp_object:
             loc_attr_list = list()
             for attribute in object.attributes:
-                res = CaseModel.check_correlation_attr(cid, attribute)
+                res = CaseModel.check_correlation_attr(cid, attribute, current_user)
                 loc_attr = attribute.to_json()
                 loc_attr["correlation_list"] = res
                 loc_attr_list.append(loc_attr)
@@ -100,7 +100,7 @@ def get_correlation_attr(cid, aid):
     if not check_user_private_case(case):
         return {"correlation_list": []}, 200
     attribute = CaseModel.get_misp_attribute(aid)
-    res = CaseModel.check_correlation_attr(cid, attribute)
+    res = CaseModel.check_correlation_attr(cid, attribute, current_user)
     return {"correlation_list": res}, 200
 
 
@@ -361,7 +361,7 @@ def get_case_misp_attributes(cid):
     result = []
     for attr in attrs:
         loc = attr.to_json()
-        loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+        loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr, current_user)
         loc["is_imported"] = True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=-int(attr.id)).first() else False
         loc["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
         loc["tasks"] = [

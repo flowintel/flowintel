@@ -1210,12 +1210,13 @@ class ModifNoteCase(Resource):
                 if not check_user_private_case(case, request.headers, current_user):
                     return {"message": "Permission denied"}, 403
 
+                cid = case.id
                 misp_object = CaseModel.get_misp_object_by_case(cid)
                 loc_object = list()
                 for obj in misp_object:
                     loc_attr_list = list()
                     for attribute in obj.attributes:
-                        res = CaseModel.check_correlation_attr(cid, attribute)
+                        res = CaseModel.check_correlation_attr(cid, attribute, current_user)
                         loc_attr = attribute.to_json()
                         loc_attr["correlation_list"] = res
                         loc_attr_list.append(loc_attr)
@@ -1243,13 +1244,14 @@ class ModifNoteCase(Resource):
             return {"message": "Case not found"}, 404
 
 
-    @case_ns.route('/<cid>/get_correlation_attr/<aid>', methods=['GET'])
+    @case_ns.route('/<cid>/get_correlation_attr/<int:aid>', methods=['GET'])
     @case_ns.doc(description='Get correlation list for an attribute')
     class GetCorrelationAttr(Resource):
         method_decorators = [api_required]
         def get(self, cid, aid):
+            current_user = utils.get_user_from_api(request.headers)
             attribute = CaseModel.get_misp_attribute(aid)
-            res = CaseModel.check_correlation_attr(cid, attribute)
+            res = CaseModel.check_correlation_attr(cid, attribute, current_user)
             return {"correlation_list": res}, 200
 
 
@@ -1459,11 +1461,12 @@ class ModifNoteCase(Resource):
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
 
+            cid = case.id
             attrs = CaseModel.get_standalone_attributes_by_case(cid)
             result = []
             for attr in attrs:
                 loc_attr = attr.to_json()
-                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr, current_user)
                 loc_attr["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
                 result.append(loc_attr)
 
