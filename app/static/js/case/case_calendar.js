@@ -20,9 +20,9 @@ const KINDS = [
     { key: 'sync', label: 'MISP sync', icon: 'fa-solid fa-rotate', color: '#e8730c', hint: 'Sync runs, next scheduled sync, conflicts' },
     { key: 'file', label: 'Files', icon: 'fa-solid fa-paperclip', color: '#198754', hint: 'Files uploaded to the case and its tasks' },
 ]
-// At first the case itself, its tasks and MISP syncs, so the month
-// stays readable. Deadlines and everything else are one chip away.
-const HIDDEN_BY_DEFAULT = ['deadline', 'timeline', 'file', 'misp', 'seen']
+// At first the deadlines, the case itself, its tasks and MISP syncs, so the month
+// stays readable. Everything else is one chip away.
+const HIDDEN_BY_DEFAULT = ['timeline', 'file', 'misp', 'seen']
 
 function date_only(iso) {
     const d = new Date(iso)
@@ -184,6 +184,7 @@ export default {
             title.textContent = arg.event.title
             box.appendChild(title)
             // Straight to the right place, without the detail window
+            if (!leads_to_case(p.item.target)) {
             const go = document.createElement('button')
             go.type = 'button'
             go.className = 'ccal-ev-go'
@@ -200,6 +201,7 @@ export default {
                 emit('navigate', p.item.target)
             })
             box.appendChild(go)
+            }
             if (p.item.status && arg.view.type === 'listMonth') {
                 const b = document.createElement('span')
                 b.className = 'badge rounded-pill ms-2 text-bg-' + (p.item.status.style || 'secondary')
@@ -266,6 +268,11 @@ export default {
 
         function item_label(item) {
             return item.label || kind_info(item.kind).label
+        }
+
+        // An item leading to the case page itself: no button, the user is already on it
+        function leads_to_case(target) {
+            return !target || (!target.task && (!target.tab || target.tab === 'main'))
         }
 
         function target_label(target) {
@@ -442,7 +449,7 @@ export default {
         return {
             items, loading, search, hidden, shown_kinds, filtered_out, holder, month_picker, counts, kinds, visible,
             modal_el, preview, preview_pos, opened,
-            toggle_kind, show_all, reset_kinds, go_today, period_info, kind_info, item_label, format_when, target_label, go_to,
+            toggle_kind, show_all, reset_kinds, go_today, period_info, kind_info, item_label, format_when, target_label, leads_to_case, go_to,
         }
     },
     template: `
@@ -467,7 +474,7 @@ export default {
                             </span>
                         </div>
                         <div class="ccal-menu-list">
-                            <label v-for="k in kinds" :key="k.key" :class="['ccal-menu-row', { on: !hidden.has(k.key) }]" :style="{ '--ccal-c': k.color }">
+                            <label v-for="k in kinds" :key="k.key" :title="k.label + ' (' + counts[k.key] + ') - ' + k.hint" :class="['ccal-menu-row', { on: !hidden.has(k.key) }]" :style="{ '--ccal-c': k.color }">
                                 <span class="ccal-menu-icon"><i :class="k.icon"></i></span>
                                 <span class="ccal-menu-text">
                                     <span class="ccal-menu-label">[[ k.label ]] <span class="ccal-menu-count">[[ counts[k.key] ]]</span></span>
@@ -510,7 +517,7 @@ export default {
                 </template>
             </dl>
             <div v-if="preview.body" class="ccal-preview-body">[[ preview.body ]]</div>
-            <div class="ccal-preview-hint">Click for details · <i class="fa-solid fa-arrow-right"></i> [[ target_label(preview.target) ]]</div>
+            <div class="ccal-preview-hint">Click for details<template v-if="!leads_to_case(preview.target)"> · <i class="fa-solid fa-arrow-right"></i> [[ target_label(preview.target) ]]</template></div>
         </div>
 
         <!-- Detail modal, same look as the Calendar page -->
@@ -556,7 +563,7 @@ export default {
                     </div>
                     <div class="modal-footer ccal-modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" @click="go_to(opened)">
+                        <button v-if="!leads_to_case(opened.target)" type="button" class="btn btn-primary" @click="go_to(opened)">
                             <i class="fa-solid fa-arrow-right me-1"></i>[[ target_label(opened.target) ]]
                         </button>
                     </div>
