@@ -341,6 +341,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         """Complete task by is id"""
         task = CommonModel.get_task(tid)
         if task is not None:
+            if not task.completed and not self.can_complete_task(task, current_user):
+                return False
             task.completed = not task.completed
 
             case = CommonModel.get_case(task.case_id)
@@ -417,7 +419,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 case_id=cid,
                 status_id=status_id,
                 case_order_id=self.get_nb_open_tasks(case)+1,
-                completed=form_dict.get("completed", False),
+                # Privileged tasks must go through approval and final review.
+                completed=False if case.privileged_case else form_dict.get("completed", False),
                 nb_notes=0,
                 time_required=form_dict["time_required"]
             )
@@ -572,6 +575,13 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def can_edit_requested_task(self, current_user):
         """Check if user can edit a task in a restricted status"""
         return current_user.is_admin() or current_user.is_case_admin() or current_user.is_queue_admin()
+
+    def can_complete_task(self, task, current_user):
+        """Require an approver to finish any task in a privileged case."""
+        case = CommonModel.get_case(task.case_id)
+        return case is not None and (
+            not case.privileged_case or self.can_edit_requested_task(current_user)
+        )
     
     def is_task_restricted(self, task):
         """Check if task is in a restricted status (Requested, Rejected or Request Review) in a privileged case"""
@@ -767,8 +777,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         new_status_name = new_status.name if new_status else str(status)
 
         should_be_completed = new_status is not None and new_status.name == "Finished"
+        if should_be_completed and not self.can_complete_task(task, current_user):
+            return False
         if task.completed != should_be_completed:
-            self.complete_task(task.id, current_user)
+            if not self.complete_task(task.id, current_user):
+                return False
 
         task.status_id = status
         self.update_task_time_modification(task, current_user, f"Status changed to '{new_status_name}' for task '{task.id}-{task.title}'")

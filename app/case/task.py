@@ -259,6 +259,9 @@ def complete_task(tid):
             if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
                 flowintel_log("audit", 403, "Complete task denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+            if not task.completed and not TaskModel.can_complete_task(task, current_user):
+                flowintel_log("audit", 403, "Complete task denied: Final review requires an approver", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
                 action = "completed" if task.completed else "revived"
@@ -516,9 +519,12 @@ def change_task_status(cid, tid):
                         return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
                     try:
+                        status_obj = CommonModel.get_status(status)
+                        if status_obj and status_obj.name == "Finished" and not TaskModel.can_complete_task(task, current_user):
+                            flowintel_log("audit", 403, "Change task status denied: Final review requires an approver", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
                         if TaskModel.change_task_status(status, task, current_user):
                             db.session.commit()
-                            status_obj = CommonModel.get_status(status)
                             status_name = status_obj.name if status_obj else str(status)
                             flowintel_log("audit", 200, f"Status changed to '{status_name}' for task '{tid}-{task.title}'", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
