@@ -25,6 +25,9 @@ export default {
         const selected_node = ref(null)
         const edit_link_label = ref('')
         const show_help = ref(false)
+        // Chronology links tie each event to the next one with the time between them.
+        // They are not relations, so they are off unless asked for.
+        const show_chronology = ref(false)
         let graph = null
 
         async function fetch_graph_data() {
@@ -161,7 +164,7 @@ export default {
                     link_type: lk.automatic ? 'misp' : 'analyst'
                 }
             }))
-            for (let i = 1; i < ordered.length; i++) {
+            for (let i = 1; show_chronology.value && i < ordered.length; i++) {
                 const prev = ordered[i - 1], cur = ordered[i]
                 edges.push({
                     id: 'chrono-' + prev.id + '-' + cur.id,
@@ -240,6 +243,11 @@ export default {
             }
 
             graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
+        }
+
+        function toggle_chronology() {
+            show_chronology.value = !show_chronology.value
+            render_graph()
         }
 
         async function add_graph_event() {
@@ -390,6 +398,8 @@ export default {
             selected_node,
             edit_link_label,
             show_help,
+            show_chronology,
+            toggle_chronology,
             add_graph_event,
             add_link,
             save_edge_label,
@@ -414,7 +424,12 @@ export default {
             <span v-if="selected_node" class="badge bg-secondary align-self-center">
                 <i class="fa-solid fa-circle-dot me-1"></i>Selected: [[ selected_node.date_text ]]
             </span>
-            <button class="btn btn-sm ms-auto" :class="show_help ? 'btn-secondary' : 'btn-outline-secondary'"
+            <button class="btn btn-sm ms-auto" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
+                    @click="toggle_chronology()" :aria-pressed="show_chronology"
+                    title="Link each event to the next one with the time between them">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i>Time between events
+            </button>
+            <button class="btn btn-sm" :class="show_help ? 'btn-secondary' : 'btn-outline-secondary'"
                     @click="show_help = !show_help" title="How to read this graph" aria-label="How to read this graph">
                 <i class="fa-solid fa-question"></i>
             </button>
@@ -546,7 +561,7 @@ export default {
         <div class="mt-2">
             <small class="text-muted">
                 <i class="fa-solid fa-circle-info me-1"></i>
-                Cards are numbered in time order. Grey dashed links follow the chronology with the time between two events, purple links are the ones you add, blue dashed links come from MISP relationships. Click a legend entry to hide that kind; click a purple link to edit it, a card to select it.
+                Cards are numbered in time order. With "Time between events" on, grey dashed links follow the chronology with the time between two events. Purple links are the ones you add, blue dashed links come from MISP relationships. Click a legend entry to hide that kind; click a purple link to edit it, a card to select it.
             </small>
         </div>
     </div>
