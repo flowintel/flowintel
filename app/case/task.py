@@ -594,12 +594,16 @@ def convert_file_to_note(tid, fid):
     task = CommonModel.get_task(tid)
     file = CommonModel.get_file(fid)
     
-    if not file or file not in task.files:
+    if not task or not file or file not in task.files:
         return {"message": "File not found", "toast_class": "danger-subtle"}, 404
     
     if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
         flowintel_log("audit", 403, "Convert file to note: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+        flowintel_log("audit", 403, "Convert task file to note denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
     
     file_name = file.name
     file_extension = os.path.splitext(file_name)[1].lower().lstrip('.')
