@@ -194,14 +194,142 @@ def test_privileged_case_completion_still_completes_open_tasks(client, app, work
         assert all(task.completed for task in case.tasks)
 
 
-def test_reopening_finished_privileged_task_is_unchanged(client, app, workflow):
-    login(client, app, "editor")
+@pytest.mark.parametrize("key", ["editor", "queuer", "queue_admin"])
+def test_reopening_finished_privileged_task_is_unchanged(client, app, workflow, key):
+    login(client, app, key)
     for mode in MODES:
         reset_task(app, workflow, status="Finished", completed=True)
-        response = finish(client, workflow, mode, "editor", destination=workflow["statuses"]["Ongoing"])
+        response = finish(client, workflow, mode, key, destination=workflow["statuses"]["Ongoing"])
         assert response.status_code == 200
         with app.app_context():
             assert db.session.get(Task, workflow["task"]).completed is False
+
+
+def close_case(app, workflow, privileged=True):
+    with app.app_context():
+        case = db.session.get(Case, workflow["case"])
+        case.privileged_case = privileged
+        case.completed = True
+        case.finish_date = datetime.now(timezone.utc)
+        case.status_id = workflow["statuses"]["Finished"]
+        for task in case.tasks:
+            task.completed = True
+            task.finish_date = case.finish_date
+            task.status_id = workflow["statuses"]["Finished"]
+            task.case_order_id = -1
+        db.session.commit()
+
+
+@pytest.mark.parametrize("key", ["editor", "queuer", "queue_admin"])
+def test_task_reopening_cannot_revive_privileged_case(client, app, workflow, key):
+    close_case(app, workflow)
+    login(client, app, key)
+    assert client.get(f"/api/case/{workflow['case']}/complete",
+                      headers={"X-API-KEY": key + "_api_key"}).status_code == 403
+    assert client.get(f"/case/{workflow['case']}/complete_case").status_code == 403
+    for task_id in (workflow["task"], workflow["task_uuid"]):
+        for mode in MODES:
+            before = snapshot(app, workflow)
+            response = finish(client, workflow, mode, key, task_id=task_id,
+                              destination=str(workflow["statuses"]["Ongoing"]))
+            assert response.status_code == 403
+            assert snapshot(app, workflow) == before
+    for status_name, status_id in workflow["statuses"].items():
+        if status_name == "Finished":
+            continue
+        for mode in ("api_status", "browser_status"):
+            before = snapshot(app, workflow)
+            assert finish(client, workflow, mode, key, destination=status_id).status_code == 403
+            assert snapshot(app, workflow) == before
+
+
+@pytest.mark.parametrize("key", ["admin", "caseadmin", "editor"])
+def test_allowed_reopening_revives_case(client, app, workflow, key):
+    login(client, app, key)
+    for mode in MODES:
+        close_case(app, workflow, privileged=key != "editor")
+        response = finish(client, workflow, mode, key, destination=workflow["statuses"]["Ongoing"])
+        assert response.status_code == 200
+        with app.app_context():
+            task = db.session.get(Task, workflow["task"])
+            case = db.session.get(Case, workflow["case"])
+            assert task.completed is False
+            assert task.finish_date is None
+            assert case.completed is False
+            assert case.finish_date is None
+            assert case.status_id == workflow["statuses"]["Created"]
+            assert any("Case revived" in entry for entry in CommonModel.get_history(case.uuid))
+
+
+def test_core_reopening_denial_precedes_all_side_effects(app, workflow):
+    close_case(app, workflow)
+    before = snapshot(app, workflow)
+    with app.app_context():
+        editor = User.query.filter_by(api_key="editor_api_key").one()
+        task = db.session.get(Task, workflow["task"])
+        assert TaskModel.complete_task(task.id, editor) is False
+        assert TaskModel.change_task_status(workflow["statuses"]["Ongoing"], task, editor) is False
+        db.session.commit()
+    assert snapshot(app, workflow) == before
+
+
+@pytest.mark.parametrize("key", ["editor", "queuer", "queue_admin", "admin", "caseadmin"])
+@pytest.mark.parametrize("privileged", [True, False])
+def test_task_creation_respects_parent_case_revival_permission(client, app, workflow, key, privileged):
+    close_case(app, workflow, privileged=privileged)
+    before = snapshot(app, workflow)
+    response = client.post(f"/api/case/{workflow['case']}/create_task",
+                           headers={"X-API-KEY": key + "_api_key"},
+                           json={"title": "Additional requested work"})
+    assert response.status_code == 201
+    with app.app_context():
+        task = db.session.get(Task, response.json["task_id"])
+        case = db.session.get(Case, workflow["case"])
+        assert task.completed is False
+        assert task.status_id == workflow["statuses"]["Requested" if privileged else "Created"]
+        if not privileged or key in ("admin", "caseadmin"):
+            assert case.completed is False
+            assert case.finish_date is None
+        else:
+            assert case.completed is True
+            assert case.finish_date == before[7]
+            assert case.status_id == workflow["statuses"]["Finished"]
+            assert not any("Case revived" in entry for entry in CommonModel.get_history(case.uuid))
+
+
+@pytest.mark.parametrize("api_key,session_key,expected", [("editor", "admin", 403), ("admin", "editor", 200)])
+def test_reopening_uses_api_identity(client, app, workflow, api_key, session_key, expected):
+    login(client, app, session_key)
+    for mode in ("api_complete", "api_status"):
+        close_case(app, workflow)
+        before = snapshot(app, workflow)
+        response = finish(client, workflow, mode, api_key, destination=workflow["statuses"]["Ongoing"])
+        assert response.status_code == expected
+        if expected == 403:
+            assert snapshot(app, workflow) == before
+
+
+@pytest.mark.parametrize("delegate_key,expected", [("editor", 403), ("queue_admin", 403), ("admin", 200)])
+def test_reopening_uses_relay_delegate(client, app, workflow, delegate_key, expected):
+    with app.app_context():
+        admin = User.query.filter_by(api_key="admin_api_key").one()
+        delegate = User.query.filter_by(api_key=delegate_key + "_api_key").one()
+        delegate.matrix_id = "@revival-test:example.org"
+        db.session.add(User(first_name="Revival", last_name="Relay", email="revival-relay@example.org",
+                            role_id=admin.role_id, org_id=admin.org_id, is_bot=True, api_key="revival_relay_test"))
+        db.session.commit()
+    for mode in ("api_complete", "api_status"):
+        close_case(app, workflow)
+        before = snapshot(app, workflow)
+        headers = {"X-API-KEY": "revival_relay_test", "MATRIX-ID": "@revival-test:example.org"}
+        if mode == "api_complete":
+            response = client.get(f"/api/task/{workflow['task_uuid']}/complete", headers=headers)
+        else:
+            response = client.post(f"/api/task/{workflow['task_uuid']}/change_status", headers=headers,
+                                   json={"status_id": str(workflow["statuses"]["Ongoing"])})
+        assert response.status_code == expected
+        if expected == 403:
+            assert snapshot(app, workflow) == before
 
 
 @pytest.mark.parametrize("api_key,session_key,expected", [("editor", "admin", 403), ("admin", "editor", 200)])

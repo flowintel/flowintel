@@ -343,6 +343,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         if task is not None:
             if not task.completed and not self.can_complete_task(task, current_user):
                 return False
+            if task.completed and not self.can_reopen_task(task, current_user):
+                return False
             task.completed = not task.completed
 
             case = CommonModel.get_case(task.case_id)
@@ -489,10 +491,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.update_last_modif(cid)
 
-        # If a task is added to a completed case, revive the case (clear finished state)
+        # Task creation may revive the parent only with case revival permission.
         try:
             case = CommonModel.get_case(cid)
-            if orig_case_completed:
+            if orig_case_completed and self.can_reopen_case(case, current_user):
                 case.completed = False
                 case.finish_date = None
                 case.status_id = Status.query.filter_by(name="Created").first().id
@@ -582,6 +584,17 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return case is not None and (
             not case.privileged_case or self.can_edit_requested_task(current_user)
         )
+
+    def can_reopen_case(self, case, current_user):
+        """Apply case revival permissions to implicit task-driven revival."""
+        return case is not None and (
+            not case.completed or not case.privileged_case
+            or current_user.is_admin() or current_user.is_case_admin()
+        )
+
+    def can_reopen_task(self, task, current_user):
+        """Reopening a task must also authorize any parent case revival."""
+        return self.can_reopen_case(CommonModel.get_case(task.case_id), current_user)
     
     def is_task_restricted(self, task):
         """Check if task is in a restricted status (Requested, Rejected or Request Review) in a privileged case"""

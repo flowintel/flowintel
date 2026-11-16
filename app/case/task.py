@@ -262,6 +262,9 @@ def complete_task(tid):
             if not task.completed and not TaskModel.can_complete_task(task, current_user):
                 flowintel_log("audit", 403, "Complete task denied: Final review requires an approver", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
+            if task.completed and not TaskModel.can_reopen_task(task, current_user):
+                flowintel_log("audit", 403, "Reopen task denied: Privileged case revival requires Admin or Case Admin", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Only Admin or Case Admin can revive a privileged case by reopening a task", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
                 action = "completed" if task.completed else "revived"
@@ -523,6 +526,9 @@ def change_task_status(cid, tid):
                         if status_obj and status_obj.name == "Finished" and not TaskModel.can_complete_task(task, current_user):
                             flowintel_log("audit", 403, "Change task status denied: Final review requires an approver", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
+                        if task.completed and status_obj and status_obj.name != "Finished" and not TaskModel.can_reopen_task(task, current_user):
+                            flowintel_log("audit", 403, "Change task status denied: Privileged case revival requires Admin or Case Admin", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": "Only Admin or Case Admin can revive a privileged case by reopening a task", "toast_class": "warning-subtle"}, 403
                         if TaskModel.change_task_status(status, task, current_user):
                             db.session.commit()
                             status_name = status_obj.name if status_obj else str(status)
