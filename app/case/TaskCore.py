@@ -891,6 +891,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def delete_file(self, file, task, current_user):
         """Delete a file"""
+        if file.task_id != task.id:
+            return False
+        if self.is_task_restricted(task) and not self.can_edit_requested_task(current_user):
+            return False
         try:
             os.remove(os.path.join(FILE_FOLDER, file.uuid))
         except OSError:

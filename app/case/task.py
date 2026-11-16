@@ -570,6 +570,9 @@ def delete_file(tid, fid):
     file = CommonModel.get_file(fid)
     if file and file in task.files:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Delete task file denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             file_name = file.name
             file_size = file.file_size if file.file_size else 0
             file_type = file.file_type if file.file_type else "unknown"
