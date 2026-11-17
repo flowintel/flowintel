@@ -1,6 +1,6 @@
 import { display_toast, create_message } from '../toaster.js'
 import Pagination from '../components/pagination.js'
-const { ref, computed, onMounted, watch, nextTick, reactive } = Vue
+const { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, reactive } = Vue
 
 const MISP_ATTRIBUTE_TYPES = ref([])
 
@@ -362,12 +362,36 @@ export default {
             display_toast(res)
         }
 
+        // Opened from the case Calendar: show the attribute's row and flash it
+        async function focus_pending_attr() {
+            const aid = window.flowintel_misp_attr_focus
+            if (!aid) return
+            window.flowintel_misp_attr_focus = null
+            if (!attrs.value.some(a => a.id === aid)) return
+            search_query.value = ''
+            type_filter.value = ''
+            show_unsynced_only.value = false
+            tab_view.value = false
+            const idx = filtered_attrs.value.findIndex(a => a.id === aid)
+            current_page.value = Math.floor(idx / per_page) + 1
+            await nextTick()
+            const row = document.getElementById('misp-attr-' + aid)
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                row.classList.add('task-flash')
+                setTimeout(() => row.classList.remove('task-flash'), 1800)
+            }
+        }
+
         onMounted(async () => {
             reset_add()
             assigning_attr_id.value = null
+            window.addEventListener('misp-attr-focus-now', focus_pending_attr)
             await fetch_attr_types()
             await fetch_attrs()
+            await focus_pending_attr()
         })
+        onBeforeUnmount(() => window.removeEventListener('misp-attr-focus-now', focus_pending_attr))
 
         // Initialize select2 when the add panel is shown
         watch(() => show_add.value, async (nv) => {
@@ -579,7 +603,7 @@ export default {
                         </thead>
                         <tbody>
                             <template v-for="sa in paginated_attrs" :key="sa.id">
-                                <tr v-if="editing_id !== sa.id">
+                                <tr v-if="editing_id !== sa.id" :id="'misp-attr-' + sa.id">
                                     <td class="ps-3" style="font-size:0.825rem; word-break:break-all; max-width:280px;">[[ sa.value ]]</td>
                                     <td><span class="badge bg-light text-dark border">[[ sa.type ]]</span></td>
                                     <td v-show="!compact_view" style="text-align:center;">
