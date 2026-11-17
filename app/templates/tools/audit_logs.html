@@ -31,9 +31,18 @@
         transition: opacity 0.15s ease;
         border-radius: 2px 2px 0 0;
     }
-    .audit-activity-chart > div:hover {
+    .audit-activity-chart > div:hover,
+    .audit-activity-chart > div.is-focus {
         opacity: 1;
     }
+    .audit-activity-chart > div.has-entries { cursor: pointer; }
+    .audit-activity-chart > div.is-focus { background-color: var(--bs-warning, #ffc107); }
+    /* Rows of the day picked in the chart, as the day outlined in the case calendar */
+    tr.audit-day-focus > td { background-color: rgba(255, 193, 7, 0.18) !important; }
+    tr.audit-day-focus > td:first-child { box-shadow: inset 3px 0 0 var(--bs-warning, #ffc107); }
+    tr.audit-day-flash > td { animation: audit-day-flash 1.2s ease-out; }
+    @keyframes audit-day-flash { from { background-color: rgba(255, 193, 7, 0.55); } }
+    @media (prefers-reduced-motion: reduce) { tr.audit-day-flash > td { animation: none; } }
     .audit-activity-labels {
         display: flex;
         justify-content: space-between;
@@ -87,7 +96,9 @@
         <div class="audit-activity-chart" role="img" aria-label="Activity per day">
             <div v-for="d in activity" :key="d.day"
                  :style="{ height: activity_bar_height(d.count) + '%' }"
-                 :title="`${d.day}: ${d.count} entries`"></div>
+                 :class="{ 'has-entries': d.count > 0, 'is-focus': focused_day === d.day }"
+                 :title="d.count ? `${d.day}: ${d.count} entries - click to see them` : `${d.day}: no entries`"
+                 @click="go_to_day(d)"></div>
         </div>
         <div class="audit-activity-labels small text-muted">
             <span>[[activity[0].day]]</span>
@@ -199,7 +210,9 @@
                     </td></tr>
                 </template>
                 <template v-else>
-                    <tr v-for="(r, idx) in rows" :key="idx" @click="open_detail(r)" style="cursor: pointer;">
+                    <tr v-for="(r, idx) in rows" :key="idx" @click="open_detail(r)" style="cursor: pointer;"
+                        :data-day="(r.timestamp || '').slice(0, 10)"
+                        :class="{ 'audit-day-focus': focused_day && (r.timestamp || '').startsWith(focused_day) }">
                         <td><small>[[r.timestamp]]</small></td>
                         <td><small>[[r.user]]</small></td>
                         <td>[[r.action]]</td>
@@ -274,7 +287,7 @@
 {% block script %}
 <script type="module">
     import Pagination from '/static/js/components/pagination.js'
-    const { createApp, ref, computed, onMounted } = Vue
+    const { createApp, ref, computed, onMounted, nextTick } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
 
     createApp({
@@ -305,6 +318,7 @@
 
             const detail = ref(null)
             let detail_offcanvas = null
+            const focused_day = ref(null)
 
             const column_count = computed(() => {
                 return active_tab.value === 'audit' ? 6 : 5
@@ -360,9 +374,30 @@
                 }
             }
 
+            // Click on a day of the chart: open the page holding its entries (rows are
+            // newest first, so it is the count of newer entries that places it), then
+            // scroll to its first entry and outline the whole day, as the case calendar does.
+            async function go_to_day(d) {
+                if (!d.count || loading.value) return
+                const newer = activity.value.reduce((n, x) => x.day > d.day ? n + x.count : n, 0)
+                const page = Math.floor(newer / (pagination.value.per_page || per_page.value)) + 1
+                focused_day.value = d.day
+                if (page !== pagination.value.page) await load(page)
+                await nextTick()
+                const day_rows = document.querySelectorAll(`#main-container tr[data-day="${d.day}"]`)
+                if (!day_rows.length) return
+                day_rows[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+                day_rows.forEach(tr => {
+                    tr.classList.remove('audit-day-flash')
+                    void tr.offsetWidth
+                    tr.classList.add('audit-day-flash')
+                })
+            }
+
             function select_tab(tab) {
                 if (active_tab.value === tab) return
                 active_tab.value = tab
+                focused_day.value = null
                 load(1)
             }
 
@@ -372,6 +407,7 @@
                 user_filter.value = ''
                 action_filter.value = ''
                 exclude_filter.value = ''
+                focused_day.value = null
                 load(1)
             }
 
@@ -478,6 +514,8 @@
                 severity_class,
                 parse_extras,
                 open_detail,
+                focused_day,
+                go_to_day,
             }
         }
     }).mount('#main-container')

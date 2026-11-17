@@ -1,6 +1,7 @@
 import os
 import subprocess
 import tempfile
+from io import BytesIO
 from typing import List
 import uuid
 import datetime
@@ -226,7 +227,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 from app.utils.utils import get_modules_list
                 modules, _ = get_modules_list()
                 if "webhook" in modules:
-                    case_json = case.to_json()
+                    case_json = case.to_json(user)
                     case_json["status"] = CommonModel.get_status(case.status_id).name
                     case_json["org_name"] = user.Org.name if user.Org else ""
                     dummy_task = {"id": 0, "title": "", "case_id": case.id}
@@ -732,7 +733,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def regroup_case_info_core(self, case, user, misp_icon):
         """Regroup all information if a case"""
 
-        case_loc = case.to_json()
+        case_loc = case.to_json(user)
         case_loc["present_in_case"] = CommonModel.get_present_in_case(case.id, user)
         case_loc["current_user_permission"] = CommonModel.get_role(user).to_json()
         case_loc["open_tasks"], case_loc["closed_tasks"] = self.open_closed(case)
@@ -801,7 +802,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                 return {"message": "Error, title already exist"}
             case = CommonModel.get_case(cid)
 
-            case_json = case.to_json()
+            case_json = case.to_json(user)
             case_json["title"] = case_title_fork
 
             if case.deadline:
@@ -1522,19 +1523,20 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def get_status_computer_assistate_report(self, case_uuid):
         return self._finalize_task_if_done(case_uuid)
 
-    def download_history(self, case):
+    def download_history(self, case, current_user):
         """Download a history"""
-        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-        if os.path.isfile(history_path):
-            return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history.txt")
+        history = CommonModel.get_visible_history(case, current_user)
+        if history is not False:
+            content = "\n".join(history) + ("\n" if history else "")
+            return send_file(BytesIO(content.encode("utf-8")), as_attachment=True,
+                             download_name=f"{case.title}_history.txt", mimetype="text/plain")
         else:
             return {"message": "History file not found", "toast_class": "danger-subtle"}, 404
         
-    def download_history_md(self, case):
+    def download_history_md(self, case, current_user):
         """Download a history"""
-        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-        if os.path.isfile(history_path):
-            loc_file = CommonModel.get_history(case.uuid)
+        loc_file = CommonModel.get_visible_history(case, current_user)
+        if loc_file is not False:
             loc_rep = CommonModel._format_logs_as_markdown(case, loc_file, title="History")
             return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_history.md'}
         else:
@@ -1851,7 +1853,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
             loc_task["status"] = CommonModel.get_status(task.status_id).name
             tasks.append(loc_task)
 
-        case = loc_case.to_json()
+        case = loc_case.to_json(user)
         case["org_name"] = org.name
         case["org_uuid"] = org.uuid
         case["tasks"] = tasks
@@ -2174,8 +2176,32 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     # MISP Object #
     ###############
  
+    def check_task_link_permissions(self, task_ids, current_user):
+        """Authorize every task whose MISP links will change before any writes."""
+        for task in Task.query.filter(Task.id.in_(task_ids)).all():
+            if TaskModel.is_task_restricted(task) and (
+                current_user is None or not TaskModel.can_edit_requested_task(current_user)
+            ):
+                raise PermissionError("Task in restricted status can only be modified by Admin, Case Admin or Queue Admin")
+
+    def get_misp_link_task_ids(self, cid, task_ids, current_user):
+        """Resolve same-case creation links and authorize them before creating an entity."""
+        valid_task_ids = set()
+        if isinstance(task_ids, list):
+            for tid in task_ids:
+                try:
+                    tid_int = int(tid)
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                task = Task.query.get(tid_int)
+                if task and int(task.case_id) == int(cid):
+                    valid_task_ids.add(tid_int)
+        self.check_task_link_permissions(valid_task_ids, current_user)
+        return valid_task_ids
+
     def create_misp_object(self, cid, request_json, current_user):
         """Create a new misp object"""
+        valid_task_ids = self.get_misp_link_task_ids(cid, request_json.get('task_ids', []), current_user)
         case_misp_object = Case_Misp_Object(
             case_id=cid,
             template_uuid=request_json["object-template"]["uuid"],
@@ -2190,18 +2216,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         # If task ids were provided on creation, link them to the new object
         try:
-            task_ids = request_json.get('task_ids', []) if isinstance(request_json, dict) else []
-            if isinstance(task_ids, list) and len(task_ids) > 0:
-                valid_task_ids = set()
-                for tid in task_ids:
-                    try:
-                        tid_int = int(tid)
-                    except Exception:
-                        continue
-                    t = Task.query.get(tid_int)
-                    if t and int(t.case_id) == int(cid):
-                        valid_task_ids.add(tid_int)
-
+            if valid_task_ids:
                 for tid in valid_task_ids:
                     link = Task_Misp_Object(task_id=tid, misp_object_id=case_misp_object.id)
                     db.session.add(link)
@@ -2544,6 +2559,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Delete a misp object"""
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
+            self.check_task_link_permissions(
+                [link.task_id for link in Task_Misp_Object.query.filter_by(misp_object_id=oid).all()], current_user
+            )
             # Remove any timeline events (and their links) that reference this object
             event_list = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=oid).all()
             if event_list:
@@ -2720,24 +2738,33 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         return {"message": "Object not found in this case", "toast_class": "warning-subtle"}, 404
     
 
-    def check_correlation_attr(self, case_id: int, attribute: Misp_Attribute) -> list:
-        """Get a list of case containing the same attribute value"""
-        if not attribute.disable_correlation:
-            attributes = Misp_Attribute.query.filter_by(value=attribute.value).all()
-            loc = []
-            for loc_attr in attributes:
-                # standalone attribute - use case_id directly
-                if loc_attr.case_misp_object_id is None:
-                    cid = loc_attr.case_id
-                else:
-                    parent = Case_Misp_Object.query.get(loc_attr.case_misp_object_id)
-                    if parent is None:
-                        continue
-                    cid = parent.case_id
-                if cid and not cid in loc and not cid == case_id:
-                    loc.append(cid)
-            return loc
-        return []
+    def _get_misp_attribute_case_id(self, attribute):
+        """Resolve object ownership before consulting the standalone case column."""
+        if attribute is None:
+            return None
+        if attribute.case_misp_object_id is not None:
+            parent = self.get_misp_object(attribute.case_misp_object_id)
+            return parent.case_id if parent else None
+        return attribute.case_id
+
+    def check_correlation_attr(self, case_id, attribute: Misp_Attribute, user=None) -> list:
+        """Return visible matching case IDs for an attribute in the visible source case."""
+        if user is None or not user.is_authenticated:
+            return []
+        case = CommonModel.get_case(case_id)
+        if not CommonModel.can_view_case(case, user):
+            return []
+        if self._get_misp_attribute_case_id(attribute) != case.id or attribute.disable_correlation:
+            return []
+
+        case_ids = []
+        for match in Misp_Attribute.query.filter_by(value=attribute.value).all():
+            cid = self._get_misp_attribute_case_id(match)
+            if cid and cid != case.id and cid not in case_ids:
+                case_ids.append(cid)
+        cases = Case.query.filter(Case.id.in_(case_ids)).all()
+        visible_ids = {match.id for match in CommonModel.check_user_in_private_cases(cases, user)}
+        return [cid for cid in case_ids if cid in visible_ids]
 
     ################################
     # Standalone MISP Attributes   #
@@ -2745,6 +2772,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def create_standalone_attribute(self, cid, data, current_user):
         """Create a standalone MISP attribute (not inside any object)"""
+        valid_task_ids = self.get_misp_link_task_ids(cid, data.get('task_ids', []), current_user)
         first_seen = None
         last_seen = None
         ids_flag = False
@@ -2786,18 +2814,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         # If task ids were provided on creation, link them to the new standalone attribute
         try:
-            task_ids = data.get('task_ids', []) if isinstance(data, dict) else []
-            if isinstance(task_ids, list) and len(task_ids) > 0:
-                valid_task_ids = set()
-                for tid in task_ids:
-                    try:
-                        tid_int = int(tid)
-                    except Exception:
-                        continue
-                    t = Task.query.get(tid_int)
-                    if t and int(t.case_id) == int(cid):
-                        valid_task_ids.add(tid_int)
-
+            if valid_task_ids:
                 for tid in valid_task_ids:
                     link = Task_Misp_Attribute(task_id=tid, misp_attribute_id=attr.id)
                     db.session.add(link)
@@ -2864,6 +2881,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
         if not attr:
             return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+
+        try:
+            self.check_task_link_permissions(
+                [link.task_id for link in Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()], current_user
+            )
+        except PermissionError as error:
+            return {"message": str(error), "toast_class": "warning-subtle"}, 403
         
         misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
         for m_a in misp_attrs:
@@ -2912,6 +2936,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         to_add = valid_new_ids - existing_ids
         to_remove = existing_ids - valid_new_ids
+
+        try:
+            self.check_task_link_permissions(to_add | to_remove, current_user)
+        except PermissionError as error:
+            return {"message": str(error), "toast_class": "warning-subtle"}, 403
 
         try:
             for tid in to_add:

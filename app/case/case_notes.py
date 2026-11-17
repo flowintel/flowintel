@@ -709,7 +709,7 @@ def case_report_generate(cid):
         lines.append("---")
         lines.append("")
         lines.append("### Timeline")
-        history = CommonModel.get_history(case.uuid)
+        history = CommonModel.get_visible_history(case, current_user)
         if history:
             for entry in history:
                 lines.append(f"- {entry}")

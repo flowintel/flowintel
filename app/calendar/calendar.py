@@ -121,7 +121,7 @@ def get_case_month():
 
     cases_list = []
     for case in cases_month:
-        case_json = case.to_json()
+        case_json = case.to_json(current_user)
 
         # Add extra case metrics for calendar modal details.
         case_json["nb_objects"] = Case_Misp_Object.query.filter_by(case_id=case.id).count()

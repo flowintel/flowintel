@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app import create_app
 from app.extensions import db
-from app.db_class.db import Case, Notification, Recurring_Notification
+from app.db_class.db import Case, Notification, Recurring_Notification, User
 
 
 app = create_app()
@@ -15,10 +15,15 @@ app = create_app()
 REMINDER_ICON = "fa-solid fa-clock"
 
 def create_notification(case, message, html_icon):
+    from app.case.common_core import can_view_case
+
     stmt = select(Recurring_Notification).where(Recurring_Notification.case_id == case.id)
     recur_notif = db.session.scalars(stmt).all()
 
     for r_n in recur_notif:
+        recipient = db.session.get(User, r_n.user_id)
+        if not can_view_case(case, recipient):
+            continue
         notif = Notification(
             message=message,
             is_read=False,

@@ -341,6 +341,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         """Complete task by is id"""
         task = CommonModel.get_task(tid)
         if task is not None:
+            if not task.completed and not self.can_complete_task(task, current_user):
+                return False
+            if task.completed and not self.can_reopen_task(task, current_user):
+                return False
             task.completed = not task.completed
 
             case = CommonModel.get_case(task.case_id)
@@ -417,7 +421,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
                 case_id=cid,
                 status_id=status_id,
                 case_order_id=self.get_nb_open_tasks(case)+1,
-                completed=form_dict.get("completed", False),
+                # Privileged tasks must go through approval and final review.
+                completed=False if case.privileged_case else form_dict.get("completed", False),
                 nb_notes=0,
                 time_required=form_dict["time_required"]
             )
@@ -486,10 +491,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
         CommonModel.update_last_modif(cid)
 
-        # If a task is added to a completed case, revive the case (clear finished state)
+        # Task creation may revive the parent only with case revival permission.
         try:
             case = CommonModel.get_case(cid)
-            if orig_case_completed:
+            if orig_case_completed and self.can_reopen_case(case, current_user):
                 case.completed = False
                 case.finish_date = None
                 case.status_id = Status.query.filter_by(name="Created").first().id
@@ -572,6 +577,24 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def can_edit_requested_task(self, current_user):
         """Check if user can edit a task in a restricted status"""
         return current_user.is_admin() or current_user.is_case_admin() or current_user.is_queue_admin()
+
+    def can_complete_task(self, task, current_user):
+        """Require an approver to finish any task in a privileged case."""
+        case = CommonModel.get_case(task.case_id)
+        return case is not None and (
+            not case.privileged_case or self.can_edit_requested_task(current_user)
+        )
+
+    def can_reopen_case(self, case, current_user):
+        """Apply case revival permissions to implicit task-driven revival."""
+        return case is not None and (
+            not case.completed or not case.privileged_case
+            or current_user.is_admin() or current_user.is_case_admin()
+        )
+
+    def can_reopen_task(self, task, current_user):
+        """Reopening a task must also authorize any parent case revival."""
+        return self.can_reopen_case(CommonModel.get_case(task.case_id), current_user)
     
     def is_task_restricted(self, task):
         """Check if task is in a restricted status (Requested, Rejected or Request Review) in a privileged case"""
@@ -720,8 +743,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
     def remove_assign_task(self, tid, user, current_user, flag_current_user):
         """Remove current user to the assignement to a task"""
         task = CommonModel.get_task(tid)
-        case = CommonModel.get_case(task.case_id)
         if task:
+            if self.is_task_restricted(task) and not self.can_edit_requested_task(current_user):
+                return False
+            case = CommonModel.get_case(task.case_id)
             if type(user) == int or type(user) == str:
                 user = User.query.get(user)
             task_users = Task_User.query.filter_by(task_id=task.id, user_id=user.id).all()
@@ -767,8 +792,11 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         new_status_name = new_status.name if new_status else str(status)
 
         should_be_completed = new_status is not None and new_status.name == "Finished"
+        if should_be_completed and not self.can_complete_task(task, current_user):
+            return False
         if task.completed != should_be_completed:
-            self.complete_task(task.id, current_user)
+            if not self.complete_task(task.id, current_user):
+                return False
 
         task.status_id = status
         self.update_task_time_modification(task, current_user, f"Status changed to '{new_status_name}' for task '{task.id}-{task.title}'")
@@ -865,6 +893,10 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def delete_file(self, file, task, current_user):
         """Delete a file"""
+        if file.task_id != task.id:
+            return False
+        if self.is_task_restricted(task) and not self.can_edit_requested_task(current_user):
+            return False
         try:
             os.remove(os.path.join(FILE_FOLDER, file.uuid))
         except OSError:
@@ -980,20 +1012,31 @@ class TaskCore(CommonAbstract, FilteringAbstract):
 
     def change_order(self, case, task, request_json, current_user=None):
         """Change the order of tasks"""
-        if task.completed:
+        if task.completed or task.case_id != case.id:
             return False
+
+        can_edit_restricted = current_user is not None and self.can_edit_requested_task(current_user)
+        if self.is_task_restricted(task) and not can_edit_restricted:
+            raise PermissionError("Task in restricted status can only be modified by Admin, Case Admin or Queue Admin")
 
         try:
             new_index = int(request_json["new-index"])
         except (KeyError, TypeError, ValueError):
             return False
 
-        tasks = self.normalize_open_task_order(case)
+        # Build the final order without normalizing or committing any rows first.
+        tasks = Task.query.filter_by(case_id=case.id, completed=False)\
+            .order_by(Task.case_order_id.asc(), Task.id.asc()).all()
         if task not in tasks or new_index < 0 or new_index >= len(tasks):
             return False
 
         tasks.remove(task)
         tasks.insert(new_index, task)
+
+        # Moving an unrestricted task can also move a restricted sibling.
+        for i, loc_task in enumerate(tasks, start=1):
+            if loc_task.case_order_id != i and self.is_task_restricted(loc_task) and not can_edit_restricted:
+                raise PermissionError("Task in restricted status can only be modified by Admin, Case Admin or Queue Admin")
 
         for i, loc_task in enumerate(tasks, start=1):
             loc_task.case_order_id = i
@@ -1006,6 +1049,8 @@ class TaskCore(CommonAbstract, FilteringAbstract):
         return True
 
     def call_module_task_no_instance(self, module, task, case, current_user, user_id):
+        if self.is_task_restricted(task) and not self.can_edit_requested_task(current_user):
+            return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin"}
         user = User.query.get(user_id)
         modules, _ = get_modules_list()
         res = modules[module].handler(task, case, current_user, user)
