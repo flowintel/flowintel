@@ -427,6 +427,11 @@ def get_icon(iid):
     """Return an icon"""
     return Connector_Icon.query.get(iid)
 
+def get_connector_by_name_ci(name):
+    """A connector by its name, ignoring case"""
+    return Connector.query.filter(db.func.lower(Connector.name) == name.lower()).first()
+
+
 def get_default_icon():
     """Return the default icon"""
     return Connector_Icon.query.filter_by(name="default").first()
