@@ -196,6 +196,8 @@ def delete_user(uid):
     if current_user.is_pure_org_admin():
         if user.org_id != current_user.org_id:
             return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
+        if user.is_admin():
+            return {"message":"Only administrators can delete Admin users", "toast_class": "danger-subtle"}, 403
     elif not current_user.is_admin():
         return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
     
