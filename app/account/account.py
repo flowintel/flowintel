@@ -620,3 +620,13 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'info')
     return redirect(url_for('account.login'))
+
+
+@account_blueprint.route("/user_card/<int:uid>", methods=['GET'])
+@login_required
+def user_card(uid):
+    """Details shown when hovering a user chip"""
+    card = AccountModel.get_user_card(uid, current_user)
+    if not card:
+        return {"message": "User not found", "toast_class": "warning-subtle"}, 404
+    return card, 200

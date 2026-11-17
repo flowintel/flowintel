@@ -7,6 +7,7 @@ import tabMispObjects from './TaskComponent/tab-misp-objects.js'
 import tabInfo from './TaskComponent/tab-info.js'
 import caseconnectors from './CaseConnectors.js'
 import smart_render from '/static/js/components/smart-render.js'
+import user_chip from '/static/js/components/user-chip.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
@@ -36,7 +37,8 @@ export default {
 		tabMispObjects,
 		tabInfo,
 		caseconnectors,
-		smart_render
+		smart_render,
+		user_chip
 	},
 	setup(props) {
 		// Variables part
@@ -165,11 +167,6 @@ export default {
 			return dayjs.utc(dt).endOf().from(dayjs.utc())
 		}
 
-		function select2_change(tid) {
-			$('.select2-selectUser' + tid).select2({ width: 'element' })
-			$('.select2-container').css("min-width", "200px")
-		}
-
 
 		async function select_tab_task(tab_name) {
 			url_set('task_tab_' + props.task.id, tab_name, 'main')
@@ -286,7 +283,6 @@ export default {
 
 		})
 		Vue.onUpdated(() => {
-			select2_change(props.task.id)
 			// do not initialize mermaid before the page is mounted
 			if (is_mounted) {
 				$('#task_modules_select_' + props.task.id).on('change.select2', function (e) {
@@ -471,7 +467,7 @@ export default {
 
 			<div class="mb-2">
 				<div class="d-flex w-100 justify-content-between">
-					<div style="display: flex; flex-wrap: wrap;" v-if="task.galaxies">
+					<div class="task-galaxy-row" v-if="task.galaxies && task.galaxies.length">
 						<template v-for="galaxy in task.galaxies">
 							<div class="me-1 mb-1" :title="'Description:\\n' + galaxy.description">
 								<span class="cluster">
@@ -484,9 +480,9 @@ export default {
 					<div v-else></div>
 				</div>
 				<div class="d-flex w-100 justify-content-between">
-					<div style="display: flex; flex-wrap: wrap;" v-if="task.clusters">
+					<div class="task-galaxy-row" v-if="task.clusters && task.clusters.length">
 						<template v-for="cluster in task.clusters">
-							<div class="me-1 mb-1" :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
+							<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
 								<span class="cluster">
 									<span v-html="mapIcon(cluster.icon)"></span>
 									[[cluster.tag]]
@@ -500,14 +496,9 @@ export default {
 
 			<div class="d-flex w-100 justify-content-between">
 				<div v-if="task.users.length">
-					<template v-for="user in task.users">
-						<span v-if="user.nickname" class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
-							<i class="fa-solid fa-user"></i> [[user.nickname]]
-						</span>
-						<span v-else class="btn btn-primary btn-sm person" :title="user.first_name+' ' +user.last_name">
-							<i class="fa-solid fa-user"></i> [[user.last_name]]
-						</span>
-					</template>
+					<div class="d-flex flex-wrap gap-1">
+						<user_chip v-for="user in task.users" :key="user.id" :user="user" size="sm"></user_chip>
+					</div>
 				</div>
 
 				<div v-else>

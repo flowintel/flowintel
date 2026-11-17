@@ -4,6 +4,8 @@
     <head>
         {# Bootstrap mode each theme is drawn on, for user_settings.js (utils/themes.py) #}
         <script>window.FI_THEME_BASES = {{ theme_bases | tojson }}; window.FI_THEMES_STYLED = {{ themes_styled | tojson }}</script>
+        {# id of the signed-in user, e.g. for the "you" mark of user chips #}
+        <script>window.FI_CURRENT_USER_ID = {{ (current_user.id if current_user.is_authenticated else none) | tojson }}</script>
         <script src="{{ url_for('static',filename='js/user_settings.js') }}"></script>
         {% for key, theme in themes.items() if theme.script %}
         <script src="{{ url_for('static',filename='js/themes/' ~ key ~ '.js') }}" defer></script>
