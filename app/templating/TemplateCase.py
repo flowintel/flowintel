@@ -341,7 +341,7 @@ class TemplateCase(CommonAbstract, FilteringAbstract):
                 creation_date=datetime.datetime.now(tz=datetime.timezone.utc),
                 last_modif=datetime.datetime.now(tz=datetime.timezone.utc),
                 case_id=case.id,
-                status_id=1,
+                status_id=current_app.config['TASK_REQUESTED'] if case.privileged_case else 1,
                 case_order_id=task_in_case.case_order_id,
                 nb_notes=task.nb_notes
             )

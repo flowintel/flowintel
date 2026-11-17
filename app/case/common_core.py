@@ -1049,7 +1049,7 @@ def create_task_from_template(template_id, cid, current_user=None):
         case.nb_tasks = 0
     
     status_id = 1
-    if current_user and case.privileged_case:
+    if case.privileged_case:
         status_id = current_app.config['TASK_REQUESTED']
     
     task = Task(
