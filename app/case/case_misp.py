@@ -55,7 +55,7 @@ def get_case_misp_object(cid):
         for object in misp_object:
             loc_attr_list = list()
             for attribute in object.attributes:
-                res = CaseModel.check_correlation_attr(cid, attribute)
+                res = CaseModel.check_correlation_attr(cid, attribute, current_user)
                 loc_attr = attribute.to_json()
                 loc_attr["correlation_list"] = res
                 loc_attr_list.append(loc_attr)
@@ -100,7 +100,7 @@ def get_correlation_attr(cid, aid):
     if not check_user_private_case(case):
         return {"correlation_list": []}, 200
     attribute = CaseModel.get_misp_attribute(aid)
-    res = CaseModel.check_correlation_attr(cid, attribute)
+    res = CaseModel.check_correlation_attr(cid, attribute, current_user)
     return {"correlation_list": res}, 200
 
 
@@ -141,7 +141,10 @@ def create_misp_object(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "object-template" in request.json:
                 if "attributes" in request.json:
-                    CaseModel.create_misp_object(cid, request.json, current_user)
+                    try:
+                        CaseModel.create_misp_object(cid, request.json, current_user)
+                    except PermissionError as error:
+                        return {"message": str(error), "toast_class": "warning-subtle"}, 403
                     sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                     flowintel_log("audit", 200, "MISP object created", User=current_user.email, CaseId=cid, ObjectTemplate=request.json["object-template"])
                     return CaseModel.with_misp_automation_message({"message": "Object created", "toast_class": "success-subtle"}, sync_result), 200
@@ -212,7 +215,11 @@ def delete_object(cid, oid):
     """Delete an object from case"""
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-            if CaseModel.delete_object(cid, oid, current_user):
+            try:
+                deleted = CaseModel.delete_object(cid, oid, current_user)
+            except PermissionError as error:
+                return {"message": str(error), "toast_class": "warning-subtle"}, 403
+            if deleted:
                 sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                 flowintel_log("audit", 200, "MISP object deleted", User=current_user.email, CaseId=cid, ObjectId=oid)
                 return CaseModel.with_misp_automation_message({"message": "Object deleted", "toast_class": "success-subtle"}, sync_result), 200
@@ -332,6 +339,11 @@ def set_misp_object_tasks(cid, oid):
     to_remove = existing_ids - valid_new_ids
 
     try:
+        CaseModel.check_task_link_permissions(to_add | to_remove, current_user)
+    except PermissionError as error:
+        return {"message": str(error), "toast_class": "warning-subtle"}, 403
+
+    try:
         for tid in to_add:
             link = Task_Misp_Object(task_id=tid, misp_object_id=oid)
             db.session.add(link)
@@ -361,7 +373,7 @@ def get_case_misp_attributes(cid):
     result = []
     for attr in attrs:
         loc = attr.to_json()
-        loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+        loc["correlation_list"] = CaseModel.check_correlation_attr(cid, attr, current_user)
         loc["is_imported"] = True if Case_Timeline_Event.query.filter_by(case_id=int(cid), misp_object_id=-int(attr.id)).first() else False
         loc["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
         loc["tasks"] = [
@@ -406,7 +418,10 @@ def create_misp_attribute(cid):
         return {"message": "Value is required", "toast_class": "warning-subtle"}, 400
     if not data.get("type"):
         return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
-    attr = CaseModel.create_standalone_attribute(cid, data, current_user)
+    try:
+        attr = CaseModel.create_standalone_attribute(cid, data, current_user)
+    except PermissionError as error:
+        return {"message": str(error), "toast_class": "warning-subtle"}, 403
     sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
     return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attr.to_json()}, sync_result), 201
 

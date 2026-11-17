@@ -13,8 +13,6 @@ import litellm
 from flask import current_app, session
 from flask_login import current_user
 
-from sqlalchemy.orm.exc import DetachedInstanceError
-
 import conf.config_module as ConfigModule
 
 
@@ -62,164 +60,46 @@ _dspy_config_lock = threading.Lock()
 _dspy_configured = False
 
 
-# --- MCP session: persistent background asyncio event loop ---
-_mcp_loop: asyncio.AbstractEventLoop = None
-_mcp_session: ClientSession = None
-_mcp_thread_lock = threading.Lock()
-_mcp_thread: threading.Thread = None
-_mcp_ready = threading.Event()
-_mcp_current_api_key: str = None
 # Cancellation helpers for in-flight chatbot generations.
 _chat_cancel_lock = threading.Lock()
 # Map user_id -> cancellation callable
 _chat_cancel_funcs = {}
 
 
-async def _run_mcp_session(env: dict):
-    global _mcp_session
-    server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=env)
-    if _MCP_DEBUG:
-        try:
-            logger.debug("MCP debug: launching command=%s", server_params.command)
-            logger.debug("MCP debug: FLOWINTEL_URL=%s", env.get("FLOWINTEL_URL"))
-            logger.debug("MCP debug: FLOWINTEL_API_KEY present=%s", bool(env.get("FLOWINTEL_API_KEY")))
-        except Exception:
-            logger.exception("MCP debug: error while logging env info")
+def _mcp_environment():
+    """Resolve credentials from the authenticated request, including detached users."""
+    from app import login_manager
+    from app.db_class.db import load_user
 
-    try:
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                _mcp_session = session
-                if _MCP_DEBUG:
-                    logger.debug("MCP debug: session initialized and ready")
-                _mcp_ready.set()
-                # Keep the session alive until the background thread is stopped
-                await asyncio.Event().wait()
-    except Exception as e:
-        # Ensure the ready event is set so callers don't block indefinitely.
-        logger.exception("MCP debug: exception while running MCP session: %s", e)
-        _mcp_ready.set()
+    user_id = None
+    for key in ("_user_id", "user_id", getattr(login_manager, "_user_id_key", None)):
+        if key and session.get(key):
+            user_id = session[key]
+            break
+    if not user_id:
+        user_id = current_user.get_id()
 
-
-def _start_mcp_background(env: dict):
-    global _mcp_loop
-    _mcp_loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(_mcp_loop)
-    if _MCP_DEBUG:
-        logger.debug("MCP debug: starting background asyncio loop in thread")
-    try:
-        _mcp_loop.run_until_complete(_run_mcp_session(env))
-    except Exception:
-        logger.exception("MCP debug: background loop terminated with exception")
-
-
-def _ensure_mcp():
-    """Start the MCP background thread if it is not already running.
-    Must be called from within a Flask application context."""
-    global _mcp_thread, _mcp_session, _mcp_loop, _mcp_current_api_key
-    with _mcp_thread_lock:
-        # Build env and resolve current user's API key without touching ORM-backed
-        # attributes on the possibly-detached `current_user` object.
-        env = {}
-        env["FLOWINTEL_URL"] = (
+    user = load_user(user_id)
+    if user is None or not user.api_key:
+        raise RuntimeError("Authenticated chatbot API identity is unavailable")
+    return {
+        "FLOWINTEL_URL": (
             f'http://{current_app.config.get("FLOWINTEL_APP_HOST")}'
             f':{current_app.config.get("FLOWINTEL_APP_PORT")}/api'
-        )
+        ),
+        "FLOWINTEL_API_KEY": user.api_key,
+    }
 
-        api_key = None
-        user_id = None
 
-        # Try common Flask-Login session keys first to avoid accessing ORM attrs
-        try:
-            for key in ("_user_id", "user_id"):
-                if key in session:
-                    user_id = session.get(key)
-                    break
-            # If login manager set a custom key, try that too (import lazily)
-            if not user_id:
-                try:
-                    from app import login_manager
-
-                    lm_key = getattr(login_manager, "_user_id_key", None)
-                    if lm_key and lm_key in session:
-                        user_id = session.get(lm_key)
-                except Exception:
-                    # ignore import/call errors here
-                    pass
-        except Exception:
-            # No request/session context or other session error
-            user_id = None
-
-        # Fallback to current_user.get_id() which may still raise, but try it last
-        if not user_id and hasattr(current_user, "get_id"):
-            try:
-                user_id = current_user.get_id()
-            except Exception:
-                user_id = None
-
-        # If we have an ID, reload the User from the DB to get a fresh instance
-        if user_id:
-            try:
-                from app.db_class.db import load_user
-
-                reloaded = load_user(user_id)
-                if reloaded:
-                    api_key = getattr(reloaded, "api_key", None)
-            except Exception:
-                logger.exception("MCP debug: failed to reload user from DB to obtain API key")
-        else:
-            # Last resort: try to read directly from current_user (may raise DetachedInstanceError)
-            try:
-                api_key = getattr(current_user, "api_key", None)
-            except DetachedInstanceError:
-                logger.exception("MCP debug: current_user is detached and no user id in session; cannot obtain API key")
-            except Exception:
-                logger.exception("MCP debug: unexpected error reading current_user.api_key")
-
-        env["FLOWINTEL_API_KEY"] = api_key or ""
-
-        # Export into process env so child processes inherit even if launcher doesn't merge
-        try:
-            if api_key:
-                os.environ["FLOWINTEL_API_KEY"] = api_key
-                if _MCP_DEBUG:
-                    masked = api_key
-                    if len(api_key) > 8:
-                        masked = f"{api_key[:4]}...{api_key[-4:]}"
-                    logger.debug("MCP debug: exported FLOWINTEL_API_KEY=%s", masked)
-            else:
-                os.environ.pop("FLOWINTEL_API_KEY", None)
-        except Exception:
-            logger.exception("MCP debug: unable to set FLOWINTEL_API_KEY in os.environ")
-
-        # If an MCP thread is already running but the API key changed, restart it so
-        # the MCP server inherits the new user's key.
-        if _mcp_thread is not None and _mcp_thread.is_alive():
-            if _mcp_current_api_key != env["FLOWINTEL_API_KEY"]:
-                logger.info("MCP debug: API key changed for MCP; restarting background session")
-                try:
-                    if _mcp_loop:
-                        _mcp_loop.call_soon_threadsafe(_mcp_loop.stop)
-                    _mcp_thread.join(timeout=5)
-                except Exception:
-                    logger.exception("MCP debug: error while stopping existing MCP thread")
-                finally:
-                    try:
-                        _mcp_session = None
-                    except Exception:
-                        pass
-                    _mcp_thread = None
-
-        if _mcp_thread is None or not _mcp_thread.is_alive():
-            _mcp_ready.clear()
-            _mcp_thread = threading.Thread(
-                target=_start_mcp_background, args=(env,), daemon=True, name="mcp-session"
-            )
-            _mcp_thread.start()
-            _mcp_current_api_key = env["FLOWINTEL_API_KEY"]
-
-    _mcp_ready.wait(timeout=15)
+async def _call_mcp_tool(env, name, arguments):
+    """Own the identity, transport and cleanup for exactly one tool invocation."""
+    server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=env)
+    async with asyncio.timeout(15) as startup_timeout:
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as client:
+                await client.initialize()
+                startup_timeout.reschedule(None)
+                return await asyncio.wait_for(client.call_tool(name, arguments), timeout=30)
 
 
 # --- Sync wrappers around MCP tools (mirrors flowintel_dspy.py pattern) ---
@@ -287,20 +167,16 @@ def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
     if refusal:
         return refusal
     logger.debug("LLM requested tool -> %s %s", method, path)
-    _ensure_mcp()
-    coro = _mcp_session.call_tool("call_flowintel_api", {"method": method, "path": path, "body": body})
-    future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)
-    return str(future.result(timeout=30))
+    return str(asyncio.run(_call_mcp_tool(
+        _mcp_environment(), "call_flowintel_api", {"method": method, "path": path, "body": body}
+    )))
 
 
 def get_docs_wrapper() -> str:
     """ALWAYS call this tool FIRST if you don't know the exact API paths or required payload.
     Returns the Swagger/OpenAPI documentation showing all valid endpoints."""
     logger.debug("LLM requested tool -> get_api_documentation")
-    _ensure_mcp()
-    coro = _mcp_session.call_tool("get_api_documentation", {})
-    future = asyncio.run_coroutine_threadsafe(coro, _mcp_loop)
-    return str(future.result(timeout=30))
+    return str(asyncio.run(_call_mcp_tool(_mcp_environment(), "get_api_documentation", {})))
 
 
 # --- Register tools and build ReAct agent ---

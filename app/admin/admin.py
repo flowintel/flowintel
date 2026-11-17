@@ -107,6 +107,9 @@ def edit_user(uid):
         if user_modif.org_id != current_user.org_id:
             flash("You can only edit users from your own organisation.", "error")
             return redirect(url_for('admin.users'))
+        if user_modif.is_admin():
+            flash("Only administrators can edit Admin users.", "error")
+            return redirect(url_for('admin.users'))
     elif not current_user.is_admin():
         flash("You do not have permission to edit users.", "error")
         return redirect(url_for('admin.users'))
@@ -193,6 +196,8 @@ def delete_user(uid):
     if current_user.is_pure_org_admin():
         if user.org_id != current_user.org_id:
             return {"message":"You can only delete users from your own organisation", "toast_class": "danger-subtle"}, 403
+        if user.is_admin():
+            return {"message":"Only administrators can delete Admin users", "toast_class": "danger-subtle"}, 403
     elif not current_user.is_admin():
         return {"message":"You do not have permission to delete users", "toast_class": "danger-subtle"}, 403
     

@@ -8,7 +8,7 @@ from app.db_class.db import Notification, Case, Case_Org, Org, User, Task, Task_
 DATE_FORMAT = '%Y-%m-%d'
 DEFAULT_CATEGORY = "general"
 DEFAULT_NOTIFICATION_TYPE = "info"
-DEADLINE_ICONS = ("fa-solid fa-radiation", "fa-solid fa-skull-crossbones")
+DEADLINE_ICONS = ("fa-solid fa-radiation", "fa-solid fa-skull-crossbones", "fa-solid fa-clock")
 
 ICON_NOTIFICATION_METADATA = {
     "fa-solid fa-hand": ("task", "assignment"),
@@ -124,15 +124,23 @@ def build_notification(message, is_read, user_id, case_id, html_icon, creation_d
 def get_notif(nid):
     return Notification.query.get(nid)
 
+def _is_case_deadline_notification(notification):
+    # Legacy metadata inference can mistake a case title for a reminder.
+    # Preserve the established meaning of other known event icons.
+    return notification.html_icon in DEADLINE_ICONS or (
+        notification.html_icon not in ICON_NOTIFICATION_METADATA
+        and notification.notification_type == "reminder"
+    )
+
 def _visible_deadline_notifications(notifications, user):
-    # Historical deadline notices may predate correct recipient scoping, or
+    # Historical deadline/reminder notices may predate correct recipient scoping, or
     # the recipient may since have lost access to the private case.
     from app.case.common_core import check_user_in_private_cases
 
-    case_ids = {n.case_id for n in notifications if n.html_icon in DEADLINE_ICONS}
+    case_ids = {n.case_id for n in notifications if _is_case_deadline_notification(n)}
     cases = Case.query.filter(Case.id.in_(case_ids)).all() if case_ids else []
     visible_ids = {case.id for case in check_user_in_private_cases(cases, user)}
-    return [n for n in notifications if n.html_icon not in DEADLINE_ICONS or n.case_id in visible_ids]
+    return [n for n in notifications if not _is_case_deadline_notification(n) or n.case_id in visible_ids]
 
 def get_user_notif(user, unread_read, category=None, notification_type=None, sort="newest"):
     unread_only = str(unread_read).lower() == "true"

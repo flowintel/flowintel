@@ -517,6 +517,31 @@ legend.analyzer-select-case {
   color: #856404;
 }
 
+/* UUID in the case header (with its copy button) */
+.case-meta-uuid code.meta-value {
+  font-size: 0.8rem;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.meta-copy-btn {
+  border: 0;
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--bs-secondary-color);
+  line-height: 1;
+}
+
+.meta-copy-btn:hover {
+  background: color-mix(in srgb, var(--bs-body-color) 10%, transparent);
+  color: var(--bs-body-color);
+}
+
+.meta-copy-btn .fa-check {
+  color: #198754;
+}
+
 .case-description-section {
   margin-top: 0.5rem;
 }
@@ -1007,6 +1032,7 @@ a.case-content:hover {
 .log-entry { font-family: monospace; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-bottom: 1px solid #eee; }
 .log-entry:nth-child(odd) { background: #f8f9fa; }
 #log-container { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; }
+
 /* ---- user-chip component (static/js/components/user-chip.js) ---- */
 .uchip { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; vertical-align: middle; line-height: 1.2; }
 .uchip--hover { cursor: default; }
@@ -1206,3 +1232,38 @@ a.case-content:hover {
 .clc-remove { flex: 0 0 auto; border: 0; background: none; padding: .1rem .3rem; border-radius: 6px; color: var(--bs-secondary-color); }
 .clc-remove:hover { color: var(--bs-danger); background: rgba(220, 53, 69, .08); }
 @media (max-width: 576px) { .clk-cards { grid-template-columns: 1fr; } }
+/* Icon of a module tab of a case (connector icon, e.g. Rulezet) */
+.module-tab-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: -3px;
+}
+
+/* Single-colour icon of a module tab (an SVG used as a mask, drawn in the text colour) */
+.module-tab-mono {
+  display: inline-block;
+  width: 1.45em;
+  height: 1.15em;
+  vertical-align: -0.22em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+/* Rulezet logo next to a case title (when the connector has no uploaded icon); light / dark
+   versions switched by .rz-logo in css/case/rulezet.css */
+.case-rulezet-mark {
+  width: 30px;
+  height: 22px;
+  vertical-align: middle;
+/* A task reached from another panel (Calendar) flashes once */
+.task-flash {
+  border-radius: 10px;
+  animation: task-flash 1.8s ease-out;
+}
+
+@keyframes task-flash {
+  0%, 30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-primary) 45%, transparent); }
+  100% { box-shadow: 0 0 0 4px transparent; }
+}

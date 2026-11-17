@@ -47,25 +47,46 @@ const _KNOWN_HLJS = new Set([
     'bash','c','cpp','css','diff','go','html','http','java','javascript','json',
     'kotlin','lua','markdown','nginx','php','plaintext','python','ruby','rust',
     'shell','sql','swift','typescript','xml','yaml','text',
+    // grammars of Rulezet (components/hljs-*.js), registered by load_hljs()
+    'yara','suricata','toml','seclang',
 ])
-const _LANG_ALIASES = { nse:'lua', sigma:'yaml', wazuh:'xml', yara:'text', suricata:'text', zeek:'text', crs:'text', nova:'text' }
+// Detection-rule formats -> highlight.js language, as Rulezet's code viewer maps them
+const _LANG_ALIASES = {
+    nse:'lua', sigma:'yaml', atr:'yaml', kunai:'yaml', plum:'yaml', splunk:'yaml',
+    wazuh:'xml', zeek:'text', crs:'seclang', nova:'yara', kql:'sql',
+    elastic:'toml', sagan:'suricata', snort:'suricata',
+}
 function _resolve_lang(lang) {
     const mapped = _LANG_ALIASES[lang] || lang
     return _KNOWN_HLJS.has(mapped) ? mapped : 'text'
 }
 
+// Rule-format grammars missing from the bundled hljs.min.js (taken from Rulezet)
+async function register_rule_languages(hljs) {
+    const extra = { yara: 'hljs-yara.js', suricata: 'hljs-suricata.js', toml: 'hljs-toml.js', seclang: 'hljs-seclang.js' }
+    for (const [name, file] of Object.entries(extra)) {
+        if (hljs.getLanguage(name)) continue
+        try {
+            const { default: grammar } = await import('/static/js/components/' + file)
+            hljs.registerLanguage(name, grammar)
+        } catch (e) {
+            console.warn('Could not load the ' + name + ' grammar', e)
+        }
+    }
+    return hljs
+}
+
 let _hljs_p = null
 
 function load_hljs() {
-    if (window.hljs)  return Promise.resolve(window.hljs)
     if (_hljs_p) return _hljs_p
-    _hljs_p = new Promise((res, rej) => {
+    _hljs_p = (window.hljs ? Promise.resolve(window.hljs) : new Promise((res, rej) => {
         const s = document.createElement('script')
         s.src   = '/static/js/hljs.min.js'
         s.onload  = () => res(window.hljs)
         s.onerror = rej
         document.head.appendChild(s)
-    })
+    })).then(register_rule_languages)
     return _hljs_p
 }
 

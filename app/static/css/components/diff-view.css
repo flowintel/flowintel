@@ -1,0 +1,47 @@
+/* diff-view.js: line diff, after Rulezet's DiffDisplay (diff2html look), on theme colours */
+.dv { display: flex; flex-direction: column; border: 1px solid var(--bs-border-color); border-radius: 8px; overflow: hidden; background: var(--bs-body-bg); }
+.dv-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    background: var(--bs-tertiary-bg);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--bs-secondary-color);
+}
+.dv-name--new { margin-left: auto; }
+.dv-same { color: #198754; }
+.dv-stats { display: inline-flex; gap: 0.5rem; font-family: var(--bs-font-monospace); }
+.dv-stat-add { color: #198754; }
+.dv-stat-del { color: #dc3545; }
+.dv-tools { display: inline-flex; gap: 0.2rem; }
+.dv-tool {
+    padding: 0.05rem 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--bs-secondary-color);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+.dv-tool.active, .dv-tool:hover { background: var(--bs-body-bg); color: var(--bs-body-color); }
+.dv-body { overflow: auto; }
+.dv-table { width: 100%; border-collapse: collapse; font-family: var(--bs-font-monospace); font-size: 0.78rem; line-height: 1.5; }
+.dv-table td { padding: 0 0.5rem; vertical-align: top; }
+.dv-ln { width: 1%; min-width: 2.6em; text-align: right; color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); user-select: none; white-space: nowrap; }
+.dv-sign { width: 1%; padding: 0 0.3rem !important; user-select: none; }
+.dv-code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.dv-table--split .dv-code { width: 49%; }
+.dv-add, .dv-table--split .dv-code.dv-add { background: rgba(25, 135, 84, 0.14); }
+.dv-del, .dv-table--split .dv-code.dv-del { background: rgba(220, 53, 69, 0.13); }
+.dv-add .dv-sign { color: #198754; }
+.dv-del .dv-sign { color: #dc3545; }
+.dv-empty { background: repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(127, 127, 127, 0.07) 4px, rgba(127, 127, 127, 0.07) 8px); }
+.dv--plain .dv-add, .dv--plain .dv-del, .dv--plain .dv-code.dv-add, .dv--plain .dv-code.dv-del { background: none; }
+/* words that changed inside a changed line */
+.dv-del .dv-word, .dv-code.dv-del .dv-word { background: rgba(220, 53, 69, 0.35); border-radius: 2px; }
+.dv-add .dv-word, .dv-code.dv-add .dv-word { background: rgba(25, 135, 84, 0.35); border-radius: 2px; }
+.dv--plain .dv-word { background: none; }

@@ -1,5 +1,7 @@
 import {display_toast} from '/static/js/toaster.js'
-const { ref, nextTick } = Vue
+const { ref, nextTick, onMounted } = Vue
+import { url_set, url_get } from './url_state.js'
+import history_log from './history_log.js'
 
 function textToHtml(value) {
     const span = document.createElement('span')
@@ -49,6 +51,7 @@ function buildMispTimelineText(obj) {
 
 export default {
     delimiters: ['[[', ']]'],
+    components: { history_log },
 	props: {
 		case_id: Number,
 		can_view_history: Boolean
@@ -57,222 +60,45 @@ export default {
         const history = ref()
         const audit_history = ref()
         const main_tab = ref("history-case")
+        // Line to scroll to and outline, set by the Calendar panel before opening this tab
+        const focus_entry = ref(null)
         const case_misp_objects = ref()
 
 
+        // Both logs are lines "[YYYY-MM-DD HH:MM](user): text", read into entries for history_log.js
+        function parse_log(lines) {
+            const out = []
+            for (const line of lines || []) {
+                const m = line.match(/^\[(.*?)\]\((.*?)\):?\s*(.*)$/)
+                if (m) out.push({ date: m[1], user: m[2], text: m[3] })
+            }
+            return out
+        }
+
         async function fetch_history(){
             const res = await fetch("/case/history/" + props.case_id)
-            if(await res.status==404 ){
+            if (res.status == 404) {
                 display_toast(res)
-            }else{
-                let loc = await res.json()
-                history.value = loc["history"]
-
-                const historyDict = new Map();
-                const monthOrder = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
-                ];
-
-                for (const h of history.value) {
-                    const match = h.match(/\[(.*?)\]\((.*?)\)(.*)/);
-                    if (!match) continue;
-
-                    const [_, dateStr, userStr, text] = match;
-                    const date = new Date(dateStr);
-                    const year = date.getFullYear();
-                    const month = date.toLocaleString("default", { month: "long" });
-                    const dayKey = `${String(date.getDate()).padStart(2, "0")}, ${date.toLocaleString("default", { weekday: "short" })}`;
-
-                    if (!historyDict.has(year)) historyDict.set(year, new Map());
-                    const yearMap = historyDict.get(year);
-
-                    if (!yearMap.has(month)) yearMap.set(month, new Map());
-                    const monthMap = yearMap.get(month);
-
-                    if (!monthMap.has(dayKey)) monthMap.set(dayKey, []);
-                    monthMap.get(dayKey).push({
-                        user: userStr,
-                        text: text.trim().slice(1), // remove leading colon and space
-                        date: dateStr
-                    });
-                }
-
-                
-                // Reverse sorted
-                const sortedHistory = new Map(
-                    [...historyDict.entries()].sort((a, b) => b[0] - a[0])
-                    .map(([year, months]) => [
-                        year,
-                        new Map(
-                            [...months.entries()]
-                            .sort((a, b) => monthOrder.indexOf(b[0]) - monthOrder.indexOf(a[0]))
-                            .map(([month, days]) => {
-                                const sortedDays = new Map(
-                                [...days.entries()]
-                                    .sort((a, b) => {
-                                    const aDate = new Date(`${month} ${a[0].split(',')[0]}, ${year}`);
-                                    const bDate = new Date(`${month} ${b[0].split(',')[0]}, ${year}`);
-                                    return bDate - aDate;
-                                    })
-                                    .map(([day, entries]) => [
-                                        day,
-                                        // Sort entries by time, descending
-                                        entries.sort((a, b) =>
-                                            new Date(b.date) - new Date(a.date)
-                                        )
-                                    ])
-                                );
-
-                                const monthCount = [...sortedDays.values()]
-                                .reduce((sum, entries) => sum + entries.length, 0);
-
-                                return [
-                                month,
-                                {
-                                    count: monthCount,
-                                    days: sortedDays
-                                }
-                                ];
-                            })
-                        )
-                    ])
-                );
-
-                // Convert Map to plain object
-                function mapToObject(map) {
-                    const obj = {};
-                    for (const [key, value] of map.entries()) {
-                        if (value instanceof Map) {
-                            obj[key] = mapToObject(value);
-                        } else if (value.days instanceof Map) {
-                            obj[key] = {
-                                count: value.count,
-                                days: mapToObject(value.days)
-                            };
-                        } else {
-                            obj[key] = value;
-                        }
-                    }
-                    return obj;
-                }
-
-                history.value = mapToObject(sortedHistory);
-                
+                return
             }
+            const loc = await res.json()
+            history.value = parse_log(loc["history"])
         }
-        
-        if (props.can_view_history) {
-            fetch_history()
-        }
-
 
         async function fetch_audit_logs(){
             const res = await fetch("/case/audit_logs/" + props.case_id)
-            if(await res.status==404 ){
+            if (res.status == 404) {
                 display_toast(res)
-            }else{
-                let loc = await res.json()
-                audit_history.value = loc["audit_logs"]
-
-                const historyDict = new Map();
-                const monthOrder = [
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"
-                ];
-
-                for (const h of audit_history.value) {
-                    const match = h.match(/\[(.*?)\]\((.*?)\):\s*(.*)/);
-                    if (!match) continue;
-
-                    const [_, dateStr, userStr, text] = match;
-                    const date = new Date(dateStr);
-                    const year = date.getFullYear();
-                    const month = date.toLocaleString("default", { month: "long" });
-                    const dayKey = `${String(date.getDate()).padStart(2, "0")}, ${date.toLocaleString("default", { weekday: "short" })}`;
-
-                    if (!historyDict.has(year)) historyDict.set(year, new Map());
-                    const yearMap = historyDict.get(year);
-
-                    if (!yearMap.has(month)) yearMap.set(month, new Map());
-                    const monthMap = yearMap.get(month);
-
-                    if (!monthMap.has(dayKey)) monthMap.set(dayKey, []);
-                    monthMap.get(dayKey).push({
-                        user: userStr,
-                        text: text.trim(),
-                        date: dateStr
-                    });
-                }
-
-                
-                // Reverse sorted
-                const sortedHistory = new Map(
-                    [...historyDict.entries()].sort((a, b) => b[0] - a[0])
-                    .map(([year, months]) => [
-                        year,
-                        new Map(
-                            [...months.entries()]
-                            .sort((a, b) => monthOrder.indexOf(b[0]) - monthOrder.indexOf(a[0]))
-                            .map(([month, days]) => {
-                                const sortedDays = new Map(
-                                [...days.entries()]
-                                    .sort((a, b) => {
-                                    const aDate = new Date(`${month} ${a[0].split(',')[0]}, ${year}`);
-                                    const bDate = new Date(`${month} ${b[0].split(',')[0]}, ${year}`);
-                                    return bDate - aDate;
-                                    })
-                                    .map(([day, entries]) => [
-                                        day,
-                                        // Sort entries by time, descending
-                                        entries.sort((a, b) =>
-                                            new Date(b.date) - new Date(a.date)
-                                        )
-                                    ])
-                                );
-
-                                const monthCount = [...sortedDays.values()]
-                                .reduce((sum, entries) => sum + entries.length, 0);
-
-                                return [
-                                month,
-                                {
-                                    count: monthCount,
-                                    days: sortedDays
-                                }
-                                ];
-                            })
-                        )
-                    ])
-                );
-
-                // Convert Map to plain object
-                function mapToObject(map) {
-                    const obj = {};
-                    for (const [key, value] of map.entries()) {
-                        if (value instanceof Map) {
-                            obj[key] = mapToObject(value);
-                        } else if (value.days instanceof Map) {
-                            obj[key] = {
-                                count: value.count,
-                                days: mapToObject(value.days)
-                            };
-                        } else {
-                            obj[key] = value;
-                        }
-                    }
-                    return obj;
-                }
-
-                audit_history.value = mapToObject(sortedHistory);
-                
+                return
             }
+            const loc = await res.json()
+            audit_history.value = parse_log(loc["audit_logs"])
         }
-        
+
         if (props.can_view_history) {
+            fetch_history()
             fetch_audit_logs()
         }
-
 
         async function fetch_case_misp_object(){
             const res = await fetch("/case/"+props.case_id+"/get_case_misp_object")
@@ -353,6 +179,7 @@ export default {
         }
 
         async function active_tab(tab_name){
+            url_set('history', tab_name, 'history-case')
             if(tab_name == 'history-case'){
                 main_tab.value = 'history-case'
                 if ( !document.getElementById("tab-history-case").classList.contains("active") ){
@@ -379,7 +206,26 @@ export default {
             }
         }
 
+        onMounted(async () => {
+            const pending = window.flowintel_history_focus
+            if (pending) {
+                window.flowintel_history_focus = null
+                focus_entry.value = pending.entry
+                if (pending.sub && pending.sub !== 'history-case' && props.can_view_history) {
+                    await nextTick()
+                    active_tab(pending.sub)
+                }
+                return
+            }
+            const saved = url_get('history')
+            if (saved && saved !== 'history-case' && props.can_view_history) {
+                await nextTick()
+                active_tab(saved)
+            }
+        })
+
 		return {
+            focus_entry,
             history,
             audit_history,
             main_tab,
@@ -435,60 +281,13 @@ export default {
             </div>
         </template>
         <template v-else-if="history">
-            <div class="btn-group">
-                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <small><i class="fa-solid fa-download fa-fw"></i></small> Export
-                </button>
-                <ul class="dropdown-menu">
-                    <li class="mb-1 text-center">
-                        <a :href="'/case/'+case_id+'/download_history'">Text</a>
-                    </li>
-                    <li class="text-center">
-                        <a :href="'/case/'+case_id+'/download_history_md'">Markdown</a>
-                    </li>
-                </ul>
-            </div>
-            
-            <div class="timeline timeline-custom-style">
-                <template v-for="h, key in history">
-                    <template v-for="month, key_month in h">
-                        <div class="timeline-month">
-                            [[key_month]], [[key]]
-                            <span>[[month.count]] Entries</span>
-                        </div>
-                    
-                        <template v-for="day, key_day in month.days">
-                            <div class="timeline-section">
-                                <div class="timeline-date">
-                                    [[key_day]]
-                                    <span>[[day.length]] Entries</span>
-                                </div>
-                                <div class="row">
-                                    <template v-for="history_data, key_history_data in day">
-                                        <div class="col-sm-4">
-                                            <div class="timeline-box">
-                                                <div class="box-title">
-                                                    <i class="fa fa-asterisk text-info" aria-hidden="true"></i> [[history_data.user]]
-                                                </div>
-                                                <div class="box-content">
-                                                    <div class="box-item"> [[history_data.text]]</div>
-                                                </div>
-                                                <div class="box-footer">[[history_data.date]]</div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-                        
-                    </template>
-                </template>
-            </div>
+            <history_log :entries="history" :focus="main_tab == 'history-case' ? focus_entry : null" empty_text="No history"
+                :exports="[{label: 'Text', href: '/case/' + case_id + '/download_history'}, {label: 'Markdown', href: '/case/' + case_id + '/download_history_md'}]">
+            </history_log>
         </template>
         <template v-else>
-            <i>No history</i>
+            <i>Loading…</i>
         </template>
-
     </template>
     <template v-else-if="main_tab == 'history-misp'">
         <template v-if="!can_view_history">
@@ -511,60 +310,14 @@ export default {
                 <strong>Access Restricted:</strong> You need Admin, Case Admin, or Audit Viewer permission to view audit logs.
             </div>
         </template>
-        <template v-else-if="audit_history && Object.keys(audit_history).length > 0">
-            <div class="btn-group">
-                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                    <small><i class="fa-solid fa-download fa-fw"></i></small> Export
-                </button>
-                <ul class="dropdown-menu">
-                    <li class="mb-1 text-center">
-                        <a :href="'/case/'+case_id+'/download_audit_logs'">Text</a>
-                    </li>
-                    <li class="text-center">
-                        <a :href="'/case/'+case_id+'/download_audit_logs_md'">Markdown</a>
-                    </li>
-                </ul>
-            </div>
-            <p class="text-muted mt-2" style="font-size: 0.85em;"><i class="fa-solid fa-info-circle"></i> Audit entries are extracted from the audit log file</p>
-            
-            <div class="timeline timeline-custom-style">
-                <template v-for="h, key in audit_history">
-                    <template v-for="month, key_month in h">
-                        <div class="timeline-month">
-                            [[key_month]], [[key]]
-                            <span>[[month.count]] Entries</span>
-                        </div>
-                    
-                        <template v-for="day, key_day in month.days">
-                            <div class="timeline-section">
-                                <div class="timeline-date">
-                                    [[key_day]]
-                                    <span>[[day.length]] Entries</span>
-                                </div>
-                                <div class="row">
-                                    <template v-for="audit_data, key_audit_data in day">
-                                        <div class="col-sm-4">
-                                            <div class="timeline-box">
-                                                <div class="box-title">
-                                                    <i class="fa fa-shield-alt text-warning" aria-hidden="true"></i> [[audit_data.user]]
-                                                </div>
-                                                <div class="box-content">
-                                                    <div class="box-item"> [[audit_data.text]]</div>
-                                                </div>
-                                                <div class="box-footer">[[audit_data.date]]</div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-                        </template>
-                        
-                    </template>
-                </template>
-            </div>
+        <template v-else-if="audit_history">
+            <p class="text-muted mb-2 small"><i class="fa-solid fa-info-circle"></i> Audit entries are extracted from the audit log file</p>
+            <history_log :entries="audit_history" :focus="main_tab == 'history-audit' ? focus_entry : null" empty_text="No audit logs"
+                :exports="[{label: 'Text', href: '/case/' + case_id + '/download_audit_logs'}, {label: 'Markdown', href: '/case/' + case_id + '/download_audit_logs_md'}]">
+            </history_log>
         </template>
         <template v-else>
-            <i>No audit logs</i>
+            <i>Loading…</i>
         </template>
     </template>
     `

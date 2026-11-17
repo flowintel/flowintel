@@ -189,6 +189,8 @@ class DeleteUser(Resource):
         if api_user.is_pure_org_admin():
             if user_to_delete.org_id != api_user.org_id:
                 return {"message": "OrgAdmin can only delete users from their own organisation"}, 403
+            if user_to_delete.is_admin():
+                return {"message": "OrgAdmin cannot delete Admin users"}, 403
         
         if AdminModel.delete_user_core(id):
             flowintel_log("audit", 200, "User deleted via API", User=user_to_delete.email, UserId=id, By=api_user.email)

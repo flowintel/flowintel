@@ -94,7 +94,7 @@ def view(cid):
         if not check_user_private_case(case, present_in_case):
             flowintel_log("audit", 403, "View of a case: No access to private case", User=current_user.email, CaseId=cid)
             return render_template("404.html")
-        return render_template("case/case_view.html", case=case.to_json(), present_in_case=present_in_case)
+        return render_template("case/case_view.html", case=case.to_json(current_user), present_in_case=present_in_case)
     return render_template("404.html")
 
 
@@ -268,7 +268,7 @@ def get_case(cid):
     case = CommonModel.get_case(cid)
     if not check_user_private_case(case):
         return None, 200
-    return case.to_json(), 200
+    return case.to_json(current_user), 200
 
 
 @case_blueprint.route("/search", methods=['GET'])
@@ -281,7 +281,7 @@ def search():
     cases = CommonModel.search(text_search, current_user)
     flowintel_log("audit", 200, "Search cases", User=current_user.email, SearchText=text_search)
     if cases:
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     return {"message": "No case", 'toast_class': "danger-subtle"}, 404
 
 
@@ -329,9 +329,12 @@ def get_case_info(cid):
         except Exception:
             files_list = []
 
-        case_json = case.to_json()
+        case_json = case.to_json(current_user)
         case_json["misp_icon"] = CommonModel.get_misp_connector_icon() or ""
         case_json["has_misp_event"] = CommonModel.case_has_misp_event(case.id)
+        # Rulezet module active on the case: its icon is shown next to the title, like MISP's
+        case_json["has_rulezet"] = CommonModel.case_has_connector(case.id, "Rulezet")
+        case_json["rulezet_icon"] = CommonModel.get_connector_icon("Rulezet") or ""
 
         return jsonify({"case": case_json, "tasks": tasks, "orgs_in_case": orgs_in_case, "permission": permission, "present_in_case": present_in_case, "current_user": current_user.to_json(), "files": files_list}), 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
@@ -691,11 +694,27 @@ def history(cid):
             flowintel_log("audit", 403, "Get history: Access restricted", User=current_user.email, CaseId=case.id)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
 
-        history = CommonModel.get_history(case.uuid)
+        history = CommonModel.get_visible_history(case, current_user)
         if history:
             return {"history": history}
         return {"history": None}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<int:cid>/calendar", methods=['GET'])
+@login_required
+def case_calendar(cid):
+    """Everything dated in a case, for its Calendar panel"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+    if not check_user_private_case(case):
+        return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
+    from .case_calendar_core import get_case_calendar
+    # MISP sync logs, schedules and conflicts are only for those allowed on the sync
+    # endpoints themselves (misp_editor_required): leave them out for everyone else
+    include_sync = current_user.is_admin() or current_user.is_misp_editor()
+    return {"items": get_case_calendar(case, include_sync=include_sync)}, 200
 
 
 @case_blueprint.route("/audit_logs/<cid>", methods=['GET'])
@@ -732,7 +751,7 @@ def download_file(cid):
             flowintel_log("audit", 403, "Download case history: Access restricted", User=current_user.email, CaseId=cid)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
-        return CaseModel.download_history(case)
+        return CaseModel.download_history(case, current_user)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -749,7 +768,7 @@ def download_history_md(cid):
             flowintel_log("audit", 403, "Download case markdown: Access restricted", User=current_user.email, CaseId=cid)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
-        return CaseModel.download_history_md(case)
+        return CaseModel.download_history_md(case, current_user)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -857,7 +876,7 @@ def get_clusters():
 @login_required
 def get_used_taxonomies():
     """Get taxonomies that have at least one tag applied to a case"""
-    return {"taxonomies": CommonModel.get_used_taxonomies()}, 200
+    return {"taxonomies": CommonModel.get_used_taxonomies(current_user)}, 200
 
 @case_blueprint.route("/get_used_tags", methods=['GET'])
 @login_required
@@ -866,14 +885,14 @@ def get_used_tags():
     data_dict = dict(request.args)
     if "taxonomies" in data_dict:
         taxos = json.loads(data_dict["taxonomies"])
-        return {"tags": CommonModel.get_used_tags(taxos)}, 200
+        return {"tags": CommonModel.get_used_tags(taxos, current_user)}, 200
     return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_galaxies", methods=['GET'])
 @login_required
 def get_used_galaxies():
     """Get galaxies that have at least one cluster applied to a case"""
-    return {"galaxies": CommonModel.get_used_galaxies()}, 200
+    return {"galaxies": CommonModel.get_used_galaxies(current_user)}, 200
 
 @case_blueprint.route("/get_used_clusters", methods=['GET'])
 @login_required
@@ -881,14 +900,14 @@ def get_used_clusters():
     """Get, for the given galaxies, only the clusters applied to at least one case"""
     if "galaxies" in request.args:
         galaxies = json.loads(request.args.get("galaxies"))
-        return {"clusters": CommonModel.get_used_clusters_galaxy(galaxies)}, 200
+        return {"clusters": CommonModel.get_used_clusters_galaxy(galaxies, current_user)}, 200
     return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_custom_tags", methods=['GET'])
 @login_required
 def get_used_custom_tags():
     """Get custom tags applied to at least one case"""
-    return CommonModel.get_used_custom_tags(), 200
+    return CommonModel.get_used_custom_tags(current_user), 200
 
 
 @case_blueprint.route("/get_used_taxonomies_task", methods=['GET'])
@@ -898,7 +917,7 @@ def get_used_taxonomies_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return {"taxonomies": CommonModel.get_used_taxonomies_task(case_id)}, 200
+    return {"taxonomies": CommonModel.get_used_taxonomies_task(current_user, case_id)}, 200
 
 @case_blueprint.route("/get_used_tags_task", methods=['GET'])
 @login_required
@@ -909,7 +928,7 @@ def get_used_tags_task():
     data_dict = dict(request.args)
     if "taxonomies" in data_dict:
         taxos = json.loads(data_dict["taxonomies"])
-        return {"tags": CommonModel.get_used_tags_task(taxos, case_id)}, 200
+        return {"tags": CommonModel.get_used_tags_task(taxos, current_user, case_id)}, 200
     return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_galaxies_task", methods=['GET'])
@@ -919,7 +938,7 @@ def get_used_galaxies_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return {"galaxies": CommonModel.get_used_galaxies_task(case_id)}, 200
+    return {"galaxies": CommonModel.get_used_galaxies_task(current_user, case_id)}, 200
 
 @case_blueprint.route("/get_used_clusters_task", methods=['GET'])
 @login_required
@@ -929,7 +948,7 @@ def get_used_clusters_task():
     if err: return err
     if "galaxies" in request.args:
         galaxies = json.loads(request.args.get("galaxies"))
-        return {"clusters": CommonModel.get_used_clusters_galaxy_task(galaxies, case_id)}, 200
+        return {"clusters": CommonModel.get_used_clusters_galaxy_task(galaxies, current_user, case_id)}, 200
     return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_custom_tags_task", methods=['GET'])
@@ -939,7 +958,7 @@ def get_used_custom_tags_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return CommonModel.get_used_custom_tags_task(case_id), 200
+    return CommonModel.get_used_custom_tags_task(current_user, case_id), 200
 
 
 @case_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
@@ -1103,4 +1122,4 @@ def delete_case_file(cid, fid):
   
 
 # Register route modules — must be imported after case_blueprint is defined
-from . import case_misp, case_modules, case_notes  # noqa: E402, F401
+from . import case_misp, case_modules, case_notes, case_rulezet  # noqa: E402, F401

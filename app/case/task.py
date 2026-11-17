@@ -259,6 +259,12 @@ def complete_task(tid):
             if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
                 flowintel_log("audit", 403, "Complete task denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid)
                 return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
+            if not task.completed and not TaskModel.can_complete_task(task, current_user):
+                flowintel_log("audit", 403, "Complete task denied: Final review requires an approver", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
+            if task.completed and not TaskModel.can_reopen_task(task, current_user):
+                flowintel_log("audit", 403, "Reopen task denied: Privileged case revival requires Admin or Case Admin", User=current_user.email, CaseId=task.case_id, TaskId=tid)
+                return {"message": "Only Admin or Case Admin can revive a privileged case by reopening a task", "toast_class": "warning-subtle"}, 403
             
             if TaskModel.complete_task(tid, current_user):
                 action = "completed" if task.completed else "revived"
@@ -460,8 +466,12 @@ def assign_user(cid, tid):
 def remove_assign_task(cid, tid):
     """Remove current user assignment to the task"""
     if CommonModel.get_case(cid):
-        if CommonModel.get_task(tid):
+        task = CommonModel.get_task(tid)
+        if task:
             if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+                if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                    flowintel_log("audit", 403, "Remove assignment denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                    return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                 if TaskModel.remove_assign_task(tid, user=current_user, current_user=current_user, flag_current_user=True):
                     flowintel_log("audit", 200, "User removed from task assignment", User=current_user.email, CaseId=cid, TaskId=tid, RemovedUser=current_user.email)
                     return {"message": "User Removed from assignment", "toast_class": "success-subtle"}, 200
@@ -516,9 +526,15 @@ def change_task_status(cid, tid):
                         return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
                     
                     try:
+                        status_obj = CommonModel.get_status(status)
+                        if status_obj and status_obj.name == "Finished" and not TaskModel.can_complete_task(task, current_user):
+                            flowintel_log("audit", 403, "Change task status denied: Final review requires an approver", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": "Only Admin, Case Admin or Queue Admin can complete privileged tasks", "toast_class": "warning-subtle"}, 403
+                        if task.completed and status_obj and status_obj.name != "Finished" and not TaskModel.can_reopen_task(task, current_user):
+                            flowintel_log("audit", 403, "Change task status denied: Privileged case revival requires Admin or Case Admin", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": "Only Admin or Case Admin can revive a privileged case by reopening a task", "toast_class": "warning-subtle"}, 403
                         if TaskModel.change_task_status(status, task, current_user):
                             db.session.commit()
-                            status_obj = CommonModel.get_status(status)
                             status_name = status_obj.name if status_obj else str(status)
                             flowintel_log("audit", 200, f"Status changed to '{status_name}' for task '{tid}-{task.title}'", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Status changed", "toast_class": "success-subtle"}, 200
@@ -558,6 +574,9 @@ def delete_file(tid, fid):
     file = CommonModel.get_file(fid)
     if file and file in task.files:
         if CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Delete task file denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             file_name = file.name
             file_size = file.file_size if file.file_size else 0
             file_type = file.file_type if file.file_type else "unknown"
@@ -579,12 +598,16 @@ def convert_file_to_note(tid, fid):
     task = CommonModel.get_task(tid)
     file = CommonModel.get_file(fid)
     
-    if not file or file not in task.files:
+    if not task or not file or file not in task.files:
         return {"message": "File not found", "toast_class": "danger-subtle"}, 404
     
     if not (CommonModel.get_present_in_case(task.case_id, current_user) or current_user.is_admin()):
         flowintel_log("audit", 403, "Convert file to note: Action not allowed", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
+
+    if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+        flowintel_log("audit", 403, "Convert task file to note denied: Task in restricted status", User=current_user.email, CaseId=task.case_id, TaskId=tid, FileId=fid)
+        return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
     
     file_name = file.name
     file_extension = os.path.splitext(file_name)[1].lower().lstrip('.')
@@ -848,7 +871,12 @@ def change_order(cid, tid):
             task = CommonModel.get_task(tid)
             if task:
                 if task.case_id == case.id:
-                    if TaskModel.change_order(case, task, request.json, current_user):
+                    try:
+                        changed = TaskModel.change_order(case, task, request.json, current_user)
+                    except PermissionError as error:
+                        flowintel_log("audit", 403, "Change task order denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                        return {"message": str(error), "toast_class": "warning-subtle"}, 403
+                    if changed:
                         flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                         return {"message": "Order changed", 'toast_class': "success-subtle"}, 200
                     return {"message": "New index is not one of an other task", 'toast_class': "danger-subtle"}, 400
@@ -882,6 +910,9 @@ def call_module_task_no_instance(cid, tid):
 
     task = CommonModel.get_task(tid)
     if task:
+        if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+            flowintel_log("audit", 403, "Call module denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+            return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
         module = request.args.get("module")
         user_id = request.args.get("user_id")
         res = TaskModel.call_module_task_no_instance(module, task, case, current_user, user_id)
@@ -1212,6 +1243,9 @@ def link_misp_object(cid, tid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Link MISP object denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             if "misp_object_id" not in request.json:
                 return {"message": "Need to pass 'misp_object_id'", 'toast_class': "warning-subtle"}, 400
             link = TaskModel.link_misp_object(tid, request.json["misp_object_id"], current_user)
@@ -1233,6 +1267,9 @@ def unlink_misp_object(cid, tid, oid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Unlink MISP object denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             if TaskModel.unlink_misp_object(tid, oid, current_user):
                 flowintel_log("audit", 200, "MISP object unlinked from task", User=current_user.email, CaseId=cid, TaskId=tid, MispObjectId=oid)
                 return {"message": "MISP object unlinked", 'toast_class': "success-subtle"}, 200
@@ -1268,6 +1305,9 @@ def link_misp_attribute(cid, tid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Link MISP attribute denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             if "misp_attribute_id" not in request.json:
                 return {"message": "Need to pass 'misp_attribute_id'", 'toast_class': "warning-subtle"}, 400
             link = TaskModel.link_misp_attribute(tid, request.json["misp_attribute_id"], current_user)
@@ -1289,6 +1329,9 @@ def unlink_misp_attribute(cid, tid, aid):
     task = CommonModel.get_task(tid)
     if task:
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
+            if TaskModel.is_task_restricted(task) and not TaskModel.can_edit_requested_task(current_user):
+                flowintel_log("audit", 403, "Unlink MISP attribute denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                return {"message": "Task in restricted status can only be modified by Admin, Case Admin or Queue Admin", "toast_class": "warning-subtle"}, 403
             if TaskModel.unlink_misp_attribute(tid, aid, current_user):
                 flowintel_log("audit", 200, "Standalone MISP attribute unlinked from task", User=current_user.email, CaseId=cid, TaskId=tid, MispAttributeId=aid)
                 return {"message": "Standalone MISP attribute unlinked", 'toast_class': "success-subtle"}, 200

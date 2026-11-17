@@ -32,6 +32,9 @@ def _set_instance_sharing_scope_choices(form, user):
 @login_required
 def connectors():
     """connectors' index page"""
+    # Instances created before Rulezet was a default connector get it here
+    from ..utils.init_db import create_rulezet_connector
+    create_rulezet_connector()
     return render_template("connectors/connectors.html")
 
 @connector_blueprint.route("/connectors_icons", methods=['GET'])

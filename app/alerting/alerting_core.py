@@ -11,7 +11,7 @@ from app import db
 from app.case import validation_api as CaseValidation
 from app.case.CaseCore import CaseModel
 from app.case import common_core as CommonCase
-from app.case.common_core import check_user_in_private_cases, get_present_in_case
+from app.case.common_core import check_user_in_private_cases
 from app.connectors import connectors_core as ConnectorModel
 from app.db_class.db import (
     Case,
@@ -642,15 +642,16 @@ def can_user_view_alert(alert, user):
     if user.is_admin():
         return True
 
+    # Connector ownership cannot retain access to an inaccessible private case.
+    if alert.case_id:
+        case = Case.query.get(alert.case_id)
+        if case and not CommonCase.can_view_case(case, user):
+            return False
+
     if alert.owner_user_id:
         return alert.owner_user_id == user.id
     if alert.owner_org_id:
         return alert.owner_org_id == user.org_id
-
-    if alert.case_id:
-        case = Case.query.get(alert.case_id)
-        if case and case.is_private:
-            return get_present_in_case(case.id, user)
     return True
 
 
@@ -788,6 +789,9 @@ def update_review_status(alert, user, review_status, comment=None):
     record_alert_action(alert, review_status, user, comment=comment)
     db.session.commit()
     flowintel_log("audit", 200, "Alert review status updated", User=user.email, AlertId=alert.id, ReviewStatus=review_status)
+    # A concurrent case creation may have added private case data and history.
+    if not can_user_view_alert(alert, user):
+        return {"message": "Permission denied"}, 403
     return {"message": "Alert updated", "alert": alert_to_json(alert)}, 200
 
 
@@ -1015,6 +1019,8 @@ def create_case_from_alert(alert, user, payload=None):
     if claimed != 1:
         db.session.refresh(alert)
         CaseModel.delete_case(case.id, user)
+        if not can_user_view_alert(alert, user):
+            return {"message": "Permission denied"}, 403
         return {"message": "Alert already linked to a case", "case_id": alert.case_id}, 400
 
     imported = import_misp_event_to_case(alert, case, user)

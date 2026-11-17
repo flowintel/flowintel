@@ -317,8 +317,8 @@ def test_queuer_can_edit_approved_task(client):
     assert b"edited" in resp.data
 
 
-def test_queuer_can_complete_approved_task(client):
-    """Approved task is no longer restricted, queuer can complete it."""
+def test_queuer_cannot_complete_approved_task_without_review(client):
+    """Approval permits work; final completion still requires an approver."""
     case_id = setup_privileged_case_with_both(client)
 
     resp = create_task_as(client, case_id, QUEUER_KEY, "Task to approve then complete")
@@ -330,8 +330,7 @@ def test_queuer_can_complete_approved_task(client):
                 headers={"X-API-KEY": QUEUE_ADMIN_KEY},
                 json={"status_id": STATUS_APPROVED})
 
-    # Queuer can now complete
+    # Queuer must submit the work for final review instead of completing it.
     resp = client.get(f"/api/task/{task_id}/complete",
                       headers={"X-API-KEY": QUEUER_KEY})
-    assert resp.status_code == 200
-    assert b"completed" in resp.data
+    assert resp.status_code == 403

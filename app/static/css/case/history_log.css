@@ -1,0 +1,182 @@
+/* history_log.js: compact viewer for the case history and the audit logs.
+   Colours come from Bootstrap's variables so it follows light, dark and the themes. */
+
+.hlog { --hlog-create: #198754; --hlog-edit: #0d6efd; --hlog-delete: #dc3545; font-size: 13px; }
+
+.hlog-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.hlog-search { flex: 1 1 260px; max-width: 420px; }
+.hlog-user { flex: 0 1 220px; width: auto; }
+.hlog-count { color: var(--bs-secondary-color); white-space: nowrap; }
+
+/* Kind chips */
+.hlog-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.hlog-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 12px;
+    line-height: 20px;
+}
+.hlog-chip i { color: var(--hlog-kind); font-size: 11px; }
+.hlog-chip span { color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
+.hlog-chip:hover { border-color: var(--hlog-kind); }
+.hlog-chip.active {
+    background: color-mix(in srgb, var(--hlog-kind) 15%, var(--bs-body-bg));
+    border-color: var(--hlog-kind);
+}
+
+.hlog-kind-misp { --hlog-kind: #0d9fb8; }
+.hlog-kind-file { --hlog-kind: #198754; }
+.hlog-kind-note { --hlog-kind: #b58105; }
+.hlog-kind-status { --hlog-kind: #e8730c; }
+.hlog-kind-user { --hlog-kind: #d63384; }
+.hlog-kind-tag { --hlog-kind: #6610f2; }
+.hlog-kind-link { --hlog-kind: #20a0a0; }
+.hlog-kind-task { --hlog-kind: #0d6efd; }
+.hlog-kind-other { --hlog-kind: #6c757d; }
+
+/* Activity per day */
+.hlog-activity {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 44px;
+    padding: 4px 6px;
+    margin-bottom: 8px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    background: var(--bs-tertiary-bg);
+}
+.hlog-bar {
+    flex: 1 1 0;
+    min-width: 2px;
+    max-width: 24px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    display: flex;
+    align-items: flex-end;
+}
+.hlog-bar span {
+    display: block;
+    width: 100%;
+    border-radius: 2px 2px 0 0;
+    background: color-mix(in srgb, var(--bs-primary) 60%, transparent);
+}
+.hlog-bar:hover:not(:disabled) span, .hlog-bar.active span { background: var(--bs-primary); }
+.hlog-bar.dim span { opacity: 0.35; }
+.hlog-bar.empty { cursor: default; }
+
+/* Scroll area */
+.hlog-scroll {
+    max-height: 65vh;
+    overflow-y: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+}
+
+.hlog-day-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--bs-secondary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.hlog-day-head i { color: var(--bs-secondary-color); font-size: 10px; }
+.hlog-day-count {
+    margin-left: auto;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-secondary-color);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.hlog-rows { list-style: none; margin: 0; padding: 0; }
+.hlog-row {
+    display: grid;
+    grid-template-columns: 42px 20px 22px minmax(0, 140px) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 3px 10px 3px 8px;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--bs-border-color) 50%, transparent);
+    cursor: pointer;
+}
+.hlog-row:hover { background: var(--bs-tertiary-bg); }
+.hlog-action-create { border-left-color: var(--hlog-create); }
+.hlog-action-edit { border-left-color: color-mix(in srgb, var(--hlog-edit) 45%, transparent); }
+.hlog-action-delete { border-left-color: var(--hlog-delete); }
+
+.hlog-time { color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
+.hlog-kind { color: var(--hlog-kind); text-align: center; font-size: 12px; }
+.hlog-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    background: hsl(var(--h) 55% 45%);
+}
+.hlog-user-name { color: var(--bs-secondary-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hlog-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hlog-row.open .hlog-text { white-space: normal; overflow-wrap: anywhere; }
+
+.hlog-sentinel { min-height: 8px; text-align: center; padding: 4px; }
+
+@media (max-width: 576px) {
+    .hlog-row { grid-template-columns: 42px 20px 22px minmax(0, 1fr); }
+    .hlog-user-name { display: none; }
+}
+
+/* Entry reached from another panel (Calendar): outlined until another one is picked */
+.hlog-row.focused {
+    position: relative;
+    z-index: 0;
+    background: color-mix(in srgb, var(--bs-primary) 10%, var(--bs-body-bg));
+    outline: 2px solid var(--bs-primary);
+    outline-offset: -2px;
+    border-radius: 6px;
+    animation: hlog-focus 1.6s ease-out;
+}
+@keyframes hlog-focus {
+    0%, 35% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--bs-primary) 35%, transparent); }
+    100% { box-shadow: 0 0 0 5px transparent; }
+}
+
+/* "Back to top" of the list, inside its corner */
+.hlog-scroll-wrap { position: relative; }
+.hlog-top {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    z-index: 2;
+    border-radius: 999px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}

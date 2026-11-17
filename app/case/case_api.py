@@ -59,7 +59,7 @@ class GetCases(Resource):
     def get(self):
         user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_all_cases(user)
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(user) for case in cases]}, 200
 
 @case_ns.route('/<cid>')
 @case_ns.doc(description='Get a case', params={'cid': 'id of a case'})
@@ -68,9 +68,10 @@ class GetCase(Resource):
     def get(self, cid):
         case = CommonModel.get_case(cid)
         if case:
-            if not check_user_private_case(case, request.headers):
+            user = utils.get_user_from_api(request.headers)
+            if not check_user_private_case(case, request.headers, user):
                 return {"message": "Permission denied"}, 403
-            case_json = case.to_json()
+            case_json = case.to_json(user)
             orgs = CommonModel.get_orgs_in_case(cid)
             case_json["orgs"] = list()
             for org in orgs:
@@ -272,7 +273,7 @@ class GetCasesNotCompleted(Resource):
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_case_by_completed(False, current_user)
-        return {"cases": [case.to_json() for case in cases]}, 200
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     
 @case_ns.route('/completed')
 @case_ns.doc(description='Get all completed cases')
@@ -281,7 +282,7 @@ class GetCasesCompleted(Resource):
     def get(self):
         current_user = utils.get_user_from_api(request.headers)
         cases = CommonModel.get_case_by_completed(True, current_user)
-        return {"cases": [case.to_json() for case in cases]}, 200    
+        return {"cases": [case.to_json(current_user) for case in cases]}, 200
     
 @case_ns.route('/title', methods=["POST"])
 @case_ns.doc(description='Get a case by title')
@@ -293,7 +294,7 @@ class GetCaseTitle(Resource):
             current_user = utils.get_user_from_api(request.headers)
             case = CommonModel.get_case_by_title(request.json["title"], current_user)
             if case:
-                case_json = case.to_json()
+                case_json = case.to_json(current_user)
                 orgs = CommonModel.get_orgs_in_case(case.id)
                 case_json["orgs"] = [{"id": org.id, "uuid": org.uuid, "name": org.name} for org in orgs]            
                 return case_json, 200
@@ -411,7 +412,7 @@ class History(Resource):
                 return {"message": "Permission denied"}, 403
             if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
                 return {"message": "Access restricted"}, 403
-            history = CommonModel.get_history(case.uuid)
+            history = CommonModel.get_visible_history(case, current_user)
             if history:
                 return {"history": history}, 200
             return {"history": None}, 200
@@ -547,7 +548,7 @@ class SearchCase(Resource):
             current_user = utils.get_user_from_api(request.headers)
             cases = CommonModel.search(request.json["search"], current_user)
             if cases:
-                return {"cases": [case.to_json() for case in cases]}, 200
+                return {"cases": [case.to_json(current_user) for case in cases]}, 200
             return {"message": "No case", 'toast_class': "danger-subtle"}, 404
         return {"message": "Please enter terms"}, 400
     
@@ -1152,7 +1153,12 @@ class ChangeOrder(Resource):
                 if task:
                     if 'new-index' in request.json:
                         request.json['new-index'] = request.json['new-index']-1
-                        if TaskModel.change_order(case, task, request.json, current_user):
+                        try:
+                            changed = TaskModel.change_order(case, task, request.json, current_user)
+                        except PermissionError as error:
+                            flowintel_log("audit", 403, "Change task order denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": str(error)}, 403
+                        if changed:
                             flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
@@ -1209,12 +1215,13 @@ class ModifNoteCase(Resource):
                 if not check_user_private_case(case, request.headers, current_user):
                     return {"message": "Permission denied"}, 403
 
+                cid = case.id
                 misp_object = CaseModel.get_misp_object_by_case(cid)
                 loc_object = list()
                 for obj in misp_object:
                     loc_attr_list = list()
                     for attribute in obj.attributes:
-                        res = CaseModel.check_correlation_attr(cid, attribute)
+                        res = CaseModel.check_correlation_attr(cid, attribute, current_user)
                         loc_attr = attribute.to_json()
                         loc_attr["correlation_list"] = res
                         loc_attr_list.append(loc_attr)
@@ -1242,13 +1249,14 @@ class ModifNoteCase(Resource):
             return {"message": "Case not found"}, 404
 
 
-    @case_ns.route('/<cid>/get_correlation_attr/<aid>', methods=['GET'])
+    @case_ns.route('/<cid>/get_correlation_attr/<int:aid>', methods=['GET'])
     @case_ns.doc(description='Get correlation list for an attribute')
     class GetCorrelationAttr(Resource):
         method_decorators = [api_required]
         def get(self, cid, aid):
+            current_user = utils.get_user_from_api(request.headers)
             attribute = CaseModel.get_misp_attribute(aid)
-            res = CaseModel.check_correlation_attr(cid, attribute)
+            res = CaseModel.check_correlation_attr(cid, attribute, current_user)
             return {"correlation_list": res}, 200
 
 
@@ -1293,7 +1301,10 @@ class ModifNoteCase(Resource):
                     if request.json:
                         if "object-template" in request.json:
                             if "attributes" in request.json:
-                                CaseModel.create_misp_object(cid, request.json, current_user)
+                                try:
+                                    CaseModel.create_misp_object(cid, request.json, current_user)
+                                except PermissionError as error:
+                                    return {"message": str(error)}, 403
                                 sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                                 return CaseModel.with_misp_automation_message({"message": "Object created"}, sync_result), 200
                             return {"message": "Need to pass 'attributes'"}, 400
@@ -1311,7 +1322,11 @@ class ModifNoteCase(Resource):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    if CaseModel.delete_object(cid, oid, current_user):
+                    try:
+                        deleted = CaseModel.delete_object(cid, oid, current_user)
+                    except PermissionError as error:
+                        return {"message": str(error)}, 403
+                    if deleted:
                         sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                         return CaseModel.with_misp_automation_message({"message": "Object deleted"}, sync_result), 200
                     return {"message": "Object not found in this case"}, 404
@@ -1458,11 +1473,12 @@ class ModifNoteCase(Resource):
             if not check_user_private_case(case, request.headers, current_user):
                 return {"message": "Permission denied", "toast_class": "warning-subtle"}, 403
 
+            cid = case.id
             attrs = CaseModel.get_standalone_attributes_by_case(cid)
             result = []
             for attr in attrs:
                 loc_attr = attr.to_json()
-                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr)
+                loc_attr["correlation_list"] = CaseModel.check_correlation_attr(cid, attr, current_user)
                 loc_attr["synced_instances"] = CaseModel.serialize_attribute_synced_instances(cid, attr.id, current_user)
                 result.append(loc_attr)
 
@@ -1498,7 +1514,10 @@ class ModifNoteCase(Resource):
             if not request.json.get("type"):
                 return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
 
-            attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            try:
+                attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            except PermissionError as error:
+                return {"message": str(error), "toast_class": "warning-subtle"}, 403
             sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
             flowintel_log("audit", 201, "Standalone MISP attribute created", User=current_user.email, CaseId=cid, AttributeId=attribute.id)
             return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, sync_result), 201

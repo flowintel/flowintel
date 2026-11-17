@@ -11,6 +11,7 @@ import user_chip from '/static/js/components/user-chip.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
+import { url_set, url_get, url_list, url_list_toggle } from './url_state.js'
 const { ref, computed, nextTick } = Vue
 export default {
 	delimiters: ['[[', ']]'],
@@ -168,6 +169,7 @@ export default {
 
 
 		async function select_tab_task(tab_name) {
+			url_set('task_tab_' + props.task.id, tab_name, 'main')
 			if (tab_name == 'main') {
 				selected_tab.value = 'main'
 				if (!document.getElementById("tab-task-main-" + props.task.id).classList.contains("active")) {
@@ -232,6 +234,11 @@ export default {
 
 		}
 
+		// Opens the Calendar panel of the case on this task (case_view.html listens)
+		function see_in_calendar(task) {
+			window.dispatchEvent(new CustomEvent('calendar-focus-task', { detail: { task: task.id } }))
+		}
+
 		function toggleCollapse(id) {
 			const collapseEl = document.getElementById('collapse' + id);
 			const collapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
@@ -240,8 +247,35 @@ export default {
 
 
 		// Vue function
-		Vue.onMounted(() => {
+		// Open/closed state and tab of the task kept in the URL (url_state.js)
+		function on_task_shown(e) {
+			if (e.target.id !== 'collapse' + props.task.id) return
+			url_list_toggle('task', props.task.id, true)
+		}
+		function on_task_hidden(e) {
+			if (e.target.id !== 'collapse' + props.task.id) return
+			url_list_toggle('task', props.task.id, false)
+			// A closed task reopens on its main tab
+			select_tab_task('main')
+		}
+
+		Vue.onMounted(async () => {
+			select2_change(props.task.id)
 			is_mounted = true
+
+			const collapseEl = document.getElementById('collapse' + props.task.id)
+			if (collapseEl) {
+				collapseEl.addEventListener('shown.bs.collapse', on_task_shown)
+				collapseEl.addEventListener('hidden.bs.collapse', on_task_hidden)
+				if (url_list('task').includes(String(props.task.id)) && !url_list('hide').includes('tasks')) {
+					bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false }).show()
+					const saved_tab = url_get('task_tab_' + props.task.id)
+					if (saved_tab) {
+						await Vue.nextTick()
+						select_tab_task(saved_tab)
+					}
+				}
+			}
 
 			// Listen for newly created standalone attributes and update task link list
 			window.addEventListener('misp-attribute-created', on_misp_attribute_created)
@@ -326,6 +360,7 @@ export default {
 			task_instances_selected,
 			task_module_selected,
 			selected_tab,
+			see_in_calendar,
 			expandedTasks,
 
 			take_task,
@@ -434,7 +469,7 @@ export default {
 				<div class="d-flex w-100 justify-content-between">
 					<div class="task-galaxy-row" v-if="task.galaxies && task.galaxies.length">
 						<template v-for="galaxy in task.galaxies">
-							<div :title="'Description:\\n' + galaxy.description">
+							<div class="me-1 mb-1" :title="'Description:\\n' + galaxy.description">
 								<span class="cluster">
 									<span v-html="mapIcon(galaxy.icon)"></span>
 									[[galaxy.name]]
@@ -524,6 +559,18 @@ export default {
 				   title="Edit the task">
 					<i class="fa-solid fa-pen-to-square fa-fw"></i>
 				</a>
+			</div>
+			<div>
+				<button class="btn btn-outline-primary" @click="see_in_calendar(task)" title="See in the calendar">
+					<i class="fa-solid fa-calendar-days fa-fw"></i>
+				</button>
+			</div>
+		</div>
+		<div v-else>
+			<div>
+				<button class="btn btn-outline-primary" @click="see_in_calendar(task)" title="See in the calendar">
+					<i class="fa-solid fa-calendar-days fa-fw"></i>
+				</button>
 			</div>
 		</div>
 	</div>

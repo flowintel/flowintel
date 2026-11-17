@@ -316,19 +316,38 @@ def get_tags(taxos) -> dict:
 # helpers take the link model (Case_Tags vs Task_Tags, etc.) so case- and
 # task-scoped endpoints share one implementation. ----
 
-def _used_taxonomies(tag_link_model, case_id=None) -> list:
-    query = db.session.query(tag_link_model.tag_id)
+def _classification_usage_ids(link_model, id_column, current_user, case_id=None):
+    query = db.session.query(id_column)
+    if link_model in (Case_Tags, Case_Galaxy_Tags, Case_Custom_Tags):
+        query = query.join(Case, Case.id == link_model.case_id)
+    elif link_model in (Task_Tags, Task_Galaxy_Tags, Task_Custom_Tags):
+        query = query.join(Task, Task.id == link_model.task_id).join(Case, Case.id == Task.case_id)
+    else:
+        # Templates are shared catalogs, independent of live case permissions.
+        return query.distinct()
+
     if case_id is not None:
-        query = query.join(Task, Task.id == tag_link_model.task_id).filter(Task.case_id == case_id)
-    tag_ids = query.distinct()
+        query = query.filter(Case.id == case_id)
+    if current_user is None:
+        return query.filter(False).distinct()
+    if not current_user.is_admin():
+        visibility = Case.is_private.is_not(True)
+        if current_user.org_id is not None:
+            membership = db.session.query(Case_Org.case_id).join(Org, Org.id == Case_Org.org_id).filter(
+                Case_Org.org_id == current_user.org_id
+            )
+            visibility = or_(visibility, Case.id.in_(membership))
+        query = query.filter(visibility)
+    return query.distinct()
+
+
+def _used_taxonomies(tag_link_model, case_id=None, current_user=None) -> list:
+    tag_ids = _classification_usage_ids(tag_link_model, tag_link_model.tag_id, current_user, case_id)
     taxo_ids = {tag.taxonomy_id for tag in Tags.query.filter(Tags.id.in_(tag_ids)).all()}
     return [t.name for t in Taxonomy.query.filter(Taxonomy.id.in_(taxo_ids)).all()]
 
-def _used_tags(tag_link_model, taxos, case_id=None) -> dict:
-    base_query = db.session.query(tag_link_model.tag_id)
-    if case_id is not None:
-        base_query = base_query.join(Task, Task.id == tag_link_model.task_id).filter(Task.case_id == case_id)
-    tag_ids = base_query.distinct()
+def _used_tags(tag_link_model, taxos, case_id=None, current_user=None) -> dict:
+    tag_ids = _classification_usage_ids(tag_link_model, tag_link_model.tag_id, current_user, case_id)
     out = dict()
     for taxo in taxos:
         taxonomy = Taxonomy.query.filter_by(name=taxo).first()
@@ -338,19 +357,13 @@ def _used_tags(tag_link_model, taxos, case_id=None) -> dict:
         out[taxo] = [tag.to_json() for tag in Tags.query.filter(Tags.taxonomy_id==taxonomy.id, Tags.id.in_(tag_ids)).all() if not tag.exclude]
     return out
 
-def _used_galaxies(galaxy_link_model, case_id=None) -> list:
-    query = db.session.query(galaxy_link_model.cluster_id)
-    if case_id is not None:
-        query = query.join(Task, Task.id == galaxy_link_model.task_id).filter(Task.case_id == case_id)
-    cluster_ids = query.distinct()
+def _used_galaxies(galaxy_link_model, case_id=None, current_user=None) -> list:
+    cluster_ids = _classification_usage_ids(galaxy_link_model, galaxy_link_model.cluster_id, current_user, case_id)
     galaxy_ids = {cluster.galaxy_id for cluster in Cluster.query.filter(Cluster.id.in_(cluster_ids)).all()}
     return [g.to_json() for g in Galaxy.query.filter(Galaxy.id.in_(galaxy_ids)).all()]
 
-def _used_clusters_galaxy(galaxy_link_model, galaxies, case_id=None) -> dict:
-    base_query = db.session.query(galaxy_link_model.cluster_id)
-    if case_id is not None:
-        base_query = base_query.join(Task, Task.id == galaxy_link_model.task_id).filter(Task.case_id == case_id)
-    cluster_ids = base_query.distinct()
+def _used_clusters_galaxy(galaxy_link_model, galaxies, case_id=None, current_user=None) -> dict:
+    cluster_ids = _classification_usage_ids(galaxy_link_model, galaxy_link_model.cluster_id, current_user, case_id)
     out = dict()
     for galaxy in galaxies:
         g = Galaxy.query.filter_by(name=galaxy).first()
@@ -360,59 +373,56 @@ def _used_clusters_galaxy(galaxy_link_model, galaxies, case_id=None) -> dict:
         out[galaxy] = [c.to_json() for c in Cluster.query.filter(Cluster.galaxy_id==g.id, Cluster.id.in_(cluster_ids)).all() if not c.exclude]
     return out
 
-def _used_custom_tags(custom_tag_link_model, case_id=None) -> list:
-    query = db.session.query(custom_tag_link_model.custom_tag_id)
-    if case_id is not None:
-        query = query.join(Task, Task.id == custom_tag_link_model.task_id).filter(Task.case_id == case_id)
-    ct_ids = query.distinct()
+def _used_custom_tags(custom_tag_link_model, case_id=None, current_user=None) -> list:
+    ct_ids = _classification_usage_ids(custom_tag_link_model, custom_tag_link_model.custom_tag_id, current_user, case_id)
     return [c.to_json() for c in Custom_Tags.query.filter(Custom_Tags.id.in_(ct_ids)).all()]
 
 
-def get_used_taxonomies() -> list:
+def get_used_taxonomies(current_user) -> list:
     """Return taxonomy names that have at least one tag applied to a case"""
-    return _used_taxonomies(Case_Tags)
+    return _used_taxonomies(Case_Tags, current_user=current_user)
 
-def get_used_tags(taxos) -> dict:
+def get_used_tags(taxos, current_user) -> dict:
     """Return, for each given taxonomy name, only the tags applied to at least one case"""
-    return _used_tags(Case_Tags, taxos)
+    return _used_tags(Case_Tags, taxos, current_user=current_user)
 
-def get_used_galaxies() -> list:
+def get_used_galaxies(current_user) -> list:
     """Return galaxies that have at least one cluster applied to a case"""
-    return _used_galaxies(Case_Galaxy_Tags)
+    return _used_galaxies(Case_Galaxy_Tags, current_user=current_user)
 
-def get_used_clusters_galaxy(galaxies) -> dict:
+def get_used_clusters_galaxy(galaxies, current_user) -> dict:
     """Return, for each given galaxy name, only the clusters applied to at least one case"""
-    return _used_clusters_galaxy(Case_Galaxy_Tags, galaxies)
+    return _used_clusters_galaxy(Case_Galaxy_Tags, galaxies, current_user=current_user)
 
-def get_used_custom_tags() -> list:
+def get_used_custom_tags(current_user) -> list:
     """Return custom tags applied to at least one case"""
-    return _used_custom_tags(Case_Custom_Tags)
+    return _used_custom_tags(Case_Custom_Tags, current_user=current_user)
 
 
-def get_used_taxonomies_task(case_id=None) -> list:
+def get_used_taxonomies_task(current_user, case_id=None) -> list:
     """Return taxonomy names that have at least one tag applied to a task
     (optionally restricted to tasks belonging to the given case)"""
-    return _used_taxonomies(Task_Tags, case_id)
+    return _used_taxonomies(Task_Tags, case_id, current_user)
 
-def get_used_tags_task(taxos, case_id=None) -> dict:
+def get_used_tags_task(taxos, current_user, case_id=None) -> dict:
     """Return, for each given taxonomy name, only the tags applied to at least
     one task (optionally restricted to tasks belonging to the given case)"""
-    return _used_tags(Task_Tags, taxos, case_id)
+    return _used_tags(Task_Tags, taxos, case_id, current_user)
 
-def get_used_galaxies_task(case_id=None) -> list:
+def get_used_galaxies_task(current_user, case_id=None) -> list:
     """Return galaxies that have at least one cluster applied to a task
     (optionally restricted to tasks belonging to the given case)"""
-    return _used_galaxies(Task_Galaxy_Tags, case_id)
+    return _used_galaxies(Task_Galaxy_Tags, case_id, current_user)
 
-def get_used_clusters_galaxy_task(galaxies, case_id=None) -> dict:
+def get_used_clusters_galaxy_task(galaxies, current_user, case_id=None) -> dict:
     """Return, for each given galaxy name, only the clusters applied to at
     least one task (optionally restricted to tasks belonging to the given case)"""
-    return _used_clusters_galaxy(Task_Galaxy_Tags, galaxies, case_id)
+    return _used_clusters_galaxy(Task_Galaxy_Tags, galaxies, case_id, current_user)
 
-def get_used_custom_tags_task(case_id=None) -> list:
+def get_used_custom_tags_task(current_user, case_id=None) -> list:
     """Return custom tags applied to at least one task (optionally
     restricted to tasks belonging to the given case)"""
-    return _used_custom_tags(Task_Custom_Tags, case_id)
+    return _used_custom_tags(Task_Custom_Tags, case_id, current_user)
 
 
 def get_used_taxonomies_case_template() -> list:
@@ -557,6 +567,32 @@ def get_misp_connector_icon():
         .first()
     )
     return icon.uuid if icon else None
+
+def get_connector_icon(connector_name):
+    """Return the icon UUID of a connector (by name, case-insensitive), or None."""
+    icon = (
+        Icon_File.query
+        .join(Connector_Icon, Connector_Icon.file_icon_id == Icon_File.id)
+        .join(Connector, Connector.icon_id == Connector_Icon.id)
+        .filter(db.func.lower(Connector.name) == connector_name.lower())
+        .first()
+    )
+    return icon.uuid if icon else None
+
+
+def case_has_connector(case_id, connector_name):
+    """Check whether a connector type (by name, case-insensitive) is linked to a case."""
+    return (
+        Case_Connector_Instance.query
+        .join(Connector_Instance, Case_Connector_Instance.instance_id == Connector_Instance.id)
+        .join(Connector, Connector_Instance.connector_id == Connector.id)
+        .filter(
+            Case_Connector_Instance.case_id == case_id,
+            db.func.lower(Connector.name) == connector_name.lower(),
+        )
+        .first() is not None
+    )
+
 
 def case_has_misp_event(case_id):
     """Check whether a case is linked to a MISP event via a connector instance."""
@@ -718,6 +754,86 @@ def get_history(case_uuid):
         return loc_file
     except OSError:
         return False
+
+
+_HISTORY_EVENT_START = re.compile(r"^\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}\]\(")
+_HISTORY_REFERENCE_PREFIXES = ("Case linked to case '", "Case link '", "Case forked, ")
+_HISTORY_REFERENCE_TARGET = re.compile(
+    r"^Case (?:(?:linked to case|link) '([0-9]{1,19})-[ \t]|forked, ([0-9]{1,19}) -[ \t])"
+)
+_HISTORY_MESSAGE_SEPARATOR = re.compile(r"\):[ \t]+")
+_HISTORY_LINK_END = re.compile(
+    r"'(?: added| removed|, from the other case| removed, from the other case)"
+    r"(?: \(merge from .*\))*$"
+)
+
+
+def _history_case_references(record):
+    messages = _HISTORY_MESSAGE_SEPARATOR.split("\n".join(record))
+    if len(messages) > 1:
+        messages = messages[1:]
+    targets = set()
+    for index, message in enumerate(messages):
+        message = message.lstrip(" \t")
+        match = _HISTORY_REFERENCE_TARGET.match(message)
+        if match:
+            case_id = int(match.group(1) or match.group(2))
+            targets.add(case_id if 0 < case_id <= 2**63 - 1 else None)
+        elif index == 0 and message.startswith(_HISTORY_REFERENCE_PREFIXES):
+            targets.add(None)
+    # Check all possible author/action boundaries in ambiguous legacy records.
+    # Ordinary title text such as '): Case forked, example' is not a reference.
+    return targets
+
+
+def _history_record_complete(record):
+    text = "\n".join(record)
+    messages = _HISTORY_MESSAGE_SEPARATOR.split(text)[1:]
+    if not messages:
+        return False  # A legacy author may itself contain newlines.
+    if any(message.startswith(_HISTORY_REFERENCE_PREFIXES[:2])
+           and _HISTORY_REFERENCE_TARGET.match(message) for message in messages):
+        # A timestamp-looking line within an old title is still part of the
+        # link event until its writer's closing action has been reached.
+        return bool(_HISTORY_LINK_END.search(record[-1]))
+    return True
+
+
+def get_visible_history(case, current_user):
+    """Return per-case history without references to inaccessible linked cases.
+
+    Keep get_history() raw for internal copying and community-wide auditing.
+    Visibility is checked on every read, including old and unlinked events.
+    """
+    if not can_view_case(case, current_user):
+        return False
+    history = get_history(case.uuid)
+    if not history or current_user.is_admin():
+        return history
+
+    records = []
+    for line in history:
+        if not records or (_HISTORY_EVENT_START.match(line) and _history_record_complete(records[-1])):
+            records.append([])
+        records[-1].append(line)
+
+    visible = []
+    target_visibility = {}
+    for record in records:
+        allowed = True
+        for target_id in _history_case_references(record):
+            if target_id is None:
+                allowed = False
+                break
+            if target_id not in target_visibility:
+                target_visibility[target_id] = can_view_case(get_case(target_id), current_user)
+            if not target_visibility[target_id]:
+                allowed = False
+                break
+        # Old multiline titles belong to the same event as their first line.
+        if allowed:
+            visible.extend(record)
+    return visible
 
 
 def get_audit_logs(case_id):
@@ -1049,7 +1165,7 @@ def create_task_from_template(template_id, cid, current_user=None):
         case.nb_tasks = 0
     
     status_id = 1
-    if current_user and case.privileged_case:
+    if case.privileged_case:
         status_id = current_app.config['TASK_REQUESTED']
     
     task = Task(
