@@ -2,7 +2,7 @@ import datetime
 
 from app import db
 from app.analyzer.session_class import SessionClass
-from app.db_class.db import Misp_Module_Result, Notification, User
+from app.db_class.db import Case, Misp_Module_Result, Notification, User
 from app.notification import notification_core as NotifModel
 
 
@@ -45,6 +45,9 @@ def test_get_user_notif_can_sort_by_category_and_type(app):
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     with app.app_context():
         user = User.query.filter_by(api_key="editor_api_key").first()
+        case = Case(title="Visible reminder case", is_private=False)
+        db.session.add(case)
+        db.session.flush()
         db.session.add_all([
             Notification(
                 message="Task assigned",
@@ -70,7 +73,7 @@ def test_get_user_notif_can_sort_by_category_and_type(app):
                 message="Reminder",
                 is_read=False,
                 user_id=user.id,
-                case_id=3,
+                case_id=case.id,
                 creation_date=now - datetime.timedelta(minutes=1),
                 html_icon="fa-solid fa-clock",
                 category="deadline",
