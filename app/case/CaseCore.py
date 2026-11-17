@@ -2176,8 +2176,32 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     # MISP Object #
     ###############
  
+    def check_task_link_permissions(self, task_ids, current_user):
+        """Authorize every task whose MISP links will change before any writes."""
+        for task in Task.query.filter(Task.id.in_(task_ids)).all():
+            if TaskModel.is_task_restricted(task) and (
+                current_user is None or not TaskModel.can_edit_requested_task(current_user)
+            ):
+                raise PermissionError("Task in restricted status can only be modified by Admin, Case Admin or Queue Admin")
+
+    def get_misp_link_task_ids(self, cid, task_ids, current_user):
+        """Resolve same-case creation links and authorize them before creating an entity."""
+        valid_task_ids = set()
+        if isinstance(task_ids, list):
+            for tid in task_ids:
+                try:
+                    tid_int = int(tid)
+                except (TypeError, ValueError, OverflowError):
+                    continue
+                task = Task.query.get(tid_int)
+                if task and int(task.case_id) == int(cid):
+                    valid_task_ids.add(tid_int)
+        self.check_task_link_permissions(valid_task_ids, current_user)
+        return valid_task_ids
+
     def create_misp_object(self, cid, request_json, current_user):
         """Create a new misp object"""
+        valid_task_ids = self.get_misp_link_task_ids(cid, request_json.get('task_ids', []), current_user)
         case_misp_object = Case_Misp_Object(
             case_id=cid,
             template_uuid=request_json["object-template"]["uuid"],
@@ -2192,18 +2216,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         # If task ids were provided on creation, link them to the new object
         try:
-            task_ids = request_json.get('task_ids', []) if isinstance(request_json, dict) else []
-            if isinstance(task_ids, list) and len(task_ids) > 0:
-                valid_task_ids = set()
-                for tid in task_ids:
-                    try:
-                        tid_int = int(tid)
-                    except Exception:
-                        continue
-                    t = Task.query.get(tid_int)
-                    if t and int(t.case_id) == int(cid):
-                        valid_task_ids.add(tid_int)
-
+            if valid_task_ids:
                 for tid in valid_task_ids:
                     link = Task_Misp_Object(task_id=tid, misp_object_id=case_misp_object.id)
                     db.session.add(link)
@@ -2546,6 +2559,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         """Delete a misp object"""
         misp_object = self.get_misp_object(oid)
         if int(cid) == misp_object.case_id:
+            self.check_task_link_permissions(
+                [link.task_id for link in Task_Misp_Object.query.filter_by(misp_object_id=oid).all()], current_user
+            )
             # Remove any timeline events (and their links) that reference this object
             event_list = Case_Timeline_Event.query.filter_by(case_id=cid, misp_object_id=oid).all()
             if event_list:
@@ -2756,6 +2772,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def create_standalone_attribute(self, cid, data, current_user):
         """Create a standalone MISP attribute (not inside any object)"""
+        valid_task_ids = self.get_misp_link_task_ids(cid, data.get('task_ids', []), current_user)
         first_seen = None
         last_seen = None
         ids_flag = False
@@ -2797,18 +2814,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         # If task ids were provided on creation, link them to the new standalone attribute
         try:
-            task_ids = data.get('task_ids', []) if isinstance(data, dict) else []
-            if isinstance(task_ids, list) and len(task_ids) > 0:
-                valid_task_ids = set()
-                for tid in task_ids:
-                    try:
-                        tid_int = int(tid)
-                    except Exception:
-                        continue
-                    t = Task.query.get(tid_int)
-                    if t and int(t.case_id) == int(cid):
-                        valid_task_ids.add(tid_int)
-
+            if valid_task_ids:
                 for tid in valid_task_ids:
                     link = Task_Misp_Attribute(task_id=tid, misp_attribute_id=attr.id)
                     db.session.add(link)
@@ -2875,6 +2881,13 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         attr = Misp_Attribute.query.filter_by(id=aid, case_id=cid, case_misp_object_id=None).first()
         if not attr:
             return {"message": "Attribute not found", "toast_class": "warning-subtle"}, 404
+
+        try:
+            self.check_task_link_permissions(
+                [link.task_id for link in Task_Misp_Attribute.query.filter_by(misp_attribute_id=attr.id).all()], current_user
+            )
+        except PermissionError as error:
+            return {"message": str(error), "toast_class": "warning-subtle"}, 403
         
         misp_attrs = Misp_Attribute_Instance_Uuid.query.filter_by(misp_attribute_id=attr.id, case_id=cid).all()
         for m_a in misp_attrs:
@@ -2923,6 +2936,11 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         to_add = valid_new_ids - existing_ids
         to_remove = existing_ids - valid_new_ids
+
+        try:
+            self.check_task_link_permissions(to_add | to_remove, current_user)
+        except PermissionError as error:
+            return {"message": str(error), "toast_class": "warning-subtle"}, 403
 
         try:
             for tid in to_add:

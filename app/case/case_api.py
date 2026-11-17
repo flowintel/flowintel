@@ -1153,7 +1153,12 @@ class ChangeOrder(Resource):
                 if task:
                     if 'new-index' in request.json:
                         request.json['new-index'] = request.json['new-index']-1
-                        if TaskModel.change_order(case, task, request.json, current_user):
+                        try:
+                            changed = TaskModel.change_order(case, task, request.json, current_user)
+                        except PermissionError as error:
+                            flowintel_log("audit", 403, "Change task order denied: Task in restricted status", User=current_user.email, CaseId=cid, TaskId=tid)
+                            return {"message": str(error)}, 403
+                        if changed:
                             flowintel_log("audit", 200, "Task order changed", User=current_user.email, CaseId=cid, TaskId=tid)
                             return {"message": "Order changed"}, 200
                         return {"message": "New index is not one of an other task"}, 400
@@ -1296,7 +1301,10 @@ class ModifNoteCase(Resource):
                     if request.json:
                         if "object-template" in request.json:
                             if "attributes" in request.json:
-                                CaseModel.create_misp_object(cid, request.json, current_user)
+                                try:
+                                    CaseModel.create_misp_object(cid, request.json, current_user)
+                                except PermissionError as error:
+                                    return {"message": str(error)}, 403
                                 sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                                 return CaseModel.with_misp_automation_message({"message": "Object created"}, sync_result), 200
                             return {"message": "Need to pass 'attributes'"}, 400
@@ -1314,7 +1322,11 @@ class ModifNoteCase(Resource):
             if CommonModel.get_case(cid):
                 current_user = utils.get_user_from_api(request.headers)
                 if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
-                    if CaseModel.delete_object(cid, oid, current_user):
+                    try:
+                        deleted = CaseModel.delete_object(cid, oid, current_user)
+                    except PermissionError as error:
+                        return {"message": str(error)}, 403
+                    if deleted:
                         sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
                         return CaseModel.with_misp_automation_message({"message": "Object deleted"}, sync_result), 200
                     return {"message": "Object not found in this case"}, 404
@@ -1502,7 +1514,10 @@ class ModifNoteCase(Resource):
             if not request.json.get("type"):
                 return {"message": "Type is required", "toast_class": "warning-subtle"}, 400
 
-            attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            try:
+                attribute = CaseModel.create_standalone_attribute(cid, request.json, current_user)
+            except PermissionError as error:
+                return {"message": str(error), "toast_class": "warning-subtle"}, 403
             sync_result = CaseModel.trigger_misp_send_on_change(cid, current_user)
             flowintel_log("audit", 201, "Standalone MISP attribute created", User=current_user.email, CaseId=cid, AttributeId=attribute.id)
             return CaseModel.with_misp_automation_message({"message": "Attribute created", "toast_class": "success-subtle", "attribute": attribute.to_json()}, sync_result), 201
