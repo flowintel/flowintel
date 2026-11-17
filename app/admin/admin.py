@@ -107,6 +107,9 @@ def edit_user(uid):
         if user_modif.org_id != current_user.org_id:
             flash("You can only edit users from your own organisation.", "error")
             return redirect(url_for('admin.users'))
+        if user_modif.is_admin():
+            flash("Only administrators can edit Admin users.", "error")
+            return redirect(url_for('admin.users'))
     elif not current_user.is_admin():
         flash("You do not have permission to edit users.", "error")
         return redirect(url_for('admin.users'))
