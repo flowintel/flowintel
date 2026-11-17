@@ -412,7 +412,7 @@ class History(Resource):
                 return {"message": "Permission denied"}, 403
             if not (current_user.is_admin() or current_user.is_case_admin() or current_user.is_audit_viewer()):
                 return {"message": "Access restricted"}, 403
-            history = CommonModel.get_history(case.uuid)
+            history = CommonModel.get_visible_history(case, current_user)
             if history:
                 return {"history": history}, 200
             return {"history": None}, 200

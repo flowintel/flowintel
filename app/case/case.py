@@ -691,7 +691,7 @@ def history(cid):
             flowintel_log("audit", 403, "Get history: Access restricted", User=current_user.email, CaseId=case.id)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
 
-        history = CommonModel.get_history(case.uuid)
+        history = CommonModel.get_visible_history(case, current_user)
         if history:
             return {"history": history}
         return {"history": None}
@@ -732,7 +732,7 @@ def download_file(cid):
             flowintel_log("audit", 403, "Download case history: Access restricted", User=current_user.email, CaseId=cid)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case history", User=current_user.email, CaseId=cid)
-        return CaseModel.download_history(case)
+        return CaseModel.download_history(case, current_user)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 
@@ -749,7 +749,7 @@ def download_history_md(cid):
             flowintel_log("audit", 403, "Download case markdown: Access restricted", User=current_user.email, CaseId=cid)
             return {"message": "Access restricted", "toast_class": "warning-subtle"}, 403
         flowintel_log("audit", 200, "Download case markdown", User=current_user.email, CaseId=cid)
-        return CaseModel.download_history_md(case)
+        return CaseModel.download_history_md(case, current_user)
     return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
 
 

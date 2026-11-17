@@ -730,6 +730,86 @@ def get_history(case_uuid):
         return False
 
 
+_HISTORY_EVENT_START = re.compile(r"^\[[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}\]\(")
+_HISTORY_REFERENCE_PREFIXES = ("Case linked to case '", "Case link '", "Case forked, ")
+_HISTORY_REFERENCE_TARGET = re.compile(
+    r"^Case (?:(?:linked to case|link) '([0-9]{1,19})-[ \t]|forked, ([0-9]{1,19}) -[ \t])"
+)
+_HISTORY_MESSAGE_SEPARATOR = re.compile(r"\):[ \t]+")
+_HISTORY_LINK_END = re.compile(
+    r"'(?: added| removed|, from the other case| removed, from the other case)"
+    r"(?: \(merge from .*\))*$"
+)
+
+
+def _history_case_references(record):
+    messages = _HISTORY_MESSAGE_SEPARATOR.split("\n".join(record))
+    if len(messages) > 1:
+        messages = messages[1:]
+    targets = set()
+    for index, message in enumerate(messages):
+        message = message.lstrip(" \t")
+        match = _HISTORY_REFERENCE_TARGET.match(message)
+        if match:
+            case_id = int(match.group(1) or match.group(2))
+            targets.add(case_id if 0 < case_id <= 2**63 - 1 else None)
+        elif index == 0 and message.startswith(_HISTORY_REFERENCE_PREFIXES):
+            targets.add(None)
+    # Check all possible author/action boundaries in ambiguous legacy records.
+    # Ordinary title text such as '): Case forked, example' is not a reference.
+    return targets
+
+
+def _history_record_complete(record):
+    text = "\n".join(record)
+    messages = _HISTORY_MESSAGE_SEPARATOR.split(text)[1:]
+    if not messages:
+        return False  # A legacy author may itself contain newlines.
+    if any(message.startswith(_HISTORY_REFERENCE_PREFIXES[:2])
+           and _HISTORY_REFERENCE_TARGET.match(message) for message in messages):
+        # A timestamp-looking line within an old title is still part of the
+        # link event until its writer's closing action has been reached.
+        return bool(_HISTORY_LINK_END.search(record[-1]))
+    return True
+
+
+def get_visible_history(case, current_user):
+    """Return per-case history without references to inaccessible linked cases.
+
+    Keep get_history() raw for internal copying and community-wide auditing.
+    Visibility is checked on every read, including old and unlinked events.
+    """
+    if not can_view_case(case, current_user):
+        return False
+    history = get_history(case.uuid)
+    if not history or current_user.is_admin():
+        return history
+
+    records = []
+    for line in history:
+        if not records or (_HISTORY_EVENT_START.match(line) and _history_record_complete(records[-1])):
+            records.append([])
+        records[-1].append(line)
+
+    visible = []
+    target_visibility = {}
+    for record in records:
+        allowed = True
+        for target_id in _history_case_references(record):
+            if target_id is None:
+                allowed = False
+                break
+            if target_id not in target_visibility:
+                target_visibility[target_id] = can_view_case(get_case(target_id), current_user)
+            if not target_visibility[target_id]:
+                allowed = False
+                break
+        # Old multiline titles belong to the same event as their first line.
+        if allowed:
+            visible.extend(record)
+    return visible
+
+
 def get_audit_logs(case_id):
     """Return audit logs for a specific case by case ID"""
     from flask import current_app

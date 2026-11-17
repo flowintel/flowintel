@@ -1,6 +1,7 @@
 import os
 import subprocess
 import tempfile
+from io import BytesIO
 from typing import List
 import uuid
 import datetime
@@ -1522,19 +1523,20 @@ class CaseCore(CommonAbstract, FilteringAbstract):
     def get_status_computer_assistate_report(self, case_uuid):
         return self._finalize_task_if_done(case_uuid)
 
-    def download_history(self, case):
+    def download_history(self, case, current_user):
         """Download a history"""
-        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-        if os.path.isfile(history_path):
-            return send_file(history_path, as_attachment=True, download_name=f"{case.title}_history.txt")
+        history = CommonModel.get_visible_history(case, current_user)
+        if history is not False:
+            content = "\n".join(history) + ("\n" if history else "")
+            return send_file(BytesIO(content.encode("utf-8")), as_attachment=True,
+                             download_name=f"{case.title}_history.txt", mimetype="text/plain")
         else:
             return {"message": "History file not found", "toast_class": "danger-subtle"}, 404
         
-    def download_history_md(self, case):
+    def download_history_md(self, case, current_user):
         """Download a history"""
-        history_path = os.path.join(CommonModel.HISTORY_DIR, str(case.uuid))
-        if os.path.isfile(history_path):
-            loc_file = CommonModel.get_history(case.uuid)
+        loc_file = CommonModel.get_visible_history(case, current_user)
+        if loc_file is not False:
             loc_rep = CommonModel._format_logs_as_markdown(case, loc_file, title="History")
             return loc_rep, 200, {'Content-Disposition': f'attachment; filename={case.title}_history.md'}
         else:
