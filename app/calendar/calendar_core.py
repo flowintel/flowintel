@@ -2,7 +2,7 @@ from app.db_class.db import Case, Task, Task_User, Case_Org, Calendar_Event
 from app.extensions import db
 
 from datetime import date, datetime, timedelta, timezone
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, false
 
 
 def parse_event_datetime(value, all_day=False):
@@ -90,21 +90,25 @@ def _tasks_visible_to_user_query(user):
     if user.is_admin():
         return query
 
-    return (
-        query
-        .outerjoin(Task_User, Task_User.task_id == Task.id)
-        .outerjoin(Case_Org, Case_Org.case_id == Case.id)
-        .filter(or_(
-            Task_User.user_id == user.id,
-            Case_Org.org_id == user.org_id,
-        ))
-        .distinct()
+    membership = false()
+    if user.org_id is not None:
+        membership = Case.id.in_(
+            db.session.query(Case_Org.case_id).filter(Case_Org.org_id == user.org_id)
+        )
+    assignment = Task.id.in_(
+        db.session.query(Task_User.task_id).filter(Task_User.user_id == user.id)
+    )
+
+    # Apply case visibility in addition to calendar discovery.
+    return query.filter(
+        or_(assignment, membership),
+        or_(Case.is_private.is_not(True), membership),
     )
 
 
 def _tasks_assigned_to_user_query(user):
-    return Task.query.join(Task_User, Task_User.task_id == Task.id).filter(
-        Task_User.user_id == user.id
+    return _tasks_visible_to_user_query(user).filter(
+        Task.id.in_(db.session.query(Task_User.task_id).filter(Task_User.user_id == user.id))
     )
 
 
