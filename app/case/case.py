@@ -857,7 +857,7 @@ def get_clusters():
 @login_required
 def get_used_taxonomies():
     """Get taxonomies that have at least one tag applied to a case"""
-    return {"taxonomies": CommonModel.get_used_taxonomies()}, 200
+    return {"taxonomies": CommonModel.get_used_taxonomies(current_user)}, 200
 
 @case_blueprint.route("/get_used_tags", methods=['GET'])
 @login_required
@@ -866,14 +866,14 @@ def get_used_tags():
     data_dict = dict(request.args)
     if "taxonomies" in data_dict:
         taxos = json.loads(data_dict["taxonomies"])
-        return {"tags": CommonModel.get_used_tags(taxos)}, 200
+        return {"tags": CommonModel.get_used_tags(taxos, current_user)}, 200
     return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_galaxies", methods=['GET'])
 @login_required
 def get_used_galaxies():
     """Get galaxies that have at least one cluster applied to a case"""
-    return {"galaxies": CommonModel.get_used_galaxies()}, 200
+    return {"galaxies": CommonModel.get_used_galaxies(current_user)}, 200
 
 @case_blueprint.route("/get_used_clusters", methods=['GET'])
 @login_required
@@ -881,14 +881,14 @@ def get_used_clusters():
     """Get, for the given galaxies, only the clusters applied to at least one case"""
     if "galaxies" in request.args:
         galaxies = json.loads(request.args.get("galaxies"))
-        return {"clusters": CommonModel.get_used_clusters_galaxy(galaxies)}, 200
+        return {"clusters": CommonModel.get_used_clusters_galaxy(galaxies, current_user)}, 200
     return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_custom_tags", methods=['GET'])
 @login_required
 def get_used_custom_tags():
     """Get custom tags applied to at least one case"""
-    return CommonModel.get_used_custom_tags(), 200
+    return CommonModel.get_used_custom_tags(current_user), 200
 
 
 @case_blueprint.route("/get_used_taxonomies_task", methods=['GET'])
@@ -898,7 +898,7 @@ def get_used_taxonomies_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return {"taxonomies": CommonModel.get_used_taxonomies_task(case_id)}, 200
+    return {"taxonomies": CommonModel.get_used_taxonomies_task(current_user, case_id)}, 200
 
 @case_blueprint.route("/get_used_tags_task", methods=['GET'])
 @login_required
@@ -909,7 +909,7 @@ def get_used_tags_task():
     data_dict = dict(request.args)
     if "taxonomies" in data_dict:
         taxos = json.loads(data_dict["taxonomies"])
-        return {"tags": CommonModel.get_used_tags_task(taxos, case_id)}, 200
+        return {"tags": CommonModel.get_used_tags_task(taxos, current_user, case_id)}, 200
     return {"message": "'taxonomies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_galaxies_task", methods=['GET'])
@@ -919,7 +919,7 @@ def get_used_galaxies_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return {"galaxies": CommonModel.get_used_galaxies_task(case_id)}, 200
+    return {"galaxies": CommonModel.get_used_galaxies_task(current_user, case_id)}, 200
 
 @case_blueprint.route("/get_used_clusters_task", methods=['GET'])
 @login_required
@@ -929,7 +929,7 @@ def get_used_clusters_task():
     if err: return err
     if "galaxies" in request.args:
         galaxies = json.loads(request.args.get("galaxies"))
-        return {"clusters": CommonModel.get_used_clusters_galaxy_task(galaxies, case_id)}, 200
+        return {"clusters": CommonModel.get_used_clusters_galaxy_task(galaxies, current_user, case_id)}, 200
     return {"message": "'galaxies' is missing", 'toast_class': "warning-subtle"}, 400
 
 @case_blueprint.route("/get_used_custom_tags_task", methods=['GET'])
@@ -939,7 +939,7 @@ def get_used_custom_tags_task():
     Pass ?case_id=<id> to scope this to a single case's tasks."""
     case_id, err = _case_id_from_args()
     if err: return err
-    return CommonModel.get_used_custom_tags_task(case_id), 200
+    return CommonModel.get_used_custom_tags_task(current_user, case_id), 200
 
 
 @case_blueprint.route("/get_galaxies_case/<cid>", methods=['GET'])
