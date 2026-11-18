@@ -378,21 +378,55 @@ def case_report_generate(cid):
     if not case:
         return {"message": "Case not found"}, 404
 
-    def _text_color(hex_color):
-        h = (hex_color or '#888888').lstrip('#')
-        try:
-            r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-        except ValueError:
-            return 'white'
-        return 'white' if (299 * r + 587 * g + 114 * b) / 1000 < 128 else 'black'
+    import re as _re_mod
+    _re_colour = _re_mod.compile(r'^#[0-9a-fA-F]{6}$')
 
-    def _tag_badge(name, color):
-        tc = _text_color(color or '#888888')
-        bg = color or '#888888'
-        return f'<span class="tag" style="background-color:{bg};color:{tc};">{name}</span>'
+    def _saturation(hex_color):
+        h = hex_color.lstrip('#')
+        r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        mx, mn = max(r, g, b), min(r, g, b)
+        d = mx - mn
+        if d == 0:
+            return 0
+        light = (mx + mn) / 2
+        return round(d / (1 - abs(2 * light - 1)) * 100)
+
+    # Same markup as static/js/components/tag-badge.js (compact look, static/css/tag-chips.css)
+    def _tag_parts(name):
+        import re as _re
+        n = (name or '').strip()
+        m = _re.match(r'^([^:="]+):([^=]+)="(.*)"$', n, _re.S)
+        if m:
+            return m.group(2), m.group(3), m.group(1)
+        m = _re.match(r'^([^:]+):(.+)$', n, _re.S)
+        if m:
+            return m.group(1), m.group(2), m.group(1)
+        return None, n, None
+
+    def _tag_badge(name, color, custom=False):
+        from html import escape as _esc
+        colour = color if color and _re_colour.match(color) else ''
+        ns, value, root = (None, name, None) if custom else _tag_parts(name)
+        if not custom and colour and (root or '').lower() in ('tlp', 'pap'):
+            v = (value or '').lower()
+            v = v.split('+')[0] + '\u207a' if '+' in v else v
+            style = '' if _saturation(colour) < 15 else f' style="--c:{colour}"'
+            cls = 'tg-mk is-clear' if not style else 'tg-mk'
+            return f'<span class="{cls}"{style} title="{_esc(name)}"><small>{_esc(ns)}</small><b>{_esc(v)}</b></span>'
+        style = f' style="--tc:{colour}"' if colour else ''
+        small = ''
+        if ns:
+            pred = f'<i class="tg-sep">›</i>{_esc(ns)}' if root and root != ns else ''
+            tx = f'<b class="tg-tx">{_esc(root)}</b>' if root else ''
+            small = f'<small>{tx}{pred}</small> '
+        cls = 'is-custom' if custom else 'is-tag'
+        return f'<span class="tg-chip {cls}"{style} title="{_esc(name)}"><span>{small}{_esc(value)}</span></span>'
 
     def _cluster_badge(label):
-        return f'<span class="cluster">{label}</span>'
+        from html import escape as _esc
+        galaxy_type, value, _ = _tag_parts(label)
+        small = f'<small><b class="tg-tx">{_esc(galaxy_type)}</b></small> ' if galaxy_type else ''
+        return f'<span class="tg-chip is-gx" title="{_esc(label)}"><i class="fas fa-circle-dot"></i><span>{small}{_esc(value)}</span></span>'
 
     opts = request.json or {}
 
@@ -638,7 +672,7 @@ def case_report_generate(cid):
 
         custom_tags = CommonModel.get_case_custom_tags_json(case.id)
         if custom_tags:
-            badges = " ".join(_tag_badge(ct['name'], ct['color']) for ct in custom_tags)
+            badges = " ".join(_tag_badge(ct['name'], ct['color'], custom=True) for ct in custom_tags)
             lines.append(f"**Custom tags:** {badges}")
 
         clusters = CommonModel.get_case_clusters(cid)

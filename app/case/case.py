@@ -14,6 +14,7 @@ from ..utils.logger import flowintel_log
 from .form import CaseForm, CaseEditForm, RecurringForm
 from .CaseCore import CaseModel
 from . import common_core as CommonModel
+from . import tag_picker_core as TagPicker
 from .TaskCore import TaskModel
 
 case_blueprint = Blueprint(
@@ -96,6 +97,19 @@ def view(cid):
             return render_template("404.html")
         return render_template("case/case_view.html", case=case.to_json(current_user), present_in_case=present_in_case)
     return render_template("404.html")
+
+
+@case_blueprint.route("/<cid>/tasks_tags", methods=['GET'])
+@login_required
+def tasks_tags(cid):
+    """Tags, clusters and custom tags of each task of the case (case detail, tags panel)"""
+    case = CommonModel.get_case(cid)
+    if not case:
+        return {"message": "Case not found", "toast_class": "danger-subtle"}, 404
+    present_in_case = CommonModel.get_present_in_case(cid, current_user)
+    if not check_user_private_case(case, present_in_case):
+        return {"message": "Permission denied", "toast_class": "danger-subtle"}, 403
+    return {"tasks": CommonModel.get_case_tasks_tags(case.id)}, 200
 
 
 @case_blueprint.route("/edit/<cid>", methods=['GET','POST'])
@@ -847,6 +861,86 @@ def get_taxonomies_case(cid):
                     taxonomies.append(tag["name"].split(":")[0])
         return {"tags": tags, "taxonomies": taxonomies}
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+##################################
+# MISP column browser (tag/galaxy #
+# picker, misp_tag_editor.js)     #
+##################################
+
+def _picker_usage():
+    """?used=<scope>[&case_id=] restricts a filter's browser to what is set
+    somewhere in that scope; no ?used= is everything (the editor)."""
+    scope = request.args.get("used")
+    if scope not in TagPicker.Usage.LINKS:
+        return None, None
+    case_id, error = _case_id_from_args()
+    if error:
+        return None, error
+    return TagPicker.Usage(scope, current_user, case_id), None
+
+
+@case_blueprint.route("/picker/tag_scopes", methods=['GET'])
+@login_required
+def picker_tag_scopes():
+    """Taxonomies the tag browser can narrow to (MISP tags/pickerScopes)"""
+    usage, error = _picker_usage()
+    if error:
+        return error
+    return jsonify(TagPicker.tag_scopes(usage)), 200
+
+@case_blueprint.route("/picker/tag_search", methods=['GET'])
+@login_required
+def picker_tag_search():
+    """Tags matching ?q=, narrowed with &scope= and &predicate= (MISP tags/pickerSearch)"""
+    usage, error = _picker_usage()
+    if error:
+        return error
+    return jsonify(TagPicker.search_tags(request.args.get("q"), request.args.get("scope"),
+                                         request.args.get("predicate"), request.args.get("limit"), usage)), 200
+
+@case_blueprint.route("/picker/tag_tree", methods=['GET'])
+@login_required
+def picker_tag_tree():
+    """One taxonomy's predicates and entries (MISP tags/pickerTree)"""
+    usage, error = _picker_usage()
+    if error:
+        return error
+    tree = TagPicker.taxonomy_tree(request.args.get("namespace"), usage)
+    if tree is None:
+        return {"message": "Invalid taxonomy", 'toast_class': "warning-subtle"}, 404
+    return jsonify(tree), 200
+
+@case_blueprint.route("/picker/galaxy_scopes", methods=['GET'])
+@login_required
+def picker_galaxy_scopes():
+    """Galaxies the cluster browser can narrow to (MISP galaxies/pickerScopes)"""
+    usage, error = _picker_usage()
+    if error:
+        return error
+    return jsonify(TagPicker.galaxy_scopes(usage)), 200
+
+@case_blueprint.route("/picker/cluster_search", methods=['GET'])
+@login_required
+def picker_cluster_search():
+    """Clusters matching ?q=, narrowed with &galaxy= (MISP galaxy_clusters/pickerSearch)"""
+    usage, error = _picker_usage()
+    if error:
+        return error
+    return jsonify(TagPicker.search_clusters(request.args.get("q"), request.args.get("galaxy"),
+                                             request.args.get("limit"), usage)), 200
+
+@case_blueprint.route("/picker/resolve", methods=['GET'])
+@login_required
+def picker_resolve():
+    """Full tags/clusters/galaxies picked in the browser: ?tags=1,2&clusters=3, or ?names={"tags": [..], "clusters": [cluster tags]}"""
+    def ids(key):
+        return [int(i) for i in (request.args.get(key) or "").split(",") if i.strip().isdigit()]
+    names = request.args.get("names")
+    names = json.loads(names) if names else {}
+    return jsonify(TagPicker.resolve(ids("tags"), ids("clusters"),
+                                     names.get("tags") or [], names.get("clusters") or [],
+                                     names.get("custom_tags") or [])), 200
 
 
 @case_blueprint.route("/get_galaxies", methods=['GET'])

@@ -21,6 +21,7 @@
             <script src="{{ url_for('static',filename='js/vendor/jquery-ui.min.js') }}"></script>
             <script src="{{ url_for('static',filename='js/vendor/select2.min.js') }}"></script>
             <script src="{{ url_for('static',filename='js/vendor/vue.global.js') }}"></script>
+            <script src="{{ url_for('static',filename='js/misp-tag-chips.js') }}"></script>
             <script src="{{ url_for('static',filename='js/purify.min.js') }}"></script>
             
             <script src="{{ url_for('static',filename='js/vendor/dayjs/dayjs.min.js') }}"></script>
@@ -39,6 +40,10 @@
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/jquery-ui.min.css') }}">
 
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/core.css') }}">
+            <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/tag-chips.css') }}">
+            <!-- MISP Overmind tag chips, copied as is from MISP (webroot/css|js/tag-chips.*) -->
+            <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/misp-tag-chips.css') }}">
+            <meta name="misp-tag-palettes" content="tlp pap">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/components/page_header.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/theme-dark.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/themes/default.css') }}">

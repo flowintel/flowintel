@@ -1,4 +1,8 @@
 from abc import ABC, abstractmethod
+
+from sqlalchemy.orm import aliased
+
+from app.db_class.db import db
 from typing import Union
 
 from app.db_class.db import (
@@ -8,6 +12,15 @@ from app.db_class.db import (
     Task_Tags, Task_Template, Task_Template_Custom_Tags, Task_Template_Galaxy_Tags,
     Task_Template_Tags, Taxonomy
 )
+
+
+def split_excluded(names):
+    """MISP filter values: `!name` excludes, anything else includes."""
+    inc, exc = [], []
+    for n in names or []:
+        n = str(n)
+        (exc if n.startswith("!") else inc).append(n[1:] if n.startswith("!") else n)
+    return inc, exc
 
 
 class FilteringAbstract(ABC):
@@ -41,6 +54,9 @@ class FilteringAbstract(ABC):
     
 
     def _build_sort_query(self, completed=None, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None):
+        tags, excluded_tags = split_excluded(tags)
+        clusters, excluded_clusters = split_excluded(clusters)
+        custom_tags, excluded_custom_tags = split_excluded(custom_tags)
         query = self.get_class().query
         if isinstance(self.get_class(), Case ) or isinstance(self.get_class(), Task):
             conditions = [self.get_class().completed == completed]
@@ -72,9 +88,39 @@ class FilteringAbstract(ABC):
             query = query.join(Custom_Tags, self.get_custom_tags().custom_tag_id == Custom_Tags.id)
             conditions.append(Custom_Tags.name.in_(list(custom_tags)))
 
+        # Aliased: the link tables may already be joined above, and an
+        # un-aliased subquery would correlate to them.
+        if excluded_tags:
+            link = aliased(self.get_tags())
+            tag = aliased(Tags)
+            conditions.append(~self.get_class().id.in_(
+                db.session.query(getattr(link, self.get_tag_class_id().key))
+                .join(tag, link.tag_id == tag.id)
+                .filter(tag.name.in_(excluded_tags))
+            ))
+        if excluded_clusters:
+            link = aliased(self.get_galaxies())
+            cluster = aliased(Cluster)
+            conditions.append(~self.get_class().id.in_(
+                db.session.query(getattr(link, self.get_galaxies_class_id().key))
+                .join(cluster, link.cluster_id == cluster.id)
+                .filter(cluster.name.in_(excluded_clusters))
+            ))
+        if excluded_custom_tags:
+            link = aliased(self.get_custom_tags())
+            custom = aliased(Custom_Tags)
+            conditions.append(~self.get_class().id.in_(
+                db.session.query(getattr(link, self.get_custom_tags_class_id().key))
+                .join(custom, link.custom_tag_id == custom.id)
+                .filter(custom.name.in_(excluded_custom_tags))
+            ))
+
         return query, conditions
 
     def _sort(self, cases, taxonomies=[], galaxies=[], tags=[], clusters=[], or_and_taxo="true", or_and_galaxies="true"):
+        # Excluded values are already out of the query (_build_sort_query).
+        tags = split_excluded(tags)[0]
+        clusters = split_excluded(clusters)[0]
         if or_and_taxo == "false":
             glob_list = []
 

@@ -35,6 +35,57 @@ function next_day(iso) {
     return date_only(d.toISOString())
 }
 
+// Shared with the tags panel's task preview (tags_edition.js)
+// Duration of a task / the case, for the progress bar of its preview:
+// from creation to completion (or to the deadline), where today stands, time left
+function period_info(item) {
+    const p = item && item.period
+    if (!p || !p.start) return null
+    const day = 86400000
+    const start = new Date(p.start).getTime()
+    const deadline = p.deadline ? new Date(p.deadline).getTime() : null
+    const finish = p.finish ? new Date(p.finish).getTime() : null
+    const now = Date.now()
+    const end = finish || deadline
+    const short = t => new Date(t).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
+    const span_days = t => { const d = Math.round(Math.abs(t) / day); return d <= 0 ? 'less than a day' : d + ' day' + (d > 1 ? 's' : '') }
+
+    let percent = null, state = 'open', status = ''
+    if (finish) {
+        percent = 100
+        state = deadline && finish > deadline ? 'late' : 'done'
+        status = deadline
+            ? (finish > deadline ? 'Finished ' + span_days(finish - deadline) + ' after the deadline' : 'Finished ' + span_days(deadline - finish) + ' before the deadline')
+            : 'Finished in ' + span_days(finish - start)
+    } else if (deadline) {
+        percent = Math.max(0, Math.min(100, (now - start) / Math.max(1, deadline - start) * 100))
+        state = now > deadline ? 'late' : (deadline - now < 2 * day ? 'soon' : 'open')
+        status = now > deadline ? span_days(now - deadline) + ' overdue' : span_days(deadline - now) + ' left'
+    } else {
+        status = 'Open for ' + span_days(now - start) + ', no deadline'
+    }
+    return {
+        from: short(start),
+        to: end ? short(end) : 'no deadline',
+        to_label: finish ? 'Finished' : 'Deadline',
+        percent, state, status,
+        time_required: p.time_required,
+    }
+}
+
+function format_when(item) {
+    const opts = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }
+    const start = new Date(item.start)
+    if (item.all_day) {
+        const a = start.toLocaleDateString(undefined, opts)
+        return item.end ? a + ' → ' + new Date(item.end).toLocaleDateString(undefined, opts) : a
+    }
+    const a = start.toLocaleString(undefined, { ...opts, hour: '2-digit', minute: '2-digit' })
+    return item.end ? a + ' → ' + new Date(item.end).toLocaleString(undefined, { ...opts, hour: '2-digit', minute: '2-digit' }) : a
+}
+
+export { KINDS, period_info, format_when }
+
 export default {
     delimiters: ['[[', ']]'],
     props: {
@@ -100,43 +151,6 @@ export default {
             }
             ev.display = 'block'
             return ev
-        }
-
-        // Duration of a task / the case, for the progress bar of its preview:
-        // from creation to completion (or to the deadline), where today stands, time left
-        function period_info(item) {
-            const p = item && item.period
-            if (!p || !p.start) return null
-            const day = 86400000
-            const start = new Date(p.start).getTime()
-            const deadline = p.deadline ? new Date(p.deadline).getTime() : null
-            const finish = p.finish ? new Date(p.finish).getTime() : null
-            const now = Date.now()
-            const end = finish || deadline
-            const short = t => new Date(t).toLocaleDateString(undefined, { day: '2-digit', month: 'short' })
-            const span_days = t => { const d = Math.round(Math.abs(t) / day); return d <= 0 ? 'less than a day' : d + ' day' + (d > 1 ? 's' : '') }
-
-            let percent = null, state = 'open', status = ''
-            if (finish) {
-                percent = 100
-                state = deadline && finish > deadline ? 'late' : 'done'
-                status = deadline
-                    ? (finish > deadline ? 'Finished ' + span_days(finish - deadline) + ' after the deadline' : 'Finished ' + span_days(deadline - finish) + ' before the deadline')
-                    : 'Finished in ' + span_days(finish - start)
-            } else if (deadline) {
-                percent = Math.max(0, Math.min(100, (now - start) / Math.max(1, deadline - start) * 100))
-                state = now > deadline ? 'late' : (deadline - now < 2 * day ? 'soon' : 'open')
-                status = now > deadline ? span_days(now - deadline) + ' overdue' : span_days(deadline - now) + ' left'
-            } else {
-                status = 'Open for ' + span_days(now - start) + ', no deadline'
-            }
-            return {
-                from: short(start),
-                to: end ? short(end) : 'no deadline',
-                to_label: finish ? 'Finished' : 'Deadline',
-                percent, state, status,
-                time_required: p.time_required,
-            }
         }
 
         // A deadline also colours its whole day
@@ -255,16 +269,6 @@ export default {
             }
         }
 
-        function format_when(item) {
-            const opts = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }
-            const start = new Date(item.start)
-            if (item.all_day) {
-                const a = start.toLocaleDateString(undefined, opts)
-                return item.end ? a + ' → ' + new Date(item.end).toLocaleDateString(undefined, opts) : a
-            }
-            const a = start.toLocaleString(undefined, { ...opts, hour: '2-digit', minute: '2-digit' })
-            return item.end ? a + ' → ' + new Date(item.end).toLocaleString(undefined, { ...opts, hour: '2-digit', minute: '2-digit' }) : a
-        }
 
         function item_label(item) {
             return item.label || kind_info(item.kind).label

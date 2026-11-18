@@ -207,26 +207,13 @@
 
                         <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
                             <div class="case-tag-group">
-                                <div :class="{'collapsed-overflow': !expandedTags[case_loc.id]}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                                    <template v-for="item in visibleTags(case_loc)">
-                                        <template v-if="item.type === 'custom'">
-                                            <tag_badge :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon"></tag_badge>
+                                    <div v-tag-fit>
+                                        <template v-for="item in allTags(case_loc)">
+                                            <tag_badge v-if="item.type === 'custom'" kind="custom" :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon"></tag_badge>
+                                            <tag_badge v-else-if="item.type === 'tag'" kind="taxonomy" :label="item.data.name" :color="item.data.color" :title="item.data.description || item.data.name"></tag_badge>
+                                            <tag_badge v-else kind="cluster" :label="item.data.tag" :icon-name="item.data.icon" :title="item.data.description || item.data.tag" :meta="item.data.meta || ''"></tag_badge>
                                         </template>
-                                        <template v-else-if="item.type === 'tag'">
-                                            <div class="tag" :title="item.data.description" :style="{'background-color': item.data.color, 'color': getTextColor(item.data.color)}">
-                                                <i v-if="item.data.icon" :class="item.data.icon" style="margin-right:6px"></i>
-                                                <i v-else class="misp-icon misp-icon-tag misp-simple"></i>
-                                                [[ item.data.name ]]
-                                            </div>
-                                        </template>
-                                        <template v-else>
-                                            <tag_badge :label="item.data.tag" :icon-name="item.data.icon" :title="'Description:\n' + item.data.description + '\n\nMetadata:\n' + item.data.meta"></tag_badge>
-                                        </template>
-                                    </template>
-                                </div>
-                                <button type="button" v-if="hiddenTagCount(case_loc) > 0" class="show-more-btn" @click.stop.prevent="toggleTags(case_loc.id)">
-                                    [[ expandedTags[case_loc.id] ? 'Show less' : '+' + hiddenTagCount(case_loc) + ' more' ]]
-                                </button>
+                                    </div>
                             </div>
                         </div>
                     </a>
@@ -270,11 +257,13 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import smart_render from '/static/js/components/smart-render.js'
         import tag_badge from '/static/js/components/tag-badge.js'
-        import tag_filter from '/static/js/components/tag_filter.js'
+    import tag_fit from '/static/js/components/tag-fit.js'
+        import tag_filter from '/static/js/components/misp_tag_filter.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
 
         createApp({
             delimiters: ['[[', ']]'],
+            directives: { 'tag-fit': tag_fit },
             components: {
                 'app-pagination': Pagination,
                 smart_render,
@@ -313,7 +302,9 @@
                 const expandedCases = ref({})
                 const expandedTags = ref({})
 
-                function mergeTags(case_loc){
+                function allTags(case_loc){ return mergeTags(case_loc) }
+
+            function mergeTags(case_loc){
                     const arr = []
                     if(!case_loc) return arr
                     if(case_loc.custom_tags){ for(const t of case_loc.custom_tags) arr.push({type:'custom', data: t}) }
@@ -386,11 +377,11 @@
                     let galax = ""
                     let clusters = ""
                     let custom_tg = ""
-                    if(tag_filter_state.value.tags.length) tags = "&tags=" + JSON.stringify(tag_filter_state.value.tags)
-                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + JSON.stringify(tag_filter_state.value.taxonomies)
-                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + JSON.stringify(tag_filter_state.value.galaxies)
-                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + JSON.stringify(tag_filter_state.value.clusters)
-                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + JSON.stringify(tag_filter_state.value.custom_tags)
+                    if(tag_filter_state.value.tags.length) tags = "&tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.tags))
+                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.taxonomies))
+                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.galaxies))
+                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.clusters))
+                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.custom_tags))
 
                     let loc_q = ''
                     if (search_query.value) loc_q = '&q=' + encodeURIComponent(search_query.value)
@@ -508,6 +499,7 @@
                     expandedCases,
                     expandedTags,
                     visibleTags,
+                allTags,
                     totalTags,
                     toggleTags,
                     hiddenTagCount,

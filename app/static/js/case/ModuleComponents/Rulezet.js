@@ -19,6 +19,7 @@ import { display_toast } from '../../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import SmartEditor from '/static/js/components/smart-editor.js'
 import DiffView from '/static/js/components/diff-view.js'
+import tag_badge from '/static/js/components/tag-badge.js'
 const { ref, computed, onMounted, onBeforeUnmount, watch } = Vue
 
 // File extension of each format, as Rulezet names its downloads
@@ -30,7 +31,7 @@ const EXTENSIONS = {
 
 export default {
     delimiters: ['[[', ']]'],
-    components: { SmartEditor, DiffView },
+    components: { SmartEditor, DiffView, tag_badge },
     props: {
         case_id: Number,
         cases_info: Object,
@@ -591,7 +592,7 @@ export default {
                 <template v-if="remote_of(rule)">
                     <span v-for="c in cves(remote_of(rule).remote.cve_id)" :key="c" class="rz-cve">[[ c ]]</span>
                     <span v-for="t in remote_of(rule).remote.attacks" :key="'att-' + t" class="rz-attack" title="MITRE ATT&CK technique"><i class="fa-solid fa-crosshairs"></i>[[ t ]]</span>
-                    <span v-for="t in remote_of(rule).remote.tags" :key="'tag-' + t" class="rz-tag"><i class="fa-solid fa-tag"></i>[[ t ]]</span>
+                    <tag_badge v-for="t in remote_of(rule).remote.tags" :key="'tag-' + t" kind="remote" :label="t"></tag_badge>
                 </template>
             </div>
             <p v-if="rule.description" class="rz-rule-desc">[[ rule.description ]]</p>

@@ -1,6 +1,7 @@
 import { display_toast, create_message } from '../toaster.js'
 import TaskUrlTool from '../case/TaskComponent/TaskUrlTool.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+import tag_badge from '/static/js/components/tag-badge.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import smart_editor from '/static/js/components/smart-editor.js'
 import smart_render from '/static/js/components/smart-render.js'
@@ -8,6 +9,7 @@ const { ref } = Vue
 export default {
 	delimiters: ['[[', ']]'],
 	components: {
+		tag_badge,
 		TaskUrlTool,
 		smart_editor,
 		smart_render
@@ -361,50 +363,12 @@ export default {
                 <img :src="'/static/icons/'+instance.icon" style="max-width: 30px;">
                 <i>[[instance.url]]</i>
             </div>
-			<div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
-				<div style="display: flex;" v-if="template.custom_tags">
-					<template v-for="custom_tag in template.custom_tags">
-						<div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
-							<i v-if="custom_tag.icon" :class="custom_tag.icon"></i>
-							[[custom_tag.name]]
-						</div>
-					</template>
-				</div>
+			<div class="tg-row" style="margin: 5px 0;">
+			    <tag_badge v-for="t in template.custom_tags" kind="custom" :label="t.name" :color="t.color" :icon-class="t.icon"></tag_badge>
+			    <tag_badge v-for="t in template.tags" kind="taxonomy" :label="t.name" :color="t.color" :title="t.description || t.name"></tag_badge>
+			    <tag_badge v-for="g in template.galaxies" kind="galaxy" :label="g.name" :icon-name="g.icon" :title="g.description || g.name"></tag_badge>
+			    <tag_badge v-for="c in template.clusters" kind="cluster" :label="c.tag" :icon-name="c.icon" :title="c.description || c.tag" :meta="c.meta || ''"></tag_badge>
 			</div>
-            <div class="d-flex w-100 justify-content-between">
-                <div style="display: flex;" v-if="template.tags">
-                    <template v-for="tag in template.tags">
-                        <div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                            <i class="misp-icon misp-icon-tag misp-simple" style="margin-right: 3px; margin-left: 3px;"></i>
-                            [[tag.name]]
-                        </div>
-                    </template>
-                </div>
-                <div v-else></div>
-            </div>
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="template.galaxies">
-					<template v-for="galaxy in template.galaxies">
-						<div :title="'Description:\\n' + galaxy.description">
-							<span class="cluster">
-								<span v-html="mapIcon(galaxy.icon)"></span>
-								[[galaxy.name]]
-							</span>
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
-            <div class="d-flex w-100 justify-content-between">
-                <div v-if="template.clusters">
-                    <template v-for="cluster in template.clusters">
-                        <div class="cluster" :title="'Description:' + cluster.description + 'Metadata:' + cluster.meta">
-                            <span v-html="mapIcon(cluster.icon)"></span>
-                            [[cluster.tag]]
-                        </div>
-                    </template>
-                </div>
-            </div>
 			<div class="d-flex w-100 justify-content-between">
 				<span class="badge rounded-pill" style="color: black; background-color: aliceblue; font-weight: normal">
 					<i>[[template.urls_tools.length]] Urls/Tools</i>

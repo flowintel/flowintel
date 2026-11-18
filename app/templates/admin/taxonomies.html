@@ -92,8 +92,7 @@
                 </div>
                 <div class="ctx-tag-cloud">
                     <tag_badge v-for="tag in filtered_tags(row.id)" :key="tag.id"
-                               :label="tag.name" :color="tag.color" :title="tag.description"
-                               icon-class="misp-icon misp-icon-tag misp-simple"></tag_badge>
+                               :label="tag.name" :color="tag.color" :title="tag.description"></tag_badge>
                 </div>
                 <div v-if="!filtered_tags(row.id).length" class="ctx-empty">No tag matches this filter.</div>
             </template>

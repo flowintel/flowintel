@@ -1303,3 +1303,20 @@ def module_error_check(event):
             if loc:
                 return {"message": json.loads(loc.group())["value"][0]}
             return {"message": errors[1]["errors"]}
+
+
+def get_case_tasks_tags(case_id):
+    """Tags, galaxy clusters and custom tags of every task of a case, for the case's tags panel
+    (each tag shown with the task it comes from)."""
+    from ..db_class.db import Task, Tags, Task_Tags, Cluster, Task_Galaxy_Tags, Custom_Tags, Task_Custom_Tags
+    out = []
+    for task in Task.query.filter_by(case_id=case_id).order_by(Task.id).all():
+        tags = [t.to_json() for t in Tags.query.join(Task_Tags, Task_Tags.tag_id == Tags.id).filter_by(task_id=task.id).all()]
+        clusters = [c.to_json() for c in Cluster.query.join(Task_Galaxy_Tags, Task_Galaxy_Tags.task_id == task.id)
+                    .where(Cluster.id == Task_Galaxy_Tags.cluster_id).all()]
+        custom_tags = [c.to_json() for c in Custom_Tags.query.join(Task_Custom_Tags, Task_Custom_Tags.custom_tag_id == Custom_Tags.id)
+                       .where(Task_Custom_Tags.task_id == task.id).all()]
+        if tags or clusters or custom_tags:
+            out.append({"id": task.id, "title": task.title, "completed": task.completed,
+                        "tags": tags, "clusters": clusters, "custom_tags": custom_tags})
+    return out

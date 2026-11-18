@@ -1257,7 +1257,9 @@ class Cluster(db.Model):
             "galaxy_id": self.galaxy_id,
             "tag": self.tag
         }
-        json_dict["icon"] = Galaxy.query.get(self.galaxy_id).icon
+        galaxy = Galaxy.query.get(self.galaxy_id)
+        json_dict["icon"] = galaxy.icon
+        json_dict["galaxy"] = galaxy.name
         return json_dict
     
     def download(self):
