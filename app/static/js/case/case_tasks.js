@@ -260,7 +260,7 @@ export default {
 		}
 
 		Vue.onMounted(async () => {
-			select2_change(props.task.id)
+			// select2_change(props.task.id)
 			is_mounted = true
 
 			const collapseEl = document.getElementById('collapse' + props.task.id)
