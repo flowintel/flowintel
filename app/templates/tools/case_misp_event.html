@@ -96,11 +96,11 @@
                     </div>
                     <div v-if="event_details.tags && event_details.tags.length">
                         Tags:
-                        <span v-for="t in event_details.tags" class="badge text-bg-secondary me-1">[[t]]</span>
+                        <span class="tg-row d-inline-flex"><tag_badge v-for="t in event_details.tags" kind="remote" :label="t"></tag_badge></span>
                     </div>
                     <div v-if="event_details.galaxies && event_details.galaxies.length">
                         Galaxies:
-                        <span v-for="g in event_details.galaxies" class="badge text-bg-info me-1">[[g]]</span>
+                        <span class="tg-row d-inline-flex"><tag_badge v-for="g in event_details.galaxies" kind="cluster" :label="g"></tag_badge></span>
                     </div>
                 </div>
             </div>
@@ -280,9 +280,11 @@
     <script type="module">
         const { createApp, ref, computed, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: { tag_badge },
             setup() {
 
                 const misp_connectors = ref([])

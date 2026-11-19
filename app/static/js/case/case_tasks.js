@@ -9,6 +9,7 @@ import caseconnectors from './CaseConnectors.js'
 import smart_render from '/static/js/components/smart-render.js'
 import user_chip from '/static/js/components/user-chip.js'
 import { truncateText, getTextColor, mapIcon } from '/static/js/utils.js'
+import tag_badge from '/static/js/components/tag-badge.js'
 import { isCompleteTaskDisabled, getCompleteTaskTooltip, touchTaskAndCaseLastModif } from './helpers.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { url_set, url_get, url_list, url_list_toggle } from './url_state.js'
@@ -30,6 +31,7 @@ export default {
 		},
 	},
 	components: {
+		tag_badge,
 		tabMain,
 		tabNote,
 		tabFile,
@@ -442,56 +444,11 @@ export default {
 				</small>
 			</div>
 
-			<div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
-				<div style="display: flex;" v-if="task.custom_tags">
-					<template v-for="custom_tag in task.custom_tags">
-						<div class="tag" :style="{'background-color': custom_tag.color, 'color': getTextColor(custom_tag.color)}">
-							<i v-if="custom_tag.icon" :class="custom_tag.icon"></i>
-							[[custom_tag.name]]
-						</div>
-					</template>
-				</div>
-			</div>
-
-			<div class="d-flex w-100 justify-content-between">
-				<div style="display: flex;" v-if="task.tags">
-					<template v-for="tag in task.tags">
-						<div class="tag" :title="tag.description" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-							<i class="misp-icon misp-icon-tag misp-simple" style="margin-right: 3px; margin-left: 3px;"></i>
-							[[tag.name]]
-						</div>
-					</template>
-				</div>
-				<div v-else></div>
-			</div>
-
-			<div class="mb-2">
-				<div class="d-flex w-100 justify-content-between">
-					<div class="task-galaxy-row" v-if="task.galaxies && task.galaxies.length">
-						<template v-for="galaxy in task.galaxies">
-							<div class="me-1 mb-1" :title="'Description:\\n' + galaxy.description">
-								<span class="cluster">
-									<span v-html="mapIcon(galaxy.icon)"></span>
-									[[galaxy.name]]
-								</span>
-							</div>
-						</template>
-					</div>
-					<div v-else></div>
-				</div>
-				<div class="d-flex w-100 justify-content-between">
-					<div class="task-galaxy-row" v-if="task.clusters && task.clusters.length">
-						<template v-for="cluster in task.clusters">
-							<div :title="'Description:\\n' + cluster.description + '\\n\\nMetadata:\\n' + cluster.meta">
-								<span class="cluster">
-									<span v-html="mapIcon(cluster.icon)"></span>
-									[[cluster.tag]]
-								</span>
-							</div>
-						</template>
-					</div>
-					<div v-else></div>
-				</div>
+			<div class="tg-row" style="margin: 5px 0 8px;">
+			    <tag_badge v-for="t in task.custom_tags" kind="custom" :label="t.name" :color="t.color" :icon-class="t.icon"></tag_badge>
+			    <tag_badge v-for="t in task.tags" kind="taxonomy" :label="t.name" :color="t.color" :title="t.description || t.name"></tag_badge>
+			    <tag_badge v-for="g in task.galaxies" kind="galaxy" :label="g.name" :icon-name="g.icon" :title="g.description || g.name"></tag_badge>
+			    <tag_badge v-for="c in task.clusters" kind="cluster" :label="c.tag" :icon-name="c.icon" :title="c.description || c.tag" :meta="c.meta || ''"></tag_badge>
 			</div>
 
 			<div class="d-flex w-100 justify-content-between">

@@ -1,0 +1,385 @@
+/*
+ * tag-chips.css — one look for every tag-like thing (MISP taxonomy tags, galaxy clusters,
+ * galaxies, custom tags, connector tags). Rendered by static/js/components/tag-badge.js.
+ *
+ * Copied from the MISP "Overmind" events index (webroot/css/events-index-cards.css,
+ * .dk-chip / .dk-mk): small one-line chips, 20px high.
+ *   - tag      neutral chip, 3px left edge in the tag's colour, "<small>namespace</small> value"
+ *   - cluster  violet wash, galaxy icon, the cluster value
+ *   - marking  TLP / PAP…: "<small>tlp</small> <b>red</b>", tinted with the marking colour
+ */
+
+:root {
+    --tg-ink: var(--bs-body-color);
+    --tg-ink2: var(--bs-secondary-color);
+    --tg-ink3: var(--bs-tertiary-color);
+    --tg-line: var(--bs-border-color);
+    --tg-surface: var(--bs-body-bg);
+    --tg-chip-bg: var(--bs-tertiary-bg);
+    --tg-gx: #8B5CF6;
+    --tg-gx-ink: #6b34ce;
+    --tg-gx-wash: #f5f0fe;
+    --tg-mk-clear: #c9ccd1;
+}
+[data-bs-theme="dark"] {
+    --tg-gx-ink: #ab91ff;
+    --tg-gx-wash: #2a223c;
+    --tg-mk-clear: #5d6168;
+}
+
+/* ---- chip (tags, clusters, custom tags) ---- */
+.tg-chip {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    max-width: calc(100% - 40px);
+    padding: 0 7px;
+    border-radius: 5px;
+    font-size: .73rem;
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--tg-ink);
+    background: var(--tg-chip-bg);
+    border: 1px solid var(--tg-line);
+    cursor: default;
+}
+.tg-chip > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; line-height: 18px; }
+.tg-chip i, .tg-chip .tg-icon { font-size: .82em; flex: none; }
+.tg-chip .tg-icon i { font-size: inherit; }
+
+/* galaxy cluster / galaxy */
+.tg-chip.is-gx { background: var(--tg-gx-wash); border-color: color-mix(in srgb, var(--tg-gx) 60%, transparent); }
+.tg-chip.is-gx i, .tg-chip.is-gx .tg-icon { color: var(--tg-gx-ink); }
+.tg-chip.is-gx small { font-size: .94em; }
+.tg-chip.is-gx .tg-tx { font-weight: 700; font-variant: all-small-caps; letter-spacing: .03em; color: var(--tg-gx-ink); }
+
+/* taxonomy tag, custom tag: coloured left edge */
+.tg-chip.is-tag { border-left: 3px solid var(--tc, var(--tg-line)); padding-left: 6px; }
+[data-bs-theme="dark"] .tg-chip.is-tag { border-left-color: color-mix(in srgb, var(--tc, var(--tg-line)) 70%, #fff); }
+.tg-chip.is-tag small { color: var(--tg-ink2); font-size: .94em; }
+/* taxonomy name, then predicate: two weights so the two parts don't read as the same text */
+.tg-chip.is-tag .tg-tx {
+    font-weight: 700;
+    font-variant: all-small-caps;
+    letter-spacing: .03em;
+    color: color-mix(in srgb, var(--tc, var(--tg-ink2)) 65%, var(--tg-ink));
+}
+.tg-chip.is-tag .tg-sep { font-style: normal; opacity: .45; padding: 0 3px; }
+
+/* custom tag (Flowintel only, no MISP equivalent): pill tinted with its own colour,
+   so it never reads as a taxonomy tag */
+.tg-chip.is-custom {
+    border-radius: 999px;
+    padding: 0 9px;
+    font-weight: 500;
+    background: color-mix(in srgb, var(--tc, var(--tg-line)) 16%, var(--tg-surface));
+    border-color: color-mix(in srgb, var(--tc, var(--tg-line)) 55%, transparent);
+}
+.tg-chip.is-custom i, .tg-chip.is-custom .tg-icon { color: var(--tc, var(--tg-ink2)); }
+[data-bs-theme="dark"] .tg-chip.is-custom {
+    background: color-mix(in srgb, var(--tc, var(--tg-line)) 24%, var(--tg-surface));
+    border-color: color-mix(in srgb, var(--tc, var(--tg-line)) 70%, #fff);
+}
+[data-bs-theme="dark"] .tg-chip.is-custom i { color: color-mix(in srgb, var(--tc, var(--tg-ink2)) 70%, #fff); }
+
+/* connector tag (plain string from MISP / Rulezet) */
+.tg-chip.is-remote { border-style: dashed; background: transparent; color: var(--tg-ink2); }
+
+/* ---- marking (TLP, PAP…) ---- */
+.tg-mk {
+    --c: #888;
+    flex: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    height: 19px;
+    line-height: 17px;
+    padding: 0 6px;
+    border-radius: 4px;
+    font-size: .7rem;
+    white-space: nowrap;
+    color: var(--tg-ink);
+    background: color-mix(in srgb, var(--c) 14%, var(--tg-surface));
+    border: 1px solid var(--c);
+}
+.tg-mk small { font-size: .64rem; color: var(--tg-ink2); font-weight: 600; }
+.tg-mk b { font-weight: 700; }
+.tg-mk.is-clear { --c: var(--tg-mk-clear); background: transparent; }
+
+/* a row of chips */
+.tg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+.tg-row:empty { display: none; }
+
+
+/* context view split in sections (case detail); chips inside are MISP's own (misp-tag-chips.css) */
+.tg-sections { display: flex; flex-direction: column; gap: 10px; }
+.tg-section-title {
+    display: flex; align-items: center; gap: 6px; margin: 0 0 5px;
+    font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--bs-secondary-color);
+}
+.tg-section-title i { font-size: .9em; color: var(--bs-tertiary-color); }
+.tg-section-title small { font-weight: 500; color: var(--bs-tertiary-color); font-variant-numeric: tabular-nums; }
+
+/* MISP's chips (misp-tag-chips.css) switch to dark on [data-misp-mode="dark"]; Flowintel uses data-bs-theme.
+   Same values as MISP's dark block. */
+[data-bs-theme="dark"] .hinge-tags {
+    --hg-l-ink: 74%; --hg-l-mark: 62%;
+    --hg-surface: var(--misp-chip-surface, #1d1d18); --hg-text: var(--misp-chip-text, #f0f0ea);
+    --hg-muted: var(--misp-chip-muted, #a3a39a); --hg-faint: var(--misp-chip-faint, #75756d);
+    --hg-border: var(--misp-chip-border, #33332c); --hg-border-strong: var(--misp-chip-border-strong, #4a4a42);
+    --hg-tint: 22%; --hg-shadow: none;
+    --hg-raised: var(--misp-chip-raised, #2a2a24); --hg-raised-border: var(--misp-chip-raised-border, #46463e);
+    --hg-raised-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+}
+
+/* context view is MISP's full-size chip: shown smaller in Flowintel's case detail */
+.tg-sections .hinge-tags { zoom: .82; }
+
+/* ---- hover card (static/js/components/tag-tooltip.js) ---- */
+[data-tg-kind] { cursor: default; }
+[data-tg-kind]:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+.tg-tip {
+    position: fixed;
+    z-index: 1090;
+    width: max-content;
+    max-width: min(340px, calc(100vw - 16px));
+    padding: 8px 10px 9px;
+    font-size: .76rem;
+    line-height: 1.4;
+    color: var(--tg-ink);
+    background: var(--tg-surface);
+    border: 1px solid var(--tg-line);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(20, 20, 15, .14), 0 1px 3px rgba(20, 20, 15, .1);
+    pointer-events: auto;
+    animation: tg-tip-in .12s ease-out;
+}
+[data-bs-theme="dark"] .tg-tip { box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
+@keyframes tg-tip-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.tg-tip.is-above { animation-name: tg-tip-in-up; }
+@keyframes tg-tip-in-up { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tg-tip { animation: none; } }
+
+.tg-tip-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.tg-tip-dot { width: 8px; height: 8px; border-radius: 2px; background: var(--tc, var(--tg-ink3)); flex: none; }
+.tg-tip.is-cluster .tg-tip-dot, .tg-tip.is-galaxy .tg-tip-dot { background: var(--tg-gx); border-radius: 50%; }
+.tg-tip.is-custom .tg-tip-dot { border-radius: 50%; }
+.tg-tip-kind { font-size: .66rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--tg-ink2); }
+.tg-tip-name { font-family: var(--bs-font-monospace); font-size: .72rem; word-break: break-word; color: var(--tg-ink); }
+.tg-tip-desc {
+    margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--tg-line);
+    color: var(--tg-ink2); white-space: pre-line;
+    display: -webkit-box; -webkit-line-clamp: 7; -webkit-box-orient: vertical; overflow: hidden;
+}
+.tg-tip-meta {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; row-gap: 2px;
+    margin: 6px 0 0; padding-top: 6px; border-top: 1px solid var(--tg-line);
+}
+.tg-tip-meta dt { font-weight: 600; color: var(--tg-ink2); white-space: nowrap; }
+.tg-tip-meta dd { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ---- one-line row with "+N" (v-tag-fit, static/js/components/tag-fit.js) ---- */
+.tg-fit { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; min-width: 0; overflow: hidden; }
+.tg-fit.is-open { flex-wrap: wrap; overflow: visible; }
+.tg-fit > .tg-chip { max-width: none; }
+.tg-more {
+    flex: none;
+    border: 0;
+    border-radius: 4px;
+    padding: 0 4px;
+    background: none;
+    cursor: pointer;
+    font-size: .74rem;
+    font-weight: 600;
+    line-height: 20px;
+    color: var(--tg-ink2);
+}
+.tg-more[hidden] { display: none; }
+.tg-more:hover, .tg-more[aria-expanded="true"] { color: var(--tg-ink); background: var(--bs-secondary-bg); }
+.tg-more:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 1px; }
+.case-tag-group { min-width: 0; }
+.case-tag-group > .tg-fit { flex: 1 1 auto; }
+
+/* case detail: marking in the meta strip, empty tags panel */
+.case-meta-marking .meta-value { display: inline-flex; gap: 4px; align-items: center; }
+.tg-empty { margin: 0; font-size: .8rem; font-style: italic; color: var(--bs-secondary-color); }
+/* space between the TLP and PAP markings (Vue drops the whitespace between them) */
+.case-meta-marking .meta-value > * + * { margin-left: 6px; }
+
+/* ---- case detail, context view (MISP chips): aligned rows, label column on the left ---- */
+.tg-sections.is-context { gap: 0; }
+.tg-sections.is-context .tg-section {
+    display: grid;
+    grid-template-columns: 8.5rem minmax(0, 1fr);
+    column-gap: 10px;
+    align-items: start;
+    padding: 8px 0;
+    border-top: 1px solid var(--bs-border-color-translucent);
+}
+.tg-sections.is-context .tg-section:first-child { border-top: 0; padding-top: 2px; }
+.tg-sections.is-context .tg-section-title { margin: 3px 0 0; }
+.tg-sections.is-context .hinge-tags { display: flex; }
+
+/* origin of a tag coming from a linked case (MISP extension_origin.ctp, ExtensionEventColour) */
+.tg-origin {
+    display: inline-flex; align-items: center; gap: 4px; align-self: center;
+    padding: 2px 5px; font-size: .68rem; font-weight: 600; line-height: 1.2;
+    text-decoration: none;
+    background: hsla(var(--o-h, 25), 65%, 55%, .12);
+    color: hsl(var(--o-h, 25), 65%, 28%);
+    border: 1px solid hsl(var(--o-h, 25), 55%, 65%);
+}
+.tg-origin:hover { text-decoration: none; filter: brightness(.96); }
+[data-bs-theme="dark"] .tg-origin {
+    background: hsla(var(--o-h, 25), 65%, 55%, .16);
+    color: hsl(var(--o-h, 25), 65%, 80%);
+    border-color: hsl(var(--o-h, 25), 55%, 38%);
+}
+.tg-origin i { font-size: .85em; }
+.tg-origin { cursor: pointer; max-width: 12rem; }
+.tg-origin-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tg-tip-origin { margin-top: 3px; font-size: .7rem; font-weight: 600; color: var(--tg-ink2); }
+
+/* context view: tags of one taxonomy / galaxy kept together in a family block; the blocks
+   flow one after the other in 3 columns (masonry-like, CSS columns), so no empty space. Each
+   tag = MISP chip, then where it is set ("Case", "#id" task badges) on a small line below. */
+.tg-sections { container-type: inline-size; }
+.tg-ctx { columns: 3; column-gap: 10px; min-width: 0; }
+@container (max-width: 720px) { .tg-ctx { columns: 2; } }
+@container (max-width: 420px) { .tg-ctx { columns: 1; } }
+.tg-ctx-fam {
+    break-inside: avoid;
+    display: flex; flex-direction: column; gap: 2px;
+    margin-bottom: 8px; padding: 4px 4px 3px;
+    border: 1px solid var(--bs-border-color-translucent); border-radius: 6px;
+}
+.tg-ctx-fam-head {
+    padding: 0 4px 2px; font-size: .66rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--bs-secondary-color);
+}
+.tg-ctx-fam-head small { font-weight: 500; color: var(--bs-tertiary-color); margin-left: 3px; }
+.tg-ctx-row { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; padding: 3px 4px; border-radius: 4px; }
+.tg-ctx-row:hover { background: var(--bs-tertiary-bg); }
+.tg-ctx-chip { min-width: 0; max-width: 100%; }
+.tg-ctx-chip .hinge-tags { zoom: .82; max-width: 100%; }
+.tg-ctx-from { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.tg-ctx-from:empty { display: none; }
+.tg-ctx-from .tg-origin, .tg-from-case { font-size: .64rem; padding: 1px 5px; }
+.tg-from-case {
+    display: inline-flex; align-items: center;
+    font-weight: 600; line-height: 1.2; border-radius: var(--bs-border-radius-sm, .25rem);
+    color: var(--bs-secondary-color); background: var(--bs-secondary-bg); border: 1px solid var(--bs-border-color);
+}
+.tg-ctx-fam.is-single { border-color: transparent; padding-top: 0; padding-bottom: 0; }
+/* a big family (or the only one): full width, its tags in 3 columns inside the block */
+.tg-ctx-fam.is-wide { column-span: all; display: block; }
+.tg-ctx-fam.is-wide .tg-ctx-fam-head { display: block; }
+.tg-ctx-fam.is-wide > .tg-ctx-row { display: inline-flex; vertical-align: top; width: calc(100% / 3); }
+@container (max-width: 720px) { .tg-ctx-fam.is-wide > .tg-ctx-row { width: 50%; } }
+@container (max-width: 420px) { .tg-ctx-fam.is-wide > .tg-ctx-row { width: 100%; } }
+
+/* context view: origin filter (All / Case / Tasks) */
+.tg-origin-filter { margin: 0; }
+.tg-origin-filter .btn { --bs-btn-padding-y: .05rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .72rem; }
+
+/* compact cells: chip and its origins on one line when they fit, tight spacing */
+.tg-ctx-row { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 4px; padding: 1px 3px; }
+.tg-ctx-fam { gap: 0; margin-bottom: 6px; padding: 3px 3px 2px; }
+.tg-ctx-fam-head { padding: 0 3px 1px; }
+.tg-ctx-chip .hinge-tags { zoom: .78; }
+.tg-ctx-from .tg-origin, .tg-from-case { font-size: .6rem; padding: 0 4px; line-height: 1.5; }
+.tg-ctx-from .tg-origin i { display: none; }
+
+/* tags panel header: title left, origin filter exactly centred, buttons right */
+.tg-panel-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 10px; }
+.tg-panel-head-mid { display: flex; justify-content: center; }
+.tg-panel-head-actions { display: flex; justify-content: flex-end; gap: 4px; }
+
+/* ── MISP tag / galaxy editor (components/misp_tag_editor.js) ─────────────
+   The browser itself is MISP's misp-index-filter-browser.css, unchanged. It
+   switches to dark on [data-misp-mode="dark"]; Flowintel uses data-bs-theme,
+   so the same values as MISP's dark blocks. */
+[data-bs-theme="dark"] .ifb-panel {
+    --ifb-bg: #2a2f35;
+    --ifb-fg: #e9ecef;
+    --ifb-muted: #aab1b8;
+    --ifb-icon: #9aa2a9;
+    --ifb-border: rgba(255, 255, 255, .09);
+    --ifb-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 16px -6px rgba(0, 0, 0, .45), 0 24px 48px -12px rgba(0, 0, 0, .65);
+    --ifb-hover-bg: rgba(51, 195, 238, .12);
+    --ifb-hover-fg: #fff;
+    --ifb-hover-icon: #33C3EE;
+    --ifb-divider: rgba(255, 255, 255, .08);
+    --ifb-ring: #33C3EE;
+    --ifb-on-bg: rgba(51, 195, 238, .16);
+    --ifb-on-fg: #93ddf4;
+    --ifb-note-bg: rgba(255, 255, 255, .04);
+    --ifb-side-bg: color-mix(in srgb, #000 12%, var(--ifb-bg));
+    --ifb-exc: #ff7b86;
+    --ifb-exc-bg: rgba(255, 107, 120, .13);
+    --ifb-mark: rgba(255, 192, 0, .32);
+}
+/* After the block above, so the accent still wins (as in MISP). */
+[data-bs-theme="dark"] .ifb-accented .ifb-panel {
+    --ifb-ring: color-mix(in srgb, var(--ifb-accent) 80%, #fff);
+    --ifb-border: color-mix(in srgb, var(--ifb-accent) 25%, transparent);
+    --ifb-divider: color-mix(in srgb, var(--ifb-accent) 15%, transparent);
+    --ifb-hover-bg: color-mix(in srgb, var(--ifb-accent) 9%, transparent);
+    --ifb-hover-fg: color-mix(in srgb, var(--ifb-accent) 40%, var(--ifb-fg));
+    --ifb-hover-icon: var(--ifb-ring);
+    --ifb-on-bg: color-mix(in srgb, var(--ifb-accent) 14%, transparent);
+    --ifb-on-fg: color-mix(in srgb, var(--ifb-accent) 65%, var(--ifb-fg));
+    --ifb-side-bg: color-mix(in srgb, var(--ifb-accent) 4%, var(--ifb-bg));
+    --ifb-mark: color-mix(in srgb, var(--ifb-accent) 26%, transparent);
+}
+:root { --fi-misp-tag: #0d6efd; --fi-misp-galaxy: #8B5CF6; }
+
+/* Section labels: the forms' own label style, not MISP's coloured eyebrows. */
+.misp-tag-editor .mte-head,
+.misp-tag-filter .mte-head {
+    display: flex; align-items: center; gap: .4rem; margin-bottom: .4rem;
+    font-weight: 600; font-size: inherit; color: var(--bs-body-color);
+}
+.misp-tag-filter .mte-head i,
+.misp-tag-editor .mte-head i { color: var(--bs-secondary-color); font-size: .9em; }
+.misp-tag-editor .mte-toggle { cursor: pointer; user-select: none; }
+.misp-tag-editor .mte-chev { font-size: .75em; transition: transform .15s; color: var(--bs-secondary-color); }
+.misp-tag-editor .mte-chev.is-open { transform: rotate(90deg); }
+.misp-tag-editor .mte-custom {
+    display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px;
+    font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer;
+    color: var(--bs-body-color); background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color); border-left: 3px solid var(--tc, #888);
+    opacity: .7;
+}
+.misp-tag-editor .mte-custom i { color: var(--tc, inherit); }
+.misp-tag-editor .mte-custom:hover { opacity: 1; }
+.misp-tag-editor .mte-custom.is-on {
+    opacity: 1; background: color-mix(in srgb, var(--tc, #888) 16%, var(--bs-body-bg));
+    border-color: var(--tc, #888);
+}
+.misp-tag-editor .mte-custom:disabled { opacity: .35; cursor: not-allowed; }
+/* Compact view: the index chip (tag_badge) with a remove button. */
+.misp-tag-editor .mte-compact { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; }
+.misp-tag-filter .mte-x,
+.misp-tag-editor .mte-x {
+    border: 0; background: none; padding: 0 4px; line-height: 1; font-size: 15px;
+    color: var(--bs-secondary-color); border-radius: 3px;
+}
+.misp-tag-filter .mte-x:hover,
+.misp-tag-editor .mte-x:hover { color: var(--bs-danger); background: var(--bs-tertiary-bg); }
+
+/* Tag filter: values already picked = the same tag_badge chips as everywhere, plus "not" and ×. */
+.misp-tag-filter .mtf-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.misp-tag-filter .mtf-chip.is-not .tg-chip,
+.misp-tag-filter .mtf-chip.is-not .tg-mk { text-decoration: line-through; opacity: .75; }
+.misp-tag-filter .mtf-not {
+    padding: 1px 4px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .03em; color: var(--bs-danger-text-emphasis);
+    background: color-mix(in srgb, var(--bs-danger) 15%, transparent);
+}

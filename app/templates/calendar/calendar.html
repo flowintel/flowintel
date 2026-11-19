@@ -137,6 +137,7 @@
     const { createApp, ref, onMounted } = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
     import { getTextColor, mapIcon } from '/static/js/utils.js'
+    import { tagChipElement } from '/static/js/components/tag-badge.js'
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
@@ -538,42 +539,14 @@
                         // Tags
                         if (d.tags && d.tags.length){
                             let tagsContainer = $("<div>").addClass("calendar-pill-list")
-                            d.tags.forEach(t => {
-                                try {
-                                    let color = t.color || '#777'
-                                    let tagEl = $("<div>").addClass('tag').attr('title', t.description || '')
-                                    tagEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 9px", "border-radius": "999px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
-                                    if (t.icon) {
-                                        tagEl.append($("<i>").addClass(t.icon))
-                                    }
-                                    tagEl.append($("<span>").html('<i class="fa-solid fa-tag" style="margin-left: 3px;"></i>'))
-                                    tagEl.append(document.createTextNode(t.name || t))
-                                    tagsContainer.append(tagEl)
-                                } catch (e) {
-                                    // fallback
-                                    tagsContainer.append($("<span>").addClass('badge bg-secondary me-1').text(t.name || t))
-                                }
-                            })
+                            d.tags.forEach(t => tagsContainer.append(tagChipElement({ label: t.name || String(t), color: t.color, kind: 'taxonomy', title: t.description })))
                             details.append(makeSection('Tags', tagsContainer))
                         }
 
                         // Custom tags
                         if (d.custom_tags && d.custom_tags.length) {
                             let customContainer = $("<div>").addClass("calendar-pill-list")
-                            d.custom_tags.forEach(ct => {
-                                try {
-                                    let color = ct.color || '#777'
-                                    let ctEl = $("<div>").addClass('tag').attr('title', ct.description || '')
-                                    ctEl.css({"background-color": color, "color": getTextColor(color), "padding": "4px 9px", "border-radius": "999px", "display": "inline-flex", "align-items": "center", "gap": "6px", "font-weight": "600"})
-                                    if (ct.icon) {
-                                        ctEl.append($("<i>").addClass(ct.icon))
-                                    }
-                                    ctEl.append(document.createTextNode(ct.name || ct))
-                                    customContainer.append(ctEl)
-                                } catch (e) {
-                                    customContainer.append($("<span>").addClass('badge bg-secondary me-1').text(ct.name || ct))
-                                }
-                            })
+                            d.custom_tags.forEach(ct => customContainer.append(tagChipElement({ label: ct.name || String(ct), color: ct.color, kind: 'custom', iconClass: ct.icon, title: ct.description })))
                             details.append(makeSection('Custom tags', customContainer))
                         }
 
@@ -623,16 +596,7 @@
                         // Clusters (render like in case_tasks.js)
                         if (d.clusters && d.clusters.length) {
                             let clustersContainer = $("<div>").addClass("calendar-pill-list")
-                            d.clusters.forEach(c => {
-                                try {
-                                    let clEl = $("<div>").addClass("cluster").attr('title', 'Description:\n' + (c.description || '') + '\n\nMetadata:\n' + (c.meta || ''))
-                                    clEl.append($("<span>").html(mapIcon(c.icon)))
-                                    clEl.append(document.createTextNode(' ' + (c.tag || c.name || '')))
-                                    clustersContainer.append(clEl)
-                                } catch (e) {
-                                    clustersContainer.append($("<span>").text(c.tag || c.name || ''))
-                                }
-                            })
+                            d.clusters.forEach(c => clustersContainer.append(tagChipElement({ label: c.tag || c.name || '', kind: 'cluster', iconName: c.icon, title: c.description, meta: c.meta || '' })))
                             details.append(makeSection('Clusters', clustersContainer))
                         }
 

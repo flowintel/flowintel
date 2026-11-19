@@ -85,15 +85,8 @@
                                 </span>
                             </small>
                         </div>
-                        <div class="d-flex w-100 justify-content-between" style="margin-bottom: 7px;">
-                            <div style="display: flex;" v-if="task.tags">
-                                <template v-for="tag in task.tags">
-                                    <div class="tag" :style="{'background-color': tag.color, 'color': getTextColor(tag.color)}">
-                                        <i class="fa-solid fa-tag" style="margin-right: 3px; margin-left: 3px;"></i>
-                                        [[tag.name]]
-                                    </div>
-                                </template>
-                            </div>
+                        <div class="tg-row" style="margin-bottom: 7px;">
+                            <tag_badge v-for="t in task.tags" kind="taxonomy" :label="t.name" :color="t.color" :title="t.description || t.name"></tag_badge>
                         </div>
                         <div class="d-flex w-100 justify-content-between">
                             <div v-if="task.users.length">
@@ -111,28 +104,9 @@
                             </small>
                             <small v-else style="color: #6c757d;"><i class="fa-solid fa-calendar-xmark me-1"></i>No deadline</small>
                         </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <div style="display: flex;" v-if="task.galaxies">
-                                <template v-for="galaxy in task.galaxies">
-                                    <div :title="'Description:\\n' + galaxy.description">
-                                        <span class="cluster">
-                                            <span v-html="mapIcon(galaxy.icon)"></span>
-                                            [[galaxy.name]]
-                                        </span>
-                                    </div>
-                                </template>
-                            </div>
-                            <div v-else></div>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between" style="margin-top: 5px;">
-                            <div style="display: flex;" v-if="task.clusters">
-                                <template v-for="cluster in task.clusters">
-                                    <div :title="'Description:\n' + cluster.description + '\n\nMetadata:\n' + cluster.meta">
-                                        <span v-html="mapIcon(cluster.icon)"></span>
-                                        [[cluster.tag]]
-                                    </div>
-                                </template>
-                            </div>
+                        <div class="tg-row" style="margin-top: 5px;">
+                            <tag_badge v-for="g in task.galaxies" kind="galaxy" :label="g.name" :icon-name="g.icon" :title="g.description || g.name"></tag_badge>
+                            <tag_badge v-for="c in task.clusters" kind="cluster" :label="c.tag" :icon-name="c.icon" :title="c.description || c.tag" :meta="c.meta || ''"></tag_badge>
                         </div>
 
                         <div class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" 
@@ -168,12 +142,14 @@
         import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
+        import tag_badge from '/static/js/components/tag-badge.js'
         import smart_render from '/static/js/components/smart-render.js'
         import user_chip from '/static/js/components/user-chip.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                tag_badge,
                 'app-pagination': Pagination,
                 my_assignment_filter,
                 smart_render,

@@ -94,7 +94,7 @@
         import task_template from '/static/js/templating/task_template.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
-        import tag_filter from '/static/js/components/tag_filter.js'
+        import tag_filter from '/static/js/components/misp_tag_filter.js'
 
         createApp({
             delimiters: ['[[', ']]'],
@@ -128,11 +128,11 @@
                     let galax = ""
                     let clusters = ""
                     let custom_tg = ""
-                    if(tag_filter_state.value.tags.length) tags = "&tags=" + JSON.stringify(tag_filter_state.value.tags)
-                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + JSON.stringify(tag_filter_state.value.taxonomies)
-                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + JSON.stringify(tag_filter_state.value.galaxies)
-                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + JSON.stringify(tag_filter_state.value.clusters)
-                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + JSON.stringify(tag_filter_state.value.custom_tags)
+                    if(tag_filter_state.value.tags.length) tags = "&tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.tags))
+                    if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.taxonomies))
+                    if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.galaxies))
+                    if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.clusters))
+                    if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.custom_tags))
                     let url = `/templating/get_page_task_templates?page=${page}&or_and_taxo=${tag_filter_state.value.or_and_taxo}&or_and_galaxies=${tag_filter_state.value.or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`
                     if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
                     const res = await fetch(url)
@@ -154,11 +154,11 @@
                         let galax = ""
                         let clusters = ""
                         let custom_tg = ""
-                        if(tag_filter_state.value.tags.length) tags = "&tags=" + JSON.stringify(tag_filter_state.value.tags)
-                        if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + JSON.stringify(tag_filter_state.value.taxonomies)
-                        if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + JSON.stringify(tag_filter_state.value.galaxies)
-                        if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + JSON.stringify(tag_filter_state.value.clusters)
-                        if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + JSON.stringify(tag_filter_state.value.custom_tags)
+                        if(tag_filter_state.value.tags.length) tags = "&tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.tags))
+                        if(tag_filter_state.value.taxonomies.length) taxo = "&taxonomies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.taxonomies))
+                        if(tag_filter_state.value.galaxies.length) galax = "&galaxies=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.galaxies))
+                        if(tag_filter_state.value.clusters.length) clusters = "&clusters=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.clusters))
+                        if(tag_filter_state.value.custom_tags.length) custom_tg = "&custom_tags=" + encodeURIComponent(JSON.stringify(tag_filter_state.value.custom_tags))
 
                     let url = `/templating/get_page_task_templates?page=1&or_and_taxo=${tag_filter_state.value.or_and_taxo}&or_and_galaxies=${tag_filter_state.value.or_and_galaxies}&title=${title_filter}${tags}${taxo}${galax}${clusters}${custom_tg}`
                     if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
