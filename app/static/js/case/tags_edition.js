@@ -27,11 +27,10 @@ export default {
         const selected_clusters = ref([])
         const selected_custom_tags = ref([])
 
-        // Compact (MISP events index) or context (MISP event context) look, remembered per browser
-        const TAG_VIEW_KEY = 'flowintel_case_tag_view'
-        let saved_view = 'compact'
-        try { saved_view = localStorage.getItem(TAG_VIEW_KEY) || 'compact' } catch (e) {}
-        const tag_view = ref(saved_view === 'context' ? 'context' : 'compact')
+        // Compact (MISP events index) or context (MISP event context) look. The default comes
+        // from the user's Settings (data-tag-view on <html>, base.html); the toggle only
+        // changes it for this visit.
+        const tag_view = ref(document.documentElement.getAttribute('data-tag-view') === 'context' ? 'context' : 'compact')
         // Context view: drawn by MISP's own client renderer (static/js/misp-tag-chips.js,
         // copied from MISP webroot/js/tag-chips.js), so it is exactly MISP's event context.
         const icon_class = (name) => ((mapIcon(name) || '').match(/class="([^"]+)"/) || [])[1] || null
@@ -173,7 +172,6 @@ export default {
         function toggle_tag_view() {
             tag_view.value = tag_view.value === 'context' ? 'compact' : 'context'
             if (tag_view.value === 'context') fetch_task_tags()
-            try { localStorage.setItem(TAG_VIEW_KEY, tag_view.value) } catch (e) {}
         }
 
         async function change_tags() {

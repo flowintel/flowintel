@@ -5,6 +5,8 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
@@ -133,6 +135,11 @@
         </div>
         {% endif %}
     </div>
+    <div class="case-meta-grid" v-else aria-hidden="true">
+        <div v-for="w in ['70%', '55%', '80%', '60%', '65%']" class="case-meta-item">
+            <span class="lo-sk lo-sk-sm" style="width:40%"></span><span class="lo-sk" :style="{ width: w }"></span>
+        </div>
+    </div>
 
     {% if config.SHOW_GDPR_NOTICE %}
     <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
@@ -151,6 +158,9 @@
         </button>
         <div v-if="showDescription">
             <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
+            <div v-else class="py-2" aria-hidden="true">
+                <span class="lo-sk" style="width:95%"></span><span class="lo-sk" style="width:88%"></span><span class="lo-sk" style="width:60%"></span>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -582,6 +592,19 @@
                 <div class="col">
                     <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'" :can_edit="can_edit_case"
                                   @open-task="(t) => calendar_navigate({ tab: 'main', task: t.id, completed: t.completed })"></tags_edition>
+
+                    <loading_overlay v-if="!cases_info" :loading="true" :empty="true" :size="72" label="Loading case…">
+                        <template #skeleton>
+                            <div class="case-tags-style mt-2">
+                                <span class="lo-sk lo-sk-sm" style="width:18%"></span>
+                                <div class="d-flex gap-2 mt-2"><span v-for="w in ['70px','110px','90px','80px']" class="lo-sk lo-sk-pill" :style="{ width: w }"></span></div>
+                            </div>
+                            <div class="case-tags-style mt-3">
+                                <span class="lo-sk lo-sk-sm" style="width:22%"></span>
+                                <span class="lo-sk mt-3" style="width:75%"></span><span class="lo-sk" style="width:50%"></span>
+                            </div>
+                        </template>
+                    </loading_overlay>
 
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
@@ -1075,7 +1098,7 @@
 
                 <!-- Pagination -->
                 <div v-if="total_pages > 1" class="mt-3 d-flex justify-content-center">
-                    <app-pagination :current-page="current_page" :nb-pages="total_pages"
+                    <app-pagination scroll="#task-collapse" :current-page="current_page" :nb-pages="total_pages"
                                     aria-label="Task pagination" @page="go_to_page"></app-pagination>
                     <span class="ms-3 text-muted align-self-center" style="font-size: 0.82rem;">
                         [[ total_tasks ]] task<span v-if="total_tasks !== 1">s</span>
@@ -1090,9 +1113,18 @@
             
         </template>
         <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+            <loading_overlay :loading="true" :empty="true" label="Loading tasks…">
+                <template #skeleton>
+                    <div class="d-flex gap-2 mb-3"><span v-for="w in ['100px','90px','110px']" class="lo-sk lo-sk-pill" :style="{ width: w, height: '28px' }"></span></div>
+                    <div v-for="i in 4" :key="i" class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="lo-sk" :style="{ width: (60 - i * 6) + '%' }"></span>
+                            <span class="lo-sk lo-sk-pill" style="width:70px"></span>
+                        </div>
+                        <span class="lo-sk lo-sk-sm mt-2" style="width:35%"></span>
+                    </div>
+                </template>
+            </loading_overlay>
         </template>
     </div>
 
@@ -1133,6 +1165,7 @@
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import smart_render from '/static/js/components/smart-render.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         import case_links from '/static/js/components/case-links.js'
         import smart_editor from '/static/js/components/smart-editor.js'
         import tag_filter from '/static/js/components/misp_tag_filter.js'
@@ -1142,6 +1175,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                loading_overlay,
                 case_links,
                 'app-pagination': Pagination,
                 case_tasks,

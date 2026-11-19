@@ -2,6 +2,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 {{ super() }}
 <style>
     .rl-card { border: 1px solid var(--bs-border-color); border-radius: 12px; overflow: hidden; background: var(--bs-body-bg); }
@@ -106,7 +108,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!roles_list"><td colspan="5" class="rl-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the roles…</td></tr>
+                    <tr v-if="!roles_list" v-for="i in 6" :key="'sk' + i" aria-hidden="true"><td><span class="lo-sk " style="width:50%"></span><span class="lo-sk lo-sk-sm" style="width:70%"></span></td><td><span class="lo-sk lo-sk-pill" style="width:70px"></span></td><td class="rl-hide-sm"><span class="lo-sk " style="width:65%"></span></td><td><span class="lo-sk " style="width:30px"></span></td><td class="text-end"><span class="lo-sk lo-sk-pill ms-auto" style="width:60px"></span></td></tr>
                     <tr v-else-if="!roles_list.roles.length"><td colspan="5" class="rl-empty"><i class="fa-solid fa-user-shield fa-lg d-block mb-2"></i>No role matches the filters.</td></tr>
                     <template v-for="role in (roles_list ? roles_list.roles : [])" :key="role.id">
                         <tr :class="['rl-row', { 'rl-row--open': opened.has(role.id) }]" @click="toggle_row(role, $event)" :aria-expanded="opened.has(role.id)">

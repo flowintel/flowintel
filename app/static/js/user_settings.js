@@ -28,11 +28,23 @@
         font(value) {
             root.setAttribute('data-font', value)
         },
+        // nothing to draw: read by the case index on its next load (default table / cards)
+        case_view(value) {
+            root.setAttribute('data-case-view', value)
+        },
+        // default look of the tags in the case view (read by case/tags_edition.js)
+        tag_view(value) {
+            root.setAttribute('data-tag-view', value)
+        },
     }
 
     const current = {
         theme: () => root.getAttribute('data-theme-pref') || 'auto',
         font: () => root.getAttribute('data-font') || 'rubik',
+        // set by a click; before that, the option the server marked active (settings page)
+        case_view: () => root.getAttribute('data-case-view')
+            || document.querySelector('[data-setting="case_view"].active')?.getAttribute('data-value') || 'cards',
+        tag_view: () => root.getAttribute('data-tag-view') || 'compact',
     }
 
     function markSelected() {

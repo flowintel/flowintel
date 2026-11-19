@@ -924,7 +924,7 @@ export default {
                 </div>
             </template>
         </template>
-        <Pagination v-if="!is_loading" class="mt-2"
+        <Pagination scroll="list" v-if="!is_loading" class="mt-2"
                     :current-page="current_page" :nb-pages="total_pages"
                     aria-label="Standalone attributes pagination"
                     @page="current_page = $event" />

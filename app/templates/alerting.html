@@ -6,6 +6,7 @@
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/alerting.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/theme-bridge.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/pagination.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -189,13 +190,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(item, idx) in selected.observables" :key="'observable-' + idx">
+                            <tr v-for="(item, idx) in observables_page" :key="'observable-' + idx">
                                 <td>[[ item.type || item.kind || 'observable' ]]</td>
                                 <td>[[ item.value || objectSummary(item) ]]</td>
                                 <td>[[ item.role || item.direction || '' ]]</td>
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="observables_nb_pages > 1" class="mt-2" :current-page="observables_pg" :nb-pages="observables_nb_pages" @page="p => observables_pg = p"></app-pagination>
                 </div>
 
                 <div class="detail-section" v-if="selected.mitre_attack && selected.mitre_attack.length">
@@ -321,13 +323,15 @@ const initialAlerts = {{ alerts|tojson|safe }};
 const schemaExample = {{ alert_schema_example|tojson|safe }};
 const initialCaseTemplates = {{ case_templates|tojson|safe }};
 
-const { createApp, ref, computed, onMounted } = Vue;
+const { createApp, ref, computed, watch, onMounted } = Vue;
 import {message_list, display_toast, create_message} from '/static/js/toaster.js';
 import smart_render from '/static/js/components/smart-render.js';
+import Pagination from '/static/js/components/pagination.js';
+const PER_PAGE = 25;
 
 createApp({
     delimiters: ['[[', ']]'],
-    components: { smart_render },
+    components: { smart_render, 'app-pagination': Pagination },
     setup() {
         const urlParams = new URLSearchParams(window.location.search);
         const requestedAlertId = parseInt(urlParams.get('alert_id'), 10);
@@ -342,6 +346,11 @@ createApp({
 
         const schemaJson = computed(() => JSON.stringify(schemaExample, null, 2));
         const selected = computed(() => alerts.value.find(a => a.id === selectedId.value) || null);
+        // Client-side pagination of the selected alert's MISP attributes (back to page 1 on another alert)
+        const observables_pg = ref(1);
+        const observables_nb_pages = computed(() => Math.ceil((selected.value?.observables || []).length / PER_PAGE));
+        const observables_page = computed(() => (selected.value?.observables || []).slice((observables_pg.value - 1) * PER_PAGE, observables_pg.value * PER_PAGE));
+        watch(selectedId, () => { observables_pg.value = 1; });
         const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
         const newCount = computed(() => alerts.value.filter(a => statusOf(a) === 'new').length);
         const criticalCount = computed(() => alerts.value.filter(a => severity(a) === 'critical' && ['new', 'reviewing'].includes(statusOf(a))).length);
@@ -685,6 +694,7 @@ createApp({
         });
 
         return {
+            observables_pg, observables_nb_pages, observables_page,
             message_list, alerts, selected, filters, sending, caseForm, caseTemplates, templateSearch,
             schemaJson, refreshing, refreshAlerts, filteredAlerts, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected, unreadCount, newCount, criticalCount,
             severity, severityBadgeClass, reviewLabel, reviewBadgeClass, displayTitle, objectSummary,

@@ -7,6 +7,7 @@
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 
 {{ super() }}
@@ -346,7 +347,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="attribute in filtered_case_misp_attributes" :key="attribute.id">
+                                    <tr v-for="attribute in pg('sa', filtered_case_misp_attributes)" :key="attribute.id">
                                         <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
                                             title="Copy into input attributes"
                                             :class="{'table-success': highlighted_values.has(attribute.value)}">
@@ -373,6 +374,7 @@
                                 </tbody>
                             </table>
                         </div>
+                        <app-pagination scroll="list" v-if="pg_nb(filtered_case_misp_attributes) > 1" class="mt-2 px-2" :current-page="pg_page('sa', filtered_case_misp_attributes)" :nb-pages="pg_nb(filtered_case_misp_attributes)" @page="p => pages['sa'] = p"></app-pagination>
                     </div>
                 </template>
 
@@ -400,7 +402,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr v-for="attribute in active_attr_tab_attrs" :key="attribute.id">
+                                        <tr v-for="attribute in pg('ta', active_attr_tab_attrs)" :key="attribute.id">
                                             <td class="ps-3" @click="copy_to_input(attribute)" style="cursor: pointer;"
                                                 title="Copy into input attributes"
                                                 :class="{'table-success': highlighted_values.has(attribute.value)}">
@@ -427,6 +429,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <app-pagination scroll="list" v-if="pg_nb(active_attr_tab_attrs) > 1" class="mt-2 px-2" :current-page="pg_page('ta', active_attr_tab_attrs)" :nb-pages="pg_nb(active_attr_tab_attrs)" @page="p => pages['ta'] = p"></app-pagination>
                         </div>
                     </div>
                 </template>
@@ -448,6 +451,8 @@
         import {display_toast, message_list, create_message} from '/static/js/toaster.js'
         import misp_modules from '/static/js/analyzer/misp_modules.js'
         import smart_render from '/static/js/components/smart-render.js'
+        import Pagination from '/static/js/components/pagination.js'
+        const PER_PAGE = 25
         import { loadNoteVariables } from '/static/js/components/markdown-render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
 
@@ -455,9 +460,16 @@
             delimiters: ['[[', ']]'],
             components: {
                 misp_modules,
-                smart_render
+                smart_render,
+                'app-pagination': Pagination,
             },
             setup() {
+                // Client-side pagination of the attribute tables, one page per table key
+                // (back to page 1 when a filter shrinks the list under the current page).
+                const pages = ref({})
+                function pg_nb(list) { return Math.ceil((list || []).length / PER_PAGE) }
+                function pg_page(key, list) { const p = pages.value[key] || 1; return p > pg_nb(list) ? 1 : p }
+                function pg(key, list) { const p = pg_page(key, list); return (list || []).slice((p - 1) * PER_PAGE, p * PER_PAGE) }
                 const result_search = ref([])
                 const result_search_task = ref([])
                 const case_selected = ref()
@@ -863,6 +875,7 @@
                 }
 
                 return {
+                    pages, pg, pg_nb, pg_page,
                     message_list,
                     result_search,
                     result_search_task,

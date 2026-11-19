@@ -115,9 +115,10 @@ def create_app():
     app.jinja_env.filters["vue_escape"] = vue_escape
     from .utils.breadcrumb import build_breadcrumb
     app.jinja_env.globals["build_breadcrumb"] = build_breadcrumb
-    from .account.settings_core import get_theme, get_font
+    from .account.settings_core import get_theme, get_font, get_tag_view
     app.jinja_env.globals["user_theme"] = get_theme
     app.jinja_env.globals["user_font"] = get_font
+    app.jinja_env.globals["user_tag_view"] = get_tag_view
     from .utils.themes import THEMES, theme_base, theme_styled
     app.jinja_env.globals["themes"] = THEMES
     app.jinja_env.globals["theme_base"] = theme_base

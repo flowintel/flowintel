@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_link %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
@@ -125,11 +127,24 @@
         </div>
     </template>
 </template>
-<template v-else>
-    <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-</template>
+<loading_overlay v-else :loading="true" :empty="true" label="Loading tasks…">
+    <template #skeleton>
+        <div v-for="g in 2" :key="g" class="case-core-style mb-4">
+            <span class="lo-sk mx-auto mb-3" style="width:30%; height:16px"></span>
+            <div v-for="i in 3" :key="i" class="border rounded-4 p-3 mb-3">
+                <div class="d-flex justify-content-between">
+                    <span class="lo-sk" :style="{ width: (55 - i * 7) + '%' }"></span>
+                    <span class="lo-sk lo-sk-sm" style="width:90px"></span>
+                </div>
+                <span class="lo-sk lo-sk-sm mt-2" style="width:70%"></span>
+                <div class="d-flex gap-2 mt-3">
+                    <span class="lo-sk lo-sk-pill" style="width:70px"></span>
+                    <span class="lo-sk lo-sk-pill" style="width:90px"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+</loading_overlay>
 
 <app-pagination v-if="tasks_list" class="my-3" :current-page="current_page" :nb-pages="tasks_list.nb_pages"
                     @page="fetchAssignedTask"></app-pagination>
@@ -145,10 +160,12 @@
         import tag_badge from '/static/js/components/tag-badge.js'
         import smart_render from '/static/js/components/smart-render.js'
         import user_chip from '/static/js/components/user-chip.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                loading_overlay,
                 tag_badge,
                 'app-pagination': Pagination,
                 my_assignment_filter,

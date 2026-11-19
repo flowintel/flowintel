@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 {{ super() }}
 <style>
     .og-card { border: 1px solid var(--bs-border-color); border-radius: 12px; overflow: hidden; background: var(--bs-body-bg); }
@@ -87,7 +89,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="!orgs_list"><td colspan="5" class="og-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the organisations…</td></tr>
+                    <tr v-if="!orgs_list" v-for="i in 6" :key="'sk' + i" aria-hidden="true"><td><span class="lo-sk " style="width:55%"></span><span class="lo-sk lo-sk-sm" style="width:30%"></span></td><td><span class="lo-sk " style="width:30px"></span></td><td class="og-hide-sm"><span class="lo-sk " style="width:30px"></span></td><td class="og-hide-sm"><span class="lo-sk " style="width:30px"></span></td><td class="text-end"><span class="lo-sk lo-sk-pill ms-auto" style="width:60px"></span></td></tr>
                     <tr v-else-if="!visible_orgs.length"><td colspan="5" class="og-empty"><i class="fa-solid fa-building fa-lg d-block mb-2"></i>No organisation matches the filters.</td></tr>
                     <template v-for="org in visible_orgs" :key="org.id">
                         <tr :class="['og-row', { 'og-row--open': opened.has(org.id) }]" @click="toggle_row(org, $event)" :aria-expanded="opened.has(org.id)">

@@ -1,9 +1,9 @@
-"""Per-user settings (UserSettings): interface theme and font for now."""
+"""Per-user settings (UserSettings): interface theme, font and default case list display."""
 from ..db_class.db import UserSettings
 from ..extensions import db
 from ..utils.themes import THEMES
 
-DEFAULTS = {"theme": "auto", "font": "rubik"}
+DEFAULTS = {"theme": "auto", "font": "rubik", "case_view": "cards", "tag_view": "compact"}
 
 
 def get_settings(user):
@@ -22,6 +22,18 @@ def get_theme(user):
 
 def get_font(user):
     return get_settings(user).font or DEFAULTS["font"]
+
+
+def get_case_view(user):
+    """Default display of the case index: "table" or "cards"."""
+    view = get_settings(user).case_view
+    return view if view in UserSettings.CHOICES["case_view"] else DEFAULTS["case_view"]
+
+
+def get_tag_view(user):
+    """Default look of the tags in the case view: "compact" or "context"."""
+    view = get_settings(user).tag_view
+    return view if view in UserSettings.CHOICES["tag_view"] else DEFAULTS["tag_view"]
 
 
 def update_settings(user, changes):

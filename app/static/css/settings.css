@@ -200,3 +200,25 @@
   font-weight: 400;
   color: var(--bs-secondary-color);
 }
+
+/* ---------- Default case list display: small table / cards previews ---------- */
+.settings-view-preview { display: flex; flex-direction: column; justify-content: center; gap: 5px; height: 84px; padding: 10px 12px;
+    border-radius: 10px; background: var(--bs-tertiary-bg); }
+.settings-view-preview .svp-row { display: grid; grid-template-columns: 1fr 3fr 1.4fr; gap: 6px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--fi-border, #e9ecef); }
+.settings-view-preview .svp-row:last-child { border-bottom: 0; }
+.settings-view-preview .svp-row span, .settings-view-preview .svp-card span { display: block; height: 6px; border-radius: 3px; background: var(--fi-border, #dee2e6); }
+.settings-view-preview .svp-row span:first-child { background: var(--fi-accent, #1f3763); opacity: .55; }
+.settings-view-preview .svp-card { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; border: 1px solid var(--fi-border, #e9ecef);
+    border-radius: 6px; background: var(--fi-surface, #fff); box-shadow: 0 1px 2px rgba(7, 13, 71, .06); }
+.settings-view-preview .svp-card span:first-child { width: 55%; background: var(--fi-accent, #1f3763); opacity: .55; }
+.settings-view-preview .svp-card span:nth-child(2) { width: 90%; }
+.settings-view-preview .svp-card span:nth-child(3) { width: 35%; height: 5px; border-radius: 999px; }
+
+/* tag display previews */
+.settings-tag-preview .stp-line { display: flex; flex-wrap: wrap; gap: 4px; }
+.settings-tag-preview .stp-chip { display: block; height: 9px; border-radius: 999px; background: var(--fi-accent, #1f3763); opacity: .35; }
+.settings-tag-preview .stp-line .stp-chip:nth-child(2n) { background: #c0392b; }
+.settings-tag-preview .stp-line .stp-chip:nth-child(3n) { background: #0088cc; }
+.settings-tag-preview .stp-group { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; border-left: 2px solid var(--fi-border, #dee2e6); }
+.settings-tag-preview .stp-head { display: block; width: 40%; height: 5px; border-radius: 3px; background: var(--fi-border, #dee2e6); }

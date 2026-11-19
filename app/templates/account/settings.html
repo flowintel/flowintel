@@ -53,6 +53,51 @@
             </div>
         </div>
     </section>
+
+    <section class="case-core-style settings-section">
+        <div class="settings-section-head">
+            <h2 class="settings-section-title"><i class="fa-solid fa-folder-open fa-sm me-2"></i>Cases</h2>
+            <p class="settings-section-text">How the case list opens. The switch on the case list still changes it for one visit.</p>
+        </div>
+
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-table-cells-large fa-sm me-2"></i>Default display</h3>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Default case list display">
+                {% for value, label, icon, hint in [('table', 'Table', 'fa-table-list', 'Compact, one row per case, sortable columns'), ('cards', 'Cards', 'fa-grip', 'One card per case, with description and tags')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.case_view == value %} active{% endif %}" data-setting="case_view" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.case_view == value else 'false' }}">
+                    <span class="settings-view-preview settings-view-preview--{{ value }}" aria-hidden="true">
+                        {% if value == 'table' %}
+                            {% for i in range(4) %}<span class="svp-row"><span></span><span></span><span></span></span>{% endfor %}
+                        {% else %}
+                            {% for i in range(2) %}<span class="svp-card"><span></span><span></span><span></span></span>{% endfor %}
+                        {% endif %}
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags in a case</h3>
+            <p class="settings-section-text">How the tags of a case are shown when you open it. The toggle in the case still changes it for one visit.</p>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Default tag display in a case">
+                {% for value, label, icon, hint in [('compact', 'Compact', 'fa-grip-lines', 'One row of small chips'), ('context', 'Context', 'fa-layer-group', 'Grouped by taxonomy and galaxy, like a MISP event')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.tag_view == value %} active{% endif %}" data-setting="tag_view" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.tag_view == value else 'false' }}">
+                    <span class="settings-view-preview settings-tag-preview settings-tag-preview--{{ value }}" aria-hidden="true">
+                        {% if value == 'compact' %}
+                            <span class="stp-line">{% for w in [38, 52, 30, 46] %}<span class="stp-chip" style="width:{{ w }}px"></span>{% endfor %}</span>
+                            <span class="stp-line">{% for w in [44, 34, 56] %}<span class="stp-chip" style="width:{{ w }}px"></span>{% endfor %}</span>
+                        {% else %}
+                            {% for n in [2, 3] %}<span class="stp-group"><span class="stp-head"></span><span class="stp-line">{% for i in range(n) %}<span class="stp-chip" style="width:{{ 34 + i * 9 }}px"></span>{% endfor %}</span></span>{% endfor %}
+                        {% endif %}
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
 {% endblock %}
 
 {% block script %}

@@ -6,6 +6,7 @@
 {% from 'macros/page_header.html' import page_header %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <style>
 div#searchbox {
     display: flex;
@@ -64,7 +65,7 @@ button#scan:hover {
                 <th></th>
             </tr>
 
-            <tr v-for="case_loc in case_list">
+            <tr v-for="case_loc in case_page">
                 <td>[[case_loc.title]]</td>
                 <td ><pre class="description" style="max-width: 450px;">[[case_loc.description]]</pre></td>
                 <td v-if="case_loc.is_private"><i>Private</i></td>
@@ -79,6 +80,7 @@ button#scan:hover {
                 </td>
             </tr>
         </table>
+        <app-pagination v-if="nb_pages > 1" class="mt-2" :current-page="page" :nb-pages="nb_pages" @page="p => page = p"></app-pagination>
     </div>
 </template>
 <template v-else-if="is_searching">
@@ -89,17 +91,24 @@ button#scan:hover {
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, onMounted } = Vue
+        const { createApp, ref, computed, watch, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import Pagination from '/static/js/components/pagination.js'
+        const PER_PAGE = 25
         
         createApp({
             delimiters: ['[[', ']]'],
+            components: { 'app-pagination': Pagination },
             setup() {
                 const attribute_value = ref("")
                 const start_date = ref("")
                 const end_date = ref("")
                 const case_list = ref([])
                 const is_searching = ref(false)
+                const page = ref(1)
+                const nb_pages = computed(() => Math.ceil(case_list.value.length / PER_PAGE))
+                const case_page = computed(() => case_list.value.slice((page.value - 1) * PER_PAGE, page.value * PER_PAGE))
+                watch(case_list, () => { page.value = 1 })
 
                 async function search_attr() {
                     const params = new URLSearchParams()
@@ -129,6 +138,7 @@ button#scan:hover {
                     start_date,
                     end_date,
                     case_list,
+                    case_page, page, nb_pages,
                     is_searching,
 
                     search_attr,

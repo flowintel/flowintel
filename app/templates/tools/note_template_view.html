@@ -5,6 +5,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
@@ -78,23 +79,28 @@
         </template>
     </div>
 </template>
-<template v-else>
-    <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-</template>
+<loading_overlay v-else :loading="true" :empty="true" label="Loading note template…">
+    <template #skeleton>
+        <div class="case-core-style">
+            <span class="lo-sk lo-sk-sm" style="width:12%"></span>
+            <span class="lo-sk lo-sk-pill mt-2" style="width:60px; height:30px"></span>
+            <div class="mt-3"><span v-for="w in ['90%','85%','70%','88%','50%','76%']" class="lo-sk" :style="{ width: w }"></span></div>
+        </div>
+    </template>
+</loading_overlay>
 {% endblock %}
 
 {% block script %}
     <script type="module">
         const { createApp, ref, onMounted, nextTick } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         import smart_render from '/static/js/components/smart-render.js'
         const { EditorView, basicSetup, languages } = window.CodeMirrorBundle;
         
         createApp({
             delimiters: ['[[', ']]'],
-            components: {
+            components: { loading_overlay,
                 smart_render
             },
             setup() {
