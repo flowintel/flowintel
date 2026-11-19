@@ -63,3 +63,11 @@
 .ma-table .ma-col-users { width: 1%; white-space: nowrap; }
 .ma-table .ma-col-users .ma-users { flex-wrap: nowrap; }
 .ma-table .ma-col-title { min-width: 340px; }
+
+/* active tag filter (from the top bar search) */
+.ma-tag-filter { display: inline-flex; align-items: center; gap: 6px; max-width: 260px; padding: 3px 4px 3px 10px; border-radius: 999px;
+    background: var(--fi-accent, #1f3763); color: #fff; font-size: .78rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ma-tag-filter button { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0;
+    border: 0; border-radius: 50%; background: rgba(255, 255, 255, .2); color: inherit; font-size: .65rem; }
+.ma-tag-filter button:hover { background: rgba(255, 255, 255, .35); }
+[data-bs-theme="dark"] .ma-tag-filter { color: #0b1530; }

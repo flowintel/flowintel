@@ -43,6 +43,9 @@ def my_assignment_sort_tasks():
     # former shape, tasks grouped by case title
     flat = request.args.get('flat', default=False, type=is_it_true)
     group_by_case = request.args.get('group', default=False, type=is_it_true)
+    # tag filters (from the top bar search): "|"-separated names / cluster tags, all required
+    tag_names = [t for t in request.args.get('tags', '', type=str).split('|') if t][:10]
+    cluster_tags = [t for t in request.args.get('clusters', '', type=str).split('|') if t][:10]
 
     tasks_list = AssignModel.my_assignment_sort(
         user=current_user,
@@ -56,6 +59,8 @@ def my_assignment_sort_tasks():
         title_filter=title_q,
         due=due,
         group_by_case=group_by_case,
+        tag_names=tag_names,
+        cluster_tags=cluster_tags,
     )
 
     stats = AssignModel.calculate_task_stats(current_user) if not completed and not inactive_only else None

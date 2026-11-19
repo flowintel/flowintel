@@ -49,7 +49,13 @@
 
         {{ header_switch('Group by case', 'maGroupByCase', title='Show the tasks of each case together', attrs=':checked="group" @change="set_group($event.target.checked)"') }}
 
-        <button type="button" v-if="q || mode !== 'ongoing'" class="ctx-ghost-btn ctx-clear-btn" @click="clear_filters" title="Back to the ongoing tasks, no search">
+        <span v-for="t in tag_filter.tags" :key="'t' + t" class="ma-tag-filter" :title="'Only tasks tagged ' + t">
+            <i class="fa-solid fa-tag"></i>[[ t ]]<button type="button" @click="remove_tag('tags', t)" aria-label="Remove this filter"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+        <span v-for="c in tag_filter.clusters" :key="'c' + c" class="ma-tag-filter" :title="'Only tasks with the cluster ' + c">
+            <i class="fa-solid fa-meteor"></i>[[ c ]]<button type="button" @click="remove_tag('clusters', c)" aria-label="Remove this filter"><i class="fa-solid fa-xmark"></i></button>
+        </span>
+        <button type="button" v-if="q || mode !== 'ongoing' || tag_filter.tags.length || tag_filter.clusters.length" class="ctx-ghost-btn ctx-clear-btn" @click="clear_filters" title="Back to the ongoing tasks, no search">
             <i class="fa-solid fa-xmark fa-sm"></i>Clear
         </button>
     {% endif %}
@@ -131,6 +137,13 @@
                 const per_page = ref([10, 25, 50, 100].includes(url_pp) ? url_pp : 25)
                 const view = ref(['table', 'cards'].includes(url0.get('view')) ? url0.get('view') : DEFAULT_VIEW)
                 const group = ref(url0.get('group') === '1')
+                // tag filters, e.g. from the top bar search (?tags=a|b&clusters=c)
+                const tag_filter = ref({ tags: (url0.get('tags') || '').split('|').filter(Boolean),
+                                         clusters: (url0.get('clusters') || '').split('|').filter(Boolean) })
+                function remove_tag(kind, value) {
+                    tag_filter.value[kind] = tag_filter.value[kind].filter(v => v !== value)
+                    fetch_tasks(1)
+                }
                 const task_list_ref = ref(null)
 
                 const task_page = ref(null)
@@ -151,6 +164,8 @@
                     set('per_page', String(per_page.value), '25')
                     set('view', view.value, DEFAULT_VIEW)
                     set('group', group.value ? '1' : '')
+                    set('tags', tag_filter.value.tags.join('|'))
+                    set('clusters', tag_filter.value.clusters.join('|'))
                     if (u.href !== location.href) history.replaceState(null, '', u)
                 }
 
@@ -163,6 +178,8 @@
                     if (mode.value === 'overdue') params.set('overdue', 'true')
                     if (q.value) params.set('q', q.value)
                     if (group.value) params.set('group', 'true')
+                    if (tag_filter.value.tags.length) params.set('tags', tag_filter.value.tags.join('|'))
+                    if (tag_filter.value.clusters.length) params.set('clusters', tag_filter.value.clusters.join('|'))
 
                     const req = ++last_req   // a newer request (typing, sorting) wins
                     loading.value = true
@@ -218,6 +235,7 @@
                 function clear_filters() {
                     mode.value = 'ongoing'
                     q.value = ''
+                    tag_filter.value = { tags: [], clusters: [] }
                     const box = document.querySelector('.ctx-search input')
                     if (box) box.value = ''
                     fetch_tasks(1)
@@ -262,7 +280,7 @@
 
                 return {
                     message_list, MODE_LABELS, SORT_OPTIONS,
-                    mode, sort, order, q, per_page, view, group, set_group, task_list_ref,
+                    mode, sort, order, q, per_page, view, group, set_group, task_list_ref, tag_filter, remove_tag,
                     task_page, task_stats, status_info, current_page, loading,
                     fetch_tasks, set_mode, set_sort, toggle_order, sort_by_column, set_per_page, set_view,
                     show_due_soon, clear_filters, onInput, complete_task,

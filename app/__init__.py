@@ -222,6 +222,7 @@ def create_app():
     from .templating.templating import templating_blueprint
     from .alerts import alerts_blueprint
     from .alerting import alerting_blueprint
+    from .search.search import search_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -237,6 +238,7 @@ def create_app():
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
     app.register_blueprint(alerting_blueprint, url_prefix="/alerting")
+    app.register_blueprint(search_blueprint, url_prefix="/search")
 
     if app.config.get("ENABLE_CHATBOT", False):
         # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)

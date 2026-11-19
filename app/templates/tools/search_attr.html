@@ -124,6 +124,9 @@ button#scan:hover {
                 }
 
                 onMounted(() => {
+                    // ?value=… (e.g. from the top bar search): fill the field and search at once
+                    const url_value = new URLSearchParams(location.search).get('value')
+                    if (url_value) { attribute_value.value = url_value; search_attr() }
                     $('#search-value, #start-date, #end-date').on('keypress',function(e) {                        
                         if(e.which == 13) {
                             search_attr();

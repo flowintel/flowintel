@@ -2,7 +2,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import asc, desc, func, or_
 
-from app.db_class.db import Case, Case_Org, Status, Subtask, Task, Task_User, User
+from app.db_class.db import (Case, Case_Org, Cluster, Custom_Tags, Status, Subtask, Tags, Task, Task_Custom_Tags,
+                            Task_Galaxy_Tags, Task_Tags, Task_User, User)
+
+from app.extensions import db
 
 from ..case import common_core as CommonModel
 from ..case.TaskCore import TaskModel
@@ -46,7 +49,8 @@ PAGE_SIZES = (10, 25, 50, 100)
 
 
 def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False, viewer=None,
-                       order="desc", per_page=20, title_filter=None, due=None, group_by_case=False):
+                       order="desc", per_page=20, title_filter=None, due=None, group_by_case=False,
+                       tag_names=None, cluster_tags=None):
     """Tasks assigned to `user` that `viewer` may see, sorted and paginated.
 
     filter: a SORT_COLUMNS key (anything else keeps the database order); order: asc|desc,
@@ -64,6 +68,16 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, 
         query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
     if title_filter:
         query = query.filter(Task.title.ilike(f"%{title_filter}%"))
+    # tasks carrying a tag: taxonomy tag or custom tag name, galaxy cluster tag (all of them)
+    for name in (tag_names or []):
+        query = query.filter(or_(
+            Task.id.in_(db.session.query(Task_Tags.task_id).join(Tags, Tags.id == Task_Tags.tag_id).filter(Tags.name == name)),
+            Task.id.in_(db.session.query(Task_Custom_Tags.task_id).join(Custom_Tags, Custom_Tags.id == Task_Custom_Tags.custom_tag_id)
+                        .filter(Custom_Tags.name == name)),
+        ))
+    for tag in (cluster_tags or []):
+        query = query.filter(Task.id.in_(
+            db.session.query(Task_Galaxy_Tags.task_id).join(Cluster, Cluster.id == Task_Galaxy_Tags.cluster_id).filter(Cluster.tag == tag)))
     now = datetime.utcnow()
     windows = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
     if due == "overdue":
