@@ -1,0 +1,65 @@
+/* task_list.css — what a task adds to the case_list look (case_list.css is loaded too) */
+
+/* the case a task belongs to */
+.ma-case { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: var(--bs-secondary-color);
+    font-size: .84rem; text-decoration: none; }
+.ma-case:hover { color: var(--fi-accent, #1f3763); }
+.ma-case:hover .ma-case-title { text-decoration: underline; }
+.ma-case .cl-id { font-size: .78rem; }
+.ma-case-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-private { font-size: .75em; opacity: .7; }
+
+/* table */
+.ma-table .ma-col-title { min-width: 280px; }
+.ma-table .ma-col-case { width: 1%; white-space: nowrap; }   /* only the case id: the tags get the room */
+.ma-table .ma-col-tags { min-width: 160px; max-width: 280px; }
+.ma-table .ma-col-deadline, .ma-table .ma-col-last_modif { white-space: nowrap; }
+
+/* assignees */
+.ma-users { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; }
+
+/* cards */
+.ma-tile { gap: 10px; }
+.ma-tile-case { align-self: flex-start; padding: 2px 10px 2px 8px; border-radius: 999px; background: var(--bs-tertiary-bg); }
+.ma-tile-case > .fa-briefcase { color: var(--fi-accent, #1f3763); font-size: .8em; }
+.ma-tile .cl-tile-foot { justify-content: space-between; }
+
+/* open subtasks on a card */
+.ma-subtasks { margin: 0; padding: 8px 12px; list-style: none; border-left: 3px solid var(--fi-accent, #1f3763);
+    border-radius: 0 8px 8px 0; background: var(--bs-tertiary-bg); font-size: .85rem; }
+.ma-subtasks li { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.ma-subtasks li i { color: var(--bs-secondary-color); font-size: .85em; }
+.ma-subtasks-more { color: var(--bs-secondary-color); font-style: italic; }
+
+/* grouped by case: a header per case (table row / bar above the cards) */
+.ma-group-row > td { padding: 14px 12px 8px !important; background: var(--bs-body-bg) !important; border-bottom: 2px solid var(--fi-accent, #1f3763) !important; }
+.ma-table tbody + tbody { border-top: 0; }
+.ma-group-row > td, .ma-group-bar { display: flex; align-items: center; gap: 12px; }
+.ma-group-row > td { display: table-cell; }
+.ma-group-row .ma-group-count { margin-left: 12px; }
+.ma-group-head { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--bs-body-color); font-weight: 700; text-decoration: none; }
+.ma-group-head > .fa-briefcase { color: var(--fi-accent, #1f3763); }
+.ma-group-head:hover .ma-group-title { text-decoration: underline; }
+.ma-group-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-group-count { color: var(--bs-secondary-color); font-size: .82rem; font-weight: 500; white-space: nowrap; }
+.ma-group-late { margin-left: 4px; color: #dc3545; font-weight: 600; }
+.ma-groups { display: flex; flex-direction: column; gap: 22px; }
+.ma-group-bar { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--fi-accent, #1f3763); }
+.ma-group-bar .ma-group-count { margin-left: auto; }
+
+/* fold a case's tasks (grouped view) */
+.ma-group-row, .ma-group-bar { cursor: pointer; user-select: none; }
+.ma-group-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; margin-right: 4px;
+    padding: 0; border: 1px solid var(--bs-border-color); border-radius: 7px; background: var(--bs-body-bg); color: var(--fi-accent, #1f3763); }
+.ma-group-toggle:hover { border-color: var(--fi-accent, #1f3763); }
+.ma-group-toggle i { font-size: .75rem; transition: transform .15s ease; }
+.is-collapsed .ma-group-toggle i { transform: rotate(-90deg); }
+.ma-group-bar.is-collapsed { margin-bottom: 0; border-bottom-style: dashed; opacity: .85; }
+.ma-group-row.is-collapsed > td { border-bottom-style: dashed !important; }
+.ma-fold-all { display: inline-flex; gap: 6px; margin-left: auto; }
+.ma-fold-all + .cl-view { margin-left: 8px; }
+
+/* assignees: at most 2 chips + "+N", the title column gets the room */
+.ma-table .ma-col-users { width: 1%; white-space: nowrap; }
+.ma-table .ma-col-users .ma-users { flex-wrap: nowrap; }
+.ma-table .ma-col-title { min-width: 340px; }

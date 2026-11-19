@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import desc, or_
+from sqlalchemy import asc, desc, func, or_
 
 from app.db_class.db import Case, Case_Org, Status, Subtask, Task, Task_User, User
 
@@ -33,7 +33,26 @@ def _visible_assignments(user, viewer):
     return query.filter(visible_case.exists())
 
 
-def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False, viewer=None):
+# Sort keys accepted from the client (never a raw column name in order_by)
+SORT_COLUMNS = {
+    "last_modif": Task.last_modif,
+    "creation_date": Task.creation_date,
+    "deadline": Task.deadline,
+    "title": func.lower(Task.title),
+    "status_id": Task.status_id,
+    "case": Task.case_id,
+}
+PAGE_SIZES = (10, 25, 50, 100)
+
+
+def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False, viewer=None,
+                       order="desc", per_page=20, title_filter=None, due=None, group_by_case=False):
+    """Tasks assigned to `user` that `viewer` may see, sorted and paginated.
+
+    filter: a SORT_COLUMNS key (anything else keeps the database order); order: asc|desc,
+    applied before pagination; title_filter: case-insensitive title search; due: a deadline
+    window ("overdue", "24h", "7d", "30d", "none"); group_by_case: tasks of a case come
+    together (most recently modified case first), the chosen sort applies inside each case."""
     viewer = viewer if viewer is not None else user
     query = _visible_assignments(user, viewer).filter(Task.completed==completed)
     inactive_ids = _inactive_status_ids()
@@ -43,9 +62,28 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, 
         query = query.filter(Task.status_id.notin_(inactive_ids))
     if overdue_only:
         query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
-    if filter:
-        query = query.order_by(desc(filter))
-    query = query.paginate(page=page, per_page=20, max_per_page=50)
+    if title_filter:
+        query = query.filter(Task.title.ilike(f"%{title_filter}%"))
+    now = datetime.utcnow()
+    windows = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
+    if due == "overdue":
+        query = query.filter(Task.deadline.isnot(None), Task.deadline < now)
+    elif due in windows:
+        query = query.filter(Task.deadline >= now, Task.deadline < now + windows[due])
+    elif due == "none":
+        query = query.filter(Task.deadline.is_(None))
+    if group_by_case:
+        last_case_modif = Case.query.with_entities(Case.last_modif).filter(Case.id == Task.case_id).scalar_subquery()
+        query = query.order_by(desc(last_case_modif), Task.case_id)
+    if filter in SORT_COLUMNS:
+        column = SORT_COLUMNS[filter]
+        if filter == "deadline":
+            # tasks without a deadline last, whatever the order
+            query = query.order_by(Task.deadline.is_(None))
+        query = query.order_by(asc(column) if order == "asc" else desc(column), Task.id)
+    if per_page not in PAGE_SIZES and per_page != 20:
+        per_page = 25
+    query = query.paginate(page=page, per_page=per_page, max_per_page=100)
     return query
 
 
@@ -71,6 +109,29 @@ def get_task_info(tasks_list, user):
             tasks_by_case[case.title] = []
         tasks_by_case[case.title].append(final_task)
     return tasks_by_case
+
+
+def get_task_list_info(tasks_list, user):
+    """Flat list for the web page (task_list component): each task with its users, open
+    subtasks and the case it belongs to (id, title, privileged, private)."""
+    tasks = []
+    cases = {}
+    for task in tasks_list:
+        if task.case_id not in cases:
+            cases[task.case_id] = CommonModel.get_case(task.case_id)
+        case = cases[task.case_id]
+        if not CommonModel.can_view_case(case, user):
+            continue
+        users, _ = TaskModel.get_users_assign_task(task.id, user)
+        loc = task.to_json()
+        loc["users"] = users
+        subtasks = Subtask.query.filter_by(task_id=task.id).order_by(Subtask.task_order_id).all()
+        loc["subtasks"] = [s.to_json() for s in subtasks]
+        loc["nb_open_subtasks"] = sum(1 for s in subtasks if not s.completed)
+        loc["case"] = {"id": case.id, "title": case.title, "privileged_case": bool(case.privileged_case),
+                       "is_private": bool(case.is_private)}
+        tasks.append(loc)
+    return tasks
 
 
 def calculate_task_stats(user):

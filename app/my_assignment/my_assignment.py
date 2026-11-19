@@ -16,7 +16,9 @@ my_assignment_blueprint = Blueprint(
 @login_required
 def my_assignment():
     """View of a assigned tasks"""
-    return render_template("my_assignment/my_assignment.html")
+    from ..account.settings_core import get_case_view
+    # same default display as the case list (Settings → Cases → Default display)
+    return render_template("my_assignment/my_assignment.html", default_view=get_case_view(current_user))
 
 
 def is_it_true(value):
@@ -33,20 +35,35 @@ def my_assignment_sort_tasks():
     overdue_only = request.args.get('overdue', default=False, type=is_it_true)
     completed = not show_completed
     filter_value = request.args.get('filter', type=str)
-    
+    order = 'asc' if request.args.get('order') == 'asc' else 'desc'
+    per_page = request.args.get('per_page', 20, type=int)
+    title_q = request.args.get('q', None, type=str)
+    due = request.args.get('due', None, type=str)
+    # flat=true: one list with the case of each task (task_list component); otherwise the
+    # former shape, tasks grouped by case title
+    flat = request.args.get('flat', default=False, type=is_it_true)
+    group_by_case = request.args.get('group', default=False, type=is_it_true)
+
     tasks_list = AssignModel.my_assignment_sort(
-        user=current_user, 
-        completed=completed, 
-        page=page, 
+        user=current_user,
+        completed=completed,
+        page=page,
         filter=filter_value,
         inactive_only=inactive_only,
-        overdue_only=overdue_only
+        overdue_only=overdue_only,
+        order=order,
+        per_page=per_page,
+        title_filter=title_q,
+        due=due,
+        group_by_case=group_by_case,
     )
-    
+
     stats = AssignModel.calculate_task_stats(current_user) if not completed and not inactive_only else None
-    
+
+    info = AssignModel.get_task_list_info if flat else AssignModel.get_task_info
     return {
-        "tasks": AssignModel.get_task_info(tasks_list, current_user), 
+        "tasks": info(tasks_list, current_user),
         "nb_pages": tasks_list.pages,
+        "total": tasks_list.total,
         "stats": stats
     }
