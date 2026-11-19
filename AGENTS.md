@@ -72,6 +72,20 @@ pytest tests/case/test_case_admin.py
 - Before finishing a non-trivial change, run the most relevant test files or `./launch.sh -t` if the change is broad.
 - Tests run with `FLASKENV=testing` through `launch.sh`.
 
+## AI-Assisted Contributions
+
+AI and LLM tools may be credited as co-authors. When an AI tool contributes code or documentation to a commit, add a `Co-Authored-By` trailer at the end of the commit message, separated from the body by a blank line. Name the model actually used and its provider's attribution email, for example:
+
+```text
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+```
+
+- Use the actual model's identity; the example above is illustrative.
+- Mention significant AI assistance in the pull request description.
+- Human contributors remain responsible for understanding, reviewing, and testing the changes they submit.
+
+This guidance follows the [Vulnerability-Lookup contribution guidelines](https://github.com/vulnerability-lookup/vulnerability-lookup/blob/main/CONTRIBUTING.md#use-of-ai-and-llm-tools).
+
 ## Repo-Specific Cautions
 
 - The repo may already contain user changes. Do not revert unrelated modifications.

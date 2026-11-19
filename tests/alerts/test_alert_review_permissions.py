@@ -8,7 +8,7 @@ from app.db_class.db import Case, Case_Org, ExternalAlert, ExternalAlertAction, 
 
 @pytest.fixture
 def review_alert(app, monkeypatch):
-    app.session_interface = SecureCookieSessionInterface()
+    monkeypatch.setattr(app, "session_interface", SecureCookieSessionInterface())
     monkeypatch.setitem(app.config, "SESSION_REDIS", None)
     with app.app_context():
         owner = User.query.filter_by(api_key="editor_api_key").one()

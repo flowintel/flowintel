@@ -250,8 +250,9 @@ def test_ask_route_keeps_browser_identity_after_session_removal(app, identities,
     from app.chatbot.chatbot import chatbot_blueprint
     from app.db_class.db import ChatConversation, ChatMessage
 
-    app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
-    app.session_interface = SecureCookieSessionInterface()
+    if "chatbot" not in app.blueprints:
+        app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
+    monkeypatch.setattr(app, "session_interface", SecureCookieSessionInterface())
     monkeypatch.setitem(app.config, "SESSION_REDIS", None)
     monkeypatch.setitem(app.config, "ENABLE_CHATBOT", True)
     monkeypatch.setattr(Chatbot, "configure_lm", lambda model=None: None)

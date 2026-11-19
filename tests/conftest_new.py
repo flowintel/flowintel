@@ -150,6 +150,19 @@ def app():
             "LOG_FILE": f"new_{app.config.get('LOG_FILE')}"
         })
 
+        # Shared apps must register optional routes before any test makes a request.
+        # The blueprint's ENABLE_CHATBOT guard still controls access to these routes.
+        from app.chatbot.chatbot import chatbot_blueprint
+        if "chatbot" not in app.blueprints:
+            app.register_blueprint(chatbot_blueprint, url_prefix="/chatbot")
+
+        @app.before_request
+        def reset_login_user():
+            # db_session keeps an app context (and g) alive across requests.
+            # Flask-Login must reload the user from each request's session.
+            from flask import g
+            g.pop("_login_user", None)
+
         # Set FLOWINTEL_TEST_LOG=1 to write audit logs to logs/new_record.log during tests.
         if os.environ.get("FLOWINTEL_TEST_LOG") == "1":
             logs_folder = os.path.join(os.getcwd(), "logs")
