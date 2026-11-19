@@ -270,3 +270,18 @@
         gap: 0.35rem;
         white-space: nowrap;
     }
+
+/* ---------- loader over the calendar (loading_overlay + calendar-shaped skeleton) ---------- */
+.cal-wrap { position: relative; }
+.cal-loading { position: absolute; inset: 0; z-index: 20; overflow: hidden; border-radius: 12px; background: var(--bs-body-bg); }
+.cal-loading .lo-wrap { height: 100%; }
+.cal-sk { padding: 16px; }
+.cal-sk-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.cal-sk-toolbar .lo-sk + .lo-sk { margin-top: 0; }
+.cal-sk-head { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0 12px; padding: 0 10px 8px; }
+.cal-sk-head .lo-sk { width: 40%; margin: 0 auto; }
+.cal-sk-head .lo-sk + .lo-sk { margin-top: 0; }
+.cal-sk-grid { display: grid; grid-template-columns: repeat(7, 1fr); border-top: 1px solid var(--bs-border-color); border-left: 1px solid var(--bs-border-color); }
+.cal-sk-cell { min-height: 108px; padding: 6px; border-right: 1px solid var(--bs-border-color); border-bottom: 1px solid var(--bs-border-color); }
+.cal-sk-day { width: 18px; margin-left: auto; margin-bottom: 8px; }
+.cal-sk-ev { height: 14px; border-radius: 4px; }
