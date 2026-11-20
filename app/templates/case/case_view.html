@@ -901,7 +901,8 @@
 
         <template v-else-if="main_tab == 'timeline'">
             <timeline_view :case_id="{{case.id}}" :cases_info="cases_info"
-                           :initial_view="timeline_view_mode" @view-change="active_subtab_timeline"></timeline_view>
+                           :initial_view="timeline_view_mode" @view-change="active_subtab_timeline"
+                           @navigate="calendar_navigate"></timeline_view>
         </template>
 
         <template v-for="connType in active_module_tabs" :key="'content-' + connType">
