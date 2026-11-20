@@ -119,8 +119,9 @@ export default {
 
         function sidebar_header(el, ctx) {
             const node = ctx && ctx.node
+            if (node && node.isGroup && node.info) return group_header(el, node.info)
             const ev = event_by_node(node)
-            if (!ev) return undefined          // groups, edges: Pivotick's default header
+            if (!ev) return undefined          // edges, Today: Pivotick's default header
             const kind = EVENT_KINDS[event_kind(ev)]
             el.innerHTML = ''
             const head = el.appendChild(document.createElement('div'))
@@ -131,6 +132,22 @@ export default {
             text.className = 'tlg-side-text'
             text.appendChild(el_text('span', 'tlg-side-kind', kind.label + (node.getData().step ? ' · #' + node.getData().step : '')))
             text.appendChild(el_text('span', 'tlg-side-title', ev.description))
+            return el
+        }
+
+        // sidebar header of a group: same look as its card (icon, date, how many events)
+        function group_header(el, group) {
+            const kind = group.rule === 'day-kind' || group.rule === 'by-kind' ? group_kind(group) : null
+            el.innerHTML = ''
+            const head = el.appendChild(document.createElement('div'))
+            head.className = 'tlg-side-head'
+            head.style.setProperty('--tlg-accent', kind ? kind.color : '#1f3763')
+            head.appendChild(el_icon(kind ? kind.icon : 'fa-solid fa-calendar-day', 'tlg-side-icon'))
+            const text = head.appendChild(document.createElement('div'))
+            text.className = 'tlg-side-text'
+            const n = group.members.length
+            text.appendChild(el_text('span', 'tlg-side-kind', kind ? n + ' ' + kind.label + (n > 1 ? 's' : '') : n + ' event' + (n > 1 ? 's' : '')))
+            text.appendChild(el_text('span', 'tlg-side-title', group_title(group)))
             return el
         }
 
@@ -342,7 +359,9 @@ export default {
             icon.appendChild(el('i', 'fa-solid fa-calendar-check'))
             head.appendChild(icon)
             const text = el('div', 'tlg-group-text')
-            text.appendChild(el('span', 'tlg-today-label', 'Today'))
+            const label = el('span', 'tlg-today-label', 'Today')
+            label.appendChild(el('span', 'tlg-today-here', 'You are here'))
+            text.appendChild(label)
             text.appendChild(el('span', 'tlg-group-title', window.dayjs ? dayjs().format('ddd D MMM YYYY') : d.day))
             head.appendChild(text)
             card.appendChild(head)
@@ -554,6 +573,11 @@ export default {
             if (node) graph.focusElement(node)
         }
 
+        // selecting something opens the details panel on the side
+        function show_sidebar() {
+            try { graph && graph.UIManager && graph.UIManager.sidebar && graph.UIManager.sidebar.showSidebar() } catch (e) {}
+        }
+
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
             if (!container) return
@@ -710,7 +734,8 @@ export default {
                         deletion: { enabled: editable },
                     },
                     table: { open: false },
-                    tooltip: { enabled: { nodes: true, edges: true, groups: true }, render: tooltip_card },
+                    // no tooltip on hover: selecting a card opens its details in the sidebar
+                    tooltip: { enabled: false },
                     minimap: true,
                     notes: { enabled: false },
                     pivotMode: false,
@@ -751,7 +776,9 @@ export default {
                     onNodeSelect: (node) => {
                         const ev = graph_events.value.find(e => String(e.id) === String(node.id))
                         if (ev) selected_node.value = ev
+                        show_sidebar()
                     },
+                    onEdgeSelect: () => show_sidebar(),
                     onNodeBlur: () => { selected_node.value = null },
                 }
             }
