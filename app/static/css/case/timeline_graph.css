@@ -277,3 +277,15 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-cap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 12px; border: 1px solid rgba(232, 137, 12, .35);
     border-radius: 10px; background: rgba(232, 137, 12, .08); color: var(--bs-body-color); font-size: .82rem; }
 .tlg-cap > i { color: #c47208; }
+
+/* Pivotick buttons with the icons added by timeline_graph.js, in the Flowintel style */
+.tlg-container :is(.pvt-sidebar-group-action, .pvt-table-row-action) {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--bs-border-color); border-radius: 8px;
+    background: var(--bs-body-bg); color: var(--bs-body-color); font-size: .78rem; font-weight: 600; transition: border-color .15s, color .15s, background .15s; }
+.tlg-container :is(.pvt-sidebar-group-action, .pvt-table-row-action):hover { border-color: #2f6fb0; color: #2f6fb0; }
+.tlg-container .pvt-sidebar-group-action-primary { border-color: #1f3763; background: #1f3763; color: #fff; }
+.tlg-container .pvt-sidebar-group-action-primary:hover { border-color: #2c4a80; background: #2c4a80; color: #fff; }
+.tlg-container .pvt-sidebar-group-action-danger { border-color: rgba(220, 53, 69, .45); color: #dc3545; }
+.tlg-container .pvt-sidebar-group-action-danger:hover { border-color: #dc3545; background: #dc3545; color: #fff; }
+.tlg-btn-icon { font-size: .85em; }
+.pivotick-button .tlg-btn-icon { margin-right: 6px; }
