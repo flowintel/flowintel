@@ -37,10 +37,10 @@
 .cpd-user-bar { display: flex; height: 8px; border-radius: 4px; background: var(--bs-tertiary-bg); overflow: hidden; }
 .cpd-user-num { color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
 .cpd-more { color: var(--bs-secondary-color); }
-.is-closed { background: #198754; }
-.is-open { background: var(--fi-accent, #1f3763); opacity: .55; }
-.is-created { background: var(--fi-accent, #1f3763); opacity: .55; }
-.is-finished { background: #198754; }
+.cpd .is-closed { background: #198754; }
+.cpd .is-open { background: var(--fi-accent, #1f3763); opacity: .55; }
+.cpd .is-created { background: var(--fi-accent, #1f3763); opacity: .55; }
+.cpd .is-finished { background: #198754; }
 
 .cpd-weeks { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; }
 .cpd-week { display: flex; flex-direction: column; align-items: center; gap: 3px; }

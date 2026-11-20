@@ -121,15 +121,26 @@
 {% block script %}
 <script type="module">
     const { createApp } = Vue
-    import {message_list, display_toast} from '/static/js/toaster.js'
+    import {message_list, display_toast, create_message} from '/static/js/toaster.js'
     import { confirmDelete } from '/static/js/confirm.js'
+
+    try {
+        if (sessionStorage.getItem('fi-settings-reset')) {
+            sessionStorage.removeItem('fi-settings-reset')
+            create_message('Settings reset to their default values', 'success-subtle')
+        }
+    } catch (e) {}
 
     // "Reset to defaults": every setting back to its default, then reload to apply them
     document.getElementById('settings-reset')?.addEventListener('click', async () => {
         const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset' })
         if (!ok) return
         const res = await fetch('/account/settings/reset', { method: 'POST', headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' } })
-        if (res.ok) window.location.reload()
+        if (res.ok) {
+            // the toast is shown after the reload (flag kept for this tab only)
+            try { sessionStorage.setItem('fi-settings-reset', '1') } catch (e) {}
+            window.location.reload()
+        }
         else display_toast(res)
     })
 
