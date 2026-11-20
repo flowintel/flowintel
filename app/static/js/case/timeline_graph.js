@@ -945,9 +945,10 @@ export default {
                           text: () => drill_mode.value ? 'Grouped view' : 'Breadcrumb mode',
                           title: () => drill_mode.value ? 'Back to the grouped view: days you open in place' : 'One level at a time: days, then the kinds of a day, then its events',
                           onclick: () => { setTimeout(toggle_drill, 0) } },
-                        { id: 'tlg-chrono', placement: 'start', iconClass: 'fa-solid fa-clock-rotate-left',
-                          text: () => show_chronology.value ? 'Time between: on' : 'Time between events',
-                          title: 'Link each event to the next one with the time between them',
+                        // same rule: the label says what the click does
+                        { id: 'tlg-chrono', placement: 'start', iconClass: show_chronology.value ? 'fa-solid fa-eye-slash' : 'fa-solid fa-clock-rotate-left',
+                          text: () => show_chronology.value ? 'Hide time between events' : 'Show time between events',
+                          title: () => show_chronology.value ? 'Remove the links giving the time between two events' : 'Link each event to the next one with the time between them',
                           onclick: () => { setTimeout(toggle_chronology, 0) } },
                     ] },
                     // no tooltip on hover: selecting a card opens its details in the sidebar
