@@ -698,17 +698,25 @@ legend.analyzer-select-case {
 
 #case-main-nav .nav-tabs>li>button.active,
 #collapseTasks>.nav-tabs>li>button.active {
-  border-bottom: 2px solid #007bff;
-  color: #007bff;
+  border-bottom: 2px solid #2d4f8a;   /* Flowintel blue, a touch lighter for the active tab */
+  color: #2d4f8a;
+  font-weight: 700;
 }
+
+/* the tab title (.section-title) follows the tab colour: active / hovered = Flowintel blue */
+#case-main-nav .nav-tabs>li>button .section-title,
+#collapseTasks>.nav-tabs>li>button .section-title { color: inherit; }
+#case-main-nav .nav-tabs>li>button.active .section-title,
+#collapseTasks>.nav-tabs>li>button.active .section-title { font-weight: 800; }
 
 #case-main-nav .nav-tabs>li>button:hover,
 #collapseTasks>.nav-tabs>li>button:hover {
-  color: #4c8ac0;
+  color: var(--bs-primary);
+  border-bottom-color: rgba(var(--bs-primary-rgb), .35);
 }
 
 .tab-add-btn { border-style: dashed !important; border-color: #adb5bd !important; color: #6c757d !important; }
-.tab-add-btn:hover { border-color: #0d6efd !important; color: #0d6efd !important; background: none !important; }
+.tab-add-btn:hover { border-color: var(--bs-primary) !important; color: var(--bs-primary) !important; background: none !important; }
 
 .manage-tabs-section-title {
   margin: 0 0 0.5rem 0;
@@ -717,9 +725,9 @@ legend.analyzer-select-case {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #0b4f8a;
-  background: linear-gradient(90deg, #e9f3ff 0%, #f8fbff 100%);
-  border: 1px solid #cfe3fb;
+  color: var(--bs-primary-text-emphasis);
+  background: linear-gradient(90deg, var(--bs-primary-bg-subtle) 0%, transparent 100%);
+  border: 1px solid var(--bs-primary-border-subtle);
   border-radius: 0.35rem;
 }
 
@@ -918,7 +926,7 @@ a.case-content:hover {
 
 .show-more-btn {
   cursor: pointer;
-  color: #0d6efd;
+  color: var(--bs-primary);
   background: transparent;
   border: none;
   padding: 0;
@@ -1024,7 +1032,7 @@ a.case-content:hover {
 /* Alerts page styles (moved from app/templates/alerts.html) */
 .alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 1rem; }
 .alert-item:hover { background: #f8f9fa; }
-.alert-item.unread { border-left: 3px solid #0d6efd; background: #f0f7ff; }
+.alert-item.unread { border-left: 3px solid var(--bs-primary); background: #f0f7ff; }
 .alert-status-sent { color: #198754; }
 .alert-status-error { color: #dc3545; }
 .alert-status-pending { color: #ffc107; }

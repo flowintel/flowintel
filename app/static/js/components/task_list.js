@@ -18,6 +18,7 @@ import tag_fit from './tag-fit.js'
 import smart_render from './smart-render.js'
 import user_chip from './user-chip.js'
 import loading_overlay from './loading_overlay.js'
+import case_ref from './case_ref.js'
 
 // description cut after a few lines, faded only when it really overflows (as in case_list)
 const desc_clamp = {
@@ -58,7 +59,7 @@ const OPEN_SUBTASKS_SHOWN = 3
 export default {
     name: 'task_list',
     delimiters: ['[[', ']]'],
-    components: { tag_badge, smart_render, user_chip, loading_overlay },
+    components: { tag_badge, smart_render, user_chip, loading_overlay, case_ref },
     directives: { 'tag-fit': tag_fit, 'desc-clamp': desc_clamp },
     props: {
         tasks:      { type: Array, default: () => [] },
@@ -118,6 +119,10 @@ export default {
             const next = {}
             if (value) for (const g of this.groups) next[g.case.id] = true
             this.collapsed = next
+        },
+        // true when every case of the page is folded (drives the "Collapse / Expand all" toggle)
+        all_collapsed() {
+            return this.groupByCase && this.groups.length > 0 && this.groups.every(g => this.collapsed[g.case.id])
         },
         group_late(g) { return g.tasks.filter(t => this.due(t)?.state === 'is-late').length },
         // assignees: the current user first, then a single other one; the rest as "+N"
@@ -238,11 +243,7 @@ export default {
                 </div>
               </td>
               <td v-if="!groupByCase" class="ma-col-case">
-                <a :href="'/case/' + t.case_id" class="ma-case" :title="'Case #' + t.case_id + ': ' + t.case.title">
-                  <span class="cl-id">#[[ t.case_id ]]</span>
-                  <i v-if="t.case.privileged_case" class="fa-solid fa-user-shield cl-priv" title="Privileged case"></i>
-                  <i v-if="t.case.is_private" class="fa-solid fa-lock ma-private" title="Private case"></i>
-                </a>
+                <case_ref :item="t.case" mode="id"></case_ref>
               </td>
               <td class="ma-col-status_id">
                 <span :class="'cl-status cl-status--' + status(t).style" :title="'Status: ' + status(t).name"><i :class="status(t).icon"></i>[[ status(t).name ]]</span>
@@ -309,11 +310,7 @@ export default {
       </header>
     <div v-if="!(groupByCase && collapsed[g.case.id])" class="cl-grid">
       <article v-for="t in g.tasks" :key="t.id" class="cl-tile ma-tile" @click="open_row(t, $event)">
-        <a v-if="!groupByCase" :href="'/case/' + t.case_id" class="ma-case ma-tile-case" :title="'Case #' + t.case_id + ': ' + t.case.title">
-          <i class="fa-solid fa-briefcase"></i><span class="cl-id">#[[ t.case_id ]]</span>
-          <i v-if="t.case.privileged_case" class="fa-solid fa-user-shield cl-priv" title="Privileged case"></i>
-          <i v-if="t.case.is_private" class="fa-solid fa-lock ma-private" title="Private case"></i>
-        </a>
+        <case_ref v-if="!groupByCase" :item="t.case" mode="id" class="ma-tile-case"></case_ref>
         <header class="cl-tile-head">
           <a :href="href(t)" class="cl-title cl-tile-title" :title="'Open the task: ' + t.title">[[ t.title ]]</a>
           <span :class="'cl-status cl-tile-status cl-status--' + status(t).style" :title="'Status: ' + status(t).name"><i :class="status(t).icon"></i>[[ status(t).name ]]</span>
@@ -344,7 +341,7 @@ export default {
         </div>
 
         <ul v-if="open_subtasks(t).length" class="ma-subtasks" title="Open subtasks">
-          <li v-for="s in open_subtasks(t).slice(0, OPEN_SUBTASKS_SHOWN)" :key="s.id"><i class="fa-regular fa-square"></i>[[ s.description ]]</li>
+          <li v-for="s in open_subtasks(t).slice(0, OPEN_SUBTASKS_SHOWN)" :key="s.id"><i class="fa-regular fa-square"></i><span class="ma-subtask-text">[[ s.description ]]</span></li>
           <li v-if="open_subtasks(t).length > OPEN_SUBTASKS_SHOWN" class="ma-subtasks-more">+[[ open_subtasks(t).length - OPEN_SUBTASKS_SHOWN ]] more open</li>
         </ul>
 

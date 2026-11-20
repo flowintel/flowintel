@@ -402,8 +402,8 @@ html[data-json-theme="solarized"] body {
 
 /* Auto-highlight (extraHighlights prop) — Rulezet blue, no focus/cur_match concept */
 .cv-match--auto {
-    background: rgba(13, 110, 253, 0.32);
-    outline: 1px solid rgba(13, 110, 253, 0.75);
+    background: rgba(var(--bs-primary-rgb), 0.32);
+    outline: 1px solid rgba(var(--bs-primary-rgb), 0.75);
     border-radius: 2px;
     padding: 0 1px;
     color: inherit;

@@ -25,9 +25,11 @@
 .ma-tile .cl-tile-foot { justify-content: space-between; }
 
 /* open subtasks on a card */
-.ma-subtasks { margin: 0; padding: 8px 12px; list-style: none; border-left: 3px solid var(--fi-accent, #1f3763);
+.ma-subtasks { min-width: 0; max-width: 100%; margin: 0; padding: 8px 12px; list-style: none; border-left: 3px solid var(--fi-accent, #1f3763);
     border-radius: 0 8px 8px 0; background: var(--bs-tertiary-bg); font-size: .85rem; }
-.ma-subtasks li { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; }
+.ma-subtasks li { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 2px 0; overflow-wrap: anywhere; word-break: break-word; }
+.ma-subtasks li i { flex: none; }
+.ma-subtask-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .ma-subtasks li i { color: var(--bs-secondary-color); font-size: .85em; }
 .ma-subtasks-more { color: var(--bs-secondary-color); font-style: italic; }
 
@@ -56,8 +58,6 @@
 .is-collapsed .ma-group-toggle i { transform: rotate(-90deg); }
 .ma-group-bar.is-collapsed { margin-bottom: 0; border-bottom-style: dashed; opacity: .85; }
 .ma-group-row.is-collapsed > td { border-bottom-style: dashed !important; }
-.ma-fold-all { display: inline-flex; gap: 6px; margin-left: auto; }
-.ma-fold-all + .cl-view { margin-left: 8px; }
 
 /* assignees: at most 2 chips + "+N", the title column gets the room */
 .ma-table .ma-col-users { width: 1%; white-space: nowrap; }

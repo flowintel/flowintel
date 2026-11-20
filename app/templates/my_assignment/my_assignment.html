@@ -11,6 +11,7 @@
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_list.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/task_list.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_ref.css') }}">
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -48,6 +49,11 @@
         </div>
 
         {{ header_switch('Group by case', 'maGroupByCase', title='Show the tasks of each case together', attrs=':checked="group" @change="set_group($event.target.checked)"') }}
+        <button type="button" v-if="group && task_page && task_page.tasks.length" class="ctx-ghost-btn ma-fold-all"
+                @click="task_list_ref?.set_all_collapsed(!task_list_ref.all_collapsed())"
+                :title="task_list_ref?.all_collapsed() ? 'Show the tasks of every case on this page' : 'Hide the tasks of every case on this page'">
+            <i :class="task_list_ref?.all_collapsed() ? 'fa-solid fa-angles-down fa-sm' : 'fa-solid fa-angles-up fa-sm'"></i>[[ task_list_ref?.all_collapsed() ? 'Expand all' : 'Collapse all' ]]
+        </button>
 
         <span v-for="t in tag_filter.tags" :key="'t' + t" class="ma-tag-filter" :title="'Only tasks tagged ' + t">
             <i class="fa-solid fa-tag"></i>[[ t ]]<button type="button" @click="remove_tag('tags', t)" aria-label="Remove this filter"><i class="fa-solid fa-xmark"></i></button>
@@ -69,14 +75,6 @@
         <span>per page</span>
     </label>
     <app-pagination v-if="task_page" :current-page="current_page" :nb-pages="task_page.nb_pages" @page="fetch_tasks"></app-pagination>
-    <div v-if="group && task_page && task_page.tasks.length" class="ma-fold-all">
-        <button type="button" class="ctx-ghost-btn" @click="task_list_ref?.set_all_collapsed(true)" title="Hide the tasks of every case on this page">
-            <i class="fa-solid fa-angles-up fa-sm"></i>Collapse all
-        </button>
-        <button type="button" class="ctx-ghost-btn" @click="task_list_ref?.set_all_collapsed(false)" title="Show the tasks of every case on this page">
-            <i class="fa-solid fa-angles-down fa-sm"></i>Expand all
-        </button>
-    </div>
     <div class="cl-view" role="group" aria-label="Display" title="Switch between the table and the cards">
         <button type="button" :class="{ 'is-active': view === 'table' }" :aria-pressed="view === 'table'" @click="set_view('table')" title="Show as a table">
             <i class="fa-solid fa-table-list"></i>Table

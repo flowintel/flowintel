@@ -72,7 +72,7 @@
 }
 
 .ctx-sort.is-sorted i {
-  color: #0d6efd;
+  color: var(--bs-primary);
 }
 
 .ctx-table th.ctx-col-end {
@@ -126,7 +126,7 @@
 
 .ctx-row.is-open .ctx-col-toggle i {
   transform: rotate(90deg);
-  color: #0d6efd;
+  color: var(--bs-primary);
 }
 
 .ctx-detail-row > td {

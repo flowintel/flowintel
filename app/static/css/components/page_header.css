@@ -561,7 +561,7 @@ a.ctx-ghost-btn {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 50%;
-  background: #0d6efd;
+  background: var(--bs-primary);
 }
 
 .ctx-search i {
