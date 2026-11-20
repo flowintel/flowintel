@@ -462,6 +462,46 @@ export default {
             decorate_buttons(container)
         }
 
+        // An opened group owns its area: any other card inside it is pushed out, on every tick
+        // of the simulation, so what is being analysed is never mixed with the rest.
+        const HALF_W = 150, HALF_H = 75, MARGIN = 40
+        function drawn_parts(group, out) {
+            for (const p of group.parts || []) {
+                out.add(p)
+                if (p.isGroup && p.info && p.info.open) drawn_parts(p, out)
+            }
+            return out
+        }
+        function keep_out_of_open_groups() {
+            const simplify = graph && graph.simplify
+            if (!simplify || !simplify.getOpenGroupNodes) return
+            const open = simplify.getOpenGroupNodes()
+            if (!open.length) return
+            const canvas = graph.getCanvasNodes()
+            for (const group of open) {
+                const inside = drawn_parts(group, new Set())
+                const placed = canvas.filter(n => inside.has(n) && Number.isFinite(n.x) && Number.isFinite(n.y))
+                if (!placed.length) continue
+                const box = {
+                    x1: Math.min(...placed.map(n => n.x)) - HALF_W - MARGIN, x2: Math.max(...placed.map(n => n.x)) + HALF_W + MARGIN,
+                    y1: Math.min(...placed.map(n => n.y)) - HALF_H - MARGIN, y2: Math.max(...placed.map(n => n.y)) + HALF_H + MARGIN,
+                }
+                for (const n of canvas) {
+                    if (inside.has(n) || n === group || !Number.isFinite(n.x)) continue
+                    if (n.x < box.x1 - HALF_W || n.x > box.x2 + HALF_W || n.y < box.y1 - HALF_H || n.y > box.y2 + HALF_H) continue
+                    // out by the nearest side
+                    const moves = [
+                        [box.x1 - HALF_W - n.x, 0], [box.x2 + HALF_W - n.x, 0],
+                        [0, box.y1 - HALF_H - n.y], [0, box.y2 + HALF_H - n.y],
+                    ].sort((a, b) => Math.abs(a[0] + a[1]) - Math.abs(b[0] + b[1]))
+                    const [dx, dy] = moves[0]
+                    n.x += dx; n.y += dy
+                    if (n.fx != null) { n.fx += dx; n.fy += dy }
+                    n.vx = 0; n.vy = 0
+                }
+            }
+        }
+
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
             if (!container) return
@@ -525,7 +565,7 @@ export default {
                     id: 'day-' + by_day[i - 1].day + '-' + by_day[i].day,
                     from: String(prev.id),
                     to: String(cur.id),
-                    data: { label: elapsed(event_time(cur) - event_time(prev)), link_type: 'timeline', computed: true }
+                    data: { label: '⏱ ' + elapsed(event_time(cur) - event_time(prev)), link_type: 'timeline', computed: true }
                 })
             }
             for (let i = 1; show_chronology.value && i < ordered.length; i++) {
@@ -534,7 +574,7 @@ export default {
                     id: 'chrono-' + prev.id + '-' + cur.id,
                     from: String(prev.id),
                     to: String(cur.id),
-                    data: { label: elapsed(event_time(cur) - event_time(prev)), link_type: 'chronology', computed: true }
+                    data: { label: '⏱ ' + elapsed(event_time(cur) - event_time(prev)), link_type: 'chronology', computed: true }
                 })
             }
 
@@ -552,7 +592,15 @@ export default {
                 i18n: { locale: 'en', messages: messages_for_events() },
                 // force layout: opening a group makes room, the other cards are pushed away
                 layout: { type: 'force' },
-                simulation: { fitViewOnExpandCollapse: true },
+                // strong repulsion, wide collisions, little gravity: an opened group clears its area,
+                // the other cards are pushed out of it instead of floating inside
+                simulation: {
+                    fitViewOnExpandCollapse: true,
+                    d3ManyBodyStrength: -400,
+                    d3CollideRadiusMultiplier: 1.4,
+                    d3LinkDistance: 220,
+                    d3GravityStrength: 0.05,
+                },
                 UI: {
                     mode: 'full',
                     theme: dark ? 'dark' : 'light',
@@ -631,6 +679,7 @@ export default {
                     },
                 },
                 callbacks: {
+                    onSimulationTick: keep_out_of_open_groups,
                     onBeforeNodeCreate: persist_node_create,
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
