@@ -1,7 +1,7 @@
 import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
-const { ref, onMounted, nextTick } = Vue
+const { ref, onMounted, onBeforeUnmount, nextTick } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
@@ -428,6 +428,43 @@ export default {
             return event_messages
         }
 
+        // Pivotick's buttons (sidebar, table, panels) have text only: add a Font Awesome icon
+        const BUTTON_ICONS = [
+            [/^open\b/i, 'fa-solid fa-folder-open'], [/^close\b/i, 'fa-solid fa-xmark'], [/^select members/i, 'fa-solid fa-object-group'],
+            [/^view in table/i, 'fa-solid fa-table'], [/^delete\b/i, 'fa-solid fa-trash'], [/^edit\b/i, 'fa-solid fa-pen'],
+            [/^pull out/i, 'fa-solid fa-arrow-right-from-bracket'], [/^rename/i, 'fa-solid fa-i-cursor'], [/^ungroup/i, 'fa-solid fa-object-ungroup'],
+            [/^group\b/i, 'fa-solid fa-object-group'], [/^neighbo/i, 'fa-solid fa-diagram-project'], [/^stats/i, 'fa-solid fa-chart-simple'],
+            [/^list\b/i, 'fa-solid fa-list'], [/^focus/i, 'fa-solid fa-crosshairs'], [/^hide\b/i, 'fa-solid fa-eye-slash'],
+            [/^show\b/i, 'fa-solid fa-eye'], [/^pin\b/i, 'fa-solid fa-thumbtack'], [/^unpin/i, 'fa-solid fa-thumbtack-slash'],
+            [/^export/i, 'fa-solid fa-download'], [/^copy/i, 'fa-regular fa-copy'], [/^add\b/i, 'fa-solid fa-plus'], [/^save\b/i, 'fa-solid fa-check'],
+            [/^cancel\b/i, 'fa-solid fa-xmark'],
+        ]
+        const BUTTON_SELECTOR = '.pvt-sidebar-group-action, .pvt-table-row-action, .pvt-sidebar .pivotick-button, .pvt-modal .pivotick-button'
+        let icon_observer = null
+        function decorate_buttons(root) {
+            for (const b of root.querySelectorAll(BUTTON_SELECTOR)) {
+                if (b.dataset.tlgIcon || b.querySelector('i, svg')) continue
+                const text = b.textContent.trim()
+                const hit = BUTTON_ICONS.find(([re]) => re.test(text))
+                b.dataset.tlgIcon = '1'
+                if (!hit) continue
+                const i = document.createElement('i')
+                i.className = hit[1] + ' tlg-btn-icon'
+                b.prepend(i)
+            }
+        }
+        function watch_buttons(container) {
+            if (icon_observer) icon_observer.disconnect()
+            let pending = false
+            icon_observer = new MutationObserver(() => {
+                if (pending) return
+                pending = true
+                requestAnimationFrame(() => { pending = false; decorate_buttons(container); decorate_buttons(document.body) })
+            })
+            icon_observer.observe(container, { childList: true, subtree: true })
+            decorate_buttons(container)
+        }
+
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
             if (!container) return
@@ -576,12 +613,25 @@ export default {
             }
 
             graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
+            watch_buttons(container)
         }
 
         function toggle_chronology() {
             show_chronology.value = !show_chronology.value
             render_graph()
         }
+
+        // full screen in and out: the canvas changes size, fit the graph to it again
+        function on_fullscreen() {
+            setTimeout(() => { try { graph && graph.renderer && graph.renderer.fitAndCenterWhenSettled() } catch (e) {} }, 150)
+        }
+        document.addEventListener('fullscreenchange', on_fullscreen)
+
+        onBeforeUnmount(() => {
+            document.removeEventListener('fullscreenchange', on_fullscreen)
+            if (icon_observer) icon_observer.disconnect()
+            if (graph) graph.destroy()
+        })
 
         onMounted(() => {
             fetch_graph_data()
