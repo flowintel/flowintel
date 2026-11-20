@@ -521,8 +521,9 @@ export default {
         // width of what it shows, and nothing of another day ever sits in it. Run on every tick.
         const SLOT = 300, HALF_W = 150, MARGIN = 40, PULL = 0.25
         const moved_by_hand = new Set()       // ids the user dragged: never put back on the line
+        let dragging = false
         function layout_timeline() {
-            if (!graph || typeof graph.getCanvasNodes !== 'function') return
+            if (dragging || !graph || typeof graph.getCanvasNodes !== 'function') return
             const per_day = new Map()
             for (const n of graph.getCanvasNodes()) {
                 if (!Number.isFinite(n.x) || !Number.isFinite(n.y) || moved_by_hand.has(String(n.id))) continue
@@ -767,8 +768,10 @@ export default {
                 },
                 callbacks: {
                     onSimulationTick: layout_timeline,
-                    // a card moved by hand stays where it is dropped
-                    onNodeDragended: (evt, node) => { if (node) moved_by_hand.add(String(node.id)) },
+                    // a card moved by hand is left to the user from the first move, and the line
+                    // layout pauses while dragging (it would pull the card back on every tick)
+                    onNodeDragging: (evt, node) => { dragging = true; if (node) moved_by_hand.add(String(node.id)) },
+                    onNodeDragended: (evt, node) => { dragging = false; if (node) moved_by_hand.add(String(node.id)) },
                     onBeforeNodeCreate: persist_node_create,
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
