@@ -124,7 +124,7 @@ export default {
                 <button type="button" class="kchip-x" @click.stop="remove(c.id)" :aria-label="'Remove case #' + c.id" title="Remove"><i class="fa-solid fa-xmark"></i></button>
             </span>
             <input ref="input" class="upick-input" v-model="query" :placeholder="modelValue.length ? 'Add another case…' : placeholder"
-                   @focus="open = true" @input="open = true" @keydown="on_key"
+                   @input="open = true" @keydown="on_key"
                    role="combobox" :aria-expanded="open" aria-autocomplete="list" aria-label="Search a case to link">
             <i v-if="loading" class="fa-solid fa-circle-notch fa-spin upick-caret"></i>
             <i v-else class="fa-solid fa-magnifying-glass upick-caret"></i>

@@ -116,7 +116,7 @@ export default {
                 <button type="button" class="cchip-x" @click.stop="remove(i.id)" :aria-label="'Remove ' + i.name" title="Remove"><i class="fa-solid fa-xmark"></i></button>
             </span>
             <input ref="input" class="upick-input" v-model="query" :placeholder="chosen.length ? '' : placeholder"
-                   @focus="open = true" @input="open = true; active = 0" @keydown="on_key"
+                   @input="open = true; active = 0" @keydown="on_key"
                    role="combobox" :aria-expanded="open" aria-autocomplete="list">
             <i class="fa-solid fa-chevron-down upick-caret"></i>
         </div>

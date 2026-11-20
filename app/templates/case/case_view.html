@@ -2414,7 +2414,6 @@ async function autosave_case_note(){
                     const link_modal_el = document.getElementById('add_new_link')
                     if (link_modal_el) {
                         link_modal_el.addEventListener('show.bs.modal', () => { link_picked.value = []; link_modal_open.value = true })
-                        link_modal_el.addEventListener('shown.bs.modal', () => link_modal_el.querySelector('.kpick .upick-input')?.focus())
                         link_modal_el.addEventListener('hidden.bs.modal', () => { link_modal_open.value = false })
                     }
 
