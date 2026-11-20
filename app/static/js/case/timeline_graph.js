@@ -96,6 +96,8 @@ export default {
             head.appendChild(icon)
             const step = node.getData().step
             if (step) head.appendChild(el('span', 'tlg-card-step', '#' + step))
+            const badge = day_badge(node.getData().day)
+            if (badge) head.appendChild(badge)
             const when = el('div', 'tlg-card-when')
             when.appendChild(el('span', 'tlg-card-kind', kind.label))
             when.appendChild(el('span', 'tlg-card-date', ev.date_text))
@@ -349,6 +351,16 @@ export default {
             return ok
         }
 
+        // red badge: where a day sits compared with today ("−20 d", "today", "+2 d")
+        function day_badge(day) {
+            if (!day) return null
+            const today = window.dayjs ? dayjs().format('YYYY-MM-DD') : new Date().toISOString().slice(0, 10)
+            const diff = Math.round((Date.parse(day) - Date.parse(today)) / 86400000)
+            const b = el('span', 'tlg-day-badge', diff === 0 ? 'today' : (diff < 0 ? '−' : '+') + Math.abs(diff) + ' d')
+            b.title = diff === 0 ? 'Today' : Math.abs(diff) + ' day' + (Math.abs(diff) > 1 ? 's' : '') + (diff < 0 ? ' ago' : ' from now')
+            return b
+        }
+
         // "Today" marker, added when nothing happened today: how long since the last / first event
         const TODAY_ID = 'today'
         function today_card(node) {
@@ -429,6 +441,9 @@ export default {
             text.appendChild(el('span', 'tlg-group-kind-label', kind ? n + ' ' + kind.label + (n > 1 ? 's' : '') : n + ' event' + (n > 1 ? 's' : '')))
             text.appendChild(el('span', 'tlg-group-title', group_title(group)))
             head.appendChild(text)
+            const first = group.members[0] && group.members[0].getData()
+            const badge = day_badge(first && first.day)
+            if (badge) head.appendChild(badge)
             card.appendChild(head)
             const foot = el('div', 'tlg-group-foot')
             if (!kind) {
@@ -519,7 +534,7 @@ export default {
 
         // The days on one line, in time order: each day has its slot, an opened day takes the
         // width of what it shows, and nothing of another day ever sits in it. Run on every tick.
-        const SLOT = 300, HALF_W = 150, MARGIN = 40, PULL = 0.25
+        const SLOT = 360, HALF_W = 160, MARGIN = 40, PULL = 0.25
         const moved_by_hand = new Set()       // ids the user dragged: never put back on the line
         let dragging = false
         function layout_timeline() {
@@ -754,7 +769,7 @@ export default {
                     },
                 },
                 render: {
-                    groupStyle: (group) => ({ shape: 'none', text: '', tiers: [], badges: [], layoutSize: 135, html: () => group_card(group) }),
+                    groupStyle: (group) => ({ shape: 'none', text: '', tiers: [], badges: [], layoutSize: 150, html: () => group_card(group) }),
                     groupOutline: (group) => group_title(group) + ' · ' + group.members.length + ' ' + (group.rule === 'day-kind' ? group_kind(group).label + (group.members.length > 1 ? 's' : '') : 'events'),
                     nodeTypeAccessor: (node) => node.getData().kind,
                     nodeStyleMap: nodeStyleMap,
