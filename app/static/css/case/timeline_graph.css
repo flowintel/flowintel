@@ -328,3 +328,13 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-day-badge { flex: none; align-self: flex-start; margin-left: auto; padding: 1px 7px; border-radius: 999px; background: #dc3545; color: #fff;
     font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 2px 6px rgba(220, 53, 69, .3); }
 .tlg-card-step + .tlg-day-badge { margin-left: 4px; }
+
+/* breadcrumb mode: where you are, above the graph */
+.tlg-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; padding: 6px 10px;
+    border: 1px solid var(--bs-border-color); border-radius: 10px; background: var(--bs-body-bg); font-size: .85rem; }
+.tlg-crumb { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 0; border-radius: 8px; background: transparent;
+    color: #2f6fb0; font-weight: 600; }
+.tlg-crumb:hover:not(:disabled) { background: var(--bs-tertiary-bg); text-decoration: underline; }
+.tlg-crumb.is-current { color: var(--bs-body-color); cursor: default; }
+.tlg-crumb.is-current i { color: #1f3763; }
+.tlg-crumb-sep { color: var(--bs-secondary-color); font-size: .7em; }
