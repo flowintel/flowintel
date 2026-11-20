@@ -2,15 +2,26 @@
    Colours come from Bootstrap's variables so the cards follow light, dark and the themes. */
 
 .tlg-container {
+    position: relative;
     width: 100%;
     height: 680px;
     border: 1px solid var(--bs-border-color);
     border-radius: 14px;
     overflow: hidden;
-    background:
-        radial-gradient(circle, color-mix(in srgb, var(--bs-body-color) 12%, transparent) 1px, transparent 1px) 0 0 / 22px 22px,
-        var(--bs-tertiary-bg);
+    background: var(--bs-tertiary-bg);
 }
+
+/* the Flowintel logo in the background: black and white, barely visible */
+.tlg-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url('/static/image/flowintel.png') center / min(46%, 520px) no-repeat;
+    filter: grayscale(1);
+    opacity: .05;
+    pointer-events: none;
+}
+[data-bs-theme="dark"] .tlg-container::before { filter: grayscale(1) invert(1); opacity: .06; }
 
 .tlg-card {
     --tlg-accent: #6f42c1;
@@ -190,7 +201,7 @@
     --pvt-edge-stroke: #9aa5b8;
     --pvt-edge-selected-stroke: #2f6fb0;
     --pvt-edge-highlighted-stroke: #2f6fb0;
-    --pvt-graph-grid-color: color-mix(in srgb, var(--bs-body-color) 10%, transparent);
+    --pvt-graph-grid-color: transparent;          /* no grid: the logo is the only background */
 }
 
 /* sidebar header of an event: icon in a coloured square, kind, title */
@@ -228,3 +239,29 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
     background: color-mix(in srgb, var(--tlg-accent) 14%, transparent); color: var(--tlg-accent); font-size: 11px; font-weight: 700; }
 [data-bs-theme="dark"] .tlg-group-kind { filter: brightness(1.5); }
 .tlg-group-hint { margin-top: 6px; color: var(--bs-secondary-color); font-size: 10px; }
+
+/* Pivotick puts its tooltip, menus and modals in <body>: the Flowintel blue there too */
+:root, [data-theme="light"] { --pvt-theme-primary: #1f3763; }
+[data-bs-theme="dark"], [data-theme="dark"] { --pvt-theme-primary: #3b5a94; }
+
+/* tooltip on hover */
+.pvt-tooltip:has(.tlg-tip) { padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.tlg-tip { --tlg-accent: #1f3763; width: 280px; padding: 12px 14px; border: 1px solid var(--bs-border-color); border-top: 3px solid var(--tlg-accent);
+    border-radius: 12px; background: var(--bs-body-bg); color: var(--bs-body-color); font-size: 12px; line-height: 1.4;
+    box-shadow: 0 12px 30px rgba(7, 13, 71, .16), 0 2px 6px rgba(7, 13, 71, .08); }
+.tlg-tip-head { display: flex; align-items: flex-start; gap: 10px; }
+.tlg-tip-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px;
+    background: var(--tlg-accent); color: #fff; font-size: 13px; }
+.tlg-tip-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tlg-tip-kind { color: var(--tlg-accent); font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.tlg-tip-title { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.tlg-tip-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; color: var(--bs-secondary-color); }
+.tlg-tip-meta i { color: var(--fi-accent, #1f3763); }
+.tlg-tip-note { margin-top: 8px; padding: 6px 8px; border-left: 3px solid var(--tlg-accent); border-radius: 0 6px 6px 0;
+    background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); white-space: pre-wrap; overflow-wrap: anywhere; }
+[data-bs-theme="dark"] .tlg-tip-kind { filter: brightness(1.6); }
+
+/* "Create" form (Pivotick modal) */
+.tlg-prompt { display: flex; flex-direction: column; gap: 10px; min-width: 340px; }
+.tlg-prompt-field { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.tlg-prompt-label { font-size: .78rem; font-weight: 600; }

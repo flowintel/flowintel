@@ -1,5 +1,4 @@
 import {display_toast, create_message} from '../toaster.js'
-import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
 const { ref, onMounted, nextTick } = Vue
@@ -13,10 +12,6 @@ export default {
     setup(props) {
         const graph_events = ref([])
         const graph_links = ref([])
-        const show_add_event = ref(false)
-        const new_date_text = ref('')
-        const new_description = ref('')
-        const new_additional_note = ref('')
         const selected_node = ref(null)
         const show_help = ref(false)
         // Chronology links tie each event to the next one with the time between them.
@@ -253,6 +248,83 @@ export default {
             return false                       // the graph is redrawn from the case data
         }
 
+        // "Create" tool of Pivotick: a small form (date, event, note) saved in the case
+        async function persist_node_create({ promptData }) {
+            if (!can_edit()) return false
+            let refs = {}
+            const values = await promptData({
+                title: 'New event', submitLabel: 'Add event',
+                render: (body) => {
+                    body.classList.add('tlg-prompt')
+                    body.innerHTML = ''
+                    const field = (label, tag, attrs) => {
+                        const wrap = body.appendChild(document.createElement('label'))
+                        wrap.className = 'tlg-prompt-field'
+                        wrap.appendChild(el_text('span', 'tlg-prompt-label', label))
+                        const input = wrap.appendChild(document.createElement(tag))
+                        Object.assign(input, attrs)
+                        input.className = 'form-control form-control-sm'
+                        return input
+                    }
+                    refs.date = field('Date / time', 'input', { type: 'text', placeholder: 'e.g. 2024-03-15 14:30, 01/12/26 14h30…', value: dayjs ? dayjs().format('YYYY-MM-DD HH:mm') : '' })
+                    refs.description = field('Event', 'input', { type: 'text', placeholder: 'Short event summary' })
+                    refs.note = field('Note (optional)', 'textarea', { rows: 2, placeholder: 'Details' })
+                    setTimeout(() => refs.description.focus(), 50)
+                },
+                getValues: () => ({ date_text: refs.date.value.trim(), description: refs.description.value.trim(), additional_note: refs.note.value.trim() }),
+            })
+            if (!values) return false
+            if (!values.date_text || !values.description) {
+                create_message('Date/time and event are required', 'warning-subtle')
+                return false
+            }
+            const res = await post('/case/' + props.case_id + '/create_timeline_event', values)
+            if (res.status === 200) {
+                touchCaseLastModif(props.cases_info)
+                await fetch_graph_data()        // drawn at its place in time
+            }
+            return false
+        }
+
+        // tooltip on hover: a small card in the Flowintel style
+        function tooltip_card(element) {
+            const d = element.getData ? element.getData() : {}
+            const ev = d.event
+            const tip = el('div', 'tlg-tip')
+            if (ev) {
+                const kind = EVENT_KINDS[event_kind(ev)]
+                tip.style.setProperty('--tlg-accent', kind.color)
+                const head = tip.appendChild(el('div', 'tlg-tip-head'))
+                const icon = head.appendChild(el('span', 'tlg-tip-icon'))
+                icon.appendChild(el('i', kind.icon))
+                const text = head.appendChild(el('div', 'tlg-tip-text'))
+                text.appendChild(el('span', 'tlg-tip-kind', kind.label + (d.step ? ' · #' + d.step : '')))
+                text.appendChild(el('span', 'tlg-tip-title', ev.description))
+                const meta = tip.appendChild(el('div', 'tlg-tip-meta'))
+                const when = meta.appendChild(el('span', ''))
+                when.appendChild(el('i', 'fa-regular fa-clock'))
+                when.appendChild(document.createTextNode(' ' + ev.date_text + (window.dayjs && ev.date_parsed ? ' · ' + dayjs(ev.date_parsed).fromNow() : '')))
+                if (ev.file && ev.file.name) {
+                    const f = meta.appendChild(el('span', ''))
+                    f.appendChild(el('i', 'fa-solid fa-paperclip'))
+                    f.appendChild(document.createTextNode(' ' + ev.file.name))
+                }
+                if (ev.additional_note) tip.appendChild(el('div', 'tlg-tip-note', ev.additional_note.length > 160 ? ev.additional_note.slice(0, 160) + '…' : ev.additional_note))
+                return tip
+            }
+            // a link
+            const kinds = { analyst: ['Your link', LINK_COLORS.analyst], misp: ['MISP relationship', LINK_COLORS.misp], chronology: ['Time between events', LINK_COLORS.chronology] }
+            const [label, color] = kinds[d.link_type] || ['Link', LINK_COLORS.analyst]
+            tip.style.setProperty('--tlg-accent', color)
+            const head = tip.appendChild(el('div', 'tlg-tip-head'))
+            const icon = head.appendChild(el('span', 'tlg-tip-icon'))
+            icon.appendChild(el('i', 'fa-solid fa-link'))
+            const text = head.appendChild(el('div', 'tlg-tip-text'))
+            text.appendChild(el('span', 'tlg-tip-kind', label))
+            text.appendChild(el('span', 'tlg-tip-title', d.label || 'No label'))
+            return tip
+        }
+
         function can_edit() {
             const p = props.cases_info && props.cases_info.permission
             const ok = !!(p && (p.admin || (!p.read_only && props.cases_info.present_in_case)))
@@ -389,7 +461,7 @@ export default {
                         ],
                     },
                     editors: {
-                        nodeCreator: { enabled: false },             // events need a date: created with "Add event"
+                        nodeCreator: { enabled: editable },          // asks for date / event / note, saved in the case
                         edgeCreator: { enabled: editable },
                         nodeEditor: { enabled: editable, fields: [
                             { key: 'description', label: 'Event', type: 'text' },
@@ -400,6 +472,7 @@ export default {
                         deletion: { enabled: editable },
                     },
                     table: { open: false },
+                    tooltip: { enabled: { nodes: true, edges: true, groups: true }, render: tooltip_card },
                     minimap: true,
                     notes: { enabled: false },
                     pivotMode: false,
@@ -428,6 +501,7 @@ export default {
                     },
                 },
                 callbacks: {
+                    onBeforeNodeCreate: persist_node_create,
                     onBeforeEdgeCreate: persist_edge_create,
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
@@ -448,43 +522,6 @@ export default {
             render_graph()
         }
 
-        async function add_graph_event() {
-            if (!new_date_text.value.trim()) {
-                create_message('Date/time is required', 'warning-subtle')
-                return
-            }
-            if (!new_description.value.trim()) {
-                create_message('Event is required', 'warning-subtle')
-                return
-            }
-            const res = await fetch('/case/' + props.case_id + '/create_timeline_event', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                body: JSON.stringify({
-                    date_text: new_date_text.value,
-                    description: new_description.value,
-                    additional_note: new_additional_note.value
-                })
-            })
-            if (res.status === 200) {
-                new_date_text.value = ''
-                new_description.value = ''
-                new_additional_note.value = ''
-                show_add_event.value = false
-                touchCaseLastModif(props.cases_info)
-                await fetch_graph_data()
-            }
-            await display_toast(res)
-        }
-
-        // Optional picker next to the free-text date field (see
-        // timeline_date_picker.js); the date is applied on "Validate".
-        function open_date_picker(event) {
-            open_timeline_date_picker(event.currentTarget, new_date_text.value, value => {
-                new_date_text.value = value
-            })
-        }
-
         onMounted(() => {
             fetch_graph_data()
         })
@@ -492,27 +529,18 @@ export default {
         return {
             graph_events,
             graph_links,
-            show_add_event,
-            new_date_text,
-            open_date_picker,
-            new_description,
-            new_additional_note,
             selected_node,
             show_help,
             show_chronology,
             toggle_chronology,
-            add_graph_event,
             fetch_graph_data
         }
     },
     template: `
     <div class="tlg">
         <div class="tlg-toolbar">
-            <button class="btn btn-primary btn-sm" @click="show_add_event = !show_add_event" title="Add an event to the case timeline">
-                <i class="fa-solid fa-plus me-1"></i>Add event
-            </button>
             <span class="tlg-toolbar-hint">
-                <i class="fa-solid fa-hand-pointer"></i>Click a card for its details · drag from a card to another to link them · double-click a group to open it
+                <i class="fa-solid fa-hand-pointer"></i><b>Create</b> (left rail): click the canvas to add an event, drag from a card to another to link them · click a card for its details · double-click a group to open it
             </span>
             <button class="btn btn-sm ms-auto" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
                     @click="toggle_chronology()" :aria-pressed="show_chronology"
@@ -523,39 +551,6 @@ export default {
                     @click="show_help = !show_help" title="How to read this graph" aria-label="How to read this graph">
                 <i class="fa-solid fa-question"></i>
             </button>
-        </div>
-
-        <!-- Add event -->
-        <div v-if="show_add_event" class="tlg-form">
-            <div class="tlg-form-head">
-                <span class="tlg-form-icon"><i class="fa-solid fa-clock"></i></span>
-                <div><b>New event</b><small>It appears in the timeline and in the graph, at its place in time.</small></div>
-                <button class="btn-close ms-auto" @click="show_add_event = false" aria-label="Close" title="Close"></button>
-            </div>
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Date / time</label>
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" v-model="new_date_text"
-                               placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30…" @keyup.enter="add_graph_event()">
-                        <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event)" title="Pick a date (optional)" aria-label="Pick a date">
-                            <i class="fa-regular fa-calendar"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label">Event</label>
-                    <input type="text" class="form-control form-control-sm" v-model="new_description" placeholder="Short event summary" @keyup.enter="add_graph_event()">
-                </div>
-                <div class="col-12">
-                    <label class="form-label">Note <small class="text-body-secondary">(optional)</small></label>
-                    <textarea class="form-control form-control-sm" v-model="new_additional_note" rows="2" placeholder="Details"></textarea>
-                </div>
-            </div>
-            <div class="tlg-form-foot">
-                <button class="btn btn-secondary btn-sm" @click="show_add_event = false">Cancel</button>
-                <button class="btn btn-primary btn-sm" @click="add_graph_event()"><i class="fa-solid fa-plus me-1"></i>Add event</button>
-            </div>
         </div>
 
         <!-- How to read the graph -->
