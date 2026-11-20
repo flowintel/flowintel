@@ -289,7 +289,7 @@ export default {
         </div>
         <slot name="after-edit"></slot>
         <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions: download, report, fork, template, delete…">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions: download, report, fork, merge, recurring, template, delete">
                 Actions
             </button>
             <ul class="dropdown-menu">
