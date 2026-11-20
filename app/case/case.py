@@ -1113,6 +1113,17 @@ def get_custom_tags_case(cid):
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<int:cid>/link_candidates", methods=['GET'])
+@login_required
+def link_candidates(cid):
+    """Cases that can be linked to this one: search by #id, title, ticket or UUID; suggestions when empty."""
+    from .case_link_core import link_candidates as candidates
+    case = CommonModel.get_case(cid)
+    if not case or not CommonModel.can_view_case(case, current_user):
+        return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+    return candidates(case.id, current_user, request.args.get("q", "")), 200
+
+
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])
 @login_required
 @editor_required

@@ -9,6 +9,7 @@
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/connectors.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/completion_details.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_picker.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
@@ -363,19 +364,27 @@
 
     <!-- Modal add new link -->
     <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content klink-modal">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add new linked case</h1>
-                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div>
+                        <h5 class="modal-title" id="add_new_link_modal"><i class="fa-solid fa-link me-2"></i>Link cases</h5>
+                        <small class="text-body-secondary">Linked cases show on both cases' home</small>
+                    </div>
+                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
                 </div>
-                <div class="modal-body">
-                    Link to:
-                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link to"></select>
-                    <div style="color: brown;" id="add_new_link_error"></div>
+                <div class="modal-body" v-if="cases_info">
+                    <label class="klink-label">Cases to link</label>
+                    <case_picker v-if="link_modal_open" v-model="link_picked" :case-id="cases_info.case.id"
+                                 :statuses="status_info ? status_info.status : []"></case_picker>
+                    <p class="klink-help">Search by number (<code>#12</code>), title, ticket id or UUID. With nothing typed, cases sharing tags with this one come first.</p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" :disabled="!link_picked.length || link_saving" @click="submit_add_new_link()">
+                        <span v-if="link_saving" class="spinner-border spinner-border-sm me-1"></span>
+                        Link [[ link_picked.length || '' ]] case[[ link_picked.length === 1 ? '' : 's' ]]
+                    </button>
                 </div>
             </div>
         </div>
@@ -1158,6 +1167,7 @@
         import mispattributes from '/static/js/case/MispAttributes.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
         import completion_details from '/static/js/case/completion_details.js'
+        import case_picker from '/static/js/components/case_picker.js'
         import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
@@ -1191,6 +1201,7 @@
                 mispattributes,
                 caseconnectors,
                 completion_details,
+                case_picker,
                 casemispconnectors,
                 casefiles,
                 case_history,
@@ -1612,7 +1623,9 @@
                     }
                 }
 
-                const case_for_link = ref([])
+                const link_picked = ref([])        // cases chosen in the "Link cases" modal
+                const link_saving = ref(false)
+                const link_modal_open = ref(false)
 
 
                 async function fetch_open_closed(){
@@ -2310,31 +2323,26 @@ async function autosave_case_note(){
                     setTimeout(autosave_case_note, 30000);
                 }
 
-                async function submit_add_new_link() {    
-                    $("#add_new_link_error").text("")
-                    if($(".new-link-ajax").val().includes("None") || !$(".new-link-ajax").val().length){
-                        $("#add_new_link_error").text("Give me more")
-                    }else{
-                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_new_link',{
+                async function submit_add_new_link() {
+                    if (!link_picked.value.length || link_saving.value) return
+                    link_saving.value = true
+                    try {
+                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_new_link', {
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
-                            body: JSON.stringify({"case_id": $(".new-link-ajax").val()})
+                            body: JSON.stringify({ "case_id": link_picked.value.map(c => c.id) })
                         })
-                        if(await res.status == 200){
-                            let loc = $(".new-link-ajax").val()
-                            for(let index in loc){
-                                for(let i in case_for_link.value){
-                                    if(case_for_link.value[i].id == loc[index]){
-                                        cases_info.value.case.link_to.push({"id":case_for_link.value[i].id, "title": case_for_link.value[i].title})
-                                    }
-                                }
+                        if (res.status == 200) {
+                            for (const c of link_picked.value) {
+                                cases_info.value.case.link_to.push({ id: c.id, title: c.title, description: '', status_id: c.status_id,
+                                    completed: c.completed, is_private: c.is_private, deadline: c.deadline })
                             }
                             cases_info.value.case.last_modif = Date.now()
-                            var myModalEl = document.getElementById('add_new_link');
-                            var modal = bootstrap.Modal.getInstance(myModalEl)
-                            modal.hide();
+                            bootstrap.Modal.getInstance(document.getElementById('add_new_link'))?.hide()
                         }
                         display_toast(res)
+                    } finally {
+                        link_saving.value = false
                     }
                 }
 
@@ -2401,34 +2409,13 @@ async function autosave_case_note(){
                     fetch_case_files()
                     await fetch_case_misp_attrs()
 
-                    $('.new-link-ajax').select2({
-                        ajax: {
-                            url: '/case/search',
-                            data: function (params) {
-                                var query = {
-                                    text: params.term
-                                }
-                                submit_add_new_link
-                                // Query parameters will be ?text=[term]
-                                return query;
-                            },
-                            processResults: function (data) {
-                                case_for_link.value = []
-                                for(let i in data.cases){
-                                    const c = data.cases[i]
-                                    if(String(c.id) === String(cases_info.value.case.id)) continue
-                                    case_for_link.value.push({id: c.id, text: `#${c.id} - ${c.title}`, title: c.title})
-                                }
-                                
-                                return {
-                                    results: case_for_link.value
-                                };
-                            }
-                        },
-                        minimumInputLength: 1,
-                        width: "50%",
-                        dropdownParent: $('#add_new_link')
-                    });
+                    // link modal: mount the picker on open (fresh search, autofocus), reset on close
+                    const link_modal_el = document.getElementById('add_new_link')
+                    if (link_modal_el) {
+                        link_modal_el.addEventListener('show.bs.modal', () => { link_picked.value = []; link_modal_open.value = true })
+                        link_modal_el.addEventListener('shown.bs.modal', () => link_modal_el.querySelector('.kpick .upick-input')?.focus())
+                        link_modal_el.addEventListener('hidden.bs.modal', () => { link_modal_open.value = false })
+                    }
 
 
                     const collapseEl = document.getElementById('collapseTasks');
@@ -2651,6 +2638,7 @@ async function autosave_case_note(){
                     openConnectors,
                     connector_icons,
                     completion_open,
+                    link_picked, link_saving, link_modal_open,
                     fetch_case_files,
                     on_connector_note_change,
                     get_all_users_case,
