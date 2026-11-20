@@ -44,7 +44,7 @@ export default {
             misp_attribute: { label: 'MISP attribute', color: '#c25b12', icon: 'fa-solid fa-tag' },
             file: { label: 'Imported file', color: '#0f7b6c', icon: 'fa-solid fa-file-lines' },
         }
-        const LINK_COLORS = { analyst: '#1f3763', misp: '#2f6fb0', chronology: '#9aa5b8' }
+        const LINK_COLORS = { analyst: '#1f3763', misp: '#2f6fb0', chronology: '#9aa5b8', timeline: '#0f7b6c' }
 
         function event_kind(ev) {
             if (ev.misp_object_id && Number(ev.misp_object_id) > 0) return 'misp_object'
@@ -166,7 +166,7 @@ export default {
 
         function edge_properties(edge) {
             const d = edge.getData ? edge.getData() : {}
-            const kind = { analyst: 'Your link', misp: 'MISP relationship', chronology: 'Time between events' }[d.link_type] || 'Link'
+            const kind = { analyst: 'Your link', misp: 'MISP relationship', chronology: 'Time between events', timeline: 'Next day in the timeline' }[d.link_type] || 'Link'
             return [
                 { name: 'Kind', value: prop('fa-solid fa-link', kind) },
                 { name: 'Label', value: el_text('span', '', d.label || '—') },
@@ -304,7 +304,7 @@ export default {
                 return tip
             }
             // a link
-            const kinds = { analyst: ['Your link', LINK_COLORS.analyst], misp: ['MISP relationship', LINK_COLORS.misp], chronology: ['Time between events', LINK_COLORS.chronology] }
+            const kinds = { analyst: ['Your link', LINK_COLORS.analyst], misp: ['MISP relationship', LINK_COLORS.misp], chronology: ['Time between events', LINK_COLORS.chronology], timeline: ['Next day in the timeline', LINK_COLORS.timeline] }
             const [label, color] = kinds[d.link_type] || ['Link', LINK_COLORS.analyst]
             tip.style.setProperty('--tlg-accent', color)
             const head = tip.appendChild(el('div', 'tlg-tip-head'))
@@ -510,6 +510,24 @@ export default {
                     link_type: lk.automatic ? 'misp' : 'analyst'
                 }
             }))
+            // the timeline: last event of a day → first event of the next day, always drawn.
+            // Once the days are grouped, it links the day cards in time order.
+            const by_day = []
+            for (const ev of ordered) {
+                const d = day_of(ev)
+                if (!d) continue
+                if (!by_day.length || by_day[by_day.length - 1].day !== d) by_day.push({ day: d, events: [] })
+                by_day[by_day.length - 1].events.push(ev)
+            }
+            for (let i = 1; i < by_day.length; i++) {
+                const prev = by_day[i - 1].events[by_day[i - 1].events.length - 1], cur = by_day[i].events[0]
+                edges.push({
+                    id: 'day-' + by_day[i - 1].day + '-' + by_day[i].day,
+                    from: String(prev.id),
+                    to: String(cur.id),
+                    data: { label: elapsed(event_time(cur) - event_time(prev)), link_type: 'timeline', computed: true }
+                })
+            }
             for (let i = 1; show_chronology.value && i < ordered.length; i++) {
                 const prev = ordered[i - 1], cur = ordered[i]
                 edges.push({
@@ -593,6 +611,7 @@ export default {
                             { key: 'link_type', title: 'Link', scope: 'edge', entries: [
                                 { id: 'analyst', label: 'Your links', color: LINK_COLORS.analyst },
                                 { id: 'misp', label: 'MISP relationship', color: LINK_COLORS.misp },
+                                { id: 'timeline', label: 'Next day', color: LINK_COLORS.timeline },
                                 { id: 'chronology', label: 'Time between', color: LINK_COLORS.chronology },
                             ] },
                         ],
@@ -608,6 +627,7 @@ export default {
                         analyst: { strokeColor: LINK_COLORS.analyst, strokeWidth: 2 },
                         misp: { strokeColor: LINK_COLORS.misp, dashed: true, animateDash: false },
                         chronology: { strokeColor: LINK_COLORS.chronology, dashed: true, animateDash: false },
+                        timeline: { strokeColor: LINK_COLORS.timeline, strokeWidth: 3, markerEnd: 'arrow' },
                     },
                 },
                 callbacks: {
