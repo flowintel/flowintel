@@ -827,6 +827,13 @@ export default {
             const c = document.getElementById('timeline-graph-container')
             if (c) c.classList.toggle('tlg-has-selection', !!on)
         }
+        // opened a moment after the click: opening it moves the graph, which would make the second
+        // click of a double-click miss the card (a double-click cancels it and goes to the event)
+        let sidebar_timer = null
+        function show_sidebar_soon() {
+            clearTimeout(sidebar_timer)
+            sidebar_timer = setTimeout(show_sidebar, 320)
+        }
         function show_sidebar() {
             mark_selection(true)
             try { graph && graph.UIManager && graph.UIManager.sidebar && graph.UIManager.sidebar.showSidebar() } catch (e) {}
@@ -1054,12 +1061,18 @@ export default {
                     onBeforeEdgeEditCommit: persist_edge_edit,
                     onBeforeDelete: persist_delete,
                     onNodeClick: (evt, node) => { if (drill_mode.value) open_folder(node) },
+                    // double-click on an event: straight to its MISP object / attribute or file
+                    onNodeDbclick: (evt, node) => {
+                        const ev = event_by_node(node)
+                        const target = ev && go_to_target(ev)
+                        if (target) { clearTimeout(sidebar_timer); go_to(target) }
+                    },
                     onNodeSelect: (node) => {
                         const ev = graph_events.value.find(e => String(e.id) === String(node.id))
                         if (ev) selected_node.value = ev
-                        show_sidebar()
+                        show_sidebar_soon()
                     },
-                    onEdgeSelect: () => show_sidebar(),
+                    onEdgeSelect: () => show_sidebar_soon(),
                     onNodeBlur: () => { selected_node.value = null; mark_selection(false) },
                     onEdgeBlur: () => mark_selection(false),
                 }
