@@ -192,19 +192,6 @@ export default {
             return res
         }
 
-        async function persist_edge_create({ source, target, promptLabel }) {
-            if (!can_edit()) return false
-            const label = promptLabel ? await promptLabel() : ''
-            if (label === null) return false
-            const res = await post('/case/' + props.case_id + '/create_timeline_event_link',
-                { source_event_id: parseInt(source.id), target_event_id: parseInt(target.id), label: label || '' })
-            if (res.status !== 200) return false
-            const lk = (await res.json()).link
-            graph_links.value.push(lk)
-            touchCaseLastModif(props.cases_info)
-            return { accept: true, id: String(lk.id), data: { label: lk.label || '', link_id: String(lk.id), automatic: false, link_type: 'analyst' } }
-        }
-
         async function persist_node_edit({ node, nextData }) {
             const ev = event_by_node(node)
             if (!ev || !can_edit()) return false
@@ -560,7 +547,7 @@ export default {
                     },
                     editors: {
                         nodeCreator: { enabled: editable },          // asks for date / event / note, saved in the case
-                        edgeCreator: { enabled: editable },
+                        edgeCreator: { enabled: false },             // no "Add link": the timeline has no relations of its own to create here
                         nodeEditor: { enabled: editable, fields: [
                             { key: 'description', label: 'Event', type: 'text' },
                             { key: 'date_text', label: 'Date / time', type: 'text', placeholder: '2024-03-15 14:30' },
@@ -600,7 +587,6 @@ export default {
                 },
                 callbacks: {
                     onBeforeNodeCreate: persist_node_create,
-                    onBeforeEdgeCreate: persist_edge_create,
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
                     onBeforeDelete: persist_delete,
@@ -653,7 +639,7 @@ export default {
     <div class="tlg">
         <div class="tlg-toolbar">
             <span class="tlg-toolbar-hint">
-                <i class="fa-solid fa-hand-pointer"></i><b>Create</b> (left rail): click the canvas to add an event, drag from a card to another to link them · click a card for its details · double-click a group to open it
+                <i class="fa-solid fa-hand-pointer"></i><b>Create</b> (left rail): click the canvas to add an event · click a card for its details · double-click a group to open it
             </span>
             <button class="btn btn-sm ms-auto" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
                     @click="toggle_chronology()" :aria-pressed="show_chronology"
@@ -687,7 +673,7 @@ export default {
                 <div class="col-md-4">
                     <div class="tlg-help-title">Links</div>
                     <ul class="tlg-help-list">
-                        <li><span class="tlg-help-line" style="--c:#1f3763"></span>Your links: drag from a card to another, double-click to rename</li>
+                        <li><span class="tlg-help-line" style="--c:#1f3763"></span>Links added on the case: double-click to rename</li>
                         <li><span class="tlg-help-line tlg-help-line-dashed" style="--c:#2f6fb0"></span>MISP relationships (managed in the MISP tab)</li>
                         <li><span class="tlg-help-line tlg-help-line-dashed" style="--c:#9aa5b8"></span>Time between two events (“Time between events”)</li>
                     </ul>
