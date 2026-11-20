@@ -10,7 +10,7 @@
 {% block content %}
     {% call(section) page_header('Settings', 'fa-solid fa-gear', 'Your personal preferences for Flowintel. They only apply to your account.') %}
         {% if section == 'actions' %}
-            <button type="button" id="settings-reset" class="ctx-ghost-btn" title="Put every setting back to its default value">
+            <button type="button" id="settings-reset" class="ctx-ghost-btn" @click="reset_settings" title="Put every setting back to its default value">
                 <i class="fa-solid fa-rotate-left fa-sm"></i>Reset to defaults
             </button>
             {{ header_link('My profile', '/account/', icon='fa-solid fa-user', title='Your account details') }}
@@ -132,7 +132,8 @@
     } catch (e) {}
 
     // "Reset to defaults": every setting back to its default, then reload to apply them
-    document.getElementById('settings-reset')?.addEventListener('click', async () => {
+    // (a Vue handler: the page is mounted by Vue, a listener added before would be lost)
+    async function reset_settings() {
         const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset' })
         if (!ok) return
         const res = await fetch('/account/settings/reset', { method: 'POST', headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' } })
@@ -140,14 +141,13 @@
             // the toast is shown after the reload (flag kept for this tab only)
             try { sessionStorage.setItem('fi-settings-reset', '1') } catch (e) {}
             window.location.reload()
-        }
-        else display_toast(res)
-    })
+        } else display_toast(res)
+    }
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            return { message_list }
+            return { message_list, reset_settings }
         }
     }).mount('#main-container')
 </script>
