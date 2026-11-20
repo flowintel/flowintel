@@ -265,3 +265,8 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-prompt { display: flex; flex-direction: column; gap: 10px; min-width: 340px; }
 .tlg-prompt-field { display: flex; flex-direction: column; gap: 4px; margin: 0; }
 .tlg-prompt-label { font-size: .78rem; font-weight: 600; }
+
+/* banner when the graph only draws part of the events */
+.tlg-cap { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding: 8px 12px; border: 1px solid rgba(232, 137, 12, .35);
+    border-radius: 10px; background: rgba(232, 137, 12, .08); color: var(--bs-body-color); font-size: .82rem; }
+.tlg-cap > i { color: #c47208; }

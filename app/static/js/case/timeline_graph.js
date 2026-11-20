@@ -12,6 +12,8 @@ export default {
     setup(props) {
         const graph_events = ref([])
         const graph_links = ref([])
+        const graph_total = ref(0)      // events in the case (the graph draws at most graph_max)
+        const graph_max = ref(0)
         const selected_node = ref(null)
         const show_help = ref(false)
         // Chronology links tie each event to the next one with the time between them.
@@ -25,6 +27,8 @@ export default {
                 const data = await res.json()
                 graph_events.value = data.events
                 graph_links.value = data.links
+                graph_total.value = data.total || data.events.length
+                graph_max.value = data.max || 0
                 await nextTick()
                 render_graph()
             } else {
@@ -529,6 +533,8 @@ export default {
         return {
             graph_events,
             graph_links,
+            graph_total,
+            graph_max,
             selected_node,
             show_help,
             show_chronology,
@@ -589,6 +595,11 @@ export default {
                     </ul>
                 </div>
             </div>
+        </div>
+
+        <div v-if="graph_max && graph_total > graph_max" class="tlg-cap">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>This case has <b>[[ graph_total.toLocaleString() ]]</b> events: the graph shows the <b>[[ graph_max.toLocaleString() ]]</b> most recent ones to stay fast. The Timeline tab lists them all.</span>
         </div>
 
         <!-- Graph -->
