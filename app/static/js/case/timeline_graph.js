@@ -337,40 +337,70 @@ export default {
         }
 
         // ---- groups (Simplify): one clean card per day / per kind ---------------------------
+        function group_kind(group) {
+            const first = group.members[0] && group.members[0].getData()
+            return EVENT_KINDS[first && first.kind] || EVENT_KINDS.event
+        }
+        function group_day(group) {
+            const first = group.members[0] && group.members[0].getData()
+            if (!first || !first.day) return ''
+            return window.dayjs ? dayjs(first.day).format('ddd D MMM YYYY') : first.day
+        }
         function group_title(group) {
             if (group.title) return group.title
-            const first = group.members[0] && group.members[0].getData()
-            if (group.rule === 'by-day' && first && first.day) {
-                return window.dayjs ? dayjs(first.day).format('ddd D MMM YYYY') : first.day
-            }
-            if (group.rule === 'by-kind' && first) return (EVENT_KINDS[first.kind] || EVENT_KINDS.event).label + 's'
+            if (group.rule === 'by-day') return group_day(group)
+            if (group.rule === 'by-kind') return group_kind(group).label + 's'
             return 'Group'
+        }
+        // relations of a group: inside it (shown once opened) and with other events
+        function group_links(group) {
+            const ids = new Set(group.members.map(m => String(m.id)))
+            let inside = 0, outside = 0
+            for (const l of graph_links.value) {
+                const a = ids.has(String(l.source_event_id)), b = ids.has(String(l.target_event_id))
+                if (a && b) inside++
+                else if (a || b) outside++
+            }
+            return { inside, outside }
         }
 
         function group_card(group) {
+            const kind = group.rule === 'by-day' || group.rule === 'by-kind' ? group_kind(group) : null
             const card = el('div', 'tlg-group')
+            if (kind) card.style.setProperty('--tlg-accent', kind.color)
             const head = el('div', 'tlg-group-head')
             const icon = el('span', 'tlg-group-icon')
-            icon.appendChild(el('i', group.rule === 'by-kind' ? 'fa-solid fa-shapes' : 'fa-solid fa-calendar-day'))
+            icon.appendChild(el('i', kind ? kind.icon : 'fa-solid fa-layer-group'))
             head.appendChild(icon)
             const text = el('div', 'tlg-group-text')
-            text.appendChild(el('span', 'tlg-group-title', group_title(group)))
             const n = group.members.length
-            text.appendChild(el('span', 'tlg-group-count', n + ' event' + (n > 1 ? 's' : '')))
+            if (kind) text.appendChild(el('span', 'tlg-group-kind-label', n + ' ' + kind.label + (n > 1 ? 's' : '')))
+            text.appendChild(el('span', 'tlg-group-title', group_title(group)))
             head.appendChild(text)
             card.appendChild(head)
-            const kinds = el('div', 'tlg-group-kinds')
-            for (const [type, count] of Object.entries(group.typeCounts || {})) {
-                const k = EVENT_KINDS[type] || EVENT_KINDS.event
-                const chip = el('span', 'tlg-group-kind')
-                chip.style.setProperty('--tlg-accent', k.color)
-                chip.title = count + ' × ' + k.label
-                chip.appendChild(el('i', k.icon))
-                chip.appendChild(document.createTextNode(' ' + count))
-                kinds.appendChild(chip)
+            const foot = el('div', 'tlg-group-foot')
+            if (group.rule !== 'by-day') {
+                for (const [type, count] of Object.entries(group.typeCounts || {})) {
+                    const k = EVENT_KINDS[type] || EVENT_KINDS.event
+                    const chip = el('span', 'tlg-group-kind')
+                    chip.style.setProperty('--tlg-accent', k.color)
+                    chip.appendChild(el('i', k.icon))
+                    chip.appendChild(document.createTextNode(' ' + count))
+                    foot.appendChild(chip)
+                }
             }
-            card.appendChild(kinds)
-            card.appendChild(el('div', 'tlg-group-hint', 'Double-click to open'))
+            const links = group_links(group)
+            const rel = (n, icon, title) => {
+                const chip = el('span', 'tlg-group-rel')
+                chip.title = title
+                chip.appendChild(el('i', icon))
+                chip.appendChild(document.createTextNode(' ' + n))
+                foot.appendChild(chip)
+            }
+            if (links.inside) rel(links.inside, 'fa-solid fa-diagram-project', links.inside + ' relation' + (links.inside > 1 ? 's' : '') + ' between these events (open the group to see them)')
+            if (links.outside) rel(links.outside, 'fa-solid fa-link', links.outside + ' relation' + (links.outside > 1 ? 's' : '') + ' with other events')
+            foot.appendChild(el('span', 'tlg-group-hint', 'Double-click to open'))
+            card.appendChild(foot)
             return card
         }
 
@@ -483,8 +513,10 @@ export default {
                         colorOf: (node) => (EVENT_KINDS[node.getData().kind] || EVENT_KINDS.event).color,
                         typeLabel: (type, count) => count + ' × ' + ((EVENT_KINDS[type] || {}).label || type),
                         rules: [
-                            { kind: 'custom', id: 'by-day', label: 'Group by day', description: 'One group per day with several events',
-                              minSize: 2, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().day]).filter(([, d]) => d)) },
+                            // one group per day and per kind (MISP objects, MISP attributes, files, events):
+                            // relations between objects and attributes stay visible between the groups
+                            { kind: 'custom', id: 'by-day', label: 'Group by day and kind', description: 'Events of the same day and the same kind together',
+                              minSize: 2, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().day ? n.getData().day + '|' + n.getData().kind : null]).filter(([, k]) => k)) },
                             { kind: 'custom', id: 'by-kind', label: 'Group by kind', description: 'Events of the same kind together',
                               minSize: 3, enabled: false, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().kind])) },
                         ],
@@ -519,7 +551,7 @@ export default {
                 },
                 render: {
                     groupStyle: (group) => ({ shape: 'none', text: '', tiers: [], badges: [], layoutSize: 135, html: () => group_card(group) }),
-                    groupOutline: (group) => group_title(group) + ' · ' + group.members.length + ' events',
+                    groupOutline: (group) => group_title(group) + ' · ' + group.members.length + ' ' + (group.rule === 'by-day' ? group_kind(group).label.toLowerCase() + (group.members.length > 1 ? 's' : '') : 'events'),
                     nodeTypeAccessor: (node) => node.getData().kind,
                     nodeStyleMap: nodeStyleMap,
                     edgeTypeAccessor: (edge) => edge.getData().link_type,
