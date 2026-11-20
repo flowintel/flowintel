@@ -357,3 +357,9 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 @keyframes tlg-sk { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .tlg-sk-icon, .tlg-sk-lines span { animation: none; } }
 @media (max-width: 900px) { .tlg-sk-card:nth-of-type(n+3), .tlg-sk-link:nth-of-type(n+3) { display: none; } }
+
+/* "Go to" button of an event in the sidebar */
+.tlg-goto { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid #1f3763; border-radius: 8px;
+    background: #1f3763; color: #fff; font-size: .78rem; font-weight: 600; }
+.tlg-goto:hover { background: #2c4a80; border-color: #2c4a80; }
+.tlg-goto-arrow { margin-left: 2px; font-size: .85em; }

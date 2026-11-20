@@ -11,7 +11,8 @@ export default {
         case_id: Number,
         cases_info: Object
     },
-    setup(props) {
+    emits: ['navigate'],
+    setup(props, { emit }) {
         const graph_events = ref([])
         const graph_links = ref([])
         const graph_total = ref(0)      // events in the case (the graph draws at most graph_max)
@@ -170,10 +171,38 @@ export default {
             return v
         }
 
+        // "Go to": the MISP object / attribute or the file the event comes from, in its tab
+        function go_to_target(ev) {
+            const id = Number(ev.misp_object_id)
+            if (id > 0) return { tab: 'misp', misp_object: id, label: 'Open the MISP object', icon: 'fa-solid fa-cube' }
+            if (id < 0) return { tab: 'misp', misp_attr: -id, label: 'Open the MISP attribute', icon: 'fa-solid fa-tag' }
+            if (ev.file_id) return { tab: 'files', label: 'Open the Files tab', icon: 'fa-solid fa-file-lines' }
+            return null
+        }
+        async function go_to(target) {
+            if (document.fullscreenElement) { try { await document.exitFullscreen() } catch (e) {} }
+            emit('navigate', target)
+        }
+        function go_to_button(ev) {
+            const target = go_to_target(ev)
+            if (!target) return null
+            const b = document.createElement('button')
+            b.type = 'button'
+            b.className = 'tlg-goto'
+            b.appendChild(el_icon(target.icon))
+            b.appendChild(document.createTextNode(' ' + target.label))
+            b.appendChild(el_icon('fa-solid fa-arrow-right tlg-goto-arrow'))
+            b.addEventListener('click', () => go_to(target))
+            return b
+        }
+
         function node_properties(node) {
             const ev = event_by_node(node)
             if (!ev) return undefined
-            const out = [{ name: 'When', value: prop('fa-regular fa-clock', ev.date_text) }]
+            const out = []
+            const goto = go_to_button(ev)
+            if (goto) out.push({ name: 'Go to', value: goto })
+            out.push({ name: 'When', value: prop('fa-regular fa-clock', ev.date_text) })
             const day = day_of(ev)
             if (day && window.dayjs) out.push({ name: 'Since', value: prop('fa-solid fa-hourglass-half', dayjs(ev.date_parsed).fromNow()) })
             if (ev.additional_note) out.push({ name: 'Note', value: el_text('span', 'tlg-prop-note', ev.additional_note) })

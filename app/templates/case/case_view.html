@@ -917,7 +917,7 @@
                 <timeline_view :case_id="{{case.id}}" :cases_info="cases_info"></timeline_view>
             </template>
             <template v-else-if="subtab_timeline == 'timeline-graph'">
-                <timeline_graph :case_id="{{case.id}}" :cases_info="cases_info"></timeline_graph>
+                <timeline_graph :case_id="{{case.id}}" :cases_info="cases_info" @navigate="calendar_navigate"></timeline_graph>
             </template>
         </template>
 
