@@ -310,3 +310,13 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-container .pvt-edge-label { font-weight: 700; }
 .tlg-container .label-container > text,
 .tlg-container .label-container > rect { translate: 0 -18px; }
+
+/* "Today" marker at the end of the line (when nothing happened today) */
+.tlg-today { width: 220px; padding: 10px 12px; border: 2px dashed #0f7b6c; border-radius: 14px;
+    background: color-mix(in srgb, #0f7b6c 6%, var(--bs-body-bg)); color: var(--bs-body-color); font-size: 12px; }
+.tlg-today-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px;
+    background: #0f7b6c; color: #fff; font-size: 13px; }
+.tlg-today-label { color: #0f7b6c; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.tlg-today-stats { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; color: var(--bs-secondary-color); }
+.tlg-today-stat b { color: #0f7b6c; font-size: 14px; }
+[data-bs-theme="dark"] .tlg-today-label, [data-bs-theme="dark"] .tlg-today-stat b { filter: brightness(1.5); }

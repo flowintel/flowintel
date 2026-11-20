@@ -282,6 +282,15 @@ export default {
             const d = element.getData ? element.getData() : {}
             const ev = d.event
             const tip = el('div', 'tlg-tip')
+            if (d.today) {
+                tip.style.setProperty('--tlg-accent', '#0f7b6c')
+                const head = tip.appendChild(el('div', 'tlg-tip-head'))
+                head.appendChild(el('span', 'tlg-tip-icon')).appendChild(el('i', 'fa-solid fa-calendar-check'))
+                const text = head.appendChild(el('div', 'tlg-tip-text'))
+                text.appendChild(el('span', 'tlg-tip-kind', 'Today'))
+                text.appendChild(el('span', 'tlg-tip-title', d.since_last + ' day' + (d.since_last === 1 ? '' : 's') + ' since the last event'))
+                return tip
+            }
             if (ev) {
                 const kind = EVENT_KINDS[event_kind(ev)]
                 tip.style.setProperty('--tlg-accent', kind.color)
@@ -321,6 +330,33 @@ export default {
             const ok = !!(p && (p.admin || (!p.read_only && props.cases_info.present_in_case)))
             if (!ok) create_message('You cannot edit this case.', 'warning-subtle')
             return ok
+        }
+
+        // "Today" marker, added when nothing happened today: how long since the last / first event
+        const TODAY_ID = 'today'
+        function today_card(node) {
+            const d = node.getData()
+            const card = el('div', 'tlg-today')
+            const head = el('div', 'tlg-group-head')
+            const icon = el('span', 'tlg-today-icon')
+            icon.appendChild(el('i', 'fa-solid fa-calendar-check'))
+            head.appendChild(icon)
+            const text = el('div', 'tlg-group-text')
+            text.appendChild(el('span', 'tlg-today-label', 'Today'))
+            text.appendChild(el('span', 'tlg-group-title', window.dayjs ? dayjs().format('ddd D MMM YYYY') : d.day))
+            head.appendChild(text)
+            card.appendChild(head)
+            const stats = el('div', 'tlg-today-stats')
+            const stat = (n, label) => {
+                const b = el('span', 'tlg-today-stat')
+                b.appendChild(el('b', '', String(n)))
+                b.appendChild(document.createTextNode(' ' + label))
+                stats.appendChild(b)
+            }
+            stat(d.since_last, 'day' + (d.since_last === 1 ? '' : 's') + ' since the last event')
+            if (d.since_first !== d.since_last) stat(d.since_first, 'day' + (d.since_first === 1 ? '' : 's') + ' since the first')
+            card.appendChild(stats)
+            return card
         }
 
         // ---- groups (Simplify): one clean card per day / per kind ---------------------------
@@ -507,6 +543,8 @@ export default {
         // Centre the view on today's day, or on the closest day when nothing happened today
         function focus_today() {
             if (!graph || typeof graph.focusElement !== 'function') return
+            const marker = graph.getNode && graph.getNode(TODAY_ID)
+            if (marker) return graph.focusElement(marker)
             const today = window.dayjs ? dayjs().format('YYYY-MM-DD') : new Date().toISOString().slice(0, 10)
             const dated = graph_events.value.filter(ev => day_of(ev))
             if (!dated.length) return
@@ -582,6 +620,15 @@ export default {
                     data: { label: '⏱ ' + elapsed(event_time(cur) - event_time(prev)), link_type: 'timeline', computed: true }
                 })
             }
+            const today = window.dayjs ? dayjs().format('YYYY-MM-DD') : new Date().toISOString().slice(0, 10)
+            if (by_day.length && !by_day.some(b => b.day === today)) {
+                const last = by_day[by_day.length - 1].events.slice(-1)[0], first = by_day[0].events[0]
+                const days_since = ev => Math.max(0, Math.floor((Date.parse(today) - Date.parse(day_of(ev))) / 86400000))
+                nodes.push({ id: TODAY_ID, data: { label: 'Today', kind: 'today', day: today, today: true,
+                                                   since_last: days_since(last), since_first: days_since(first) } })
+                edges.push({ id: 'day-today', from: String(last.id), to: TODAY_ID,
+                             data: { label: '⏱ ' + elapsed(Date.now() - event_time(last)), link_type: 'timeline', computed: true } })
+            }
             for (let i = 1; show_chronology.value && i < ordered.length; i++) {
                 const prev = ordered[i - 1], cur = ordered[i]
                 edges.push({
@@ -596,6 +643,7 @@ export default {
             for (const [key, kind] of Object.entries(EVENT_KINDS)) {
                 nodeStyleMap[key] = { shape: 'none', color: kind.color, text: '', layoutSize: 140, html: build_card }
             }
+            nodeStyleMap.today = { shape: 'none', color: '#0f7b6c', text: '', layoutSize: 130, html: today_card }
 
             const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark'
             const editable = !!(props.cases_info && props.cases_info.permission &&
