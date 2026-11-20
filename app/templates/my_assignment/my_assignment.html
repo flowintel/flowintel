@@ -3,7 +3,7 @@
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_search, header_segmented, header_select, header_switch %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_search, header_segmented, header_select, header_switch, header_filters %}
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
@@ -30,7 +30,7 @@
         </template>
         {{ header_stat('fa-solid fa-filter', "[[ task_page ? task_page.total : '…' ]]", "[[ MODE_LABELS[mode].toLowerCase() ]]", title='Tasks matching the current view', attrs='v-if="mode !== \'ongoing\' || q"') }}
     {% elif section == 'toolbar' %}
-        {{ header_search('Search a task by title') }}
+        {{ header_search('Search a task, a case title or #id') }}
 
         {{ header_segmented([
                 {'value': 'ongoing', 'label': 'Ongoing', 'icon': 'fa-solid fa-spinner', 'title': 'Open tasks'},
@@ -55,17 +55,34 @@
             <i :class="task_list_ref?.all_collapsed() ? 'fa-solid fa-angles-down fa-sm' : 'fa-solid fa-angles-up fa-sm'"></i>[[ task_list_ref?.all_collapsed() ? 'Expand all' : 'Collapse all' ]]
         </button>
 
-        <span v-for="t in tag_filter.tags" :key="'t' + t" class="ma-tag-filter" :title="'Only tasks tagged ' + t">
-            <i class="fa-solid fa-tag"></i>[[ t ]]<button type="button" @click="remove_tag('tags', t)" aria-label="Remove this filter"><i class="fa-solid fa-xmark"></i></button>
-        </span>
-        <span v-for="c in tag_filter.clusters" :key="'c' + c" class="ma-tag-filter" :title="'Only tasks with the cluster ' + c">
-            <i class="fa-solid fa-meteor"></i>[[ c ]]<button type="button" @click="remove_tag('clusters', c)" aria-label="Remove this filter"><i class="fa-solid fa-xmark"></i></button>
-        </span>
-        <button type="button" v-if="q || mode !== 'ongoing' || tag_filter.tags.length || tag_filter.clusters.length" class="ctx-ghost-btn ctx-clear-btn" @click="clear_filters" title="Back to the ongoing tasks, no search">
+        {{ header_filters('#modalTaskFilter', active='picked_count > 0', label='Tags') }}
+
+        <button type="button" v-if="q || mode !== 'ongoing' || picked_count" class="ctx-ghost-btn ctx-clear-btn" @click="clear_filters" title="Back to the ongoing tasks, no search">
             <i class="fa-solid fa-xmark fa-sm"></i>Clear
         </button>
     {% endif %}
 {% endcall %}
+
+<div class="modal fade cf-modal" id="modalTaskFilter" tabindex="-1" aria-labelledby="modalTaskFilterLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modalTaskFilterLabel"><i class="fa-solid fa-tags"></i>Filter tasks by tags</h1>
+                <span class="cf-count" v-if="task_page">[[ task_page.total ]] [[ task_page.total === 1 ? 'task' : 'tasks' ]]</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <tag_filter ref="tag_filter_ref" scope="task" @change="on_tag_pick"></tag_filter>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link cf-reset" :disabled="!picked_count" @click="tag_filter_ref?.clear_all()">
+                    <i class="fa-solid fa-rotate-left"></i>Reset
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Show results</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="cl-toolbar" id="ma-tasks">
     <label class="cl-per-page" title="Number of tasks shown on each page">
@@ -87,7 +104,8 @@
 
 <div v-if="!loading && task_page && !task_page.tasks.length" class="text-center text-muted py-5">
     <i class="fa-regular fa-circle-check fa-2x mb-2 d-block"></i>
-    <template v-if="q">No task matches "[[ q ]]".</template>
+    <template v-if="q">No task or case matches "[[ q ]]".</template>
+    <template v-else-if="picked_count">No task with these tags.</template>
     <template v-else-if="mode === 'ongoing'">Nothing assigned to you. Enjoy the calm.</template>
     <template v-else>No [[ MODE_LABELS[mode].toLowerCase() ]].</template>
 </div>
@@ -104,8 +122,9 @@
     <script type="module">
         import Pagination from '/static/js/components/pagination.js'
         import task_list from '/static/js/components/task_list.js'
+        import tag_filter_cmp from '/static/js/components/misp_tag_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
-        const { createApp, ref, onMounted } = Vue
+        const { createApp, ref, computed, onMounted } = Vue
 
         const MODES = ['ongoing', 'overdue', 'finished', 'inactive']
         const MODE_LABELS = { ongoing: 'Ongoing tasks', overdue: 'Overdue tasks', finished: 'Finished tasks', inactive: 'Rejected / unavailable tasks' }
@@ -123,7 +142,7 @@
 
         createApp({
             delimiters: ['[[', ']]'],
-            components: { 'app-pagination': Pagination, task_list },
+            components: { 'app-pagination': Pagination, task_list, tag_filter: tag_filter_cmp },
             setup() {
                 // state, read back from the URL (?mode=overdue&sort=deadline&order=asc&q=…&page=2&per_page=50&view=table)
                 const url0 = new URLSearchParams(location.search)
@@ -135,14 +154,21 @@
                 const per_page = ref([10, 25, 50, 100].includes(url_pp) ? url_pp : 25)
                 const view = ref(['table', 'cards'].includes(url0.get('view')) ? url0.get('view') : DEFAULT_VIEW)
                 const group = ref(url0.get('group') === '1')
-                // tag filters, e.g. from the top bar search (?tags=a|b&clusters=c)
-                const tag_filter = ref({ tags: (url0.get('tags') || '').split('|').filter(Boolean),
-                                         clusters: (url0.get('clusters') || '').split('|').filter(Boolean) })
-                function remove_tag(kind, value) {
-                    tag_filter.value[kind] = tag_filter.value[kind].filter(v => v !== value)
-                    fetch_tasks(1)
-                }
+                // tag filters, kept in the URL as the picker writes them (?tags=a|!b&clusters=x&y),
+                // e.g. from the top bar search or a shared link
+                const url_tags = { tag: url0.get('tags') || '', galaxy: url0.get('clusters') || '' }
                 const task_list_ref = ref(null)
+
+                // tags picked in the filter modal (on top of the chips above)
+                const tag_filter_ref = ref(null)
+                const picked = ref({ tags: [], clusters: [], tags_any: true, clusters_any: true })
+                const picked_count = computed(() => picked.value.tags.length + picked.value.clusters.length)
+                let restoring = false   // tags coming back from the URL: one fetch at the end
+                function on_tag_pick(p) {
+                    picked.value = { tags: [...p.tags, ...p.custom_tags], clusters: p.clusters,
+                                     tags_any: p.or_and_taxo, clusters_any: p.or_and_galaxies }
+                    if (!restoring) fetch_tasks(1)
+                }
 
                 const task_page = ref(null)
                 const task_stats = ref(null)
@@ -162,8 +188,9 @@
                     set('per_page', String(per_page.value), '25')
                     set('view', view.value, DEFAULT_VIEW)
                     set('group', group.value ? '1' : '')
-                    set('tags', tag_filter.value.tags.join('|'))
-                    set('clusters', tag_filter.value.clusters.join('|'))
+                    const raw = tag_filter_ref.value?.serialized?.() || { tag: '', galaxy: '' }
+                    set('tags', raw.tag)
+                    set('clusters', raw.galaxy)
                     if (u.href !== location.href) history.replaceState(null, '', u)
                 }
 
@@ -176,8 +203,11 @@
                     if (mode.value === 'overdue') params.set('overdue', 'true')
                     if (q.value) params.set('q', q.value)
                     if (group.value) params.set('group', 'true')
-                    if (tag_filter.value.tags.length) params.set('tags', tag_filter.value.tags.join('|'))
-                    if (tag_filter.value.clusters.length) params.set('clusters', tag_filter.value.clusters.join('|'))
+                    const p = picked.value
+                    if (p.tags.length) params.set('tags', p.tags.join('|'))
+                    if (p.clusters.length) params.set('clusters', p.clusters.join('|'))
+                    if (p.tags_any) params.set('tags_any', 'true')
+                    if (p.clusters_any) params.set('clusters_any', 'true')
 
                     const req = ++last_req   // a newer request (typing, sorting) wins
                     loading.value = true
@@ -233,7 +263,7 @@
                 function clear_filters() {
                     mode.value = 'ongoing'
                     q.value = ''
-                    tag_filter.value = { tags: [], clusters: [] }
+                    tag_filter_ref.value?.clear_all()
                     const box = document.querySelector('.ctx-search input')
                     if (box) box.value = ''
                     fetch_tasks(1)
@@ -268,17 +298,25 @@
                     status_info.value = await res.json()
                 }
 
-                onMounted(() => {
+                const start_page = Math.max(1, parseInt(url0.get('page')) || 1)
+                onMounted(async () => {
                     const box = document.querySelector('.ctx-search input')
                     if (box && q.value) box.value = q.value
+                    if (url_tags.tag || url_tags.galaxy) {
+                        restoring = true
+                        await tag_filter_ref.value?.restore(url_tags)
+                        restoring = false
+                        fetch_tasks(start_page)
+                    }
                 })
 
-                fetch_tasks(Math.max(1, parseInt(url0.get('page')) || 1))
+                // with tags in the URL the picker fetches once it has resolved them (onMounted)
+                if (!url_tags.tag && !url_tags.galaxy) fetch_tasks(start_page)
                 fetch_status()
 
                 return {
                     message_list, MODE_LABELS, SORT_OPTIONS,
-                    mode, sort, order, q, per_page, view, group, set_group, task_list_ref, tag_filter, remove_tag,
+                    mode, sort, order, q, per_page, view, group, set_group, task_list_ref, tag_filter_ref, picked_count, on_tag_pick,
                     task_page, task_stats, status_info, current_page, loading,
                     fetch_tasks, set_mode, set_sort, toggle_order, sort_by_column, set_per_page, set_view,
                     show_due_soon, clear_filters, onInput, complete_task,
