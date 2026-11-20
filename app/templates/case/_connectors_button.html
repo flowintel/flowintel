@@ -1,9 +1,8 @@
 {# Partial: Connectors button + modal/collapse. Use data-connector-display attribute to force mode ("modal" or "collapse"). #}
 <div id="connectors-button-wrapper" class="d-inline-flex align-items-center">
-  <button id="btn-connectors-toggle" type="button" class="btn btn-outline-secondary btn-sm" title="Open Connectors" aria-label="Open Connectors" @click="openConnectors($event)">
-    <i class="fa-solid fa-plug fa-sm me-1"></i>
-    <span class="section-title d-none d-sm-inline">Connectors</span>
-    <span class="badge text-bg-secondary ms-2" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
+  <button id="btn-connectors-toggle" type="button" class="btn btn-outline-secondary position-relative" title="Connectors" aria-label="Connectors" @click="openConnectors($event)">
+    <i class="fa-solid fa-plug"></i>
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-secondary" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
   </button>
 </div>
 
