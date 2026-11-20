@@ -1273,3 +1273,8 @@ a.case-content:hover {
   0%, 30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-primary) 45%, transparent); }
   100% { box-shadow: 0 0 0 4px transparent; }
 }
+
+/* Connectors button of the case header: Flowintel navy (light) / strong navy (dark) */
+.btn-connectors { --bs-btn-color: #fff; --bs-btn-bg: var(--fi-strong, #1f3763); --bs-btn-border-color: var(--fi-strong, #1f3763);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--fi-strong-hover, #2c4a80); --bs-btn-hover-border-color: var(--fi-strong-hover, #2c4a80);
+  --bs-btn-active-color: #fff; --bs-btn-active-bg: var(--fi-strong-hover, #2c4a80); --bs-btn-active-border-color: var(--fi-strong-hover, #2c4a80); }
