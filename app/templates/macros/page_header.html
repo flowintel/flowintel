@@ -47,7 +47,7 @@
         <div class="ctx-header-main">
             <div class="ctx-header-top">
                 <div class="ctx-header-heading">
-                    <span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>
+                    {% if icon %}<span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>{% endif %}
                     <h1 class="ctx-header-title" id="page-header-title">{{ title|vue_escape }}</h1>
                     {% if description %}
                     <p class="ctx-header-description">{{ description|vue_escape }}</p>

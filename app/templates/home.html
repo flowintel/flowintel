@@ -18,7 +18,7 @@
 {% block content %}
     <!-- Welcome header -->
     {% set welcome = 'Welcome back, ' ~ current_user.first_name ~ ' ' ~ current_user.last_name %}
-    {% call(section) page_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
+    {% call(section) page_header(welcome, '', 'Here is what is waiting for you today.', variant='hero') %}
         {% if section == 'aside' %}
             <span class="ctx-version" v-if="version" title="Flowintel version"><i class="fa-solid fa-code-branch"></i>v[[ version ]]</span>
         {% elif section == 'stats' %}
