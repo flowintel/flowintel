@@ -343,5 +343,22 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 
 /* the graph is drawn in an inner box; the loading screen covers it while it is built */
 .tlg-canvas { position: absolute; inset: 0; }
-.tlg-loading { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-    background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); font-size: .85rem; font-weight: 600; }
+.tlg-loading { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); font-size: .85rem; font-weight: 600; pointer-events: none; }
+/* inside Pivotick's canvas: above the drawing (svg), under its tools (z-index 5-7) */
+.tlg-loading--inner { z-index: 4; }
+.tlg-loading-badge { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* skeleton of the line of days */
+.tlg-skeleton { display: flex; align-items: center; opacity: .9; }
+.tlg-sk-card { display: flex; align-items: center; gap: 10px; width: 170px; padding: 12px; border: 1px solid var(--bs-border-color);
+    border-top: 3px solid color-mix(in srgb, #1f3763 35%, var(--bs-border-color)); border-radius: 12px; background: var(--bs-body-bg); }
+.tlg-sk-icon { flex: none; width: 28px; height: 28px; border-radius: 8px; }
+.tlg-sk-lines { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.tlg-sk-lines span { height: 8px; border-radius: 4px; }
+.tlg-sk-lines span:last-child { width: 60%; }
+.tlg-sk-icon, .tlg-sk-lines span { background: linear-gradient(90deg, var(--bs-secondary-bg) 25%, var(--bs-tertiary-bg) 50%, var(--bs-secondary-bg) 75%) 0 0 / 200% 100%;
+    animation: tlg-sk 1.2s linear infinite; }
+.tlg-sk-link { width: 40px; border-top: 2px dashed var(--bs-border-color); }
+@keyframes tlg-sk { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .tlg-sk-icon, .tlg-sk-lines span { animation: none; } }
+@media (max-width: 900px) { .tlg-sk-card:nth-of-type(n+3), .tlg-sk-link:nth-of-type(n+3) { display: none; } }

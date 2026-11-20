@@ -774,6 +774,24 @@ export default {
             return (EVENT_KINDS[c.kind] || EVENT_KINDS.event).label + 's'
         }
 
+        // Loading cover inside Pivotick's canvas, between the drawing and its tools: the search,
+        // rail, legend and zoom stay visible, only the drawing is hidden while it settles.
+        const SKELETON = '<div class="tlg-skeleton" aria-hidden="true">' +
+            Array.from({ length: 4 }, (_, i) => '<span class="tlg-sk-card"><span class="tlg-sk-icon"></span><span class="tlg-sk-lines"><span></span><span></span></span></span>' + (i < 3 ? '<span class="tlg-sk-link"></span>' : '')).join('') +
+            '</div>'
+        function cover_drawing(canvas) {
+            const host = canvas.querySelector('.pvt-canvas')
+            if (!host) return () => {}
+            const cover = document.createElement('div')
+            cover.className = 'tlg-loading tlg-loading--inner'
+            cover.setAttribute('role', 'status')
+            cover.innerHTML = SKELETON + '<div class="tlg-loading-badge"><div class="tlg-fl"></div><span>Building the graph…</span></div>'
+            host.appendChild(cover)
+            let app = null
+            try { app = Vue.createApp(flow_loader, { size: 110, label: 'Building the graph' }); app.mount(cover.querySelector('.tlg-fl')) } catch (e) {}
+            return () => { try { app && app.unmount() } catch (e) {} cover.remove() }
+        }
+
         // selecting something opens the details panel on the side
         function show_sidebar() {
             try { graph && graph.UIManager && graph.UIManager.sidebar && graph.UIManager.sidebar.showSidebar() } catch (e) {}
@@ -1016,7 +1034,9 @@ export default {
             // hide the build: the loading screen stays until the layout has settled and the
             // view is centred (with a ceiling, so it never stays forever)
             const built = graph
-            const reveal = () => { if (graph === built) graph_loading.value = false }
+            const uncover = cover_drawing(canvas)
+            graph_loading.value = false
+            const reveal = () => uncover()
             const settled = (graph.renderer && graph.renderer.fitAndCenterWhenSettled) ? graph.renderer.fitAndCenterWhenSettled() : Promise.resolve()
             Promise.race([settled, new Promise(r => setTimeout(r, 3500))])
                 .then(() => { if (graph === built) focus_today() })
@@ -1131,9 +1151,12 @@ export default {
         <!-- Graph -->
         <div id="timeline-graph-container" class="tlg-container">
             <div id="timeline-graph-canvas" class="tlg-canvas"></div>
+            <!-- first load, before Pivotick exists; afterwards the cover is inside Pivotick (cover_drawing) -->
             <div v-if="graph_loading" class="tlg-loading" role="status" aria-live="polite">
-                <flow_loader :size="150" label="Building the graph"></flow_loader>
-                <span>Building the graph…</span>
+                <div class="tlg-loading-badge">
+                    <flow_loader :size="110" label="Building the graph"></flow_loader>
+                    <span>Building the graph…</span>
+                </div>
             </div>
         </div>
     </div>
