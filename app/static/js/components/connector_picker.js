@@ -13,7 +13,7 @@
  *
  * Styles: /static/css/components/connectors.css
  */
-const { ref, computed, nextTick, onMounted, onBeforeUnmount } = Vue
+const { ref, computed, nextTick, watch, onMounted, onBeforeUnmount } = Vue
 
 export default {
     name: 'ConnectorPicker',
@@ -32,6 +32,9 @@ export default {
         const query = ref('')
         const open = ref(false)
         const active = ref(0)
+        const box = ref(null)
+        const menu = ref(null)
+        const pos = ref({ top: 0, left: 0, width: 0 })
 
         // flat list: every instance with its connector type
         const all = computed(() => Object.entries(props.instances || {})
@@ -76,16 +79,37 @@ export default {
             else if (e.key === 'Escape') { open.value = false }
             else if (e.key === 'Backspace' && !query.value && props.modelValue.length) remove(props.modelValue[props.modelValue.length - 1])
         }
-        function on_doc_click(e) { if (root.value && !root.value.contains(e.target)) open.value = false }
-        onMounted(() => document.addEventListener('mousedown', on_doc_click))
-        onBeforeUnmount(() => document.removeEventListener('mousedown', on_doc_click))
+        // the menu is teleported to <body> (a scrolling modal would cut it): keep it under the box
+        function place() {
+            const r = box.value && box.value.getBoundingClientRect()
+            if (!r) return
+            const h = (menu.value && menu.value.offsetHeight) || 280
+            const below = r.bottom + 4 + h <= window.innerHeight || r.top < h + 4
+            pos.value = { left: r.left, width: r.width, top: below ? r.bottom + 4 : r.top - h - 4 }
+        }
+        watch(open, v => { if (v) nextTick(place) })
+        watch(() => props.modelValue.length, () => { if (open.value) nextTick(place) })
+        function on_move() { if (open.value) place() }
+        function on_doc_click(e) {
+            if (root.value && !root.value.contains(e.target) && !(menu.value && menu.value.contains(e.target))) open.value = false
+        }
+        onMounted(() => {
+            document.addEventListener('mousedown', on_doc_click)
+            window.addEventListener('scroll', on_move, true)
+            window.addEventListener('resize', on_move)
+        })
+        onBeforeUnmount(() => {
+            document.removeEventListener('mousedown', on_doc_click)
+            window.removeEventListener('scroll', on_move, true)
+            window.removeEventListener('resize', on_move)
+        })
         function focus_input() { open.value = true; input.value && input.value.focus() }
 
-        return { root, input, query, open, active, chosen, options, groups, icon, host, pick, remove, on_key, focus_input }
+        return { root, input, box, menu, pos, query, open, active, chosen, options, groups, icon, host, pick, remove, on_key, focus_input }
     },
     template: `
     <div ref="root" :class="['upick', 'cpick', { 'upick--open': open }]">
-        <div class="upick-box" @click="focus_input">
+        <div ref="box" class="upick-box" @click="focus_input">
             <span v-for="i in chosen" :key="i.id" class="cchip cchip--sm" :title="i.type + ' — ' + (i.url || '')">
                 <img v-if="icon(i.type)" :src="icon(i.type)" alt="" class="cchip-icon"><i v-else class="fa-solid fa-plug cchip-icon"></i>
                 <span class="cchip-name">[[ i.name ]]</span>
@@ -96,7 +120,9 @@ export default {
                    role="combobox" :aria-expanded="open" aria-autocomplete="list">
             <i class="fa-solid fa-chevron-down upick-caret"></i>
         </div>
-        <ul v-if="open" class="upick-menu" role="listbox">
+        <teleport to="body">
+        <ul v-if="open" ref="menu" class="upick-menu cpick-menu" role="listbox"
+            :style="{ top: pos.top + 'px', left: pos.left + 'px', width: pos.width + 'px' }">
             <li v-if="!options.length" class="upick-none">[[ query ? 'No instance matches “' + query + '”' : 'Every instance is already linked' ]]</li>
             <template v-for="g in groups" :key="g.type">
                 <li class="cpick-group" role="presentation">[[ g.type ]]</li>
@@ -110,6 +136,7 @@ export default {
                 </li>
             </template>
         </ul>
+        </teleport>
     </div>
     `
 }
