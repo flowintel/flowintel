@@ -5,6 +5,11 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/connectors.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/completion_details.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_picker.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
@@ -74,29 +79,22 @@
                          alt="Rulezet" style="max-width: 24px; vertical-align: middle;">
                     <span v-else class="rz-logo case-rulezet-mark" role="img" aria-label="Rulezet"><img class="rz-logo-light" src="/static/image/connectors/rulezet.png" alt=""><img class="rz-logo-dark" src="/static/image/connectors/rulezet-dark.png" alt=""></span>
                 </span>
+                {% if case.ticket_id %}
+                <span class="ticket-badge" title="Ticket ID">
+                    <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
+                </span>
+                {% endif %}
             </div>
         </div>
         <div class="case-header-actions" v-if="cases_info">
             <action_buttons 
                 :cases_info="cases_info"
                 :status_info="status_info">
+                <template #after-edit>{% include 'case/_connectors_button.html' %}</template>
             </action_buttons>
         </div>
     </div>
     
-    <div class="mb-3" style="display: flex; justify-content: space-between;">
-        <div class="case-ticket-row">
-            {% if case.ticket_id %}
-            <span class="ticket-badge" title="Ticket ID">
-                <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
-            </span>
-            {% endif %}
-        </div>
-        <template v-if="cases_info">
-            {% include 'case/_connectors_button.html' %}
-        </template>
-    </div>
-
     <!-- Case Meta Information -->
     <div class="case-meta-grid" v-if="cases_info">
         <div class="case-meta-item case-meta-marking" v-if="case_markings.length" title="TLP / PAP of the case">
@@ -133,6 +131,11 @@
         </div>
         {% endif %}
     </div>
+    <div class="case-meta-grid" v-else aria-hidden="true">
+        <div v-for="w in ['70%', '55%', '80%', '60%', '65%']" class="case-meta-item">
+            <span class="lo-sk lo-sk-sm" style="width:40%"></span><span class="lo-sk" :style="{ width: w }"></span>
+        </div>
+    </div>
 
     {% if config.SHOW_GDPR_NOTICE %}
     <div class="alert alert-gdpr d-flex align-items-center py-2 px-3 mt-3 w-auto" style="font-size: 0.875rem; max-width: fit-content;">
@@ -151,6 +154,9 @@
         </button>
         <div v-if="showDescription">
             <smart_render v-if="cases_info" :code="cases_info.case.description" language="markdown"></smart_render>
+            <div v-else class="py-2" aria-hidden="true">
+                <span class="lo-sk" style="width:95%"></span><span class="lo-sk" style="width:88%"></span><span class="lo-sk" style="width:60%"></span>
+            </div>
         </div>
     </div>
     {% endif %}
@@ -167,18 +173,18 @@
                 <div class="mt-2 px-3 py-3 rounded" style="background-color: var(--bs-tertiary-bg); font-size: 0.84rem;">
                     <!-- Legend -->
                     <div class="d-flex gap-3 mb-3" style="font-size: 0.78rem;">
-                        <span><i class="fa-solid fa-circle fa-xs me-1" style="color: #0d6efd;"></i>Requester</span>
+                        <span><i class="fa-solid fa-circle fa-xs me-1" style="color: var(--bs-primary);"></i>Requester</span>
                         <span><i class="fa-solid fa-circle fa-xs me-1" style="color: #dc3545;"></i>Approver</span>
                     </div>
 
                     <!-- Timeline -->
                     <div style="position: relative; padding-left: 28px;">
                         <!-- Vertical line -->
-                        <div style="position: absolute; left: 9px; top: 10px; bottom: 10px; width: 2px; background: linear-gradient(to bottom, #0d6efd 0%, #dc3545 18%, #0d6efd 32%, #0d6efd 50%, #dc3545 65%, #dc3545 78%, #dc3545 100%); border-radius: 1px;"></div>
+                        <div style="position: absolute; left: 9px; top: 10px; bottom: 10px; width: 2px; background: linear-gradient(to bottom, var(--bs-primary) 0%, #dc3545 18%, var(--bs-primary) 32%, var(--bs-primary) 50%, #dc3545 65%, #dc3545 78%, #dc3545 100%); border-radius: 1px;"></div>
 
                         <!-- Step 1: Submit (Requester) -->
                         <div class="d-flex align-items-start mb-3" style="position: relative;">
-                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">1</span>
                             </span>
                             <div>
@@ -205,7 +211,7 @@
 
                         <!-- Step 3: Work (Requester) -->
                         <div class="d-flex align-items-start mb-3" style="position: relative;">
-                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">3</span>
                             </span>
                             <div>
@@ -216,7 +222,7 @@
 
                         <!-- Step 4: Request review (Requester) -->
                         <div class="d-flex align-items-start mb-3" style="position: relative;">
-                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: #0d6efd; border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
+                            <span style="position: absolute; left: -28px; top: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--bs-primary); border: 2px solid #fff; display: flex; align-items: center; justify-content: center;">
                                 <span style="color: #fff; font-size: 0.6rem; font-weight: 700;">4</span>
                             </span>
                             <div>
@@ -358,19 +364,28 @@
 
     <!-- Modal add new link -->
     <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content morg-modal klink-modal">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="add_new_link_modal">Add new linked case</h1>
-                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <span class="morg-modal-icon"><i class="fa-solid fa-link"></i></span>
+                    <div>
+                        <h1 class="modal-title fs-5" id="add_new_link_modal">Link cases</h1>
+                        <div class="morg-modal-sub">Linked cases show on the home of both cases.</div>
+                    </div>
+                    <button class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
                 </div>
-                <div class="modal-body">
-                    Link to:
-                    <select class="new-link-ajax" name="link_to" tabindex="-1" multiple data-placeholder="Link to"></select>
-                    <div style="color: brown;" id="add_new_link_error"></div>
+                <div class="modal-body" v-if="cases_info">
+                    <label class="klink-label">Cases to link</label>
+                    <case_picker v-if="link_modal_open" v-model="link_picked" :case-id="cases_info.case.id"
+                                 :statuses="status_info ? status_info.status : []"></case_picker>
+                    <p class="klink-help">Search by number (<code>#12</code>), title, ticket id or UUID. With nothing typed, cases sharing tags with this one come first.</p>
                 </div>
                 <div class="modal-footer">
-                    <button @click="submit_add_new_link()" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" :disabled="!link_picked.length || link_saving" @click="submit_add_new_link()">
+                        <span v-if="link_saving" class="spinner-border spinner-border-sm me-1"></span><i v-else class="fa-solid fa-plus me-1"></i>
+                        Link [[ link_picked.length || '' ]] case[[ link_picked.length === 1 ? '' : 's' ]]
+                    </button>
                 </div>
             </div>
         </div>
@@ -583,6 +598,19 @@
                     <tags_edition v-if="cases_info" :current_case="cases_info.case" :type_object="'case'" :can_edit="can_edit_case"
                                   @open-task="(t) => calendar_navigate({ tab: 'main', task: t.id, completed: t.completed })"></tags_edition>
 
+                    <loading_overlay v-if="!cases_info" :loading="true" :empty="true" :size="72" label="Loading case…">
+                        <template #skeleton>
+                            <div class="case-tags-style mt-2">
+                                <span class="lo-sk lo-sk-sm" style="width:18%"></span>
+                                <div class="d-flex gap-2 mt-2"><span v-for="w in ['70px','110px','90px','80px']" class="lo-sk lo-sk-pill" :style="{ width: w }"></span></div>
+                            </div>
+                            <div class="case-tags-style mt-3">
+                                <span class="lo-sk lo-sk-sm" style="width:22%"></span>
+                                <span class="lo-sk mt-3" style="width:75%"></span><span class="lo-sk" style="width:50%"></span>
+                            </div>
+                        </template>
+                    </loading_overlay>
+
                     <div class="case-tags-style mt-2" v-if="cases_info">
                         <div class="justify-content-center" style="float: right">
                             <button v-if="can_edit_case" class="btn btn-primary btn-sm" title="New link" data-bs-toggle="modal" data-bs-target="#add_new_link">
@@ -606,6 +634,11 @@
                                 <a href="javascript:void(0)" @click="change_status_sort(true)" class="text-decoration-none">[[open_closed.open]] open</a> / 
                                 <a href="javascript:void(0)" @click="change_status_sort(false)" class="text-decoration-none">[[open_closed.closed]] closed</a>
                             </small>
+                            <button type="button" class="cpl-toggle" :aria-expanded="completion_open" aria-controls="completion-details"
+                                    :title="completion_open ? 'Hide the completion details' : 'Show the completion details (statuses, deadlines, assignees, activity)'"
+                                    @click="completion_open = !completion_open">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
                         </div>
                         <hr class="fading-line-2 mt-2 mb-2">
                         <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
@@ -615,6 +648,8 @@
                             <div v-else class="progress-bar" style="width: 0%"></div>
                             <span v-if="open_closed.closed <= 0" class="position-absolute" style="margin-left: 5px; margin-top:-1px">0%</span>
                         </div>
+                        <completion_details v-if="completion_open" id="completion-details" :case-id="cases_info.case.id"
+                                            :version="open_closed.open + '-' + open_closed.closed"></completion_details>
                     </div>
 
                     <manage_orgs :cases_info="cases_info" @case_orgs_changed="get_all_users_case"></manage_orgs>
@@ -853,7 +888,7 @@
             <div v-else-if="cases_info">
                 <caseconnectors 
                     :case_task_connectors_list="case_connectors_list"
-                    :all_connectors_list="all_connectors_list"
+                    :all_connectors_list="all_connectors_list" :icons="connector_icons"
                     :modules="modules"
                     :is_case="true"
                     :object_id="cases_info.case.id"
@@ -1075,7 +1110,7 @@
 
                 <!-- Pagination -->
                 <div v-if="total_pages > 1" class="mt-3 d-flex justify-content-center">
-                    <app-pagination :current-page="current_page" :nb-pages="total_pages"
+                    <app-pagination scroll="#task-collapse" :current-page="current_page" :nb-pages="total_pages"
                                     aria-label="Task pagination" @page="go_to_page"></app-pagination>
                     <span class="ms-3 text-muted align-self-center" style="font-size: 0.82rem;">
                         [[ total_tasks ]] task<span v-if="total_tasks !== 1">s</span>
@@ -1090,9 +1125,18 @@
             
         </template>
         <template v-else>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+            <loading_overlay :loading="true" :empty="true" label="Loading tasks…">
+                <template #skeleton>
+                    <div class="d-flex gap-2 mb-3"><span v-for="w in ['100px','90px','110px']" class="lo-sk lo-sk-pill" :style="{ width: w, height: '28px' }"></span></div>
+                    <div v-for="i in 4" :key="i" class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <span class="lo-sk" :style="{ width: (60 - i * 6) + '%' }"></span>
+                            <span class="lo-sk lo-sk-pill" style="width:70px"></span>
+                        </div>
+                        <span class="lo-sk lo-sk-sm mt-2" style="width:35%"></span>
+                    </div>
+                </template>
+            </loading_overlay>
         </template>
     </div>
 
@@ -1123,6 +1167,8 @@
         import misp_object from '/static/js/case/misp_object.js'
         import mispattributes from '/static/js/case/MispAttributes.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
+        import completion_details from '/static/js/case/completion_details.js'
+        import case_picker from '/static/js/components/case_picker.js'
         import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
@@ -1133,6 +1179,7 @@
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import smart_render from '/static/js/components/smart-render.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         import case_links from '/static/js/components/case-links.js'
         import smart_editor from '/static/js/components/smart-editor.js'
         import tag_filter from '/static/js/components/misp_tag_filter.js'
@@ -1142,6 +1189,7 @@
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                loading_overlay,
                 case_links,
                 'app-pagination': Pagination,
                 case_tasks,
@@ -1153,6 +1201,8 @@
                 misp_object,
                 mispattributes,
                 caseconnectors,
+                completion_details,
+                case_picker,
                 casemispconnectors,
                 casefiles,
                 case_history,
@@ -1208,6 +1258,7 @@
                 const all_connectors_list = ref([])
                 // Icon of each connector type (uploaded on the connector), for the module tabs
                 const connector_icons = ref({})
+                const completion_open = ref(false)   // "Completion" details, folded by default
                 // Built-in single-colour icons for module types that ship with Flowintel: drawn
                 // in the tab's text colour like the other tab icons (CSS mask, core.css)
                 const MONO_MODULE_ICONS = { rulezet: '/static/image/connectors/rulezet-mono.svg' }
@@ -1573,7 +1624,9 @@
                     }
                 }
 
-                const case_for_link = ref([])
+                const link_picked = ref([])        // cases chosen in the "Link cases" modal
+                const link_saving = ref(false)
+                const link_modal_open = ref(false)
 
 
                 async function fetch_open_closed(){
@@ -2271,31 +2324,26 @@ async function autosave_case_note(){
                     setTimeout(autosave_case_note, 30000);
                 }
 
-                async function submit_add_new_link() {    
-                    $("#add_new_link_error").text("")
-                    if($(".new-link-ajax").val().includes("None") || !$(".new-link-ajax").val().length){
-                        $("#add_new_link_error").text("Give me more")
-                    }else{
-                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_new_link',{
+                async function submit_add_new_link() {
+                    if (!link_picked.value.length || link_saving.value) return
+                    link_saving.value = true
+                    try {
+                        const res = await fetch('/case/' + cases_info.value.case.id + '/add_new_link', {
                             headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
                             method: "POST",
-                            body: JSON.stringify({"case_id": $(".new-link-ajax").val()})
+                            body: JSON.stringify({ "case_id": link_picked.value.map(c => c.id) })
                         })
-                        if(await res.status == 200){
-                            let loc = $(".new-link-ajax").val()
-                            for(let index in loc){
-                                for(let i in case_for_link.value){
-                                    if(case_for_link.value[i].id == loc[index]){
-                                        cases_info.value.case.link_to.push({"id":case_for_link.value[i].id, "title": case_for_link.value[i].title})
-                                    }
-                                }
+                        if (res.status == 200) {
+                            for (const c of link_picked.value) {
+                                cases_info.value.case.link_to.push({ id: c.id, title: c.title, description: '', status_id: c.status_id,
+                                    completed: c.completed, is_private: c.is_private, deadline: c.deadline })
                             }
                             cases_info.value.case.last_modif = Date.now()
-                            var myModalEl = document.getElementById('add_new_link');
-                            var modal = bootstrap.Modal.getInstance(myModalEl)
-                            modal.hide();
+                            bootstrap.Modal.getInstance(document.getElementById('add_new_link'))?.hide()
                         }
                         display_toast(res)
+                    } finally {
+                        link_saving.value = false
                     }
                 }
 
@@ -2362,34 +2410,12 @@ async function autosave_case_note(){
                     fetch_case_files()
                     await fetch_case_misp_attrs()
 
-                    $('.new-link-ajax').select2({
-                        ajax: {
-                            url: '/case/search',
-                            data: function (params) {
-                                var query = {
-                                    text: params.term
-                                }
-                                submit_add_new_link
-                                // Query parameters will be ?text=[term]
-                                return query;
-                            },
-                            processResults: function (data) {
-                                case_for_link.value = []
-                                for(let i in data.cases){
-                                    const c = data.cases[i]
-                                    if(String(c.id) === String(cases_info.value.case.id)) continue
-                                    case_for_link.value.push({id: c.id, text: `#${c.id} - ${c.title}`, title: c.title})
-                                }
-                                
-                                return {
-                                    results: case_for_link.value
-                                };
-                            }
-                        },
-                        minimumInputLength: 1,
-                        width: "50%",
-                        dropdownParent: $('#add_new_link')
-                    });
+                    // link modal: mount the picker on open (fresh search, autofocus), reset on close
+                    const link_modal_el = document.getElementById('add_new_link')
+                    if (link_modal_el) {
+                        link_modal_el.addEventListener('show.bs.modal', () => { link_picked.value = []; link_modal_open.value = true })
+                        link_modal_el.addEventListener('hidden.bs.modal', () => { link_modal_open.value = false })
+                    }
 
 
                     const collapseEl = document.getElementById('collapseTasks');
@@ -2610,6 +2636,9 @@ async function autosave_case_note(){
                     fetch_case_connectors,
                     fetch_misp_automation_status,
                     openConnectors,
+                    connector_icons,
+                    completion_open,
+                    link_picked, link_saving, link_modal_open,
                     fetch_case_files,
                     on_connector_note_change,
                     get_all_users_case,

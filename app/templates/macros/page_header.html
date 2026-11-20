@@ -46,8 +46,8 @@
     <section class="ctx-header{% if variant %} ctx-header--{{ variant }}{% endif %}" aria-labelledby="page-header-title">
         <div class="ctx-header-main">
             <div class="ctx-header-top">
-                <div class="ctx-header-heading">
-                    <span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>
+                <div class="ctx-header-heading{% if not icon %} ctx-header-heading--no-icon{% endif %}">
+                    {% if icon %}<span class="ctx-header-icon" aria-hidden="true"><i class="{{ icon }}"></i></span>{% endif %}
                     <h1 class="ctx-header-title" id="page-header-title">{{ title|vue_escape }}</h1>
                     {% if description %}
                     <p class="ctx-header-description">{{ description|vue_escape }}</p>
@@ -108,11 +108,17 @@
 
 {#- "Filters" button opening a Bootstrap modal (target: '#modalId'). active is an optional
     Vue expression: when true the button is highlighted and shows a dot. -#}
-{% macro header_filters(target, active='', label='Filters') -%}
+{% macro header_filters(target, active='', label='Filters', clear='') -%}
+{#- clear: Vue handler of a small "Clear" button shown next to it while `active` is true -#}
 <button type="button" class="ctx-ghost-btn ctx-filters-btn"{% if active %} :class="{active: {{ active }}}"{% endif %} data-bs-toggle="modal" data-bs-target="{{ target }}" title="{{ label }}">
     <i class="fa-solid fa-sliders fa-sm"></i>{{ label }}
     {%- if active %}<span v-if="{{ active }}" class="ctx-ghost-dot" aria-label="Filters applied"></span>{% endif %}
 </button>
+{%- if clear and active %}
+<button type="button" v-if="{{ active }}" class="ctx-ghost-btn ctx-clear-btn" @click="{{ clear }}" title="Clear all filters">
+    <i class="fa-solid fa-xmark fa-sm"></i>Clear
+</button>
+{%- endif %}
 {%- endmacro %}
 
 

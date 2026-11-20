@@ -4,8 +4,18 @@
 
 {% extends 'base.html' %}
 
+{#- data source(s) each chart waits for, from its canvas id (see init_chart_*) -#}
+{% macro chart_src(canvas_id) -%}
+{%- if canvas_id.startswith('admin-') -%}['admin']
+{%- elif canvas_id.startswith('community-') -%}['community']
+{%- elif canvas_id.startswith('misp-') -%}['misp']
+{%- elif canvas_id.split('-')[1] in ('tags', 'custom', 'clusters') -%}['case_tags']
+{%- else -%}['case']
+{%- endif -%}
+{%- endmacro %}
 {% macro chart_card(title, canvas_id, height='380px', subtitle='') -%}
 <section class="stats-panel mb-4">
+    <div v-if="loading_shown && busy({{ chart_src(canvas_id) }})" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
     <div class="stats-panel-header">
         <div>
             <h3 class="stats-panel-title mb-1">{{ title }}</h3>
@@ -30,13 +40,15 @@
 {%- endmacro %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/chart.umd.min.js') }}"></script>
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/flow_loader.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/stat.css') }}">
 {{ super() }}
 {% endblock %}
 
 {% block content %}
-<div class="stats-shell">
+<div class="stats-shell" :class="{ 'is-loading': loading_shown }" :aria-busy="loading">
     <section class="stats-hero">
         <div class="stats-hero-meta">
             <div>
@@ -133,22 +145,22 @@
         </section>
 
         <section class="stats-card-grid">
-            <article class="stats-card soft-accent">
+            <article class="stats-card soft-accent"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-folder-tree"></i>Total cases</div>
                 <div class="stats-card-value">[[ formatNumber(case_stat.total_cases) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(case_stat.total_opened_cases) ]] open and [[ formatNumber(case_stat.total_closed_cases) ]] closed</p>
             </article>
-            <article class="stats-card soft-success">
+            <article class="stats-card soft-success"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-circle-check"></i>Closure rate</div>
                 <div class="stats-card-value">[[ formatPercent(case_stat.case_closure_rate) ]]</div>
                 <p class="stats-card-note">Share of visible cases already completed</p>
             </article>
-            <article class="stats-card soft-warning">
+            <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-hourglass-half"></i>Avg. time to close</div>
                 <div class="stats-card-value">[[ formatWeeks(case_stat.avg_case_resolution_weeks) ]]</div>
                 <p class="stats-card-note">Average for closed cases in the selected period</p>
             </article>
-            <article class="stats-card soft-danger">
+            <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-triangle-exclamation"></i>Overdue cases</div>
                 <div class="stats-card-value">[[ formatNumber(case_stat.overdue_cases) ]]</div>
                 <p class="stats-card-note">Open cases with a deadline in the past</p>
@@ -157,6 +169,7 @@
 
         <section class="stats-dual-grid">
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Most active cases</h3>
@@ -179,6 +192,7 @@
             </section>
 
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['case', 'unassigned'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Task health</h3>
@@ -186,17 +200,17 @@
                     </div>
                 </div>
                 <div class="stats-card-grid">
-                    <article class="stats-card soft-danger">
+                    <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                         <div class="stats-card-label"><i class="fa-solid fa-clock-rotate-left"></i>Overdue tasks</div>
                         <div class="stats-card-value">[[ formatNumber(case_stat.overdue_tasks) ]]</div>
                         <p class="stats-card-note">Tasks already past deadline</p>
                     </article>
-                    <article class="stats-card soft-warning">
+                    <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                         <div class="stats-card-label"><i class="fa-solid fa-calendar-day"></i>Due soon</div>
                         <div class="stats-card-value">[[ formatNumber(case_stat.due_soon_tasks) ]]</div>
                         <p class="stats-card-note">Open tasks due within 7 days</p>
                     </article>
-                    <article class="stats-card">
+                    <article class="stats-card"><div v-if="loading_shown && busy(['unassigned'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                         <div class="stats-card-label"><i class="fa-solid fa-user-slash"></i>Unassigned</div>
                         <div class="stats-card-value">[[ formatNumber(unassigned.count) ]]</div>
                         <p class="stats-card-note">Open tasks waiting for an owner</p>
@@ -225,22 +239,22 @@
         </section>
 
         <section class="stats-card-grid">
-            <article class="stats-card soft-accent">
+            <article class="stats-card soft-accent"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-list-check"></i>Total tasks</div>
                 <div class="stats-card-value">[[ formatNumber(case_stat.total_tasks) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(case_stat.total_opened_tasks) ]] open and [[ formatNumber(case_stat.total_closed_tasks) ]] closed</p>
             </article>
-            <article class="stats-card soft-success">
+            <article class="stats-card soft-success"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-chart-simple"></i>Closure rate</div>
                 <div class="stats-card-value">[[ formatPercent(case_stat.task_closure_rate) ]]</div>
                 <p class="stats-card-note">Share of visible tasks already completed</p>
             </article>
-            <article class="stats-card soft-warning">
+            <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-stopwatch"></i>Avg. time to close</div>
                 <div class="stats-card-value">[[ formatWeeks(case_stat.avg_task_resolution_weeks) ]]</div>
                 <p class="stats-card-note">Average duration for closed tasks</p>
             </article>
-            <article class="stats-card soft-danger">
+            <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['case'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-calendar-day"></i>Due within 7 days</div>
                 <div class="stats-card-value">[[ formatNumber(case_stat.due_soon_tasks) ]]</div>
                 <p class="stats-card-note">Open tasks approaching deadline</p>
@@ -249,6 +263,7 @@
 
         <section class="stats-dual-grid">
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['overdue'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Overdue tasks</h3>
@@ -268,6 +283,7 @@
             </section>
 
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['unassigned'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Tasks without assignee</h3>
@@ -310,6 +326,7 @@
         <section class="stats-context-layout">
             <div class="stats-context-grid">
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['tag_galaxy'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-tag me-2"></i>Top tags on cases</h3>
@@ -319,8 +336,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in tag_stats.case_tags" :key="'ct-' + idx" :class="selected_case_tag === row ? 'table-active' : ''" @click="set_context_selection('case_tag', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('ct', tag_stats.case_tags)" :key="'ct-' + idx" :class="selected_case_tag === row ? 'table-active' : ''" @click="set_context_selection('case_tag', row)">
+                                <td>[[ pg_off('ct') + idx + 1 ]]</td>
                                 <td>[[ row.tag ]]</td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -329,9 +346,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(tag_stats.case_tags) > 1" class="mt-2 px-2" :current-page="pg_page('ct', tag_stats.case_tags)" :nb-pages="pg_nb(tag_stats.case_tags)" @page="p => pages['ct'] = p"></app-pagination>
                 </section>
 
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['tag_galaxy'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-tag me-2"></i>Top tags on tasks</h3>
@@ -341,8 +360,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Tag</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in tag_stats.task_tags" :key="'tt-' + idx" :class="selected_task_tag === row ? 'table-active' : ''" @click="set_context_selection('task_tag', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('tt', tag_stats.task_tags)" :key="'tt-' + idx" :class="selected_task_tag === row ? 'table-active' : ''" @click="set_context_selection('task_tag', row)">
+                                <td>[[ pg_off('tt') + idx + 1 ]]</td>
                                 <td>[[ row.tag ]]</td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -351,9 +370,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(tag_stats.task_tags) > 1" class="mt-2 px-2" :current-page="pg_page('tt', tag_stats.task_tags)" :nb-pages="pg_nb(tag_stats.task_tags)" @page="p => pages['tt'] = p"></app-pagination>
                 </section>
 
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['tag_galaxy'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-spider me-2"></i>Top clusters on cases</h3>
@@ -363,8 +384,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in tag_stats.case_clusters" :key="'cc-' + idx" :class="selected_case_cluster === row ? 'table-active' : ''" @click="set_context_selection('case_cluster', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('cc', tag_stats.case_clusters)" :key="'cc-' + idx" :class="selected_case_cluster === row ? 'table-active' : ''" @click="set_context_selection('case_cluster', row)">
+                                <td>[[ pg_off('cc') + idx + 1 ]]</td>
                                 <td><span :title="row.tag">[[ row.name || row.tag ]]</span><small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small></td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -373,9 +394,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(tag_stats.case_clusters) > 1" class="mt-2 px-2" :current-page="pg_page('cc', tag_stats.case_clusters)" :nb-pages="pg_nb(tag_stats.case_clusters)" @page="p => pages['cc'] = p"></app-pagination>
                 </section>
 
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['tag_galaxy'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-spider me-2"></i>Top clusters on tasks</h3>
@@ -385,8 +408,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Cluster</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in tag_stats.task_clusters" :key="'tc-' + idx" :class="selected_task_cluster === row ? 'table-active' : ''" @click="set_context_selection('task_cluster', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('tc', tag_stats.task_clusters)" :key="'tc-' + idx" :class="selected_task_cluster === row ? 'table-active' : ''" @click="set_context_selection('task_cluster', row)">
+                                <td>[[ pg_off('tc') + idx + 1 ]]</td>
                                 <td><span :title="row.tag">[[ row.name || row.tag ]]</span><small v-if="row.name" class="text-muted ms-1">([[ row.tag ]])</small></td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -395,6 +418,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(tag_stats.task_clusters) > 1" class="mt-2 px-2" :current-page="pg_page('tc', tag_stats.task_clusters)" :nb-pages="pg_nb(tag_stats.task_clusters)" @page="p => pages['tc'] = p"></app-pagination>
                 </section>
             </div>
 
@@ -448,22 +472,22 @@
         </section>
 
         <section class="stats-card-grid">
-            <article class="stats-card soft-accent">
+            <article class="stats-card soft-accent"><div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-cubes"></i>MISP objects</div>
                 <div class="stats-card-value">[[ formatNumber(misp_stat.total_objects) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(misp_stat.unique_object_names) ]] unique object names</p>
             </article>
-            <article class="stats-card soft-success">
+            <article class="stats-card soft-success"><div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-diagram-project"></i>Object attributes</div>
                 <div class="stats-card-value">[[ formatNumber(misp_stat.total_object_attributes) ]]</div>
                 <p class="stats-card-note">Attributes attached inside MISP objects</p>
             </article>
-            <article class="stats-card soft-warning">
+            <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-fingerprint"></i>Standalone attributes</div>
                 <div class="stats-card-value">[[ formatNumber(misp_stat.total_standalone_attributes) ]]</div>
                 <p class="stats-card-note">Attributes stored directly on cases</p>
             </article>
-            <article class="stats-card soft-danger">
+            <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-link"></i>Task links</div>
                 <div class="stats-card-value">[[ formatNumber((misp_stat.linked_task_object_refs || 0) + (misp_stat.linked_task_attribute_refs || 0)) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(misp_stat.linked_task_object_refs) ]] object links and [[ formatNumber(misp_stat.linked_task_attribute_refs) ]] attribute links from tasks</p>
@@ -480,6 +504,7 @@
         <section class="stats-context-layout">
             <div class="stats-context-grid">
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-cube me-2"></i>Top MISP object names</h3>
@@ -489,8 +514,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Object</th><th>Count</th><th>Attributes</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in misp_stat.top_objects" :key="'mo-' + idx" :class="misp_selection.key === 'object_name' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('object_name', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('mo', misp_stat.top_objects)" :key="'mo-' + idx" :class="misp_selection.key === 'object_name' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('object_name', row)">
+                                <td>[[ pg_off('mo') + idx + 1 ]]</td>
                                 <td>[[ row.name ]]</td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                                 <td><span class="text-muted small">[[ formatNumber(row.attribute_count) ]]</span></td>
@@ -500,9 +525,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(misp_stat.top_objects) > 1" class="mt-2 px-2" :current-page="pg_page('mo', misp_stat.top_objects)" :nb-pages="pg_nb(misp_stat.top_objects)" @page="p => pages['mo'] = p"></app-pagination>
                 </section>
 
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-fingerprint me-2"></i>Standalone attributes by type</h3>
@@ -512,8 +539,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Type</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in misp_stat.top_standalone_types" :key="'mt-' + idx" :class="misp_selection.key === 'standalone_type' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_type', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('mt', misp_stat.top_standalone_types)" :key="'mt-' + idx" :class="misp_selection.key === 'standalone_type' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_type', row)">
+                                <td>[[ pg_off('mt') + idx + 1 ]]</td>
                                 <td>[[ row.name ]]</td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -522,9 +549,11 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(misp_stat.top_standalone_types) > 1" class="mt-2 px-2" :current-page="pg_page('mt', misp_stat.top_standalone_types)" :nb-pages="pg_nb(misp_stat.top_standalone_types)" @page="p => pages['mt'] = p"></app-pagination>
                 </section>
 
                 <section class="stats-panel">
+    <div v-if="loading_shown && busy(['misp'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                     <div class="stats-panel-header">
                         <div>
                             <h3 class="stats-panel-title mb-1"><i class="fa-solid fa-sitemap me-2"></i>Standalone attributes by relation</h3>
@@ -534,8 +563,8 @@
                     <table class="table table-hover stats-table mb-0">
                         <thead><tr><th>#</th><th>Relation</th><th>Count</th></tr></thead>
                         <tbody>
-                            <tr v-for="(row, idx) in misp_stat.top_standalone_relations" :key="'mr-' + idx" :class="misp_selection.key === 'standalone_relation' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_relation', row)">
-                                <td>[[ idx + 1 ]]</td>
+                            <tr v-for="(row, idx) in pg('mr', misp_stat.top_standalone_relations)" :key="'mr-' + idx" :class="misp_selection.key === 'standalone_relation' && misp_selection.row === row ? 'table-active' : ''" @click="set_misp_selection('standalone_relation', row)">
+                                <td>[[ pg_off('mr') + idx + 1 ]]</td>
                                 <td>[[ row.name ]]</td>
                                 <td><span class="badge text-bg-secondary">[[ row.count ]]</span></td>
                             </tr>
@@ -544,6 +573,7 @@
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(misp_stat.top_standalone_relations) > 1" class="mt-2 px-2" :current-page="pg_page('mr', misp_stat.top_standalone_relations)" :nb-pages="pg_nb(misp_stat.top_standalone_relations)" @page="p => pages['mr'] = p"></app-pagination>
                 </section>
             </div>
 
@@ -610,22 +640,22 @@
         </section>
 
         <section class="stats-card-grid">
-            <article class="stats-card soft-accent">
+            <article class="stats-card soft-accent"><div v-if="loading_shown && busy(['admin'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-folder-open"></i>Open cases</div>
                 <div class="stats-card-value">[[ formatNumber(admin_stat.total_opened_cases) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(admin_stat.total_closed_cases) ]] cases already closed</p>
             </article>
-            <article class="stats-card soft-success">
+            <article class="stats-card soft-success"><div v-if="loading_shown && busy(['admin'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-list-check"></i>Open tasks</div>
                 <div class="stats-card-value">[[ formatNumber(admin_stat.total_opened_tasks) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(admin_stat.total_closed_tasks) ]] tasks already closed</p>
             </article>
-            <article class="stats-card soft-warning">
+            <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['admin'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-regular fa-bell"></i>Unread notifications</div>
                 <div class="stats-card-value">[[ formatNumber(admin_stat.notification_backlog) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(admin_stat.total_notifications) ]] total notifications stored</p>
             </article>
-            <article class="stats-card soft-danger">
+            <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['admin'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-right-to-bracket"></i>Recent logins</div>
                 <div class="stats-card-value">[[ formatNumber(admin_stat.recent_login_count) ]]</div>
                 <p class="stats-card-note">Recorded [[ admin_stat.login_activity_period || ('during the last ' + (admin_stat.login_activity_days || 90) + ' days') ]]</p>
@@ -653,22 +683,22 @@
         </section>
 
         <section class="stats-card-grid">
-            <article class="stats-card soft-accent">
+            <article class="stats-card soft-accent"><div v-if="loading_shown && busy(['community'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-building"></i>Organisations</div>
                 <div class="stats-card-value">[[ formatNumber(community_stat.total_orgs) ]]</div>
                 <p class="stats-card-note">Average [[ community_stat.avg_users_per_org || 0 ]] users per organisation</p>
             </article>
-            <article class="stats-card soft-success">
+            <article class="stats-card soft-success"><div v-if="loading_shown && busy(['community'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-users"></i>Users</div>
                 <div class="stats-card-value">[[ formatNumber(community_stat.total_users) ]]</div>
                 <p class="stats-card-note">[[ formatNumber(community_stat.active_users_30d) ]] logged in during the last 30 days</p>
             </article>
-            <article class="stats-card soft-warning">
+            <article class="stats-card soft-warning"><div v-if="loading_shown && busy(['community'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-user-clock"></i>Never logged in</div>
                 <div class="stats-card-value">[[ formatNumber(community_stat.never_logged_in) ]]</div>
                 <p class="stats-card-note">Accounts still missing a first login</p>
             </article>
-            <article class="stats-card soft-danger">
+            <article class="stats-card soft-danger"><div v-if="loading_shown && busy(['community'])" class="stats-loading" aria-hidden="true"><flow_loader :size="44"></flow_loader></div>
                 <div class="stats-card-label"><i class="fa-solid fa-building-circle-xmark"></i>Orgs without users</div>
                 <div class="stats-card-value">[[ formatNumber(community_stat.orgs_without_users) ]]</div>
                 <p class="stats-card-note">Organisations that currently have no user attached</p>
@@ -684,6 +714,7 @@
 
         <section class="stats-dual-grid">
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['inactive'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Inactive users</h3>
@@ -695,18 +726,20 @@
                     <table class="table table-sm table-hover stats-table mb-0">
                         <thead><tr><th>Name</th><th>Email</th><th>Last login</th></tr></thead>
                         <tbody>
-                            <tr v-for="u in inactive_users.users" :key="'iu-' + u.id">
+                            <tr v-for="u in pg('iu', inactive_users.users)" :key="'iu-' + u.id">
                                 <td>[[ u.name ]]</td>
                                 <td><span class="text-muted small">[[ u.email ]]</span></td>
                                 <td><span v-if="u.last_login" class="small">[[ u.last_login ]]</span><span v-else class="badge text-bg-secondary">never</span></td>
                             </tr>
                         </tbody>
                     </table>
+                    <app-pagination scroll="list" v-if="pg_nb(inactive_users.users) > 1" class="mt-2" :current-page="pg_page('iu', inactive_users.users)" :nb-pages="pg_nb(inactive_users.users)" @page="p => pages['iu'] = p"></app-pagination>
                 </div>
                 <p v-else class="text-muted mb-0">No inactive users.</p>
             </section>
 
             <section class="stats-panel">
+    <div v-if="loading_shown && busy(['logins'])" class="stats-loading" aria-hidden="true"><flow_loader :size="64"></flow_loader></div>
                 <div class="stats-panel-header">
                     <div>
                         <h3 class="stats-panel-title mb-1">Recent logins</h3>
@@ -756,12 +789,24 @@
 
 {% block script %}
 <script type="module">
-    const { ref, createApp, onMounted, nextTick } = Vue
+    const { ref, reactive, createApp, onMounted, nextTick } = Vue
     import { message_list } from '/static/js/toaster.js'
+    import Pagination from '/static/js/components/pagination.js'
+    import flow_loader from '/static/js/components/flow_loader.js'
+    const PER_PAGE = 25
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: { 'app-pagination': Pagination, flow_loader },
         setup() {
+            // Client-side pagination of the ranking tables, one page number per table key
+            // (falls back to page 1 when the list shrinks under the current page).
+            const pages = ref({})
+            function pg_nb(list) { return Math.ceil((list || []).length / PER_PAGE) }
+            function pg_page(key, list) { const p = pages.value[key] || 1; return p > pg_nb(list) ? 1 : p }
+            function pg_off(key) { return ((pages.value[key] || 1) - 1) * PER_PAGE }
+            function pg(key, list) { const p = pg_page(key, list); return (list || []).slice((p - 1) * PER_PAGE, p * PER_PAGE) }
+
             Chart.defaults.plugins.title.display = false
             Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif"
             Chart.defaults.color = '#4c5d73'
@@ -788,6 +833,22 @@
             const inactive_users = ref({days: 90, count: 0, users: []})
             const recent_logins = ref({count: 0, logins: []})
             const main_tab = ref('case')
+            // every section shows the Flowintel loader while the stats and charts load
+            // (only after 100 ms, so a fast reload does not flash it)
+            const loading = ref(true)
+            // per data source: true while its request runs; a section waits only for its own
+            // sources (busy([...]) in the template) and shows as soon as they are in
+            const pending = reactive({})
+            function busy(keys) { return keys.some(k => pending[k] !== false) }
+            const loading_shown = ref(false)
+            let loading_timer = null
+            function set_loading(v) {
+                loading.value = v
+                clearTimeout(loading_timer)
+                if (!v) { loading_shown.value = false; return }
+                loading_timer = setTimeout(() => { loading_shown.value = true }, 100)
+            }
+            set_loading(true)
             const period_days = ref('')
             const date_from = ref('')
             const date_to = ref('')
@@ -1248,20 +1309,36 @@
                 })
             }
 
-            function init_chart_case() {
+            // draw the charts of the open tab that use `source`, once it is loaded
+            function draw_charts_of(source) {
+                const tab = main_tab.value
+                if (tab === 'case') init_chart_case(source)
+                else if (tab === 'task') init_chart_task(source)
+                else if (tab === 'misp' && source === 'misp') init_chart_misp()
+                else if (tab === 'admin' && source === 'admin') init_chart_admin()
+                else if (tab === 'community' && source === 'community') init_chart_community()
+            }
+
+            function init_chart_case(source = null) {
+                if (source === null || source === 'case') {
                 create_chart_double(case_stat.value, 'line', 'cases-month', 'Cases opened by month', 'Cases closed by month', 'cases-opened-month', 'cases-closed-month')
                 create_chart_double(case_stat.value, 'bar', 'cases-year', 'Cases opened by year', 'Cases closed by year', 'cases-opened-year', 'cases-closed-year')
                 create_chart_simple(case_stat.value, 'bar', 'cases-elapsed-time', 'Weeks needed to close a case', 'cases-elapsed-time')
+                }
+                if (source !== null && source !== 'case_tags') return
                 create_chart_simple(case_tags_stats.value, 'doughnut', 'case-custom-tags', 'Cases per custom tag', 'case_custom_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'case-tags', 'Cases per taxonomy', 'case_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'case-clusters', 'Cases per galaxy cluster', 'case_clusters')
             }
 
-            function init_chart_task() {
+            function init_chart_task(source = null) {
+                if (source === null || source === 'case') {
                 create_chart_double(case_stat.value, 'line', 'tasks-month', 'Tasks opened by month', 'Tasks closed by month', 'tasks-opened-month', 'tasks-closed-month')
                 create_chart_double(case_stat.value, 'bar', 'tasks-year', 'Tasks opened by year', 'Tasks closed by year', 'tasks-opened-year', 'tasks-closed-year')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-elapsed-time', 'Weeks needed to close a task', 'tasks-elapsed-time')
                 create_chart_simple(case_stat.value, 'bar', 'tasks-per-case', 'Number of tasks per case', 'tasks-per-case')
+                }
+                if (source !== null && source !== 'case_tags') return
                 create_chart_simple(case_tags_stats.value, 'doughnut', 'task-custom-tags', 'Tasks per custom tag', 'task_custom_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'task-tags', 'Tasks per taxonomy', 'task_tags')
                 create_chart_simple(case_tags_stats.value, 'polarArea', 'task-clusters', 'Tasks per galaxy cluster', 'task_clusters')
@@ -1296,62 +1373,130 @@
                 main_tab.value = tab_name
                 set_active_tab_class('tab-' + tab_name)
                 await nextTick()
-                if (tab_name === 'case') init_chart_case()
-                else if (tab_name === 'task') init_chart_task()
-                else if (tab_name === 'misp') init_chart_misp()
-                else if (tab_name === 'admin') init_chart_admin()
-                else if (tab_name === 'community') init_chart_community()
-                else if (tab_name === 'tags') clear_context_selection()
+                // only the charts whose data is already in; the others draw when it lands
+                for (const source of ['case', 'case_tags', 'misp', 'admin', 'community'])
+                    if (!busy([source])) draw_charts_of(source)
+                if (tab_name === 'tags') clear_context_selection()
             }
 
             async function fetch_case_stat() {
-                const res = await fetch(with_filters('/tools/case_stats'))
-                if (res.status === 200) case_stat.value = await res.json()
+                pending['case'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/case_stats'))
+                    if (res.status === 200) case_stat.value = await res.json()
+                } finally {
+                    pending['case'] = false
+                    await nextTick()
+                    draw_charts_of('case')
+                }
             }
 
             async function fetch_admin_stat() {
-                const res = await fetch(with_filters('/tools/admin_stats'))
-                if (res.status === 200) admin_stat.value = await res.json()
+                pending['admin'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/admin_stats'))
+                    if (res.status === 200) admin_stat.value = await res.json()
+                } finally {
+                    pending['admin'] = false
+                    await nextTick()
+                    draw_charts_of('admin')
+                }
             }
 
             async function fetch_case_tag_stat() {
-                const res = await fetch(with_filters('/tools/case_tags_stats'))
-                if (res.status === 200) case_tags_stats.value = await res.json()
+                pending['case_tags'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/case_tags_stats'))
+                    if (res.status === 200) case_tags_stats.value = await res.json()
+                } finally {
+                    pending['case_tags'] = false
+                    await nextTick()
+                    draw_charts_of('case_tags')
+                }
             }
 
             async function fetch_community_stat() {
-                const res = await fetch('/tools/community_stats')
-                if (res.status === 200) community_stat.value = await res.json()
+                pending['community'] = true
+                try {
+                    const res = await fetch('/tools/community_stats')
+                    if (res.status === 200) community_stat.value = await res.json()
+                } finally {
+                    pending['community'] = false
+                    await nextTick()
+                    draw_charts_of('community')
+                }
             }
 
             async function fetch_tag_galaxy_stats() {
-                const res = await fetch(with_filters('/tools/tag_galaxy_stats'))
-                if (res.status === 200) tag_stats.value = await res.json()
+                pending['tag_galaxy'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/tag_galaxy_stats'))
+                    if (res.status === 200) tag_stats.value = await res.json()
+                } finally {
+                    pending['tag_galaxy'] = false
+                    await nextTick()
+                    draw_charts_of('tag_galaxy')
+                }
             }
 
             async function fetch_misp_stats() {
-                const res = await fetch(with_filters('/tools/misp_stats'))
-                if (res.status === 200) misp_stat.value = await res.json()
+                pending['misp'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/misp_stats'))
+                    if (res.status === 200) misp_stat.value = await res.json()
+                } finally {
+                    pending['misp'] = false
+                    await nextTick()
+                    draw_charts_of('misp')
+                }
             }
 
             async function fetch_overdue_tasks() {
-                const res = await fetch(with_filters('/tools/overdue_tasks'))
-                if (res.status === 200) overdue.value = await res.json()
+                pending['overdue'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/overdue_tasks'))
+                    if (res.status === 200) overdue.value = await res.json()
+                } finally {
+                    pending['overdue'] = false
+                    await nextTick()
+                    draw_charts_of('overdue')
+                }
             }
 
             async function fetch_unassigned_tasks() {
-                const res = await fetch(with_filters('/tools/unassigned_tasks'))
-                if (res.status === 200) unassigned.value = await res.json()
+                pending['unassigned'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/unassigned_tasks'))
+                    if (res.status === 200) unassigned.value = await res.json()
+                } finally {
+                    pending['unassigned'] = false
+                    await nextTick()
+                    draw_charts_of('unassigned')
+                }
             }
 
             async function fetch_inactive_users() {
-                const res = await fetch(with_filters('/tools/inactive_users'))
-                if (res.status === 200) inactive_users.value = await res.json()
+                pending['inactive'] = true
+                try {
+                    const res = await fetch(with_filters('/tools/inactive_users'))
+                    if (res.status === 200) inactive_users.value = await res.json()
+                } finally {
+                    pending['inactive'] = false
+                    await nextTick()
+                    draw_charts_of('inactive')
+                }
             }
 
             async function fetch_recent_logins() {
-                const res = await fetch('/tools/recent_logins?limit=20')
-                if (res.status === 200) recent_logins.value = await res.json()
+                pending['logins'] = true
+                try {
+                    const res = await fetch('/tools/recent_logins?limit=20')
+                    if (res.status === 200) recent_logins.value = await res.json()
+                } finally {
+                    pending['logins'] = false
+                    await nextTick()
+                    draw_charts_of('logins')
+                }
             }
 
             const IS_ADMIN = {{ 'true' if current_user.is_admin() else 'false' }}
@@ -1362,6 +1507,7 @@
                     filter_error.value = 'The start date must be on or before the end date.'
                     return
                 }
+                set_loading(true)
                 const tasks = [
                     fetch_case_stat(),
                     fetch_case_tag_stat(),
@@ -1378,7 +1524,7 @@
                         fetch_recent_logins(),
                     )
                 }
-                await Promise.all(tasks)
+                await Promise.allSettled(tasks)   // one failing request must not leave the loaders up
                 applied_filter_label.value = filterLabel()
                 generated_on.value = new Date().toLocaleString()
                 if (expanded_chart.value.open && expanded_chart.value.canvasId) {
@@ -1391,6 +1537,7 @@
                 else if (main_tab.value === 'misp') init_chart_misp()
                 else if (main_tab.value === 'admin') init_chart_admin()
                 else if (main_tab.value === 'community') init_chart_community()
+                set_loading(false)
             }
 
             onMounted(async () => {
@@ -1398,6 +1545,8 @@
             })
 
             return {
+                loading, loading_shown, busy,
+                pages, pg, pg_nb, pg_page, pg_off,
                 message_list,
                 case_stat,
                 admin_stat,

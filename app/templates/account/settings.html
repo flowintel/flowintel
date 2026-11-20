@@ -10,6 +10,9 @@
 {% block content %}
     {% call(section) page_header('Settings', 'fa-solid fa-gear', 'Your personal preferences for Flowintel. They only apply to your account.') %}
         {% if section == 'actions' %}
+            <button type="button" id="settings-reset" class="ctx-ghost-btn" @click="reset_settings" title="Put every setting back to its default value">
+                <i class="fa-solid fa-rotate-left fa-sm"></i>Reset to defaults
+            </button>
             {{ header_link('My profile', '/account/', icon='fa-solid fa-user', title='Your account details') }}
         {% endif %}
     {% endcall %}
@@ -52,18 +55,99 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-thumbtack fa-sm me-2"></i>Top bar</h3>
+            <p class="settings-section-text">Whether the top bar (search, notifications, account) stays visible when you scroll down a page.</p>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Top bar when scrolling">
+                {% for value, label, icon, hint in [('scroll', 'Scrolls away', 'fa-arrows-up-down', 'Leaves the page when you scroll down: more room for the content (default)'), ('fixed', 'Stays at the top', 'fa-thumbtack', 'Always visible: search, notifications and profile at hand')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.sticky_header == value %} active{% endif %}" data-setting="sticky_header" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.sticky_header == value else 'false' }}" title="{{ hint }}">
+                    <span class="settings-view-preview settings-header-preview settings-header-preview--{{ value }}" aria-hidden="true">
+                        <span class="shp-bar"></span>
+                        <span class="shp-page">{% for w in [80, 60, 72, 50, 66] %}<span class="shp-line" style="width:{{ w }}%"></span>{% endfor %}</span>
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="case-core-style settings-section">
+        <div class="settings-section-head">
+            <h2 class="settings-section-title"><i class="fa-solid fa-folder-open fa-sm me-2"></i>Cases</h2>
+            <p class="settings-section-text">How the case list opens. The switch on the case list still changes it for one visit.</p>
+        </div>
+
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-table-cells-large fa-sm me-2"></i>Default display</h3>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Default case list display">
+                {% for value, label, icon, hint in [('table', 'Table', 'fa-table-list', 'Compact, one row per case, sortable columns'), ('cards', 'Cards', 'fa-grip', 'One card per case, with description and tags')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.case_view == value %} active{% endif %}" data-setting="case_view" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.case_view == value else 'false' }}">
+                    <span class="settings-view-preview settings-view-preview--{{ value }}" aria-hidden="true">
+                        {% if value == 'table' %}
+                            {% for i in range(4) %}<span class="svp-row"><span></span><span></span><span></span></span>{% endfor %}
+                        {% else %}
+                            {% for i in range(2) %}<span class="svp-card"><span></span><span></span><span></span></span>{% endfor %}
+                        {% endif %}
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-tags fa-sm me-2"></i>Tags in a case</h3>
+            <p class="settings-section-text">How the tags of a case are shown when you open it. The toggle in the case still changes it for one visit.</p>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Default tag display in a case">
+                {% for value, label, icon, hint in [('compact', 'Compact', 'fa-grip-lines', 'One row of small chips'), ('context', 'Context', 'fa-layer-group', 'Grouped by taxonomy and galaxy, like a MISP event')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.tag_view == value %} active{% endif %}" data-setting="tag_view" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.tag_view == value else 'false' }}">
+                    <span class="settings-view-preview settings-tag-preview settings-tag-preview--{{ value }}" aria-hidden="true">
+                        {% if value == 'compact' %}
+                            <span class="stp-line">{% for w in [38, 52, 30, 46] %}<span class="stp-chip" style="width:{{ w }}px"></span>{% endfor %}</span>
+                            <span class="stp-line">{% for w in [44, 34, 56] %}<span class="stp-chip" style="width:{{ w }}px"></span>{% endfor %}</span>
+                        {% else %}
+                            {% for n in [2, 3] %}<span class="stp-group"><span class="stp-head"></span><span class="stp-line">{% for i in range(n) %}<span class="stp-chip" style="width:{{ 34 + i * 9 }}px"></span>{% endfor %}</span></span>{% endfor %}
+                        {% endif %}
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
     </section>
 {% endblock %}
 
 {% block script %}
 <script type="module">
     const { createApp } = Vue
-    import {message_list} from '/static/js/toaster.js'
+    import {message_list, display_toast, create_message} from '/static/js/toaster.js'
+    import { confirmDelete } from '/static/js/confirm.js'
+
+    try {
+        if (sessionStorage.getItem('fi-settings-reset')) {
+            sessionStorage.removeItem('fi-settings-reset')
+            create_message('Settings reset to their default values', 'success-subtle')
+        }
+    } catch (e) {}
+
+    // "Reset to defaults": every setting back to its default, then reload to apply them
+    // (a Vue handler: the page is mounted by Vue, a listener added before would be lost)
+    async function reset_settings() {
+        const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset', variant: 'primary', icon: 'fa-solid fa-rotate-left' })
+        if (!ok) return
+        const res = await fetch('/account/settings/reset', { method: 'POST', headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' } })
+        if (res.ok) {
+            // the toast is shown after the reload (flag kept for this tab only)
+            try { sessionStorage.setItem('fi-settings-reset', '1') } catch (e) {}
+            window.location.reload()
+        } else display_toast(res)
+    }
 
     createApp({
         delimiters: ['[[', ']]'],
         setup() {
-            return { message_list }
+            return { message_list, reset_settings }
         }
     }).mount('#main-container')
 </script>

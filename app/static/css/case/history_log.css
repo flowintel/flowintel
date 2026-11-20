@@ -1,7 +1,7 @@
 /* history_log.js: compact viewer for the case history and the audit logs.
    Colours come from Bootstrap's variables so it follows light, dark and the themes. */
 
-.hlog { --hlog-create: #198754; --hlog-edit: #0d6efd; --hlog-delete: #dc3545; font-size: 13px; }
+.hlog { --hlog-create: #198754; --hlog-edit: var(--bs-primary); --hlog-delete: #dc3545; font-size: 13px; }
 
 .hlog-toolbar {
     display: flex;
@@ -43,7 +43,7 @@
 .hlog-kind-user { --hlog-kind: #d63384; }
 .hlog-kind-tag { --hlog-kind: #6610f2; }
 .hlog-kind-link { --hlog-kind: #20a0a0; }
-.hlog-kind-task { --hlog-kind: #0d6efd; }
+.hlog-kind-task { --hlog-kind: var(--bs-primary); }
 .hlog-kind-other { --hlog-kind: #6c757d; }
 
 /* Activity per day */

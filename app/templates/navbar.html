@@ -24,45 +24,8 @@
         </nav>
         {% endif %}
 
-        <!-- Search form -->
-        <div id="search-form" class="d-none position-relative">
-            <div class="d-none d-md-flex input-group w-auto my-auto justify-content-center" id="search-input-wrap">
-                <div class="position-relative">
-                    <input autocomplete="off" @input="onInput" @keydown.arrow-down.prevent="selectNext" 
-                    @keydown.arrow-up.prevent="selectPrev" @keydown.enter.prevent="activateSelected" 
-                    @keydown.escape.prevent="hideResults" type="search" v-model="search_query" 
-                    class="form-control rounded-pill pe-5" placeholder='Search case by title' style="min-width: 350px;" aria-label="Search cases" />
-                    <i class="fas fa-search search-icon"></i>
-                </div>
-            </div>
-
-            <!-- Inline card-style results panel -->
-            <div v-show="show_results" class="search-result position-absolute bg-white shadow-lg">
-                <div v-if="result_search && result_search.length" style="padding: 12px 20px 20px;max-height:460px;overflow:auto;">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="small text-muted">Results: <strong>[[result_search.length]]</strong></div>
-                        <div>
-                            <button class="btn btn-sm btn-outline-secondary" @click.prevent="clearSearch">Clear</button>
-                        </div>
-                    </div>
-                    <div v-for="(case_search, idx) in result_search" :key="case_search.id" class="card mb-2" :class="{'border-primary': selectedIndex===idx}" @mouseenter="selectedIndex=idx">
-                        <div class="card-body p-2 d-flex justify-content-between align-items-start">
-                            <div class="me-2" style="flex:1;min-width:0;">
-                                <div class="fw-semibold text-truncate">[[case_search.title]]</div>
-                                <div class="text-muted small text-truncate">[[case_search.description || 'No description']]</div>
-                            </div>
-                            <div class="ms-2 text-end">
-                                <div class="small text-muted">ID: [[case_search.id]]</div>
-                                <div class="btn-group btn-group-sm mt-1" role="group">
-                                    <a :href="'/case/'+case_search.id" class="btn btn-sm btn-primary">Open</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div v-else class="text-center text-muted small py-2">No cases found</div>
-            </div>
-        </div>
+        <!-- Global search: cases, tasks, notes, IOCs, tags, templates… (components/global_search.js) -->
+        <global_search :is-admin="{{ 'true' if current_user.is_admin() else 'false' }}" :can-create="{{ 'false' if current_user.read_only() else 'true' }}"></global_search>
 
         <!-- Right links -->
         <ul class="navbar-nav ms-auto d-flex flex-row align-items-center">
@@ -132,87 +95,18 @@
 </nav>
 
 <script type="module">
-    const { createApp, ref, onMounted, onBeforeUnmount } = Vue
+    const { createApp, ref, onMounted } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
     import user_chip from '/static/js/components/user-chip.js'
+    import global_search from '/static/js/components/global_search.js'
 
     createApp({
         delimiters: ['[[', ']]'],
-        components: { user_chip },
+        components: { user_chip, global_search },
         setup() {
             // The signed-in user, for the account chip at the top right
             const me = {{ {"id": current_user.id, "first_name": current_user.first_name, "last_name": current_user.last_name, "nickname": current_user.nickname} | tojson }}
-            const result_search = ref([])
             const notif_list = ref(null)
-            const search_query = ref('')
-            const selectedIndex = ref(-1)
-            const show_results = ref(false)
-            let searchTimer = null
-
-            async function fetchSearch(text){
-                result_search.value = []
-                // only search when user provided at least 3 characters
-                if(text && text.length >= 3){
-                    const res = await fetch('/case/search?text='+encodeURIComponent(text))
-                    if (res.status == 200){
-                        let loc = await res.json()
-                        const cases = loc["cases"] || []
-                        // limit displayed results to first 20
-                        result_search.value = cases.slice(0, 20)
-                        show_results.value = result_search.value && result_search.value.length > 0
-                        selectedIndex.value = -1
-                    }
-                    else{
-                        display_toast(res)
-                        show_results.value = false
-                    }
-                } else {
-                    show_results.value = false
-                }
-            }
-
-            function onInput(e){
-                clearTimeout(searchTimer)
-                // v-model already keeps search_query in sync, but handle for safety
-                if(e && e.target) search_query.value = e.target.value
-
-                // don't search until user typed at least 3 chars
-                if(!search_query.value || search_query.value.length < 3){
-                    result_search.value = []
-                    show_results.value = false
-                    return
-                }
-
-                searchTimer = setTimeout(() => fetchSearch(search_query.value), 250)
-            }
-
-            function selectNext(){
-                if(!result_search.value || !result_search.value.length) return
-                selectedIndex.value = Math.min(result_search.value.length - 1, selectedIndex.value + 1)
-            }
-
-            function selectPrev(){
-                if(!result_search.value || !result_search.value.length) return
-                selectedIndex.value = Math.max(0, selectedIndex.value - 1)
-            }
-
-            function activateSelected(){
-                if(selectedIndex.value >= 0 && result_search.value[selectedIndex.value]){
-                    window.location.href = '/case/'+result_search.value[selectedIndex.value].id
-                } else if(result_search.value && result_search.value.length){
-                    window.location.href = '/case/'+result_search.value[0].id
-                }
-            }
-
-            function hideResults(){
-                show_results.value = false
-            }
-
-            function clearSearch(){
-                search_query.value = ''
-                result_search.value = []
-                hideResults()
-            }
 
             async function fetchNotif() {
                 notif_list.value = null
@@ -223,21 +117,7 @@
 
             fetchNotif()
 
-            function onDocClick(e){
-                const container = document.querySelector('#search-form')
-                if(!container) return
-                if(!container.contains(e.target)){
-                    show_results.value = false
-                }
-            }
-
             onMounted(() => {
-                // show search input
-                $('#search-form').removeClass('d-none')
-                const el = document.getElementById('search-input-wrap')
-                if(el) el.classList.remove('d-none')
-                document.addEventListener('mouseup', onDocClick)
-
                 document.getElementById("notification_id").addEventListener('click', function(){
                     localStorage.setItem("activePage", "");
                 })
@@ -249,25 +129,10 @@
                 })
             })
 
-            onBeforeUnmount(() => {
-                document.removeEventListener('mouseup', onDocClick)
-            })
-
             return {
                 me,
-                onInput,
-                result_search,
                 notif_list,
                 message_list,
-                search_query,
-                show_results,
-                selectedIndex,
-                selectNext,
-                selectPrev,
-                activateSelected,
-                /* preview removed */
-                hideResults,
-                clearSearch
             }
         }
     }).mount('.navbar')

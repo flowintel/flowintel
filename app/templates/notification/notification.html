@@ -7,6 +7,7 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_link, header_segmented, header_select, header_input %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <title>Notifications - {{ config.APP_NAME }}</title>
 {% set requested_tab = request.args.get('tab') %}
 {% if requested_tab == 'case-alerts' %}
@@ -138,11 +139,18 @@
         </template>
     </template>
     <template v-else>
-        <div class="text-center py-4">
-            <div class="spinner-border spinner-border-sm" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
+        <loading_overlay :loading="true" :empty="true" label="Loading notifications…">
+            <template #skeleton>
+                <div v-for="i in 5" :key="i" class="list-group-item case-index-list d-flex align-items-center mb-2 px-4 py-3">
+                    <div class="flex-grow-1">
+                        <span class="lo-sk" :style="{ width: (65 - i * 5) + '%' }"></span>
+                        <div class="d-flex gap-2 mt-2"><span class="lo-sk lo-sk-pill" style="width:80px"></span><span class="lo-sk lo-sk-pill" style="width:60px"></span></div>
+                        <span class="lo-sk lo-sk-sm mt-2" style="width:30%"></span>
+                    </div>
+                    <span class="lo-sk lo-sk-pill ms-3" style="width:110px; height:28px"></span>
+                </div>
+            </template>
+        </loading_overlay>
     </template>
 </div>
 
@@ -157,9 +165,11 @@
     const { createApp, ref, computed, onMounted, nextTick } = Vue
     import {display_toast, message_list} from '/static/js/toaster.js'
     import { confirmDelete } from '/static/js/confirm.js'
+    import loading_overlay from '/static/js/components/loading_overlay.js'
 
     createApp({
         delimiters: ['[[', ']]'],
+        components: { loading_overlay },
         setup() {
             const urlParams = new URLSearchParams(window.location.search)
             const valid_tabs = ['notifications', 'case-alerts']

@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
     {{ super() }}
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
@@ -86,7 +88,11 @@
                 <span v-if="row.icon"><strong>Icon</strong> [[ row.icon ]]</span>
                 <span><strong>UUID</strong> <span class="ctx-mono">[[ row.uuid ]]</span></span>
             </div>
-            <div v-if="row.loading_usage" class="ctx-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading usage...</div>
+            <loading_overlay v-if="row.loading_usage" :loading="true" :empty="true" :size="72" label="Loading usage…">
+                <template #skeleton>
+                    <div class="py-2"><span class="lo-sk lo-sk-sm" style="width:20%"></span><span class="lo-sk" style="width:60%"></span><span class="lo-sk" style="width:45%"></span></div>
+                </template>
+            </loading_overlay>
             <template v-else-if="row.usage_data">
                 <div v-if="usage_total(row)" class="ctx-usage-grid">
                     <div v-if="row.usage_data.cases.length">
@@ -198,12 +204,14 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import context_table from '/static/js/components/context_table.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         const can_edit_templates = document.getElementById('can_edit_templates')?.value === 'true'
         const read_only = {{ 'true' if current_user.read_only() else 'false' }}
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                loading_overlay,
                 context_table,
                 tag_badge
             },

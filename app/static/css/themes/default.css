@@ -91,3 +91,77 @@
   --bs-border-color: var(--fi-border);
   --bs-border-color-translucent: rgba(143, 168, 216, 0.18);
 }
+
+/* ---------------------------------------------------------------------------
+   Bootstrap "primary" = Flowintel blue instead of Bootstrap's #0d6efd: text-primary,
+   bg-primary, border-primary, links, buttons, checked inputs, focus rings, active items.
+   Light: the sidebar navy; dark: the stronger navy used for buttons (--fi-strong).
+   --------------------------------------------------------------------------- */
+[data-bs-theme="light"] {
+  --fi-primary: #1f3763;
+  --fi-primary-hover: #182c50;
+  --fi-primary-rgb: 31, 55, 99;
+  --bs-primary: #1f3763;
+  --bs-primary-rgb: 31, 55, 99;
+  --bs-primary-text-emphasis: #132240;
+  --bs-primary-bg-subtle: #dfe5f1;
+  --bs-primary-border-subtle: #b3c0da;
+  --bs-link-color: #1f3763;
+  --bs-link-color-rgb: 31, 55, 99;
+  --bs-link-hover-color: #132240;
+  --bs-link-hover-color-rgb: 19, 34, 64;
+}
+[data-bs-theme="dark"] {
+  --fi-primary: #3b5a94;
+  --fi-primary-hover: #4a6cad;
+  --fi-primary-rgb: 59, 90, 148;
+  --bs-primary: #3b5a94;
+  --bs-primary-rgb: 59, 90, 148;
+  --bs-primary-text-emphasis: #9ec5fe;
+  --bs-primary-bg-subtle: #1d3157;
+  --bs-primary-border-subtle: #3b5a94;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--fi-primary);
+  --bs-btn-border-color: var(--fi-primary);
+  --bs-btn-hover-bg: var(--fi-primary-hover);
+  --bs-btn-hover-border-color: var(--fi-primary-hover);
+  --bs-btn-active-bg: var(--fi-primary-hover);
+  --bs-btn-active-border-color: var(--fi-primary-hover);
+  --bs-btn-disabled-bg: var(--fi-primary);
+  --bs-btn-disabled-border-color: var(--fi-primary);
+  --bs-btn-focus-shadow-rgb: var(--fi-primary-rgb);
+}
+.btn-outline-primary {
+  --bs-btn-color: var(--fi-primary);
+  --bs-btn-border-color: var(--fi-primary);
+  --bs-btn-hover-bg: var(--fi-primary);
+  --bs-btn-hover-border-color: var(--fi-primary);
+  --bs-btn-active-bg: var(--fi-primary-hover);
+  --bs-btn-active-border-color: var(--fi-primary-hover);
+  --bs-btn-disabled-color: var(--fi-primary);
+  --bs-btn-disabled-border-color: var(--fi-primary);
+  --bs-btn-focus-shadow-rgb: var(--fi-primary-rgb);
+}
+[data-bs-theme="dark"] .btn-outline-primary { --bs-btn-color: #9ec5fe; --bs-btn-hover-color: #fff; }
+.btn-link { --bs-btn-color: var(--bs-link-color); --bs-btn-hover-color: var(--bs-link-hover-color); }
+
+.form-check-input:checked { background-color: var(--fi-primary); border-color: var(--fi-primary); }
+.form-check-input:focus, .form-control:focus, .form-select:focus {
+  border-color: rgba(var(--fi-primary-rgb), .55);
+  box-shadow: 0 0 0 .25rem rgba(var(--fi-primary-rgb), .2);
+}
+.form-switch .form-check-input:focus:not(:checked) {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%2831, 55, 99, 0.5%29'/%3e%3c/svg%3e");
+}
+.form-range::-webkit-slider-thumb { background-color: var(--fi-primary); }
+.form-range::-moz-range-thumb { background-color: var(--fi-primary); }
+
+.nav-pills { --bs-nav-pills-link-active-bg: var(--fi-primary); }
+.nav { --bs-nav-link-color: var(--bs-link-color); --bs-nav-link-hover-color: var(--bs-link-hover-color); }
+.dropdown-menu { --bs-dropdown-link-active-bg: var(--fi-primary); }
+.list-group { --bs-list-group-active-bg: var(--fi-primary); --bs-list-group-active-border-color: var(--fi-primary); }
+.pagination { --bs-pagination-active-bg: var(--fi-primary); --bs-pagination-active-border-color: var(--fi-primary); --bs-pagination-color: var(--bs-link-color); }
+.progress, .progress-stacked { --bs-progress-bar-bg: var(--fi-primary); }
+.spinner-border.text-primary, .spinner-grow.text-primary { color: var(--fi-primary) !important; }

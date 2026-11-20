@@ -12,7 +12,7 @@ const { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } = Vue
 
 const KINDS = [
     { key: 'deadline', label: 'Deadlines', icon: 'fa-solid fa-hourglass-half', color: '#dc3545', hint: 'Deadlines of the case and of its tasks' },
-    { key: 'task', label: 'Tasks', icon: 'fa-solid fa-list-check', color: '#0d6efd', hint: 'Tasks created and finished' },
+    { key: 'task', label: 'Tasks', icon: 'fa-solid fa-list-check', color: 'var(--bs-primary)', hint: 'Tasks created and finished' },
     { key: 'case', label: 'Case', icon: 'fa-solid fa-briefcase', color: '#6f42c1', hint: 'Case created, completed, recurrence' },
     { key: 'timeline', label: 'Timeline', icon: 'fa-solid fa-timeline', color: '#d63384', hint: 'Events of the case timeline, at their own date' },
     { key: 'misp', label: 'MISP', icon: 'fa-solid fa-shield-halved', color: '#0d9fb8', hint: 'MISP objects, attributes and references added' },

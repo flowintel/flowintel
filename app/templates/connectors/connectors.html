@@ -5,6 +5,12 @@
 {% extends 'base.html' %}
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_link %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+{{ super() }}
+{% endblock %}
+
 {% block content %}
     {% call(section) page_header('Connectors', 'fa-solid fa-plug', 'External tools (MISP, AIL, ...) and their instances linked to cases and tasks.') %}
         {% if section == 'stats' %}
@@ -166,11 +172,19 @@
             </div>
         </template>
     </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    <loading_overlay v-else :loading="true" :empty="true" label="Loading connectors…">
+        <template #skeleton>
+            <div v-for="i in 4" :key="i" class="list-group mb-2">
+                <div class="list-group-item p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2" style="width:45%"><span class="lo-sk" style="width:32px; height:32px; border-radius:8px"></span><span class="lo-sk" :style="{ width: (70 - i * 8) + '%', height: '16px' }"></span></div>
+                        <span class="lo-sk lo-sk-sm" style="width:25%"></span>
+                    </div>
+                    <span class="lo-sk lo-sk-sm mt-3" style="width:60%"></span>
+                </div>
+            </div>
+        </template>
+    </loading_overlay>
 
     <!-- Shared modal: cases for an instance -->
     <div class="modal fade" id="instance_cases_modal" tabindex="-1" aria-labelledby="instance_cases_modal_label" aria-hidden="true">
@@ -223,9 +237,10 @@
         import Pagination from '/static/js/components/pagination.js'
         const { createApp, ref, onMounted } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
 
         createApp({
-            components: { 'app-pagination': Pagination },
+            components: { 'app-pagination': Pagination, loading_overlay },
             delimiters: ['[[', ']]'],
             setup() {
                 const connectors_list = ref(null)

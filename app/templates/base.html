@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 {% set theme_pref = user_theme(current_user) %}
-<html data-theme-pref="{{ theme_pref }}" data-bs-theme="{{ theme_base(theme_pref) }}"{% if theme_styled(theme_pref) %} data-theme-styled{% endif %} data-font="{{ user_font(current_user) }}">
+<html data-theme-pref="{{ theme_pref }}" data-bs-theme="{{ theme_base(theme_pref) }}"{% if theme_styled(theme_pref) %} data-theme-styled{% endif %} data-font="{{ user_font(current_user) }}" data-tag-view="{{ user_tag_view(current_user) }}" data-sticky-header="{{ user_sticky_header(current_user) }}">
     <head>
         {# Bootstrap mode each theme is drawn on, for user_settings.js (utils/themes.py) #}
         <script>window.FI_THEME_BASES = {{ theme_bases | tojson }}; window.FI_THEMES_STYLED = {{ themes_styled | tojson }}</script>
@@ -45,6 +45,8 @@
             <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/misp-tag-chips.css') }}">
             <meta name="misp-tag-palettes" content="tlp pap">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/components/page_header.css') }}">
+            <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/global_search.css') }}">
+            <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/theme-dark.css') }}">
             <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/themes/default.css') }}">
             {# the shared layer first, so each theme's own rules win over it #}

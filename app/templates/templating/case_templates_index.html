@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_filters %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 <script>
@@ -156,11 +158,22 @@
             </div>
         </template>
     </template>
-    <template v-else>
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-    </template>
+    <loading_overlay v-else :loading="true" :empty="true" label="Loading case templates…">
+        <template #skeleton>
+            <div v-for="i in 4" :key="i" class="border rounded-4 p-3 mb-3">
+                <div class="d-flex justify-content-between">
+                    <span class="lo-sk" :style="{ width: (50 - i * 5) + '%' }"></span>
+                    <span class="lo-sk lo-sk-sm" style="width:90px"></span>
+                </div>
+                <span class="lo-sk lo-sk-sm mt-2" style="width:75%"></span>
+                <span class="lo-sk lo-sk-sm" style="width:55%"></span>
+                <div class="d-flex gap-2 mt-3">
+                    <span class="lo-sk lo-sk-pill" style="width:70px"></span>
+                    <span class="lo-sk lo-sk-pill" style="width:90px"></span>
+                </div>
+            </div>
+        </template>
+    </loading_overlay>
 
     <app-pagination v-if="templates_list" class="my-3" :current-page="current_page" :nb-pages="templates_list.nb_pages"
                     @page="fetch_templates"></app-pagination>
@@ -172,6 +185,7 @@
         import Pagination from '/static/js/components/pagination.js'
         const { createApp, ref } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
         import tag_badge from '/static/js/components/tag-badge.js'
         import smart_render from '/static/js/components/smart-render.js'
@@ -179,7 +193,7 @@
 
         createApp({
             delimiters: ['[[', ']]'],
-            components: {
+            components: { loading_overlay,
                 tag_badge,
                 'app-pagination': Pagination,
                 smart_render,
