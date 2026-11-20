@@ -9,13 +9,14 @@
 <!-- Connectors Modal -->
 <div class="modal fade" id="connectorsModal" tabindex="-1" aria-labelledby="connectorsModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-    <div class="modal-content cconn-modal">
+    <div class="modal-content morg-modal cconn-modal">
       <div class="modal-header">
+        <span class="morg-modal-icon"><i class="fa-solid fa-plug"></i></span>
         <div>
-          <h5 class="modal-title" id="connectorsModalLabel"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
-          <small class="text-body-secondary">External instances (MISP, AIL…) linked to this case</small>
+          <h1 class="modal-title fs-5" id="connectorsModalLabel">Connectors</h1>
+          <div class="morg-modal-sub">External instances (MISP, AIL…) linked to this case.</div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
       </div>
       <div class="modal-body">
         <div v-if="cases_info">

@@ -56,8 +56,6 @@
 }
 
 /* modal */
-.cconn-modal { border-radius: 16px; }
-.cconn-modal .modal-header { align-items: flex-start; border-bottom-color: var(--bs-border-color-translucent); }
 .cconn-modal .modal-body { padding: 16px 20px 20px; }
 
 /* picker menu, teleported to <body>: above the Bootstrap modal (z-index 1055) */

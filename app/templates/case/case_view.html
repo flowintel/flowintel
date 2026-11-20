@@ -365,13 +365,14 @@
     <!-- Modal add new link -->
     <div class="modal fade" id="add_new_link" tabindex="-1" aria-labelledby="add_new_link_modal" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content klink-modal">
+            <div class="modal-content morg-modal klink-modal">
                 <div class="modal-header">
+                    <span class="morg-modal-icon"><i class="fa-solid fa-link"></i></span>
                     <div>
-                        <h5 class="modal-title" id="add_new_link_modal"><i class="fa-solid fa-link me-2"></i>Link cases</h5>
-                        <small class="text-body-secondary">Linked cases show on both cases' home</small>
+                        <h1 class="modal-title fs-5" id="add_new_link_modal">Link cases</h1>
+                        <div class="morg-modal-sub">Linked cases show on the home of both cases.</div>
                     </div>
-                    <button class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
+                    <button class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
                 </div>
                 <div class="modal-body" v-if="cases_info">
                     <label class="klink-label">Cases to link</label>
@@ -380,9 +381,9 @@
                     <p class="klink-help">Search by number (<code>#12</code>), title, ticket id or UUID. With nothing typed, cases sharing tags with this one come first.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm" :disabled="!link_picked.length || link_saving" @click="submit_add_new_link()">
-                        <span v-if="link_saving" class="spinner-border spinner-border-sm me-1"></span>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" :disabled="!link_picked.length || link_saving" @click="submit_add_new_link()">
+                        <span v-if="link_saving" class="spinner-border spinner-border-sm me-1"></span><i v-else class="fa-solid fa-plus me-1"></i>
                         Link [[ link_picked.length || '' ]] case[[ link_picked.length === 1 ? '' : 's' ]]
                     </button>
                 </div>

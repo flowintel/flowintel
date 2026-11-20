@@ -28,8 +28,6 @@
     background: var(--bs-body-bg); color: var(--bs-secondary-color); font-size: .7rem; }
 .kpick-hint kbd { padding: 0 4px; border: 1px solid var(--bs-border-color); border-radius: 4px; background: var(--bs-tertiary-bg); color: var(--bs-body-color); font-size: .68rem; }
 
-.klink-modal { border-radius: 16px; }
-.klink-modal .modal-header { align-items: flex-start; border-bottom-color: var(--bs-border-color-translucent); }
 .klink-modal .modal-body { padding: 16px 20px 8px; }
 .klink-modal .modal-footer { border-top-color: var(--bs-border-color-translucent); }
 .klink-label { display: block; margin: 0 0 6px; font-size: .82rem; font-weight: 600; }
