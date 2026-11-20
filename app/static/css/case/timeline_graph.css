@@ -228,7 +228,7 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 [data-bs-theme="dark"] .tlg-container .pivotick { --pvt-theme-primary: #3b5a94; }
 
 /* group card (Simplify): a day / a kind folded into one card */
-.tlg-group { width: 210px; padding: 10px 12px; border: 1px solid var(--bs-border-color); border-radius: 14px; background: var(--bs-body-bg);
+.tlg-group { width: 250px; padding: 10px 12px; border: 1px solid var(--bs-border-color); border-radius: 14px; background: var(--bs-body-bg);
     color: var(--bs-body-color); font-size: 12px; box-shadow: 0 6px 18px rgba(7, 13, 71, .10), 0 0 0 4px color-mix(in srgb, #1f3763 8%, transparent);
     cursor: pointer; transition: box-shadow .15s ease, transform .15s ease; }
 .tlg-group:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(7, 13, 71, .16), 0 0 0 4px color-mix(in srgb, #1f3763 14%, transparent); }
@@ -323,3 +323,8 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-today-label { display: inline-flex; align-items: center; gap: 6px; }
 .tlg-today-here { padding: 0 7px; border-radius: 999px; background: #0f7b6c; color: #fff; font-size: 9px; letter-spacing: .04em; }
 .tlg-today-here::before { content: '\f3c5'; margin-right: 4px; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
+
+/* red badge: the day compared with today */
+.tlg-day-badge { flex: none; align-self: flex-start; margin-left: auto; padding: 1px 7px; border-radius: 999px; background: #dc3545; color: #fff;
+    font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 2px 6px rgba(220, 53, 69, .3); }
+.tlg-card-step + .tlg-day-badge { margin-left: 4px; }
