@@ -295,15 +295,10 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-btn-icon { font-size: .85em; }
 .pivotick-button .tlg-btn-icon { margin-right: 6px; }
 
-/* full screen (Pivotick's button puts its own root in full screen, without our container):
-   same light background and a very faint logo, instead of the browser's black */
-.pivotick:fullscreen, .tlg-container:fullscreen {
-    background:
-        linear-gradient(color-mix(in srgb, var(--bs-tertiary-bg) 96%, transparent), color-mix(in srgb, var(--bs-tertiary-bg) 96%, transparent)),
-        url('/static/image/flowintel.png') center / min(40%, 560px) no-repeat,
-        var(--bs-tertiary-bg) !important;
-}
-.pivotick:fullscreen::backdrop, .tlg-container:fullscreen::backdrop { background: var(--bs-tertiary-bg, #f8f9fa); }
+/* full screen (on our container): the same light background; the logo is the container's own
+   faint ::before watermark, not drawn a second time */
+.tlg-container:fullscreen { background: var(--bs-tertiary-bg); border-radius: 0; }
+.tlg-container:fullscreen::backdrop { background: var(--bs-tertiary-bg, #f8f9fa); }
 
 /* link labels: bold, a little away from the line (the text and its background move, not
    the container Pivotick positions) */
