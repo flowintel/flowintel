@@ -335,7 +335,7 @@ export default {
         }
         function group_title(group) {
             if (group.title) return group.title
-            if (group.rule === 'by-day') return group_day(group)
+            if (group.rule === 'by-day' || group.rule === 'day-kind') return group_day(group)
             if (group.rule === 'by-kind') return group_kind(group).label + 's'
             return 'Group'
         }
@@ -352,21 +352,22 @@ export default {
         }
 
         function group_card(group) {
-            const kind = group.rule === 'by-day' || group.rule === 'by-kind' ? group_kind(group) : null
+            // a day: calendar, navy, one chip per kind · a kind (inside a day, or "by kind"): its colour and icon
+            const kind = group.rule === 'day-kind' || group.rule === 'by-kind' ? group_kind(group) : null
             const card = el('div', 'tlg-group')
             if (kind) card.style.setProperty('--tlg-accent', kind.color)
             const head = el('div', 'tlg-group-head')
             const icon = el('span', 'tlg-group-icon')
-            icon.appendChild(el('i', kind ? kind.icon : 'fa-solid fa-layer-group'))
+            icon.appendChild(el('i', kind ? kind.icon : (group.rule === 'by-day' ? 'fa-solid fa-calendar-day' : 'fa-solid fa-layer-group')))
             head.appendChild(icon)
             const text = el('div', 'tlg-group-text')
             const n = group.members.length
-            if (kind) text.appendChild(el('span', 'tlg-group-kind-label', n + ' ' + kind.label + (n > 1 ? 's' : '')))
+            text.appendChild(el('span', 'tlg-group-kind-label', kind ? n + ' ' + kind.label + (n > 1 ? 's' : '') : n + ' event' + (n > 1 ? 's' : '')))
             text.appendChild(el('span', 'tlg-group-title', group_title(group)))
             head.appendChild(text)
             card.appendChild(head)
             const foot = el('div', 'tlg-group-foot')
-            if (group.rule !== 'by-day') {
+            if (!kind) {
                 for (const [type, count] of Object.entries(group.typeCounts || {})) {
                     const k = EVENT_KINDS[type] || EVENT_KINDS.event
                     const chip = el('span', 'tlg-group-kind')
@@ -537,10 +538,13 @@ export default {
                         colorOf: (node) => (EVENT_KINDS[node.getData().kind] || EVENT_KINDS.event).color,
                         typeLabel: (type, count) => count + ' × ' + ((EVENT_KINDS[type] || {}).label || type),
                         rules: [
-                            // one group per day and per kind (MISP objects, MISP attributes, files, events):
-                            // relations between objects and attributes stay visible between the groups
-                            { kind: 'custom', id: 'by-day', label: 'Group by day and kind', description: 'Events of the same day and the same kind together',
-                              minSize: 2, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().day ? n.getData().day + '|' + n.getData().kind : null]).filter(([, k]) => k)) },
+                            // 1. one group per day
+                            { kind: 'custom', id: 'by-day', label: 'Group by day', description: 'One group per day with several events',
+                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => n.getData && n.getData().day).map(n => [n.id, n.getData().day])) },
+                            // 2. inside an opened day: its events grouped by kind (MISP objects, MISP attributes, files, events).
+                            //    A closed day stands in for its events, so this rule only sees the days that are open.
+                            { kind: 'custom', id: 'day-kind', label: 'Inside a day: group by kind', description: 'When a day is opened, its events grouped by kind',
+                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => n.getData && n.getData().day).map(n => [n.id, n.getData().day + '|' + n.getData().kind])) },
                             { kind: 'custom', id: 'by-kind', label: 'Group by kind', description: 'Events of the same kind together',
                               minSize: 3, enabled: false, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().kind])) },
                         ],
@@ -575,7 +579,7 @@ export default {
                 },
                 render: {
                     groupStyle: (group) => ({ shape: 'none', text: '', tiers: [], badges: [], layoutSize: 135, html: () => group_card(group) }),
-                    groupOutline: (group) => group_title(group) + ' · ' + group.members.length + ' ' + (group.rule === 'by-day' ? group_kind(group).label.toLowerCase() + (group.members.length > 1 ? 's' : '') : 'events'),
+                    groupOutline: (group) => group_title(group) + ' · ' + group.members.length + ' ' + (group.rule === 'day-kind' ? group_kind(group).label + (group.members.length > 1 ? 's' : '') : 'events'),
                     nodeTypeAccessor: (node) => node.getData().kind,
                     nodeStyleMap: nodeStyleMap,
                     edgeTypeAccessor: (edge) => edge.getData().link_type,
@@ -599,6 +603,7 @@ export default {
             }
 
             graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
+            container.__tlgGraph = graph          // handy from the console
             watch_buttons(container)
         }
 
