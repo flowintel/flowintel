@@ -462,44 +462,58 @@ export default {
             decorate_buttons(container)
         }
 
-        // An opened group owns its area: any other card inside it is pushed out, on every tick
-        // of the simulation, so what is being analysed is never mixed with the rest.
-        const HALF_W = 150, HALF_H = 75, MARGIN = 40
-        function drawn_parts(group, out) {
-            for (const p of group.parts || []) {
-                out.add(p)
-                if (p.isGroup && p.info && p.info.open) drawn_parts(p, out)
+        // The days on one line, in time order: each day has its slot, an opened day takes the
+        // width of what it shows, and nothing of another day ever sits in it. Run on every tick.
+        const SLOT = 300, HALF_W = 150, MARGIN = 40, PULL = 0.25
+        const moved_by_hand = new Set()       // ids the user dragged: never put back on the line
+        function layout_timeline() {
+            if (!graph || typeof graph.getCanvasNodes !== 'function') return
+            const per_day = new Map()
+            for (const n of graph.getCanvasNodes()) {
+                if (!Number.isFinite(n.x) || !Number.isFinite(n.y) || moved_by_hand.has(String(n.id))) continue
+                const d = node_day(n) || '~'                  // no date: after the last day
+                if (!per_day.has(d)) per_day.set(d, [])
+                per_day.get(d).push(n)
             }
-            return out
+            const days = [...per_day.keys()].sort()
+            const slots = days.map(d => {
+                const nodes = per_day.get(d)
+                if (nodes.length === 1) return { d, nodes, width: SLOT }
+                const x1 = Math.min(...nodes.map(n => n.x)), x2 = Math.max(...nodes.map(n => n.x))
+                return { d, nodes, width: Math.max(SLOT, x2 - x1 + 2 * HALF_W + MARGIN), x1, x2 }
+            })
+            let x = -slots.reduce((w, sl) => w + sl.width, 0) / 2
+            for (const sl of slots) {
+                const center = x + sl.width / 2
+                x += sl.width
+                if (sl.nodes.length === 1) {                 // a closed day (or a lone event): pinned on the line
+                    const n = sl.nodes[0]
+                    n.fx = center; n.fy = 0
+                    continue
+                }
+                // an opened day: free inside its slot, pulled to its centre and to the line
+                const y1 = Math.min(...sl.nodes.map(n => n.y)), y2 = Math.max(...sl.nodes.map(n => n.y))
+                const dx = (center - (sl.x1 + sl.x2) / 2) * PULL, dy = (0 - (y1 + y2) / 2) * PULL
+                for (const n of sl.nodes) {
+                    n.fx = null; n.fy = null
+                    // keep the opened day compact: each card drawn toward the slot centre
+                    // (the collisions keep them apart)
+                    n.x += dx + (center - n.x) * 0.06
+                    n.y += dy + (0 - n.y) * 0.06
+                }
+            }
         }
-        function keep_out_of_open_groups() {
-            const simplify = graph && graph.simplify
-            if (!simplify || !simplify.getOpenGroupNodes) return
-            const open = simplify.getOpenGroupNodes()
-            if (!open.length) return
-            const canvas = graph.getCanvasNodes()
-            for (const group of open) {
-                const inside = drawn_parts(group, new Set())
-                const placed = canvas.filter(n => inside.has(n) && Number.isFinite(n.x) && Number.isFinite(n.y))
-                if (!placed.length) continue
-                const box = {
-                    x1: Math.min(...placed.map(n => n.x)) - HALF_W - MARGIN, x2: Math.max(...placed.map(n => n.x)) + HALF_W + MARGIN,
-                    y1: Math.min(...placed.map(n => n.y)) - HALF_H - MARGIN, y2: Math.max(...placed.map(n => n.y)) + HALF_H + MARGIN,
-                }
-                for (const n of canvas) {
-                    if (inside.has(n) || n === group || !Number.isFinite(n.x)) continue
-                    if (n.x < box.x1 - HALF_W || n.x > box.x2 + HALF_W || n.y < box.y1 - HALF_H || n.y > box.y2 + HALF_H) continue
-                    // out by the nearest side
-                    const moves = [
-                        [box.x1 - HALF_W - n.x, 0], [box.x2 + HALF_W - n.x, 0],
-                        [0, box.y1 - HALF_H - n.y], [0, box.y2 + HALF_H - n.y],
-                    ].sort((a, b) => Math.abs(a[0] + a[1]) - Math.abs(b[0] + b[1]))
-                    const [dx, dy] = moves[0]
-                    n.x += dx; n.y += dy
-                    if (n.fx != null) { n.fx += dx; n.fy += dy }
-                    n.vx = 0; n.vy = 0
-                }
-            }
+
+        // Centre the view on today's day, or on the closest day when nothing happened today
+        function focus_today() {
+            if (!graph || typeof graph.focusElement !== 'function') return
+            const today = window.dayjs ? dayjs().format('YYYY-MM-DD') : new Date().toISOString().slice(0, 10)
+            const dated = graph_events.value.filter(ev => day_of(ev))
+            if (!dated.length) return
+            const t = Date.parse(today)
+            const best = dated.reduce((a, b) => Math.abs(Date.parse(day_of(b)) - t) < Math.abs(Date.parse(day_of(a)) - t) ? b : a)
+            const node = graph.getNode ? graph.getNode(String(best.id)) : null
+            if (node) graph.focusElement(node)
         }
 
         function render_graph() {
@@ -591,14 +605,14 @@ export default {
                 isDirected: true,
                 i18n: { locale: 'en', messages: messages_for_events() },
                 // force layout: opening a group makes room, the other cards are pushed away
-                layout: { type: 'force' },
+                layout: { type: 'tree', horizontal: true, spacing: 'manual', levelSpacing: 0.6, siblingSpacing: 0.6 },
                 // strong repulsion, wide collisions, little gravity: an opened group clears its area,
                 // the other cards are pushed out of it instead of floating inside
                 simulation: {
                     fitViewOnExpandCollapse: true,
-                    d3ManyBodyStrength: -400,
-                    d3CollideRadiusMultiplier: 1.4,
-                    d3LinkDistance: 220,
+                    d3ManyBodyStrength: -120,
+                    d3CollideRadiusMultiplier: 1.15,
+                    d3LinkDistance: 160,
                     d3GravityStrength: 0.05,
                 },
                 UI: {
@@ -679,7 +693,9 @@ export default {
                     },
                 },
                 callbacks: {
-                    onSimulationTick: keep_out_of_open_groups,
+                    onSimulationTick: layout_timeline,
+                    // a card moved by hand stays where it is dropped
+                    onNodeDragended: (evt, node) => { if (node) moved_by_hand.add(String(node.id)) },
                     onBeforeNodeCreate: persist_node_create,
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
@@ -694,6 +710,7 @@ export default {
 
             graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
             container.__tlgGraph = graph          // handy from the console
+            setTimeout(focus_today, 1200)
             watch_buttons(container)
         }
 
