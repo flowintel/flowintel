@@ -320,3 +320,6 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-today-stats { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; color: var(--bs-secondary-color); }
 .tlg-today-stat b { color: #0f7b6c; font-size: 14px; }
 [data-bs-theme="dark"] .tlg-today-label, [data-bs-theme="dark"] .tlg-today-stat b { filter: brightness(1.5); }
+.tlg-today-label { display: inline-flex; align-items: center; gap: 6px; }
+.tlg-today-here { padding: 0 7px; border-radius: 999px; background: #0f7b6c; color: #fff; font-size: 9px; letter-spacing: .04em; }
+.tlg-today-here::before { content: '\f3c5'; margin-right: 4px; font-family: 'Font Awesome 6 Free'; font-weight: 900; }
