@@ -324,6 +324,15 @@ export default {
         }
 
         // ---- groups (Simplify): one clean card per day / per kind ---------------------------
+        // the day of a drawn node: its own, or (for a group made by an earlier rule) its members'
+        function node_day(n) {
+            if (n.isGroup) {
+                const m = n.info && n.info.members && n.info.members[0]
+                return m && m.getData ? m.getData().day : null
+            }
+            return n.getData ? n.getData().day : null
+        }
+
         function group_kind(group) {
             const first = group.members[0] && group.members[0].getData()
             return EVENT_KINDS[first && first.kind] || EVENT_KINDS.event
@@ -538,13 +547,13 @@ export default {
                         colorOf: (node) => (EVENT_KINDS[node.getData().kind] || EVENT_KINDS.event).color,
                         typeLabel: (type, count) => count + ' × ' + ((EVENT_KINDS[type] || {}).label || type),
                         rules: [
-                            // 1. one group per day
-                            { kind: 'custom', id: 'by-day', label: 'Group by day', description: 'One group per day with several events',
-                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => n.getData && n.getData().day).map(n => [n.id, n.getData().day])) },
-                            // 2. inside an opened day: its events grouped by kind (MISP objects, MISP attributes, files, events).
-                            //    A closed day stands in for its events, so this rule only sees the days that are open.
-                            { kind: 'custom', id: 'day-kind', label: 'Inside a day: group by kind', description: 'When a day is opened, its events grouped by kind',
-                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => n.getData && n.getData().day).map(n => [n.id, n.getData().day + '|' + n.getData().kind])) },
+                            // Nested groups: a rule can fold the groups made by the rules before it.
+                            // 1. the events of a day grouped by kind (MISP objects, MISP attributes, files, events)
+                            { kind: 'custom', id: 'day-kind', label: 'Inside a day: group by kind', description: 'The events of a day grouped by kind',
+                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => !n.isGroup && n.getData().day).map(n => [n.id, n.getData().day + '|' + n.getData().kind])) },
+                            // 2. one group per day, holding the kind groups above and the events left alone
+                            { kind: 'custom', id: 'by-day', label: 'Group by day', description: 'One group per day',
+                              minSize: 2, partition: (view) => new Map(view.nodes.map(n => [n.id, node_day(n)]).filter(([, d]) => d)) },
                             { kind: 'custom', id: 'by-kind', label: 'Group by kind', description: 'Events of the same kind together',
                               minSize: 3, enabled: false, partition: (view) => new Map(view.nodes.map(n => [n.id, n.getData().kind])) },
                         ],
