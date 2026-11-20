@@ -32,8 +32,8 @@
 .cpd-mini { display: inline-block; width: 40px; height: 5px; border-radius: 3px; background: var(--bs-border-color); overflow: hidden; }
 .cpd-mini span { display: block; height: 100%; background: #198754; }
 
-.cpd-user { display: grid; grid-template-columns: minmax(0, 120px) 1fr auto; align-items: center; gap: 8px; margin-bottom: 4px; }
-.cpd-user-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cpd-user { display: grid; grid-template-columns: minmax(0, 150px) 1fr auto; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cpd-user-name { min-width: 0; overflow: hidden; }
 .cpd-user-bar { display: flex; height: 8px; border-radius: 4px; background: var(--bs-tertiary-bg); overflow: hidden; }
 .cpd-user-num { color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
 .cpd-more { color: var(--bs-secondary-color); }

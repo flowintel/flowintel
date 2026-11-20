@@ -47,15 +47,17 @@ def completion_stats(case_id):
     ).filter(Task.case_id == case_id, open_filter).one()
 
     # open / closed per assignee, and open tasks nobody is assigned to
-    per_user = (db.session.query(User.id, User.first_name, User.last_name, User.nickname,
+    per_user = (db.session.query(User.id, User.first_name, User.last_name, User.nickname, User.email,
                                  func.count(sql_case((open_filter, 1))),
                                  func.count(sql_case((Task.completed.is_(True), 1))))
                 .join(Task_User, Task_User.user_id == User.id)
                 .join(Task, Task.id == Task_User.task_id)
                 .filter(Task.case_id == case_id)
-                .group_by(User.id, User.first_name, User.last_name, User.nickname).all())
+                .group_by(User.id, User.first_name, User.last_name, User.nickname, User.email).all())
+    # "user" is a User.to_json()-like dict for the user_chip component
     assignees = sorted(({"id": uid, "name": " ".join(x for x in (fn, ln) if x) or nick or f"User #{uid}",
-                         "open": o, "closed": c} for uid, fn, ln, nick, o, c in per_user),
+                         "user": {"id": uid, "first_name": fn, "last_name": ln, "nickname": nick, "email": mail},
+                         "open": o, "closed": c} for uid, fn, ln, nick, mail, o, c in per_user),
                        key=lambda a: (-(a["open"] + a["closed"]), a["name"]))
     unassigned = (Task.query.filter(Task.case_id == case_id, open_filter)
                   .filter(~db.exists().where(Task_User.task_id == Task.id)).count())

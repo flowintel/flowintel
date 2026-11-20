@@ -6,6 +6,7 @@
  * `version` changes (a task opened / closed).
  * Styles: /static/css/case/completion_details.css
  */
+import user_chip from '/static/js/components/user-chip.js'
 const { ref, computed, watch, onMounted } = Vue
 
 const STYLE_COLORS = { primary: '#0d6efd', secondary: '#6c757d', success: '#198754', danger: '#dc3545',
@@ -14,6 +15,7 @@ const STYLE_COLORS = { primary: '#0d6efd', secondary: '#6c757d', success: '#1987
 export default {
     name: 'completion_details',
     delimiters: ['[[', ']]'],
+    components: { user_chip },
     props: {
         caseId: { type: Number, required: true },
         version: { type: [Number, String], default: 0 },   // change it to reload
@@ -95,9 +97,9 @@ export default {
             <!-- assignees -->
             <div v-if="data.assignees.length" class="cpd-block">
                 <h6 class="cpd-title">By assignee</h6>
-                <div v-for="a in data.assignees" :key="a.id" class="cpd-user" :title="a.name + ': ' + a.open + ' open, ' + a.closed + ' closed'">
-                    <span class="cpd-user-name">[[ a.name ]]</span>
-                    <span class="cpd-user-bar">
+                <div v-for="a in data.assignees" :key="a.id" class="cpd-user">
+                    <user_chip class="cpd-user-name" :user="a.user" variant="inline" size="sm"></user_chip>
+                    <span class="cpd-user-bar" :title="a.name + ': ' + a.open + ' open, ' + a.closed + ' closed'">
                         <span class="is-closed" :style="{ width: (100 * a.closed / max_user) + '%' }"></span><span class="is-open" :style="{ width: (100 * a.open / max_user) + '%' }"></span>
                     </span>
                     <span class="cpd-user-num">[[ a.closed ]]/[[ a.open + a.closed ]]</span>
