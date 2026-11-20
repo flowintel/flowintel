@@ -287,6 +287,7 @@ export default {
                 <i class="fa-solid fa-pen-to-square"></i>
             </a>
         </div>
+        <slot name="after-edit"></slot>
         <div class="dropdown">
             <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Actions

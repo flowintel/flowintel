@@ -87,8 +87,8 @@
             <action_buttons 
                 :cases_info="cases_info"
                 :status_info="status_info">
+                <template #after-edit>{% include 'case/_connectors_button.html' %}</template>
             </action_buttons>
-            {% include 'case/_connectors_button.html' %}
         </div>
     </div>
     
