@@ -70,10 +70,18 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token ? token.value : '' },
                 body: JSON.stringify({ [name]: value })
             })
-            if (!res.ok) console.warn('Setting not saved', name, value, res.status)
+            if (res.ok) toast(`${LABELS[name] || 'Setting'} saved`, 'success-subtle')
+            else { console.warn('Setting not saved', name, value, res.status); toast('Setting not saved', 'danger-subtle') }
         } catch (e) {
             console.warn('Could not save the setting', name, e)
+            toast('Could not save the setting', 'danger-subtle')
         }
+    }
+
+    // toasts come from the ES module toaster.js (this file is a classic script)
+    const LABELS = { theme: 'Theme', font: 'Font', case_view: 'Case list display', tag_view: 'Tag display', sticky_header: 'Top bar' }
+    function toast(message, cls) {
+        import('/static/js/toaster.js').then(m => m.create_message(message, cls)).catch(() => {})
     }
 
     // Before first paint
