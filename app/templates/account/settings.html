@@ -134,7 +134,7 @@
     // "Reset to defaults": every setting back to its default, then reload to apply them
     // (a Vue handler: the page is mounted by Vue, a listener added before would be lost)
     async function reset_settings() {
-        const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset' })
+        const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset', variant: 'primary', icon: 'fa-solid fa-rotate-left' })
         if (!ok) return
         const res = await fetch('/account/settings/reset', { method: 'POST', headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' } })
         if (res.ok) {
