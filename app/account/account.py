@@ -157,6 +157,16 @@ def settings():
     return render_template("account/settings.html", settings=SettingsModel.get_settings(current_user))
 
 
+@account_blueprint.route("/settings/reset", methods=["POST"])
+@login_required
+def reset_settings():
+    """Put every setting of the current user back to its default value"""
+    settings, error = SettingsModel.update_settings(current_user, dict(SettingsModel.DEFAULTS))
+    if error:
+        return {"message": error, "toast_class": "warning-subtle"}, 400
+    return {"message": "Settings reset", "toast_class": "success-subtle", "settings": settings.to_json()}, 200
+
+
 @account_blueprint.route("/settings", methods=["POST"])
 @login_required
 def update_settings():

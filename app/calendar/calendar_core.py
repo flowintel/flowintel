@@ -135,6 +135,55 @@ def get_task_month_core(date_month, flag_dead_creation, user, assigned_only=Fals
             ).all()
 
 
+TASK_DATE_FORMAT = '%Y-%m-%d %H:%M'
+
+
+def _light_task(task):
+    """What the month grid needs to draw a task; the full task (to_json, ~10 queries) is
+    only fetched when it is opened (get_task_core)."""
+    fmt = lambda d: d.strftime(TASK_DATE_FORMAT) if d else None
+    return {
+        "id": task.id, "title": task.title, "case_id": task.case_id, "status_id": task.status_id,
+        "completed": task.completed, "creation_date": fmt(task.creation_date),
+        "deadline": fmt(task.deadline), "last_modif": fmt(task.last_modif), "light": True,
+    }
+
+
+def _task_day_query(user, flag_dead_creation, start, end, assigned_only=False):
+    query = _tasks_assigned_to_user_query(user) if assigned_only else _tasks_visible_to_user_query(user)
+    column = Task.deadline if flag_dead_creation == 'true' else Task.creation_date
+    return query.filter(column >= start, column < end).order_by(column, Task.id), column
+
+
+def get_task_month_light(date_month, flag_dead_creation, user, assigned_only=False, per_day=10):
+    """Tasks of a month for the calendar grid: at most `per_day` per day (light JSON), and
+    for each day with more, how many are left: {"tasks": [...], "more": {"YYYY-MM-DD": n}}."""
+    start = datetime.strptime(date_month, "%Y-%m")
+    end = start.replace(year=start.year + 1, month=1) if start.month == 12 else start.replace(month=start.month + 1)
+    query, column = _task_day_query(user, flag_dead_creation, start, end, assigned_only)
+    shown, more, per = [], {}, {}
+    for task in query.all():
+        day = getattr(task, column.key).strftime('%Y-%m-%d')
+        per[day] = per.get(day, 0) + 1
+        if per[day] <= per_day:
+            shown.append(_light_task(task))
+        else:
+            more[day] = more.get(day, 0) + 1
+    return {"tasks": shown, "more": more}
+
+
+def get_task_day_light(date_day, flag_dead_creation, user, assigned_only=False, offset=0):
+    """Tasks of one day after the first `offset` ones (the "+N more" of the month grid)."""
+    start = datetime.strptime(date_day, "%Y-%m-%d")
+    query, _ = _task_day_query(user, flag_dead_creation, start, start + timedelta(days=1), assigned_only)
+    return [_light_task(t) for t in query.offset(max(0, offset)).all()]
+
+
+def get_task_core(task_id, user):
+    """A task the user can see in the calendar, or None."""
+    return _tasks_visible_to_user_query(user).filter(Task.id == task_id).first()
+
+
 def get_case_month_core(date_month, flag_dead_creation, user):
     # Convert "YYYY-MM" string into first day of month
     start = datetime.strptime(date_month, "%Y-%m")

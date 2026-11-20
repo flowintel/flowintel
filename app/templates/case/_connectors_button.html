@@ -1,25 +1,28 @@
 {# Partial: Connectors button + modal/collapse. Use data-connector-display attribute to force mode ("modal" or "collapse"). #}
-<div id="connectors-button-wrapper" class="d-inline-flex align-items-center ms-2">
-  <button id="btn-connectors-toggle" type="button" class="btn btn-outline-secondary btn-sm" title="Open Connectors" aria-label="Open Connectors" @click="openConnectors($event)">
-    <i class="fa-solid fa-plug fa-sm me-1"></i>
-    <span class="section-title d-none d-sm-inline">Connectors</span>
-    <span class="badge text-bg-secondary ms-2" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
+<div id="connectors-button-wrapper" class="d-inline-flex align-items-center">
+  <button id="btn-connectors-toggle" type="button" class="btn btn-connectors position-relative" style="background-color: #495057; border-color: #495057; color: #fff;" title="Connectors" aria-label="Connectors" @click="openConnectors($event)">
+    <i class="fa-solid fa-plug"></i>
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-dark" v-if="case_connectors_list && case_connectors_list.length">[[case_connectors_list.length]]</span>
   </button>
 </div>
 
 <!-- Connectors Modal -->
 <div class="modal fade" id="connectorsModal" tabindex="-1" aria-labelledby="connectorsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content morg-modal cconn-modal">
       <div class="modal-header">
-        <h5 class="modal-title" id="connectorsModalLabel"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <span class="morg-modal-icon"><i class="fa-solid fa-plug"></i></span>
+        <div>
+          <h1 class="modal-title fs-5" id="connectorsModalLabel">Connectors</h1>
+          <div class="morg-modal-sub">External instances (MISP, AIL…) linked to this case.</div>
+        </div>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
       </div>
       <div class="modal-body">
         <div v-if="cases_info">
           <caseconnectors 
               :case_task_connectors_list="case_connectors_list"
-              :all_connectors_list="all_connectors_list"
+              :all_connectors_list="all_connectors_list" :icons="connector_icons"
               :modules="modules"
               :is_case="true"
               :object_id="cases_info.case.id"
@@ -40,7 +43,7 @@
     <div v-if="cases_info">
       <caseconnectors 
           :case_task_connectors_list="case_connectors_list"
-          :all_connectors_list="all_connectors_list"
+          :all_connectors_list="all_connectors_list" :icons="connector_icons"
           :modules="modules"
           :is_case="true"
           :object_id="cases_info.case.id"

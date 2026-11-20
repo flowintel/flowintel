@@ -1,0 +1,14 @@
+/* case_ref.css — case reference link (components/case_ref.js) */
+
+.cr { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: var(--bs-secondary-color);
+    font-size: .84rem; text-decoration: none; vertical-align: middle; }
+.cr:hover, .cr:focus-visible { color: var(--fi-accent, #1f3763); }
+.cr:hover .cr-title { text-decoration: underline; }
+.cr-id { flex: none; color: var(--fi-accent, #1f3763); font-weight: 700; font-variant-numeric: tabular-nums; }
+.cr--id { padding: 1px 8px; border: 1px solid var(--bs-border-color); border-radius: 999px; background: var(--bs-body-bg); }
+.cr--id:hover { border-color: var(--fi-accent, #1f3763); }
+.cr-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bs-body-color); }
+.cr-flag { flex: none; font-size: .72em; opacity: .7; }
+.cr-priv { color: #dc3545; }
+.cr-status { flex: none; padding: 1px 8px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+.cr-status--done { background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); }

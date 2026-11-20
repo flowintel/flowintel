@@ -1,0 +1,15 @@
+/* Shared pagination, static/js/components/pagination.js. Bootstrap variables only, so it follows the themes. */
+.fi-pager { display: flex; width: fit-content; margin-inline: auto; align-items: center; gap: 3px; flex-wrap: wrap; justify-content: center;
+    padding: 3px; border: 1px solid var(--bs-border-color); border-radius: 10px; background: var(--bs-body-bg); }
+.fi-pager-btn { min-width: 30px; height: 30px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent;
+    color: var(--bs-body-color); font-size: .85rem; font-variant-numeric: tabular-nums; display: inline-flex;
+    align-items: center; justify-content: center; transition: background .12s ease, color .12s ease; }
+.fi-pager-btn:hover:not(:disabled):not(.is-active) { background: var(--ctx-brand-tint, var(--bs-tertiary-bg)); color: var(--ctx-brand, var(--bs-primary)); }
+.fi-pager-btn:focus-visible { outline: 2px solid var(--ctx-brand, var(--bs-primary)); outline-offset: 1px; }
+.fi-pager-btn.is-active { background: var(--ctx-brand, var(--bs-primary)); color: #fff; font-weight: 600; cursor: default; }
+.fi-pager-btn:disabled { opacity: .35; cursor: not-allowed; }
+.fi-pager-step { color: var(--bs-secondary-color); font-size: .75rem; }
+.fi-pager-gap { min-width: 18px; text-align: center; color: var(--bs-secondary-color); user-select: none; }
+/* dark mode: the brand navy is too dark on a dark page, use the theme's light accent */
+[data-bs-theme="dark"] .fi-pager-btn.is-active { background: var(--fi-accent, var(--bs-primary)); color: var(--fi-page, #0d1629); }
+[data-bs-theme="dark"] .fi-pager-btn:hover:not(:disabled):not(.is-active) { background: var(--bs-tertiary-bg); color: var(--fi-accent, var(--bs-primary)); }

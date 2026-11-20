@@ -5,6 +5,12 @@
 {% extends 'base.html' %}
 {% from 'macros/page_header.html' import page_header, header_stat, header_link %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+{{ super() }}
+{% endblock %}
+
 {% block content %}
     {% call(section) page_header('Analyser history', 'fa-solid fa-clock-rotate-left', 'Previous analyser runs and their results.') %}
         {% if section == 'stats' %}
@@ -19,9 +25,21 @@
                     @page="get_history"></app-pagination>
     <!-- pagination -->
     
-    <div v-if="loading" class="case-core-style text-center text-muted py-5">
-        <span class="spinner-border spinner-border-sm me-2" role="status"></span>Loading history...
-    </div>
+    <loading_overlay v-if="loading" :loading="true" :empty="true" label="Loading history…">
+        <template #skeleton>
+            <div v-for="i in 4" :key="i" class="list-group-item border rounded-3 p-3 mb-3">
+                <div class="d-flex justify-content-between">
+                    <span class="lo-sk" :style="{ width: (45 - i * 5) + '%', height: '16px' }"></span>
+                    <span class="lo-sk lo-sk-sm" style="width:30%"></span>
+                </div>
+                <span class="lo-sk lo-sk-sm mt-3" style="width:15%"></span>
+                <span class="lo-sk" style="width:50%"></span>
+                <span class="lo-sk lo-sk-sm mt-3" style="width:12%"></span>
+                <span class="lo-sk" style="width:65%"></span>
+                <div class="d-flex justify-content-end mt-2"><span class="lo-sk lo-sk-sm" style="width:20%"></span></div>
+            </div>
+        </template>
+    </loading_overlay>
     <div v-else-if="!history.history || !history.history.length" class="case-core-style text-center text-muted py-5">
         <i class="fa-solid fa-clock-rotate-left fa-2x mb-3 d-block"></i>
         <p class="mb-3">No analyser run yet. Results of the MISP modules you run will be listed here.</p>
@@ -87,8 +105,9 @@
         import Pagination from '/static/js/components/pagination.js'
     const { createApp, ref} = Vue
     import {message_list, display_toast} from '/static/js/toaster.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
     createApp({
-            components: { 'app-pagination': Pagination },
+            components: { 'app-pagination': Pagination, loading_overlay },
         delimiters: ['[[', ']]'],
         setup() {
             const history = ref({})

@@ -484,3 +484,9 @@
     text-align: left;
   }
 }
+
+/* ---------- loading: each card / panel shows the Flowintel loader over a soft veil ---------- */
+.stats-panel, .stats-card { position: relative; }
+.stats-loading { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center;
+    border-radius: inherit; background: color-mix(in srgb, var(--bs-body-bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }

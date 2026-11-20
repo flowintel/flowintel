@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_segmented %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
     {{ super() }}
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/components/context_table.css') }}">
 {% endblock %}
@@ -80,7 +82,11 @@
                 <span><strong>UUID</strong> <span class="ctx-mono">[[ row.uuid ]]</span></span>
             </div>
             <template v-if="tags_table[row.id] === undefined">
-                <div class="ctx-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading tags...</div>
+                <loading_overlay :loading="true" :empty="true" :size="72" label="Loading tags…">
+                    <template #skeleton>
+                        <div class="d-flex flex-wrap gap-2 py-2"><span v-for="w in [90,120,70,140,100,80,110,95,130,75]" class="lo-sk lo-sk-pill" :style="{ width: w + 'px' }"></span></div>
+                    </template>
+                </loading_overlay>
             </template>
             <template v-else-if="!tags_table[row.id].length">
                 <div class="ctx-empty">This taxonomy has no tags.</div>
@@ -107,10 +113,12 @@
         import {display_toast, message_list} from '/static/js/toaster.js'
         import context_table from '/static/js/components/context_table.js'
         import tag_badge from '/static/js/components/tag-badge.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
 
         createApp({
             delimiters: ['[[', ']]'],
             components: {
+                loading_overlay,
                 context_table,
                 tag_badge
             },

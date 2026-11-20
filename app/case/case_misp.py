@@ -627,6 +627,9 @@ def import_files_to_timeline(cid):
 # Timeline  - Graph #
 #####################
 
+GRAPH_MAX_EVENTS = 3000
+
+
 @case_blueprint.route("/<int:cid>/get_timeline_graph", methods=['GET'])
 @login_required
 def get_timeline_graph(cid):
@@ -636,11 +639,18 @@ def get_timeline_graph(cid):
         if not check_user_private_case(case):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         events = CaseModel.get_timeline_events(cid)
-        manual_links = [l.to_json() for l in CaseModel.get_timeline_event_links(cid)]
-        relationship_links = CaseModel.get_timeline_relationship_links(cid)
+        total = len(events)
+        # the graph draws at most GRAPH_MAX_EVENTS events (performance): the most recent ones
+        if total > GRAPH_MAX_EVENTS:
+            events = sorted(events, key=lambda e: (e.date_parsed is not None, e.date_parsed or e.creation_date, e.id), reverse=True)[:GRAPH_MAX_EVENTS]
+        kept = {e.id for e in events}
+        links = [l.to_json() for l in CaseModel.get_timeline_event_links(cid)] + CaseModel.get_timeline_relationship_links(cid)
+        links = [l for l in links if l.get("source_event_id") in kept and l.get("target_event_id") in kept]
         return {
             "events": [e.to_json() for e in events],
-            "links": manual_links + relationship_links
+            "links": links,
+            "total": total,
+            "max": GRAPH_MAX_EVENTS,
         }, 200
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 

@@ -6,6 +6,8 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_search, header_segmented %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 {{ super() }}
 <style>
     .mod-table { margin: 0; }
@@ -77,14 +79,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr v-if="loading"><td colspan="5" class="mod-empty"><span class="spinner-border spinner-border-sm me-2"></span>Loading the modules…</td></tr>
+                    <template v-if="loading">
+                        <tr v-for="i in 8" :key="'sk' + i" aria-hidden="true">
+                            <td v-for="j in 5" :key="j" :class="{ 'mod-hide-sm': j === 4 }"><span class="lo-sk lo-sk-sm" :style="{ width: (45 + (i * 11 + j * 17) % 50) + '%' }"></span></td>
+                        </tr>
+                    </template>
                     <tr v-else-if="!visible.length">
                         <td colspan="5" class="mod-empty">
                             <i class="fa-solid fa-puzzle-piece fa-lg d-block mb-2"></i>
                             [[ all_modules.length ? 'No module matches the filters.' : 'No module loaded on this instance.' ]]
                         </td>
                     </tr>
-                    <tr v-for="m in visible" :key="m.key">
+                    <tr v-for="m in visible_page" :key="m.key">
                         <td>
                             <div class="mod-name">
                                 <span :class="['mod-icon', 'mod-type--' + type_info(m.type).key]"><i :class="type_info(m.type).icon"></i></span>
@@ -112,6 +118,7 @@
                     </tr>
                 </tbody>
             </table>
+            <app-pagination v-if="nb_pages > 1" class="mt-2" :current-page="page" :nb-pages="nb_pages" @page="p => page = p"></app-pagination>
         </div>
     </div>
 {% endblock %}
@@ -119,8 +126,10 @@
 
 {% block script %}
     <script type="module">
-        const { createApp, ref, computed } = Vue
+        const { createApp, ref, computed, watch } = Vue
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import Pagination from '/static/js/components/pagination.js'
+        const PER_PAGE = 25
 
         const TYPES = {
             send_to: { key: 'send_to', label: 'Send to', icon: 'fa-solid fa-paper-plane' },
@@ -130,6 +139,7 @@
 
         createApp({
             delimiters: ['[[', ']]'],
+            components: { 'app-pagination': Pagination },
             setup() {
                 const modules_list = ref({})
                 const loading = ref(true)
@@ -153,6 +163,11 @@
                         (type_filter.value === 'all' || m.type === type_filter.value) &&
                         (!q || [m.key, m.type, m.scope, m.connector, m.description].some(v => (v || '').toLowerCase().includes(q))))
                 })
+
+                const page = ref(1)
+                const nb_pages = computed(() => Math.ceil(visible.value.length / PER_PAGE))
+                const visible_page = computed(() => visible.value.slice((page.value - 1) * PER_PAGE, page.value * PER_PAGE))
+                watch([search, type_filter, modules_list], () => { page.value = 1 })
 
                 function count(type) { return all_modules.value.filter(m => m.type === type).length }
                 function type_info(type) { return TYPES[type] || { key: 'other', label: type || 'Other', icon: 'fa-solid fa-puzzle-piece' } }
@@ -180,7 +195,7 @@
                 }
 
                 return {
-                    message_list, all_modules, visible, loading, reloading, search, type_filter, expanded,
+                    message_list, all_modules, visible, visible_page, page, nb_pages, loading, reloading, search, type_filter, expanded,
                     count, type_info, pretty, is_long, toggle, reload
                 }
             }

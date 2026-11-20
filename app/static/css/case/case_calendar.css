@@ -307,7 +307,7 @@
 .ccal-calendar .fc-list-event .ccal-ev-tag-task { background: var(--ccal-c); }
 
 /* Duration of a task / the case in its preview and detail: created → deadline or end */
-.ccal-period { --ccal-p: #0d6efd; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--bs-border-color); }
+.ccal-period { --ccal-p: var(--bs-primary); margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--bs-border-color); }
 .ccal-period-done { --ccal-p: #198754; }
 .ccal-period-soon { --ccal-p: #e8730c; }
 .ccal-period-late { --ccal-p: #dc3545; }
@@ -354,10 +354,10 @@
 .cd-stat:nth-child(2) { animation-delay: .06s; }
 .cd-stat:nth-child(3) { animation-delay: .12s; }
 .cd-stat:nth-child(4) { animation-delay: .18s; }
-.cd-stat:hover { transform: translateY(-2px); border-color: rgba(13,110,253,.45); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.cd-stat:hover { transform: translateY(-2px); border-color: rgba(var(--bs-primary-rgb), .45); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
 .cd-stat-icon {
     grid-row: span 2; display: inline-flex; align-items: center; justify-content: center;
-    width: 2.3rem; height: 2.3rem; border-radius: 10px; background: rgba(13,110,253,.12); color: #0d6efd;
+    width: 2.3rem; height: 2.3rem; border-radius: 10px; background: rgba(var(--bs-primary-rgb), .12); color: var(--bs-primary);
 }
 .cd-stat-num { font-size: .95rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cd-stat-label { font-size: .75rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -89,6 +89,11 @@
   min-width: 0;
 }
 
+/* no icon: title and description stacked in one column */
+.ctx-header-heading--no-icon {
+  grid-template-columns: 1fr;
+}
+
 .ctx-header-icon {
   grid-row: span 2;
   display: inline-flex;
@@ -561,7 +566,7 @@ a.ctx-ghost-btn {
   width: 0.45rem;
   height: 0.45rem;
   border-radius: 50%;
-  background: #0d6efd;
+  background: var(--bs-primary);
 }
 
 .ctx-search i {
@@ -621,3 +626,13 @@ a.ctx-ghost-btn {
     max-width: none;
   }
 }
+
+/* "Clear" next to Filters, shown while a filter is active */
+.ctx-clear-btn, .ctx-clear-btn:focus { background: var(--fi-accent, #1f3763); border-color: var(--fi-accent, #1f3763); color: #fff; }
+.ctx-clear-btn:hover { background: #2b4a80; border-color: #2b4a80; color: #fff; }
+[data-bs-theme="dark"] .ctx-clear-btn, [data-bs-theme="dark"] .ctx-clear-btn:focus { color: #0b1530; }
+
+/* Sort select + its Asc/Desc toggle, kept together */
+.ctx-sort { display: inline-flex; align-items: center; gap: .35rem; }
+.ctx-order-btn { min-width: 4.6rem; justify-content: center; }
+.ctx-order-btn i { color: var(--fi-accent, #1f3763); }

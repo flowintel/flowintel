@@ -107,6 +107,19 @@ def can_view_case_ids(case_ids, current_user: User) -> bool:
             return False
     return True
 
+def visible_case_filter(user: User):
+    """SQL condition on Case: what `user` may see (admin: everything; otherwise public cases
+    and the private cases their organisation takes part in). Use it in queries instead of
+    loading every case and checking them in Python."""
+    from sqlalchemy import true, select as sa_select
+    if user.is_admin():
+        return true()
+    public = Case.is_private.is_not(True)
+    if user.org_id is None:
+        return public
+    member = Case.id.in_(sa_select(Case_Org.case_id).where(Case_Org.org_id == user.org_id))
+    return or_(public, member)
+
 def check_user_in_private_cases(cases: List[Case], current_user: User) -> List[Case]:
     if current_user.is_admin(): # admin have access to all cases
         return cases

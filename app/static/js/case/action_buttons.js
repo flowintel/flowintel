@@ -265,7 +265,7 @@ export default {
             <span v-if="cases_info.case.completed" 
                   :title="!canModifyCase ? 'You cannot revive a privileged case' : 'Revive the case'"
                   style="margin-right:10px;">
-                <button class="btn btn-secondary" 
+                <button class="btn btn-secondary" title="Revive the case" aria-label="Revive the case"
                         @click="complete_case(cases_info.case)" 
                         :disabled="!canModifyCase"
                         style="pointer-events: auto;">
@@ -275,7 +275,7 @@ export default {
             <span v-else 
                   :title="!canModifyCase ? 'You cannot complete a privileged case' : 'Complete the case'"
                   style="margin-right:10px;">
-                <button class="btn btn-success" 
+                <button class="btn btn-success" title="Complete the case" aria-label="Complete the case"
                         @click="complete_case(cases_info.case)" 
                         :disabled="!canModifyCase"
                         style="pointer-events: auto;">
@@ -283,12 +283,13 @@ export default {
                 </button>
             </span>
 
-            <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case">
+            <a class="btn btn-primary" :href="'/case/edit/'+cases_info.case.id" type="button" title="Edit the case" aria-label="Edit the case">
                 <i class="fa-solid fa-pen-to-square"></i>
             </a>
         </div>
+        <slot name="after-edit"></slot>
         <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions: download, report, fork, merge, recurring, template, delete">
                 Actions
             </button>
             <ul class="dropdown-menu">

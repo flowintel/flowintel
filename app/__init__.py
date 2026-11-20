@@ -115,9 +115,11 @@ def create_app():
     app.jinja_env.filters["vue_escape"] = vue_escape
     from .utils.breadcrumb import build_breadcrumb
     app.jinja_env.globals["build_breadcrumb"] = build_breadcrumb
-    from .account.settings_core import get_theme, get_font
+    from .account.settings_core import get_theme, get_font, get_tag_view, get_sticky_header
+    app.jinja_env.globals["user_sticky_header"] = get_sticky_header
     app.jinja_env.globals["user_theme"] = get_theme
     app.jinja_env.globals["user_font"] = get_font
+    app.jinja_env.globals["user_tag_view"] = get_tag_view
     from .utils.themes import THEMES, theme_base, theme_styled
     app.jinja_env.globals["themes"] = THEMES
     app.jinja_env.globals["theme_base"] = theme_base
@@ -221,6 +223,7 @@ def create_app():
     from .templating.templating import templating_blueprint
     from .alerts import alerts_blueprint
     from .alerting import alerting_blueprint
+    from .search.search import search_blueprint
     app.register_blueprint(home_blueprint, url_prefix="/")
     app.register_blueprint(account_blueprint, url_prefix="/account")
     app.register_blueprint(case_blueprint, url_prefix="/case")
@@ -236,6 +239,7 @@ def create_app():
     app.register_blueprint(custom_tags_blueprint, url_prefix="/custom_tags")
     app.register_blueprint(alerts_blueprint, url_prefix="/alerts")
     app.register_blueprint(alerting_blueprint, url_prefix="/alerting")
+    app.register_blueprint(search_blueprint, url_prefix="/search")
 
     if app.config.get("ENABLE_CHATBOT", False):
         # Import lazily so the heavy chatbot dependencies (dspy, litellm, mcp)

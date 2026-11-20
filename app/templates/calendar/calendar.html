@@ -13,6 +13,7 @@
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr.min.css') }}">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/calendar/flatpickr-monthSelect.css') }}">
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/calendar_custom.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 {%endblock%}
 
 {% block content %}
@@ -126,7 +127,30 @@
 
     <input id="monthPicker" class="form-control start-50 translate-middle-x mb-2 mt-3" placeholder="Select month" style="text-align: center; position: relative;">
 
-    <div id="calendar" class="case-core-style"></div>
+    <div class="cal-wrap">
+        <div id="calendar" class="case-core-style"></div>
+        <!-- while the month loads and draws: our loader over a calendar-shaped skeleton -->
+        <div v-if="cal_loading" class="cal-loading">
+            <loading_overlay :loading="true" :empty="true" label="Loading the calendar…">
+                <template #skeleton>
+                    <div class="cal-sk">
+                        <div class="cal-sk-toolbar">
+                            <span class="lo-sk" style="width:110px; height:28px"></span>
+                            <span class="lo-sk" style="width:160px; height:22px"></span>
+                            <span class="lo-sk" style="width:120px; height:28px"></span>
+                        </div>
+                        <div class="cal-sk-head"><span v-for="d in 7" :key="d" class="lo-sk lo-sk-sm"></span></div>
+                        <div class="cal-sk-grid">
+                            <div v-for="c in 35" :key="c" class="cal-sk-cell">
+                                <span class="lo-sk lo-sk-sm cal-sk-day"></span>
+                                <span v-for="e in (c * 7) % 4" :key="e" class="lo-sk cal-sk-ev" :style="{ width: (55 + ((c + e) * 13) % 40) + '%' }"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </loading_overlay>
+        </div>
+    </div>
 
 </div>
 {% endblock %}
@@ -135,12 +159,29 @@
 {% block script %}
 <script type="module">
     const { createApp, ref, onMounted } = Vue
+    import loading_overlay from '/static/js/components/loading_overlay.js'
     import {message_list, display_toast} from '/static/js/toaster.js'
     import { getTextColor, mapIcon } from '/static/js/utils.js'
     import { tagChipElement } from '/static/js/components/tag-badge.js'
     createApp({
         delimiters: ['[[', ']]'],
+        components: { loading_overlay },
         setup() {
+            // loader over the calendar while its sources (cases, tasks, events) load and draw
+            const cal_loading = ref(false)
+            let pending_sources = new Set()
+            function start_steps(keys) {
+                pending_sources = new Set(keys)
+                cal_loading.value = keys.length > 0
+            }
+            function set_step(key, state) {
+                if (state !== 'done' && state !== 'error') return
+                pending_sources.delete(key)
+                if (!pending_sources.size) cal_loading.value = false
+            }
+            // let the browser paint the "drawing…" state before the (long) render
+            const next_paint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)))
+
             const tasks = ref(null)
             const cases = ref(null)
             const status_info = ref(null)
@@ -161,31 +202,79 @@
             var calendar
 
 
+            // Month grid: at most TASKS_PER_DAY tasks per day, in a light form (full task fetched
+            // when opened). A day with more gets a "Load N more tasks" item that loads the rest.
+            const TASKS_PER_DAY = 10
+            const task_event = (t, flag) => ({
+                id: 'task-' + t.id,
+                start: date_parser(flag ? t.deadline : t.creation_date, true),
+                allDay: true,
+                title: t.title,
+                order: 2,
+                extendedProps: { toJson: t },
+            })
+
             async function fetch_task_calendar(current_month, flag_dead_creation_loc, requestId) {
                 tasks.value = null
                 const res = await fetch(
-                    'get_task_month?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc + "&assigned_only=" + show_only_assigned_tasks
+                    'get_task_month_light?date=' + current_month + "&dead_creation=" + flag_dead_creation_loc
+                    + "&assigned_only=" + show_only_assigned_tasks + "&per_day=" + TASKS_PER_DAY
                 )
                 let loc = await res.json()
                 if (!res.ok) throw new Error(loc.message || 'Unable to load tasks')
                 if (requestId !== calendarRequest) return
                 tasks.value = loc["tasks"]
+                const more = loc["more"] || {}
+                day_more = Object.assign({}, more)
+                const nb_more = Object.values(more).reduce((a, b) => a + b, 0)
+                set_step('tasks', 'rendering', tasks.value.length)
+                await next_paint()
+                if (requestId !== calendarRequest) return
 
-                let loc_var
-                for (let i=0; i<tasks.value.length; i++){
-                    if(flag_dead_creation_loc) loc_var = tasks.value[i]["deadline"]
-                    else loc_var = tasks.value[i]["creation_date"]
+                // one event source for the whole month: a single render, not one per task
+                calendar.addEventSource({
+                    id: 'tasks',
+                    color: "rgb(32, 181, 32)",
+                    events: tasks.value.map(t => task_event(t, flag_dead_creation_loc)),
+                })
+                set_step('tasks', 'done', nb_more ? tasks.value.length + ' (+' + nb_more + ')' : tasks.value.length)
+            }
 
-                    calendar.addEvent({
-                        id: 'task-' + tasks.value[i]["id"],
-                        start: date_parser(loc_var, true),
-                        allDay: true,
+            // tasks of each day not loaded yet: {"YYYY-MM-DD": n}. The day's "+N more" link
+            // counts them too (more_link_mount), and a click loads them before the popover opens.
+            let day_more = {}
+            const day_key = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+
+            function more_link_mount(arg) {
+                const cell = arg.el.closest('[data-date]')
+                const extra = cell ? (day_more[cell.getAttribute('data-date')] || 0) : 0
+                if (extra) arg.el.textContent = '+' + (arg.num + extra) + ' more'
+            }
+
+            async function more_link_click(info) {
+                const day = day_key(info.date)
+                if (!day_more[day]) return 'popover'
+                const link = info.jsEvent?.target?.closest('.fc-more-link')
+                if (link) { if (link.dataset.loading) return; link.dataset.loading = '1'; link.textContent = 'Loading…' }
+                const requestId = calendarRequest
+                try {
+                    const res = await fetch('get_task_day?date=' + day + '&dead_creation=' + flag_dead_creation
+                        + '&assigned_only=' + show_only_assigned_tasks + '&offset=' + TASKS_PER_DAY)
+                    const loc = await res.json()
+                    if (!res.ok) throw new Error(loc.message || 'Unable to load the tasks of this day')
+                    if (requestId !== calendarRequest) return
+                    delete day_more[day]
+                    calendar.addEventSource({
+                        id: 'tasks-' + day,
                         color: "rgb(32, 181, 32)",
-                        title: tasks.value[i]["title"],
-                        extendedProps: {
-                            toJson: tasks.value[i]
-                        }
+                        events: loc.tasks.map(t => task_event(t, flag_dead_creation)),
                     })
+                    // the day is complete now: open its popover
+                    await next_paint()
+                    document.querySelector('.fc [data-date="' + day + '"] .fc-more-link')?.click()
+                } catch (e) {
+                    if (link) { delete link.dataset.loading; link.textContent = '+' + (info.hiddenSegs.length + (day_more[day] || 0)) + ' more' }
+                    display_toast({message: e.message, toast_class: 'danger-subtle'})
                 }
             }
 
@@ -198,23 +287,23 @@
                 if (!res.ok) throw new Error(loc.message || 'Unable to load cases')
                 if (requestId !== calendarRequest) return
                 cases.value = loc["cases"]
+                set_step('cases', 'rendering', cases.value.length)
+                await next_paint()
+                if (requestId !== calendarRequest) return
 
-                let loc_var
-                for (let i=0; i<cases.value.length; i++){
-                    if(flag_dead_creation_loc) loc_var = cases.value[i]["deadline"]
-                    else loc_var = cases.value[i]["creation_date"]
-
-                    calendar.addEvent({
-                        id: 'case-' + cases.value[i]["id"],
-                        start: date_parser(loc_var, true),
+                calendar.addEventSource({
+                    id: 'cases',
+                    color: "#3788d8",
+                    events: cases.value.map(c => ({
+                        id: 'case-' + c.id,
+                        start: date_parser(flag_dead_creation_loc ? c.deadline : c.creation_date, true),
                         allDay: true,
-                        color: "#3788d8",
-                        title: cases.value[i]["title"],
-                        extendedProps: {
-                            toJson: cases.value[i]
-                        }
-                    })
-                }
+                        title: c.title,
+                        order: 1,
+                        extendedProps: { toJson: c },
+                    })),
+                })
+                set_step('cases', 'done')
             }
 
             async function fetchManualEvents(requestId) {
@@ -223,17 +312,23 @@
                 const data = await res.json()
                 if (!res.ok) throw new Error(data.message || 'Unable to load events')
                 if (requestId !== calendarRequest) return
-                for (const event of data.events) {
-                    calendar.addEvent({
+                set_step('events', 'rendering', data.events.length)
+                await next_paint()
+                if (requestId !== calendarRequest) return
+                calendar.addEventSource({
+                    id: 'manual',
+                    color: '#7952b3',
+                    events: data.events.map(event => ({
                         id: 'event-' + event.id,
                         title: event.title,
                         start: event.start,
                         end: event.end,
                         allDay: event.all_day,
-                        color: '#7952b3',
-                        extendedProps: {kind: 'manual', toJson: event}
-                    })
-                }
+                        order: 0,
+                        extendedProps: {kind: 'manual', toJson: event},
+                    })),
+                })
+                set_step('events', 'done')
             }
 
             function shiftDay(value, days) {
@@ -386,16 +481,24 @@
             
             async function onDateChange() {
                 const requestId = ++calendarRequest
-                calendar.removeAllEvents();
-                const requests = []
-                if(is_case_selected) requests.push(fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId))
-                if(is_task_selected) requests.push(fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId))
-                if(showManualEvents.value) requests.push(fetchManualEvents(requestId))
+                day_more = {}
+                calendar.removeAllEventSources()
+                calendar.removeAllEvents()
+                const requests = [], keys = []
+                if(is_case_selected) { keys.push('cases'); requests.push(fetch_case_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId)) }
+                if(is_task_selected) { keys.push('tasks'); requests.push(fetch_task_calendar(date_parser(calendar.getDate()), flag_dead_creation, requestId)) }
+                if(showManualEvents.value) { keys.push('events'); requests.push(fetchManualEvents(requestId)) }
+                start_steps(keys)
                 const results = await Promise.allSettled(requests)
                 if (requestId !== calendarRequest) return
-                for (const result of results) {
-                    if (result.status === 'rejected') display_toast({message: result.reason.message, toast_class: 'danger-subtle'})
-                }
+                results.forEach((result, i) => {
+                    if (result.status === 'rejected') {
+                        set_step(keys[i], 'error')
+                        display_toast({message: result.reason.message, toast_class: 'danger-subtle'})
+                    } else {
+                        set_step(keys[i], 'done')   // also covers a request superseded mid-way
+                    }
+                })
             }
 
             function downloadCalendarFeed() {
@@ -414,6 +517,17 @@
                 calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                     initialView: 'dayGridMonth',
                     height: 'auto',
+                    // a busy day shows a few events and a "+N more" link (popover with that day's list)
+                    dayMaxEvents: 4,
+                    moreLinkContent: (arg) => '+' + arg.num + ' more',
+                    moreLinkDidMount: (arg) => more_link_mount(arg),
+                    // a day with tasks still on the server loads them first, then opens the popover
+                    moreLinkClick: (info) => {
+                        if (!day_more[day_key(info.date)]) return 'popover'
+                        more_link_click(info)
+                    },
+                    // manual events first, then cases, then tasks
+                    eventOrder: 'order,title',
                     headerToolbar: {
                         left: 'prev,next today',
                         center: 'title',
@@ -471,8 +585,16 @@
                     dateClick: function(info) {
                         openEventModal(null, info.dateStr)
                     },
-                    eventClick: function(info) {
+                    eventClick: function on_event_click(info) {
                         const d = info.event.extendedProps.toJson
+                        // light task of the month grid: fetch the full task once, then open it
+                        if (d && d.light) {
+                            fetch('/calendar/get_task/' + d.id)
+                                .then(r => r.ok ? r.json() : Promise.reject(r))
+                                .then(full => { info.event.setExtendedProp('toJson', full); on_event_click(info) })
+                                .catch(r => display_toast(r))
+                            return
+                        }
                         if (info.event.extendedProps.kind === 'manual') {
                             openEventModal(d)
                             return
@@ -647,7 +769,7 @@
 
 
             return {
-                message_list,
+                message_list, cal_loading,
                 openModal, closeModal, select_dead_filter, select_creation_filter, selection_case_task,
                 selection_assigned_tasks, downloadCalendarFeed,
                 showManualEvents, onDateChange, eventForm, eventError, eventSaving,

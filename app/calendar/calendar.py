@@ -105,6 +105,51 @@ def get_task_month():
     return {"tasks": tasks_list}
 
 
+@calendar_blueprint.route("/get_task_month_light", methods=['GET'])
+@login_required
+def get_task_month_light():
+    """Month grid: at most per_day tasks per day (light JSON) + how many are left per day"""
+    date_month = request.args.get("date")
+    flag_dead_creation = request.args.get("dead_creation")
+    assigned_only = request.args.get("assigned_only", "false").lower() == "true"
+    per_day = max(1, min(request.args.get("per_day", 10, type=int), 100))
+    if not date_month or not flag_dead_creation:
+        return {"message": "Missing date or dead_creation parameter"}, 400
+    try:
+        return CalendarModel.get_task_month_light(date_month, flag_dead_creation, current_user,
+                                                  assigned_only=assigned_only, per_day=per_day)
+    except ValueError:
+        return {"message": "Invalid date format"}, 400
+
+
+@calendar_blueprint.route("/get_task_day", methods=['GET'])
+@login_required
+def get_task_day():
+    """The rest of one day's tasks (after the first `offset`), light JSON"""
+    date_day = request.args.get("date")
+    flag_dead_creation = request.args.get("dead_creation")
+    assigned_only = request.args.get("assigned_only", "false").lower() == "true"
+    offset = request.args.get("offset", 0, type=int)
+    if not date_day or not flag_dead_creation:
+        return {"message": "Missing date or dead_creation parameter"}, 400
+    try:
+        tasks = CalendarModel.get_task_day_light(date_day, flag_dead_creation, current_user,
+                                                 assigned_only=assigned_only, offset=offset)
+    except ValueError:
+        return {"message": "Invalid date format"}, 400
+    return {"tasks": tasks}
+
+
+@calendar_blueprint.route("/get_task/<int:task_id>", methods=['GET'])
+@login_required
+def get_task(task_id):
+    """Full task, for the detail modal (only tasks the user can see)"""
+    task = CalendarModel.get_task_core(task_id, current_user)
+    if not task:
+        return {"message": "Task not found"}, 404
+    return task.to_json()
+
+
 @calendar_blueprint.route("/get_case_month", methods=['GET'])
 @login_required
 def get_case_month():

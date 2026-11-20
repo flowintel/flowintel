@@ -1,12 +1,17 @@
-<!-- 
+<!--
     Author: David Cruciani
 -->
 
 {% extends 'base.html' %}
-{% from 'macros/page_header.html' import page_header, header_stat, header_link %}
+{% from 'macros/page_header.html' import page_header, header_stat, header_search, header_segmented, header_select, header_switch, header_filters %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_list.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/task_list.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_ref.css') }}">
 
 <title>My tasks assignments - {{ config.APP_NAME }}</title>
 {{ super() }}
@@ -17,266 +22,306 @@
 {% call(section) page_header('My task assignments', 'fa-solid fa-clipboard-check', 'Tasks assigned to you, across all your cases.') %}
     {% if section == 'stats' %}
         <template v-if="task_stats && task_stats.total > 0">
-            {{ header_stat('fa-solid fa-list-check', '[[ task_stats.total ]]', "total [[ task_stats.total === 1 ? 'task' : 'tasks' ]]", href='#', title='Go to the tasks', attrs='@click.prevent="scrollToTasks"') }}
-            {{ header_stat('fa-solid fa-clock-rotate-left', '[[ task_stats.overdue ]]', 'overdue', href='#', title='Show only overdue tasks', alert='true', attrs='v-if="task_stats.overdue > 0" @click.prevent="activateOverdueFilter"') }}
+            {{ header_stat('fa-solid fa-list-check', '[[ task_stats.total ]]', "open [[ task_stats.total === 1 ? 'task' : 'tasks' ]]", href='#', title='Show the ongoing tasks', attrs='@click.prevent="set_mode(\'ongoing\')"') }}
+            {{ header_stat('fa-solid fa-clock-rotate-left', '[[ task_stats.overdue ]]', 'overdue', href='#', title='Show only overdue tasks', alert='true', attrs='v-if="task_stats.overdue > 0" @click.prevent="set_mode(\'overdue\')"') }}
             {{ header_stat('fa-solid fa-check', label='Nothing overdue', attrs='v-else') }}
-            {{ header_stat('fa-solid fa-calendar-week', '[[ task_stats.due_this_week ]]', 'due this week', href='#', title='Go to the tasks', attrs='v-if="task_stats.due_this_week > 0" @click.prevent="scrollToTasks"') }}
+            {{ header_stat('fa-solid fa-calendar-week', '[[ task_stats.due_this_week ]]', 'due this week', href='#', title='Sort the ongoing tasks by deadline', attrs='v-if="task_stats.due_this_week > 0" @click.prevent="show_due_soon"') }}
             {{ header_stat('fa-solid fa-calendar-check', label='Nothing due this week', attrs='v-else') }}
         </template>
+        {{ header_stat('fa-solid fa-filter', "[[ task_page ? task_page.total : '…' ]]", "[[ MODE_LABELS[mode].toLowerCase() ]]", title='Tasks matching the current view', attrs='v-if="mode !== \'ongoing\' || q"') }}
     {% elif section == 'toolbar' %}
-        <my_assignment_filter ref="filter_ref" :tasks_list="tasks_list"
-            @tasks_list="(tasks) => emit_result(tasks)"
-            @current_filter="filter => current_filter = filter"
-            @active_mode="mode => active_mode = mode">
-        </my_assignment_filter>
+        {{ header_search('Search a task, a case title or #id') }}
+
+        {{ header_segmented([
+                {'value': 'ongoing', 'label': 'Ongoing', 'icon': 'fa-solid fa-spinner', 'title': 'Open tasks'},
+                {'value': 'overdue', 'label': 'Overdue', 'icon': 'fa-solid fa-clock-rotate-left', 'title': 'Open tasks past their deadline'},
+                {'value': 'finished', 'label': 'Finished', 'icon': 'fa-solid fa-check', 'title': 'Completed tasks'},
+                {'value': 'inactive', 'label': 'Rejected / Unavailable', 'icon': 'fa-solid fa-ban', 'title': 'Tasks set to Rejected or Unavailable'},
+            ], active="mode === '{value}'", click="set_mode('{value}')", aria='Task status') }}
+
+        <div class="ctx-sort">
+            {{ header_select(options_expr='SORT_OPTIONS', label='Sort', attrs=':value="sort" @change="set_sort($event.target.value)"') }}
+            <button type="button" class="ctx-ghost-btn ctx-order-btn" @click="toggle_order()"
+                    :title="order === 'asc' ? 'Ascending — click for descending' : 'Descending — click for ascending'"
+                    :aria-label="order === 'asc' ? 'Ascending order' : 'Descending order'">
+                <i :class="order === 'asc' ? 'fa-solid fa-arrow-up-short-wide' : 'fa-solid fa-arrow-down-wide-short'"></i>[[ order === 'asc' ? 'Asc' : 'Desc' ]]
+            </button>
+        </div>
+
+        {{ header_switch('Group by case', 'maGroupByCase', title='Show the tasks of each case together', attrs=':checked="group" @change="set_group($event.target.checked)"') }}
+        <button type="button" v-if="group && task_page && task_page.tasks.length" class="ctx-ghost-btn ma-fold-all"
+                @click="task_list_ref?.set_all_collapsed(!task_list_ref.all_collapsed())"
+                :title="task_list_ref?.all_collapsed() ? 'Show the tasks of every case on this page' : 'Hide the tasks of every case on this page'">
+            <i :class="task_list_ref?.all_collapsed() ? 'fa-solid fa-angles-down fa-sm' : 'fa-solid fa-angles-up fa-sm'"></i>[[ task_list_ref?.all_collapsed() ? 'Expand all' : 'Collapse all' ]]
+        </button>
+
+        {{ header_filters('#modalTaskFilter', active='picked_count > 0', label='Tags') }}
+
+        <button type="button" v-if="q || mode !== 'ongoing' || picked_count" class="ctx-ghost-btn ctx-clear-btn" @click="clear_filters" title="Back to the ongoing tasks, no search">
+            <i class="fa-solid fa-xmark fa-sm"></i>Clear
+        </button>
     {% endif %}
 {% endcall %}
 
-
-<!-- pagination -->
-<app-pagination v-if="tasks_list" class="my-3" :current-page="current_page" :nb-pages="tasks_list.nb_pages"
-                    @page="fetchAssignedTask"></app-pagination>
-<!-- pagination -->
-
-<template v-if="tasks_list">
-    <template v-for="(case_title, index) in tasks_list.tasks">
-        <div class="case-core-style mb-4">
-            <h4 style="text-align: center;"><b><i class="fa-solid fa-briefcase fa-sm me-2"></i>[[case_title[0]?.case_id]]-[[index]]</b></h4>
-            <template v-for="task in case_title">
-                <div class="list-group" style="margin-bottom: 20px; border-radius: 15px;">                      
-                    <a :href="`/case/${task.case_id}#task-${task.id}`" class="list-group-item list-group-item-action p-3 case-index-list">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1"><i class="fa-solid fa-clipboard-list fa-sm me-2"></i>[[task.title]]</h5>
-                            <small><i>Changed [[ dayjs.utc(task.last_modif).fromNow() ]] </i></small>
-                        </div>
-
-                        <div class="d-flex w-100 justify-content-between">
-                            <template v-if="task.description">
-                                <template v-if="task.description.length > 300">
-                                    <div class="position-relative">
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline-primary btn-sm float-end me-2"
-                                            @click.stop.prevent="expandedTasks[task.id] = !expandedTasks[task.id];"
-                                            title="See the full description"
-                                        >
-                                            <i :class="['fa-solid', expandedTasks[task.id] ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
-                                        </button>
-
-                                        <!-- Show either truncated or full text -->
-                                        <smart_render
-                                            :code="expandedTasks[task.id] ? task.description : truncateText(task.description)"
-                                            language="markdown"
-                                            :simple="true">
-                                        </smart_render>
-                                    </div>
-                                </template>
-                                <template v-else>
-                                    <smart_render :code="task.description" language="markdown" :simple="true" class="w-100"></smart_render>
-                                </template>
-                            </template>
-                            <template v-else>
-                                <p class="card-text"><i style="font-size: 12px;">No description</i></p>
-                            </template>
-
-                            <small v-if="status_info">
-                                <span :class="'badge rounded-pill text-bg-'+(status_info.status.find(s => s.id === task.status_id)?.bootstrap_style || 'secondary')">
-                                    [[ status_info.status.find(s => s.id === task.status_id)?.name ]]
-                                </span>
-                            </small>
-                        </div>
-                        <div class="tg-row" style="margin-bottom: 7px;">
-                            <tag_badge v-for="t in task.tags" kind="taxonomy" :label="t.name" :color="t.color" :title="t.description || t.name"></tag_badge>
-                        </div>
-                        <div class="d-flex w-100 justify-content-between">
-                            <div v-if="task.users.length">
-                                <div class="d-flex flex-wrap gap-1">
-                                    <user_chip v-for="user in task.users" :key="user.id" :user="user" size="sm"></user_chip>
-                                </div>
-                            </div>
-
-                            <div v-else>
-                                <i>No user assigned</i>
-                            </div>
-                            <small v-if="task.deadline" :title="task.deadline" :class="getDeadlineInfo(task.deadline).cssClass">
-                                <i class="fa-solid fa-calendar-days me-1"></i>
-                                <strong>[[ getDeadlineInfo(task.deadline).text ]]</strong>
-                            </small>
-                            <small v-else style="color: #6c757d;"><i class="fa-solid fa-calendar-xmark me-1"></i>No deadline</small>
-                        </div>
-                        <div class="tg-row" style="margin-top: 5px;">
-                            <tag_badge v-for="g in task.galaxies" kind="galaxy" :label="g.name" :icon-name="g.icon" :title="g.description || g.name"></tag_badge>
-                            <tag_badge v-for="c in task.clusters" kind="cluster" :label="c.tag" :icon-name="c.icon" :title="c.description || c.tag" :meta="c.meta || ''"></tag_badge>
-                        </div>
-
-                        <div class="mt-2 card card-body" v-if="task.subtasks.length && task.nb_open_subtasks > 0" 
-                        style="filter:drop-shadow(1px 1px 2px rgba(181, 181, 181, 0.5))">
-                            <div style="margin-bottom: 3px"><b><u>Subtasks: </u></b></div>
-                            <template v-for="subtask in task.subtasks">
-                                <div v-if="!subtask.completed" style="display: flex;">
-                                    <div class="subtask-tree"></div>
-                                    [[subtask.description]]
-                                </div>
-                            </template>
-                        </div>
-                    </a>
-                </div>
-            </template>
+<div class="modal fade cf-modal" id="modalTaskFilter" tabindex="-1" aria-labelledby="modalTaskFilterLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="modalTaskFilterLabel"><i class="fa-solid fa-tags"></i>Filter tasks by tags</h1>
+                <span class="cf-count" v-if="task_page">[[ task_page.total ]] [[ task_page.total === 1 ? 'task' : 'tasks' ]]</span>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <tag_filter ref="tag_filter_ref" scope="task" @change="on_tag_pick"></tag_filter>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-link cf-reset" :disabled="!picked_count" @click="tag_filter_ref?.clear_all()">
+                    <i class="fa-solid fa-rotate-left"></i>Reset
+                </button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Show results</button>
+            </div>
         </div>
-    </template>
-</template>
-<template v-else>
-    <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
     </div>
-</template>
+</div>
 
-<app-pagination v-if="tasks_list" class="my-3" :current-page="current_page" :nb-pages="tasks_list.nb_pages"
-                    @page="fetchAssignedTask"></app-pagination>
+<div class="cl-toolbar" id="ma-tasks">
+    <label class="cl-per-page" title="Number of tasks shown on each page">
+        <select class="form-select form-select-sm" :value="per_page" @change="set_per_page(+$event.target.value)" aria-label="Tasks per page">
+            <option v-for="n in [10, 25, 50, 100]" :key="n" :value="n">[[ n ]]</option>
+        </select>
+        <span>per page</span>
+    </label>
+    <app-pagination v-if="task_page" :current-page="current_page" :nb-pages="task_page.nb_pages" @page="fetch_tasks"></app-pagination>
+    <div class="cl-view" role="group" aria-label="Display" title="Switch between the table and the cards">
+        <button type="button" :class="{ 'is-active': view === 'table' }" :aria-pressed="view === 'table'" @click="set_view('table')" title="Show as a table">
+            <i class="fa-solid fa-table-list"></i>Table
+        </button>
+        <button type="button" :class="{ 'is-active': view === 'cards' }" :aria-pressed="view === 'cards'" @click="set_view('cards')" title="Show as cards">
+            <i class="fa-solid fa-grip"></i>Cards
+        </button>
+    </div>
+</div>
+
+<div v-if="!loading && task_page && !task_page.tasks.length" class="text-center text-muted py-5">
+    <i class="fa-regular fa-circle-check fa-2x mb-2 d-block"></i>
+    <template v-if="q">No task or case matches "[[ q ]]".</template>
+    <template v-else-if="picked_count">No task with these tags.</template>
+    <template v-else-if="mode === 'ongoing'">Nothing assigned to you. Enjoy the calm.</template>
+    <template v-else>No [[ MODE_LABELS[mode].toLowerCase() ]].</template>
+</div>
+<task_list v-else ref="task_list_ref" :tasks="task_page ? task_page.tasks : []" :loading="loading" :status-info="status_info" :view="view"
+           :sort="sort" :order="order" :group-by-case="group" :current-user-id="{{ current_user.id }}" :can-edit="{{ 'false' if current_user.read_only() else 'true' }}"
+           @sort="sort_by_column" @complete="complete_task"></task_list>
+
+<div v-if="task_page && task_page.tasks.length && task_page.nb_pages > 1" class="cl-toolbar cl-toolbar--bottom">
+    <app-pagination :current-page="current_page" :nb-pages="task_page.nb_pages" @page="fetch_tasks" scroll="#ma-tasks"></app-pagination>
+</div>
 {% endblock %}
 
 {% block script %}
     <script type="module">
         import Pagination from '/static/js/components/pagination.js'
-        const { createApp, ref } = Vue
-        import my_assignment_filter from '/static/js/my_assignment/my_assignment_filter.js'
+        import task_list from '/static/js/components/task_list.js'
+        import tag_filter_cmp from '/static/js/components/misp_tag_filter.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
-        import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
-        import tag_badge from '/static/js/components/tag-badge.js'
-        import smart_render from '/static/js/components/smart-render.js'
-        import user_chip from '/static/js/components/user-chip.js'
-        
+        const { createApp, ref, computed, onMounted } = Vue
+
+        const MODES = ['ongoing', 'overdue', 'finished', 'inactive']
+        const MODE_LABELS = { ongoing: 'Ongoing tasks', overdue: 'Overdue tasks', finished: 'Finished tasks', inactive: 'Rejected / unavailable tasks' }
+        const SORT_OPTIONS = [
+            { value: 'last_modif', label: 'Last modified' },
+            { value: 'deadline', label: 'Deadline' },
+            { value: 'creation_date', label: 'Created' },
+            { value: 'title', label: 'Title' },
+            { value: 'status_id', label: 'Status' },
+            { value: 'case', label: 'Case' },
+        ]
+        // natural first order of a column picked in the table header
+        const ASC_FIRST = new Set(['title', 'deadline', 'case'])
+        const DEFAULT_VIEW = {{ default_view|tojson }}
+
         createApp({
             delimiters: ['[[', ']]'],
-            components: {
-                tag_badge,
-                'app-pagination': Pagination,
-                my_assignment_filter,
-                smart_render,
-                user_chip
-            },
+            components: { 'app-pagination': Pagination, task_list, tag_filter: tag_filter_cmp },
             setup() {
-                const tasks_list = ref(null)
+                // state, read back from the URL (?mode=overdue&sort=deadline&order=asc&q=…&page=2&per_page=50&view=table)
+                const url0 = new URLSearchParams(location.search)
+                const mode = ref(MODES.includes(url0.get('mode')) ? url0.get('mode') : 'ongoing')
+                const sort = ref(SORT_OPTIONS.some(o => o.value === url0.get('sort')) ? url0.get('sort') : 'last_modif')
+                const order = ref(url0.get('order') === 'asc' ? 'asc' : 'desc')
+                const q = ref(url0.get('q') || '')
+                const url_pp = parseInt(url0.get('per_page'))
+                const per_page = ref([10, 25, 50, 100].includes(url_pp) ? url_pp : 25)
+                const view = ref(['table', 'cards'].includes(url0.get('view')) ? url0.get('view') : DEFAULT_VIEW)
+                const group = ref(url0.get('group') === '1')
+                // tag filters, kept in the URL as the picker writes them (?tags=a|!b&clusters=x&y),
+                // e.g. from the top bar search or a shared link
+                const url_tags = { tag: url0.get('tags') || '', galaxy: url0.get('clusters') || '' }
+                const task_list_ref = ref(null)
+
+                // tags picked in the filter modal (on top of the chips above)
+                const tag_filter_ref = ref(null)
+                const picked = ref({ tags: [], clusters: [], tags_any: true, clusters_any: true })
+                const picked_count = computed(() => picked.value.tags.length + picked.value.clusters.length)
+                let restoring = false   // tags coming back from the URL: one fetch at the end
+                function on_tag_pick(p) {
+                    picked.value = { tags: [...p.tags, ...p.custom_tags], clusters: p.clusters,
+                                     tags_any: p.or_and_taxo, clusters_any: p.or_and_galaxies }
+                    if (!restoring) fetch_tasks(1)
+                }
+
+                const task_page = ref(null)
+                const task_stats = ref(null)
                 const status_info = ref(null)
                 const current_page = ref(1)
-                const current_filter = ref("")
-                const task_stats = ref(null)
-                const active_mode = ref({ mode: 'ongoing', label: 'Ongoing tasks' })
-                const filter_ref = ref(null)
+                const loading = ref(true)
+                let last_req = 0
 
-                const expandedTasks = ref({})
+                function sync_url() {
+                    const u = new URL(location.href)
+                    const set = (k, v, def) => (v && v !== def) ? u.searchParams.set(k, v) : u.searchParams.delete(k)
+                    set('mode', mode.value, 'ongoing')
+                    set('sort', sort.value, 'last_modif')
+                    set('order', order.value, 'desc')
+                    set('q', q.value)
+                    set('page', String(current_page.value), '1')
+                    set('per_page', String(per_page.value), '25')
+                    set('view', view.value, DEFAULT_VIEW)
+                    set('group', group.value ? '1' : '')
+                    const raw = tag_filter_ref.value?.serialized?.() || { tag: '', galaxy: '' }
+                    set('tags', raw.tag)
+                    set('clusters', raw.galaxy)
+                    if (u.href !== location.href) history.replaceState(null, '', u)
+                }
 
-                function getDeadlineInfo(deadline) {
-                    const now = dayjs.utc()
-                    const taskDeadline = dayjs.utc(deadline)
-                    const daysUntil = taskDeadline.diff(now, 'day')
-                    
-                    if (daysUntil < 0) {
-                        return {
-                            cssClass: 'text-danger fw-bold',
-                            text: `OVERDUE (${taskDeadline.fromNow()})`
-                        }
-                    }
-                    
-                    if (daysUntil === 0) {
-                        return {
-                            cssClass: 'text-warning fw-bold',
-                            text: 'DUE TODAY'
-                        }
-                    }
-                    
-                    if (daysUntil === 1) {
-                        return {
-                            cssClass: 'text-warning fw-bold',
-                            text: 'Due Tomorrow'
-                        }
-                    }
-                    
-                    if (daysUntil <= 7) {
-                        return {
-                            cssClass: 'text-warning',
-                            text: `Due in ${daysUntil} days`
-                        }
-                    }
-                    
-                    return {
-                        cssClass: 'text-muted',
-                        text: `Due ${taskDeadline.fromNow()}`
+                async function fetch_tasks(page) {
+                    const params = new URLSearchParams({
+                        page, flat: 'true', filter: sort.value, order: order.value, per_page: per_page.value,
+                        status: mode.value === 'finished' ? 'false' : 'true',
+                    })
+                    if (mode.value === 'inactive') params.set('inactive', 'true')
+                    if (mode.value === 'overdue') params.set('overdue', 'true')
+                    if (q.value) params.set('q', q.value)
+                    if (group.value) params.set('group', 'true')
+                    const p = picked.value
+                    if (p.tags.length) params.set('tags', p.tags.join('|'))
+                    if (p.clusters.length) params.set('clusters', p.clusters.join('|'))
+                    if (p.tags_any) params.set('tags_any', 'true')
+                    if (p.clusters_any) params.set('clusters_any', 'true')
+
+                    const req = ++last_req   // a newer request (typing, sorting) wins
+                    loading.value = true
+                    try {
+                        const res = await fetch('/my_assignment/sort_tasks?' + params)
+                        const data = await res.json()
+                        if (req !== last_req) return
+                        task_page.value = { tasks: data.tasks, nb_pages: data.nb_pages, total: data.total }
+                        if (data.stats) task_stats.value = data.stats
+                        current_page.value = page
+                        sync_url()
+                    } finally {
+                        if (req === last_req) loading.value = false
                     }
                 }
 
-                function scrollToTasks() {
-                    const firstTask = document.querySelector('.list-group')
-                    if (firstTask) {
-                        firstTask.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                function set_mode(m) {
+                    if (mode.value === m) return
+                    mode.value = m
+                    fetch_tasks(1)
+                }
+                function set_sort(key) {
+                    sort.value = key
+                    fetch_tasks(1)
+                }
+                function toggle_order() {
+                    order.value = order.value === 'asc' ? 'desc' : 'asc'
+                    fetch_tasks(1)
+                }
+                // table header: same column flips the order, a new one starts on its natural order
+                function sort_by_column(key) {
+                    if (sort.value === key) order.value = order.value === 'asc' ? 'desc' : 'asc'
+                    else { sort.value = key; order.value = ASC_FIRST.has(key) ? 'asc' : 'desc' }
+                    fetch_tasks(1)
+                }
+                function set_per_page(n) {
+                    per_page.value = n
+                    fetch_tasks(1)
+                }
+                // tasks of a case together (the server sorts by case first, then by the chosen sort)
+                function set_group(on) {
+                    group.value = on
+                    fetch_tasks(1)
+                }
+                function set_view(v) {
+                    view.value = v
+                    sync_url()
+                }
+                function show_due_soon() {
+                    mode.value = 'ongoing'; sort.value = 'deadline'; order.value = 'asc'
+                    fetch_tasks(1)
+                }
+                function clear_filters() {
+                    mode.value = 'ongoing'
+                    q.value = ''
+                    tag_filter_ref.value?.clear_all()
+                    const box = document.querySelector('.ctx-search input')
+                    if (box) box.value = ''
+                    fetch_tasks(1)
+                }
+
+                // debounced title search
+                let search_timer = null
+                function onInput(e) {
+                    clearTimeout(search_timer)
+                    search_timer = setTimeout(() => {
+                        q.value = e.target.value.trim()
+                        fetch_tasks(1)
+                    }, 300)
+                }
+
+                async function complete_task(task, reopen) {
+                    const action = reopen ? 'reopen' : 'complete'
+                    if (!confirm(`Are you sure you want to ${action} this task?`)) return
+                    const res = await fetch('/case/complete_task/' + task.id)
+                    if (res.status === 200) {
+                        // the task leaves this view (ongoing ↔ finished)
+                        const list = task_page.value.tasks
+                        const i = list.indexOf(task)
+                        if (i > -1) list.splice(i, 1)
+                        task_page.value.total = Math.max(0, (task_page.value.total || 1) - 1)
                     }
+                    display_toast(res)
                 }
 
-                async function fetchAssignedTask(page) {
-                    const filter = current_filter.value
-                    const mode = active_mode.value?.mode || 'ongoing'
-                    const params = new URLSearchParams()
-                    params.set('page', page)
-                    params.set('status', mode === 'finished' ? 'false' : 'true')
-                    if (mode === 'inactive') params.set('inactive', 'true')
-                    if (mode === 'overdue') params.set('overdue', 'true')
-                    if (filter) params.set('filter', filter)
-
-                    current_page.value = page
-                    tasks_list.value = null
-
-                    const res = await fetch(`/my_assignment/sort_tasks?${params.toString()}`)
-                    const data = await res.json()
-
-                    tasks_list.value = data
-                    task_stats.value = data.stats
-                }
-
-                function activateOverdueFilter() {
-                    if (filter_ref.value) {
-                        filter_ref.value.activate_overdue()
-                    }
-                }
-
-                async function fetchStatus() {
+                async function fetch_status() {
                     const res = await fetch('/case/get_status')
                     status_info.value = await res.json()
                 }
 
-                function emit_result(tasks) {
-                    tasks_list.value.nb_pages = tasks.nb_pages
-                    tasks_list.value.tasks = tasks.tasks
-                    task_stats.value = tasks.stats
-                    current_page.value = 1
-                }
-                
+                const start_page = Math.max(1, parseInt(url0.get('page')) || 1)
+                onMounted(async () => {
+                    const box = document.querySelector('.ctx-search input')
+                    if (box && q.value) box.value = q.value
+                    if (url_tags.tag || url_tags.galaxy) {
+                        restoring = true
+                        await tag_filter_ref.value?.restore(url_tags)
+                        restoring = false
+                        fetch_tasks(start_page)
+                    }
+                })
 
-                fetchAssignedTask(1)
-                fetchStatus()
-
+                // with tags in the URL the picker fetches once it has resolved them (onMounted)
+                if (!url_tags.tag && !url_tags.galaxy) fetch_tasks(start_page)
+                fetch_status()
 
                 return {
-                    tasks_list,
-                    status_info,
-                    task_stats,
-                    dayjs,
-                    fetchAssignedTask,
-                    current_page,
-                    emit_result,
-                    current_filter,
-                    active_mode,
-                    filter_ref,
-                    activateOverdueFilter,
-                    message_list,
-                    getTextColor,
-                    truncateText,
-                    mapIcon,
-                    expandedTasks,
-                    getDeadlineInfo,
-                    scrollToTasks
+                    message_list, MODE_LABELS, SORT_OPTIONS,
+                    mode, sort, order, q, per_page, view, group, set_group, task_list_ref, tag_filter_ref, picked_count, on_tag_pick,
+                    task_page, task_stats, status_info, current_page, loading,
+                    fetch_tasks, set_mode, set_sort, toggle_order, sort_by_column, set_per_page, set_view,
+                    show_due_soon, clear_filters, onInput, complete_task,
                 }
             }
         }).mount('#main-container')
-
     </script>
 {% endblock %}
