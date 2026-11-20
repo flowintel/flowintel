@@ -201,7 +201,12 @@
     --pvt-edge-stroke: #9aa5b8;
     --pvt-edge-selected-stroke: #2f6fb0;
     --pvt-edge-highlighted-stroke: #2f6fb0;
-    --pvt-graph-grid-color: transparent;          /* no grid: the logo is the only background */
+    --pvt-graph-grid-color: transparent;
+    /* link labels: readable chips */
+    --pvt-edge-label-bg: var(--bs-body-bg);
+    --pvt-edge-label-color: var(--bs-body-color);
+    --pvt-edge-label-font-size: 13px;
+    --pvt-edge-label-font-family: inherit;          /* no grid: the logo is the only background */
 }
 
 /* sidebar header of an event: icon in a coloured square, kind, title */
