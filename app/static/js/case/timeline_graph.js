@@ -532,7 +532,9 @@ export default {
             const options = {
                 isDirected: true,
                 i18n: { locale: 'en', messages: messages_for_events() },
-                layout: { type: 'structured', gap: 48, trayPosition: 'bottom' },
+                // force layout: opening a group makes room, the other cards are pushed away
+                layout: { type: 'force' },
+                simulation: { fitViewOnExpandCollapse: true },
                 UI: {
                     mode: 'full',
                     theme: dark ? 'dark' : 'light',
@@ -550,7 +552,17 @@ export default {
                             // Nested groups: a rule can fold the groups made by the rules before it.
                             // 1. the events of a day grouped by kind (MISP objects, MISP attributes, files, events)
                             { kind: 'custom', id: 'day-kind', label: 'Inside a day: group by kind', description: 'The events of a day grouped by kind',
-                              minSize: 2, partition: (view) => new Map(view.nodes.filter(n => !n.isGroup && n.getData().day).map(n => [n.id, n.getData().day + '|' + n.getData().kind])) },
+                              // only for the days holding several kinds: a one-kind day stays a plain day group
+                              minSize: 2, partition: (view) => {
+                                  const kinds_of_day = new Map()
+                                  for (const n of view.nodes) if (!n.isGroup && n.getData().day) {
+                                      const d = n.getData().day
+                                      if (!kinds_of_day.has(d)) kinds_of_day.set(d, new Set())
+                                      kinds_of_day.get(d).add(n.getData().kind)
+                                  }
+                                  return new Map(view.nodes.filter(n => !n.isGroup && n.getData().day && kinds_of_day.get(n.getData().day).size > 1)
+                                      .map(n => [n.id, n.getData().day + '|' + n.getData().kind]))
+                              } },
                             // 2. one group per day, holding the kind groups above and the events left alone
                             { kind: 'custom', id: 'by-day', label: 'Group by day', description: 'One group per day',
                               minSize: 2, partition: (view) => new Map(view.nodes.map(n => [n.id, node_day(n)]).filter(([, d]) => d)) },
