@@ -89,6 +89,11 @@
   min-width: 0;
 }
 
+/* no icon: title and description stacked in one column */
+.ctx-header-heading--no-icon {
+  grid-template-columns: 1fr;
+}
+
 .ctx-header-icon {
   grid-row: span 2;
   display: inline-flex;
