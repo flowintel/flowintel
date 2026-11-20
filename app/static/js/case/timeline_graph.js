@@ -575,6 +575,52 @@ export default {
             }
         }
 
+        // Two open groups (not one inside the other) never share space: their areas are pushed
+        // apart, half the overlap each, along the axis where they overlap the least.
+        const ZONE_PAD = 30
+        function zone_nodes(group, drawn, out) {
+            for (const p of group.parts || []) {
+                if (drawn.has(p)) out.add(p)
+                if (p.isGroup && p.info && p.info.open) zone_nodes(p, drawn, out)
+            }
+            return out
+        }
+        function separate_open_groups() {
+            const simplify = graph && graph.simplify
+            if (dragging || !simplify || typeof simplify.getOpenGroupNodes !== 'function') return
+            const open = simplify.getOpenGroupNodes()
+            if (open.length < 2) return
+            const drawn = new Set(graph.getCanvasNodes())
+            const zones = open.map(g => {
+                const nodes = [...zone_nodes(g, drawn, new Set())].filter(n => Number.isFinite(n.x) && Number.isFinite(n.y))
+                if (!nodes.length) return null
+                return {
+                    g, nodes, set: new Set(nodes),
+                    x1: Math.min(...nodes.map(n => n.x)) - HALF_W - ZONE_PAD, x2: Math.max(...nodes.map(n => n.x)) + HALF_W + ZONE_PAD,
+                    y1: Math.min(...nodes.map(n => n.y)) - 80 - ZONE_PAD, y2: Math.max(...nodes.map(n => n.y)) + 80 + ZONE_PAD,
+                }
+            }).filter(Boolean)
+            for (let i = 0; i < zones.length; i++) for (let j = i + 1; j < zones.length; j++) {
+                const a = zones[i], b = zones[j]
+                // nested (one holds the other): not a clash
+                if ([...b.set].every(n => a.set.has(n)) || [...a.set].every(n => b.set.has(n))) continue
+                const ox = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), oy = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1)
+                if (ox <= 0 || oy <= 0) continue
+                const along_x = ox <= oy
+                const sign = along_x ? ((a.x1 + a.x2) <= (b.x1 + b.x2) ? -1 : 1) : ((a.y1 + a.y2) <= (b.y1 + b.y2) ? -1 : 1)
+                const half = (along_x ? ox : oy) / 2 + 1
+                const move = (zone, k) => {
+                    for (const n of zone.nodes) {
+                        if (b.set.has(n) && a.set.has(n)) continue        // shared: leave it
+                        if (along_x) { n.x += k * half; if (n.fx != null) n.fx += k * half }
+                        else { n.y += k * half; if (n.fy != null) n.fy += k * half }
+                    }
+                }
+                move(a, sign)
+                move(b, -sign)
+            }
+        }
+
         // Centre the view on today's day, or on the closest day when nothing happened today
         function focus_today() {
             if (!graph || typeof graph.focusElement !== 'function') return
@@ -782,7 +828,7 @@ export default {
                     },
                 },
                 callbacks: {
-                    onSimulationTick: layout_timeline,
+                    onSimulationTick: () => { layout_timeline(); separate_open_groups() },
                     // a card moved by hand is left to the user from the first move, and the line
                     // layout pauses while dragging (it would pull the card back on every tick)
                     onNodeDragging: (evt, node) => { dragging = true; if (node) moved_by_hand.add(String(node.id)) },
