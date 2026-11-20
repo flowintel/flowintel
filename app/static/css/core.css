@@ -1263,6 +1263,8 @@ a.case-content:hover {
   width: 30px;
   height: 22px;
   vertical-align: middle;
+}
+
 /* A task reached from another panel (Calendar) flashes once */
 .task-flash {
   border-radius: 10px;
