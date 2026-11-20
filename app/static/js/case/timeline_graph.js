@@ -374,6 +374,30 @@ export default {
             return card
         }
 
+        // Pivotick's own text speaks of "nodes" and "edges": here they are events and links
+        // (rail, editors, right-click menus, sidebar, modals). Built once from its English catalogue.
+        let event_messages = null
+        function to_events(text) {
+            if (typeof text !== 'string') return text
+            return text.replace(/(?<!\{)\b(node|edge)(s?)\b(?!\})/gi, (m, word, plural) => {
+                const to = word.toLowerCase() === 'node' ? 'event' : 'link'
+                const out = to + plural.toLowerCase()
+                if (m === m.toUpperCase()) return out.toUpperCase()
+                return m[0] === m[0].toUpperCase() ? out[0].toUpperCase() + out.slice(1) : out
+            })
+        }
+        function messages_for_events() {
+            if (event_messages) return event_messages
+            const en = (window.Pivotick && window.Pivotick.messagesEn) || {}
+            event_messages = {}
+            for (const [key, value] of Object.entries(en)) {
+                if (typeof value === 'string') event_messages[key] = to_events(value)
+                else if (typeof value === 'function') event_messages[key] = (p, i) => to_events(value(p, i))
+                else if (value && typeof value === 'object') event_messages[key] = Object.fromEntries(Object.entries(value).map(([f, t]) => [f, to_events(t)]))
+            }
+            return event_messages
+        }
+
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
             if (!container) return
@@ -443,6 +467,7 @@ export default {
 
             const options = {
                 isDirected: true,
+                i18n: { locale: 'en', messages: messages_for_events() },
                 layout: { type: 'structured', gap: 48, trayPosition: 'bottom' },
                 UI: {
                     mode: 'full',
