@@ -19,6 +19,11 @@ export default {
         // Chronology links tie each event to the next one with the time between them.
         // They are not relations, so they are off unless asked for.
         const show_chronology = ref(false)
+        // Breadcrumb mode: one level at a time (days → kinds of a day → events), with a path above
+        let saved_drill = false
+        try { saved_drill = localStorage.getItem('tlg-drill') === '1' } catch (e) {}
+        const drill_mode = ref(saved_drill)
+        const drill_path = ref([])        // [{ day }, { kind }]
         let graph = null
 
         async function fetch_graph_data() {
@@ -466,7 +471,7 @@ export default {
             }
             if (links.inside) rel(links.inside, 'fa-solid fa-diagram-project', links.inside + ' relation' + (links.inside > 1 ? 's' : '') + ' between these events (open the group to see them)')
             if (links.outside) rel(links.outside, 'fa-solid fa-link', links.outside + ' relation' + (links.outside > 1 ? 's' : '') + ' with other events')
-            foot.appendChild(el('span', 'tlg-group-hint', 'Double-click to open'))
+            foot.appendChild(el('span', 'tlg-group-hint', drill_mode.value ? 'Click to open' : 'Double-click to open'))
             card.appendChild(foot)
             return card
         }
@@ -635,6 +640,109 @@ export default {
             if (node) graph.focusElement(node)
         }
 
+        // ---- breadcrumb mode ------------------------------------------------------------------
+        // A folder is a fake group (a day, or a kind inside a day) drawn with the group card.
+        function folder_card(node) {
+            const d = node.getData()
+            const members = d.members.map(m => ({ id: m.id, getData: () => m.data }))
+            return group_card({ rule: d.level === 'day' ? 'by-day' : 'day-kind', members, typeCounts: d.typeCounts })
+        }
+
+        function drill_view(nodes, edges, by_day) {
+            const path = drill_path.value
+            const events = nodes.filter(n => n.data.event)
+            const out = [], rep = new Map()
+            const add_folder = (id, level, day, members) => {
+                const typeCounts = {}
+                for (const m of members) typeCounts[m.data.kind] = (typeCounts[m.data.kind] || 0) + 1
+                out.push({ id, data: { folder: true, level, day, kind: 'folder', fkind: members[0].data.kind, label: id,
+                                       members: members.map(m => ({ id: m.id, data: m.data })), typeCounts } })
+                for (const m of members) rep.set(m.id, id)
+            }
+            const add_node = (n) => { out.push(n); rep.set(n.id, n.id) }
+            if (!path.length) {
+                const days = new Map()
+                for (const n of events) {
+                    if (!n.data.day) { add_node(n); continue }
+                    if (!days.has(n.data.day)) days.set(n.data.day, [])
+                    days.get(n.data.day).push(n)
+                }
+                for (const [day, members] of days) add_folder('day:' + day, 'day', day, members)
+                const today = nodes.find(n => n.id === TODAY_ID)
+                if (today) add_node(today)
+            } else {
+                const day = path[0].day
+                const in_day = events.filter(n => n.data.day === day)
+                const kinds = new Map()
+                for (const n of in_day) {
+                    if (!kinds.has(n.data.kind)) kinds.set(n.data.kind, [])
+                    kinds.get(n.data.kind).push(n)
+                }
+                if (path.length === 1 && kinds.size > 1) {
+                    for (const [kind, members] of kinds) {
+                        if (members.length === 1) add_node(members[0])          // a lone event: no folder for it
+                        else add_folder('kind:' + day + ':' + kind, 'kind', day, members)
+                    }
+                } else {
+                    const kind = path[1] ? path[1].kind : null
+                    for (const n of in_day) if (!kind || n.data.kind === kind) add_node(n)
+                }
+            }
+            // relations between what is shown; several between the same two become one "N relations"
+            const agg = new Map()
+            for (const e of edges) {
+                if (e.data.link_type === 'timeline') continue
+                const a = rep.get(e.from), b = rep.get(e.to)
+                if (!a || !b || a === b) continue
+                const key = a + '|' + b
+                if (!agg.has(key)) agg.set(key, { list: [], a, b })
+                agg.get(key).list.push(e)
+            }
+            const out_edges = []
+            for (const { list, a, b } of agg.values()) {
+                if (list.length === 1 && !a.includes(':') && !b.includes(':')) { out_edges.push(list[0]); continue }
+                out_edges.push({ id: 'agg-' + a + '-' + b, from: a, to: b,
+                                 data: { label: list.length > 1 ? list.length + ' relations' : (list[0].data.label || ''), link_type: list[0].data.link_type, computed: true } })
+            }
+            // days in time order
+            if (!path.length) {
+                const order = by_day.map(b => 'day:' + b.day)
+                if (out.some(n => n.id === TODAY_ID)) order.push(TODAY_ID)
+                for (let i = 1; i < order.length; i++) {
+                    const prev = order[i - 1], cur = order[i]
+                    const t1 = Date.parse(prev.slice(4)), t2 = cur === TODAY_ID ? Date.now() : Date.parse(cur.slice(4))
+                    out_edges.push({ id: 'next-' + prev + '-' + cur, from: prev, to: cur,
+                                     data: { label: '⏱ ' + elapsed(t2 - t1), link_type: 'timeline', computed: true } })
+                }
+            }
+            return { nodes: out, edges: out_edges }
+        }
+
+        function open_folder(node) {
+            const d = node && node.getData ? node.getData() : null
+            if (!d || !d.folder) return false
+            drill_path.value = d.level === 'day' ? [{ day: d.day }] : [drill_path.value[0], { kind: d.fkind }]
+            moved_by_hand.clear()
+            render_graph()
+            return true
+        }
+        function drill_to(depth) {
+            drill_path.value = drill_path.value.slice(0, depth)
+            moved_by_hand.clear()
+            render_graph()
+        }
+        function toggle_drill() {
+            drill_mode.value = !drill_mode.value
+            try { localStorage.setItem('tlg-drill', drill_mode.value ? '1' : '0') } catch (e) {}
+            drill_path.value = []
+            moved_by_hand.clear()
+            render_graph()
+        }
+        function crumb_label(c) {
+            if (c.day) return window.dayjs ? dayjs(c.day).format('ddd D MMM YYYY') : c.day
+            return (EVENT_KINDS[c.kind] || EVENT_KINDS.event).label + 's'
+        }
+
         // selecting something opens the details panel on the side
         function show_sidebar() {
             try { graph && graph.UIManager && graph.UIManager.sidebar && graph.UIManager.sidebar.showSidebar() } catch (e) {}
@@ -725,7 +833,11 @@ export default {
                 })
             }
 
+            let view_nodes = nodes, view_edges = edges
+            if (drill_mode.value) ({ nodes: view_nodes, edges: view_edges } = drill_view(nodes, edges, by_day))
+
             const nodeStyleMap = {}
+            nodeStyleMap.folder = { shape: 'none', color: '#1f3763', text: '', layoutSize: 150, html: folder_card }
             for (const [key, kind] of Object.entries(EVENT_KINDS)) {
                 nodeStyleMap[key] = { shape: 'none', color: kind.color, text: '', layoutSize: 140, html: build_card }
             }
@@ -758,7 +870,7 @@ export default {
                     neighborsPanel: { enabled: true },
                     // simplified from the start: one group per day (and per kind, optional)
                     simplify: {
-                        enabled: true,
+                        enabled: !drill_mode.value,           // breadcrumb mode shows one level, no groups
                         typeOf: (node) => node.getData().kind,
                         colorOf: (node) => (EVENT_KINDS[node.getData().kind] || EVENT_KINDS.event).color,
                         typeLabel: (type, count) => count + ' × ' + ((EVENT_KINDS[type] || {}).label || type),
@@ -837,6 +949,7 @@ export default {
                     onBeforeNodeEditCommit: persist_node_edit,
                     onBeforeEdgeEditCommit: persist_edge_edit,
                     onBeforeDelete: persist_delete,
+                    onNodeClick: (evt, node) => { if (drill_mode.value) open_folder(node) },
                     onNodeSelect: (node) => {
                         const ev = graph_events.value.find(e => String(e.id) === String(node.id))
                         if (ev) selected_node.value = ev
@@ -847,7 +960,7 @@ export default {
                 }
             }
 
-            graph = new Pivotick(container, { nodes: nodes, edges: edges }, options)
+            graph = new Pivotick(container, { nodes: view_nodes, edges: view_edges }, options)
             container.__tlgGraph = graph          // handy from the console
             setTimeout(focus_today, 1200)
             watch_buttons(container)
@@ -883,6 +996,11 @@ export default {
             show_help,
             show_chronology,
             toggle_chronology,
+            drill_mode,
+            drill_path,
+            drill_to,
+            toggle_drill,
+            crumb_label,
             fetch_graph_data
         }
     },
@@ -892,7 +1010,11 @@ export default {
             <span class="tlg-toolbar-hint">
                 <i class="fa-solid fa-hand-pointer"></i><b>Create</b> (left rail): click the canvas to add an event · click a card for its details · double-click a group to open it
             </span>
-            <button class="btn btn-sm ms-auto" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
+            <button class="btn btn-sm ms-auto" :class="drill_mode ? 'btn-primary' : 'btn-outline-primary'" @click="toggle_drill()" :aria-pressed="drill_mode"
+                    title="Breadcrumb mode: one level at a time (days, then the kinds of a day, then its events)">
+                <i class="fa-solid fa-folder-tree me-1"></i>Breadcrumb mode
+            </button>
+            <button class="btn btn-sm" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
                     @click="toggle_chronology()" :aria-pressed="show_chronology"
                     title="Link each event to the next one with the time between them">
                 <i class="fa-solid fa-clock-rotate-left me-1"></i>Time between events
@@ -945,6 +1067,18 @@ export default {
             <i class="fa-solid fa-gauge-high"></i>
             <span>This case has <b>[[ graph_total.toLocaleString() ]]</b> events: the graph shows the <b>[[ graph_max.toLocaleString() ]]</b> most recent ones to stay fast. The Timeline tab lists them all.</span>
         </div>
+
+        <nav v-if="drill_mode" class="tlg-crumbs" aria-label="Where you are in the timeline">
+            <button type="button" class="tlg-crumb" :class="{ 'is-current': !drill_path.length }" @click="drill_to(0)" :disabled="!drill_path.length">
+                <i class="fa-solid fa-timeline"></i>Timeline
+            </button>
+            <template v-for="(c, i) in drill_path" :key="i">
+                <i class="fa-solid fa-chevron-right tlg-crumb-sep"></i>
+                <button type="button" class="tlg-crumb" :class="{ 'is-current': i === drill_path.length - 1 }" @click="drill_to(i + 1)" :disabled="i === drill_path.length - 1">
+                    <i :class="c.day ? 'fa-solid fa-calendar-day' : 'fa-solid fa-shapes'"></i>[[ crumb_label(c) ]]
+                </button>
+            </template>
+        </nav>
 
         <!-- Graph -->
         <div id="timeline-graph-container" class="tlg-container"></div>
