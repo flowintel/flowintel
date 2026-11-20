@@ -1,0 +1,61 @@
+/* connectors.css — linked connectors list (case/CaseConnectors.js) + connector_picker chips */
+
+/* chip: icon + instance name (same look as the user chips) */
+.cchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 3px 10px 3px 4px; border: 1px solid var(--bs-border-color);
+    border-radius: 999px; background: var(--bs-body-bg); font-size: .82rem; font-weight: 600; line-height: 1.2; }
+.cchip--sm { padding: 1px 4px 1px 3px; font-size: .78rem; }
+.cchip-icon { flex: none; width: 20px; height: 20px; border-radius: 50%; object-fit: contain; background: var(--bs-tertiary-bg);
+    display: inline-flex; align-items: center; justify-content: center; font-size: .65rem; color: var(--bs-secondary-color); }
+.cchip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cchip-x { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%;
+    background: transparent; color: var(--bs-secondary-color); font-size: .7rem; }
+.cchip-x:hover { background: var(--bs-tertiary-bg); color: var(--bs-danger); }
+
+/* picker: reuses .upick from core.css, adds the type groups and icons */
+.cpick { width: 100%; }
+.cpick-group { padding: .45rem .5rem .2rem; color: var(--bs-secondary-color); font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.cpick-icon, .cconn-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px;
+    background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); overflow: hidden; }
+.cpick-icon img, .cconn-icon img { max-width: 24px; max-height: 24px; object-fit: contain; }
+
+/* list */
+.cconn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cconn-count { color: var(--bs-secondary-color); font-size: .85rem; }
+.cconn-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cconn-row { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: center; gap: 12px;
+    padding: 10px 12px; border: 1px solid var(--bs-border-color); border-radius: 12px; background: var(--bs-body-bg); transition: border-color .15s; }
+.cconn-row:hover { border-color: var(--fi-accent, #1f3763); }
+.cconn-main { display: flex; flex-direction: column; min-width: 0; }
+.cconn-name { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.cconn-url { overflow: hidden; color: var(--bs-secondary-color); font-size: .78rem; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.cconn-url:hover { color: var(--fi-accent, #1f3763); text-decoration: underline; }
+.cconn-ident { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cconn-id-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 10px; border-radius: 999px; background: var(--bs-tertiary-bg);
+    font-family: var(--bs-font-monospace); font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cconn-id-chip i { color: var(--bs-secondary-color); }
+.cconn-id-none { color: var(--bs-secondary-color); font-size: .8rem; font-style: italic; }
+.cconn-ext { color: var(--bs-secondary-color); }
+.cconn-ext:hover { color: var(--fi-accent, #1f3763); }
+.cconn-actions { display: flex; gap: 4px; }
+.cconn-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 16px; border: 1px dashed var(--bs-border-color);
+    border-radius: 12px; color: var(--bs-secondary-color); text-align: center; }
+.cconn-empty > i { font-size: 1.6rem; opacity: .5; }
+.cconn-empty p { margin: 0; }
+
+/* add form */
+.cconn-label { display: block; margin: 0 0 6px; font-size: .82rem; font-weight: 600; }
+.cconn-label small { color: var(--bs-secondary-color); font-weight: 400; }
+.cconn-idents { margin-top: 16px; }
+.cconn-ident-row { display: grid; grid-template-columns: minmax(140px, 220px) 1fr; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cconn-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--bs-border-color-translucent); }
+
+@media (max-width: 640px) {
+    .cconn-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .cconn-ident { grid-column: 2 / -1; grid-row: 2; }
+    .cconn-ident-row { grid-template-columns: 1fr; }
+}
+
+/* modal */
+.cconn-modal { border-radius: 16px; }
+.cconn-modal .modal-header { align-items: flex-start; border-bottom-color: var(--bs-border-color-translucent); }
+.cconn-modal .modal-body { padding: 16px 20px 20px; }

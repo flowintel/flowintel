@@ -8,17 +8,20 @@
 
 <!-- Connectors Modal -->
 <div class="modal fade" id="connectorsModal" tabindex="-1" aria-labelledby="connectorsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content cconn-modal">
       <div class="modal-header">
-        <h5 class="modal-title" id="connectorsModalLabel"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div>
+          <h5 class="modal-title" id="connectorsModalLabel"><i class="fa-solid fa-plug me-2"></i>Connectors</h5>
+          <small class="text-body-secondary">External instances (MISP, AIL…) linked to this case</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" title="Close"></button>
       </div>
       <div class="modal-body">
         <div v-if="cases_info">
           <caseconnectors 
               :case_task_connectors_list="case_connectors_list"
-              :all_connectors_list="all_connectors_list"
+              :all_connectors_list="all_connectors_list" :icons="connector_icons"
               :modules="modules"
               :is_case="true"
               :object_id="cases_info.case.id"
@@ -39,7 +42,7 @@
     <div v-if="cases_info">
       <caseconnectors 
           :case_task_connectors_list="case_connectors_list"
-          :all_connectors_list="all_connectors_list"
+          :all_connectors_list="all_connectors_list" :icons="connector_icons"
           :modules="modules"
           :is_case="true"
           :object_id="cases_info.case.id"

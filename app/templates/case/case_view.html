@@ -7,6 +7,7 @@
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/connectors.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
@@ -869,7 +870,7 @@
             <div v-else-if="cases_info">
                 <caseconnectors 
                     :case_task_connectors_list="case_connectors_list"
-                    :all_connectors_list="all_connectors_list"
+                    :all_connectors_list="all_connectors_list" :icons="connector_icons"
                     :modules="modules"
                     :is_case="true"
                     :object_id="cases_info.case.id"
@@ -2637,6 +2638,7 @@ async function autosave_case_note(){
                     fetch_case_connectors,
                     fetch_misp_automation_status,
                     openConnectors,
+                    connector_icons,
                     fetch_case_files,
                     on_connector_note_change,
                     get_all_users_case,
