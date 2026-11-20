@@ -222,3 +222,10 @@
 .settings-tag-preview .stp-line .stp-chip:nth-child(3n) { background: #0088cc; }
 .settings-tag-preview .stp-group { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; border-left: 2px solid var(--fi-border, #dee2e6); }
 .settings-tag-preview .stp-head { display: block; width: 40%; height: 5px; border-radius: 3px; background: var(--fi-border, #dee2e6); }
+
+/* "Top bar" setting previews: a bar over lines of page; "scroll" shows the bar leaving */
+.settings-header-preview { position: relative; display: flex; flex-direction: column; gap: 5px; overflow: hidden; }
+.shp-bar { flex: none; height: 10px; border-radius: 3px; background: var(--fi-accent, #1f3763); opacity: .8; }
+.shp-page { display: flex; flex-direction: column; gap: 5px; }
+.shp-line { height: 5px; border-radius: 3px; background: var(--bs-border-color); }
+.settings-header-preview--scroll .shp-bar { margin-top: -5px; opacity: .35; }

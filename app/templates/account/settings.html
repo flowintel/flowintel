@@ -52,6 +52,21 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="settings-subsection">
+            <h3 class="settings-subsection-title"><i class="fa-solid fa-thumbtack fa-sm me-2"></i>Top bar</h3>
+            <p class="settings-section-text">Whether the top bar (search, notifications, account) stays visible when you scroll down a page.</p>
+            <div class="settings-theme-grid" role="radiogroup" aria-label="Top bar when scrolling">
+                {% for value, label, icon, hint in [('fixed', 'Stays at the top', 'fa-thumbtack', 'Always visible: search and notifications at hand (default)'), ('scroll', 'Scrolls away', 'fa-arrows-up-down', 'Leaves the page when you scroll down: more room for the content')] %}
+                <button type="button" class="settings-theme-option settings-view-option{% if settings.sticky_header == value %} active{% endif %}" data-setting="sticky_header" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.sticky_header == value else 'false' }}" title="{{ hint }}">
+                    <span class="settings-view-preview settings-header-preview settings-header-preview--{{ value }}" aria-hidden="true">
+                        <span class="shp-bar"></span>
+                        <span class="shp-page">{% for w in [80, 60, 72, 50, 66] %}<span class="shp-line" style="width:{{ w }}%"></span>{% endfor %}</span>
+                    </span>
+                    <span class="settings-theme-label"><i class="fa-solid {{ icon }} fa-fw me-1"></i>{{ label }} <small class="settings-font-hint">{{ hint }}</small></span>
+                </button>
+                {% endfor %}
+            </div>
+        </div>
     </section>
 
     <section class="case-core-style settings-section">

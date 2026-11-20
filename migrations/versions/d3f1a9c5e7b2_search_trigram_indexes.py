@@ -36,15 +36,32 @@ def upgrade():
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return
-    try:
-        op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
-    except Exception as e:  # no right to create extensions: the search still works, only slower
-        print(f"pg_trgm not available, search indexes skipped: {e}")
-        return
-    tables = set(sa.inspect(bind).get_table_names())
+    installed = bind.execute(sa.text("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'")).first()
+    if not installed:
+        available = bind.execute(sa.text("SELECT 1 FROM pg_available_extensions WHERE name = 'pg_trgm'")).first()
+        if not available:
+            print("pg_trgm not available on this server, search indexes skipped")
+            return
+        # in a savepoint: a refused CREATE EXTENSION (no right) must not abort the whole migration transaction
+        try:
+            with bind.begin_nested():
+                bind.execute(sa.text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        except Exception as e:  # the search still works, only slower
+            print(f"pg_trgm could not be created, search indexes skipped: {e}")
+            return
+    inspector = sa.inspect(bind)
+    tables = set(inspector.get_table_names())
     for name, table, column in INDEXES:
-        if table in tables:
-            op.execute(f'CREATE INDEX IF NOT EXISTS {name} ON "{table}" USING gin ({column} gin_trgm_ops)')
+        if table not in tables:
+            print(f"Table '{table}' does not exist, index '{name}' skipped")
+            continue
+        if column not in [c["name"] for c in inspector.get_columns(table)]:
+            print(f"Column '{table}.{column}' does not exist, index '{name}' skipped")
+            continue
+        if name in [i["name"] for i in inspector.get_indexes(table)]:
+            print(f"Index '{name}' already exists")
+            continue
+        op.execute(f'CREATE INDEX IF NOT EXISTS {name} ON "{table}" USING gin ({column} gin_trgm_ops)')
 
 
 def downgrade():

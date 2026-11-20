@@ -704,6 +704,7 @@ class UserSettings(db.Model):
         "font": ("rubik", "system", "readable"),
         "case_view": ("table", "cards"),
         "tag_view": ("compact", "context"),
+        "sticky_header": ("scroll", "fixed"),
     }
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -714,6 +715,8 @@ class UserSettings(db.Model):
     case_view = db.Column(db.String(16), nullable=False, default="cards", server_default="cards")
     # how the tags of a case are shown in the case view: "compact" chips or MISP-like "context"
     tag_view = db.Column(db.String(16), nullable=False, default="compact", server_default="compact")
+    # top bar: "scroll" goes away with the page, "fixed" stays at the top while scrolling
+    sticky_header = db.Column(db.String(16), nullable=False, default="fixed", server_default="fixed")
 
     def to_json(self):
         return {
@@ -722,6 +725,7 @@ class UserSettings(db.Model):
             "font": self.font,
             "case_view": self.case_view,
             "tag_view": self.tag_view,
+            "sticky_header": self.sticky_header,
         }
 
 

@@ -3,7 +3,7 @@ from ..db_class.db import UserSettings
 from ..extensions import db
 from ..utils.themes import THEMES
 
-DEFAULTS = {"theme": "auto", "font": "rubik", "case_view": "cards", "tag_view": "compact"}
+DEFAULTS = {"theme": "auto", "font": "rubik", "case_view": "cards", "tag_view": "compact", "sticky_header": "fixed"}
 
 
 def get_settings(user):
@@ -34,6 +34,12 @@ def get_tag_view(user):
     """Default look of the tags in the case view: "compact" or "context"."""
     view = get_settings(user).tag_view
     return view if view in UserSettings.CHOICES["tag_view"] else DEFAULTS["tag_view"]
+
+
+def get_sticky_header(user):
+    """Top bar behaviour: "scroll" (goes away with the page) or "fixed" (stays at the top)."""
+    value = get_settings(user).sticky_header
+    return value if value in UserSettings.CHOICES["sticky_header"] else DEFAULTS["sticky_header"]
 
 
 def update_settings(user, changes):

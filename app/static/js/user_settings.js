@@ -36,6 +36,10 @@
         tag_view(value) {
             root.setAttribute('data-tag-view', value)
         },
+        // top bar fixed or not while scrolling (css: [data-sticky-header] in core.css)
+        sticky_header(value) {
+            root.setAttribute('data-sticky-header', value)
+        },
     }
 
     const current = {
@@ -45,6 +49,7 @@
         case_view: () => root.getAttribute('data-case-view')
             || document.querySelector('[data-setting="case_view"].active')?.getAttribute('data-value') || 'cards',
         tag_view: () => root.getAttribute('data-tag-view') || 'compact',
+        sticky_header: () => root.getAttribute('data-sticky-header') || 'fixed',
     }
 
     function markSelected() {

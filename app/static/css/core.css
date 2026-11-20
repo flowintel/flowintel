@@ -1276,3 +1276,8 @@ a.case-content:hover {
 
 /* Connectors button of the case header: dark grey, white icon */
 #btn-connectors-toggle:hover, #btn-connectors-toggle:focus-visible { background-color: #343a40 !important; border-color: #343a40 !important; color: #fff !important; }
+
+/* Top bar that stays at the top while scrolling (user setting "sticky_header") */
+[data-sticky-header="fixed"] #main-navbar { position: sticky; top: 0; z-index: 1030; background-color: var(--fi-navbar, var(--bs-body-bg));
+  box-shadow: 0 1px 0 var(--fi-navbar-border, var(--bs-border-color)); }
+[data-sticky-header="fixed"] body.gs-open #main-navbar { position: sticky; z-index: 1060; }
