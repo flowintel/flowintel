@@ -351,13 +351,13 @@ export default {
             return ok
         }
 
-        // red badge: where a day sits compared with today ("−20 d", "today", "+2 d")
+        // red "today" badge on the cards of today
         function day_badge(day) {
             if (!day) return null
             const today = window.dayjs ? dayjs().format('YYYY-MM-DD') : new Date().toISOString().slice(0, 10)
-            const diff = Math.round((Date.parse(day) - Date.parse(today)) / 86400000)
-            const b = el('span', 'tlg-day-badge', diff === 0 ? 'today' : (diff < 0 ? '−' : '+') + Math.abs(diff) + ' d')
-            b.title = diff === 0 ? 'Today' : Math.abs(diff) + ' day' + (Math.abs(diff) > 1 ? 's' : '') + (diff < 0 ? ' ago' : ' from now')
+            if (day !== today) return null           // only the cards of today get the badge
+            const b = el('span', 'tlg-day-badge', 'today')
+            b.title = 'This happened today'
             return b
         }
 
