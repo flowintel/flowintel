@@ -205,7 +205,7 @@
     /* link labels: readable chips */
     --pvt-edge-label-bg: var(--bs-body-bg);
     --pvt-edge-label-color: var(--bs-body-color);
-    --pvt-edge-label-font-size: 13px;
+    --pvt-edge-label-font-size: 15px;
     --pvt-edge-label-font-family: inherit;          /* no grid: the logo is the only background */
 }
 
@@ -304,3 +304,9 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
         var(--bs-tertiary-bg) !important;
 }
 .pivotick:fullscreen::backdrop, .tlg-container:fullscreen::backdrop { background: var(--bs-tertiary-bg, #f8f9fa); }
+
+/* link labels: bold, a little away from the line (the text and its background move, not
+   the container Pivotick positions) */
+.tlg-container .pvt-edge-label { font-weight: 700; }
+.tlg-container .label-container > text,
+.tlg-container .label-container > rect { translate: 0 -18px; }
