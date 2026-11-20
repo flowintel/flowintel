@@ -1,10 +1,12 @@
 import {display_toast, create_message} from '../toaster.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
+import flow_loader from '/static/js/components/flow_loader.js'
 const { ref, onMounted, onBeforeUnmount, nextTick } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
+    components: { flow_loader },
     props: {
         case_id: Number,
         cases_info: Object
@@ -19,6 +21,8 @@ export default {
         // Chronology links tie each event to the next one with the time between them.
         // They are not relations, so they are off unless asked for.
         const show_chronology = ref(false)
+        // Flowintel loading screen over the graph while it is built and centred
+        const graph_loading = ref(true)
         // Breadcrumb mode: one level at a time (days → kinds of a day → events), with a path above
         let saved_drill = false
         try { saved_drill = localStorage.getItem('tlg-drill') === '1' } catch (e) {}
@@ -777,7 +781,9 @@ export default {
 
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
-            if (!container) return
+            const canvas = document.getElementById('timeline-graph-canvas')
+            if (!container || !canvas) return
+            graph_loading.value = true
 
             if (graph) {
                 graph.destroy()
@@ -785,14 +791,15 @@ export default {
             }
 
             if (!graph_events.value.length) {
-                container.innerHTML = ''
-                const empty = container.appendChild(document.createElement('div'))
+                graph_loading.value = false
+                canvas.innerHTML = ''
+                const empty = canvas.appendChild(document.createElement('div'))
                 empty.className = 'tlg-empty'
                 empty.innerHTML = '<i class="fa-solid fa-diagram-project"></i><p>No event yet.</p><small>Add an event, or import MISP objects / files from the Timeline tab.</small>'
                 return
             }
 
-            container.innerHTML = ''
+            canvas.innerHTML = ''
 
             const ordered = chronological(graph_events.value)
             const step_of = new Map(ordered.map((ev, i) => [ev.id, i + 1]))
@@ -955,6 +962,7 @@ export default {
                     tooltip: { enabled: false },
                     minimap: true,
                     notes: { enabled: false },
+                    history: { enabled: false },          // no undo / redo arrows: changes are saved in the case
                     pivotMode: false,
                     legend: {
                         position: 'bottom-left',
@@ -1003,9 +1011,16 @@ export default {
                 }
             }
 
-            graph = new Pivotick(container, { nodes: view_nodes, edges: view_edges }, options)
+            graph = new Pivotick(canvas, { nodes: view_nodes, edges: view_edges }, options)
             container.__tlgGraph = graph          // handy from the console
-            setTimeout(focus_today, 1200)
+            // hide the build: the loading screen stays until the layout has settled and the
+            // view is centred (with a ceiling, so it never stays forever)
+            const built = graph
+            const reveal = () => { if (graph === built) graph_loading.value = false }
+            const settled = (graph.renderer && graph.renderer.fitAndCenterWhenSettled) ? graph.renderer.fitAndCenterWhenSettled() : Promise.resolve()
+            Promise.race([settled, new Promise(r => setTimeout(r, 3500))])
+                .then(() => { if (graph === built) focus_today() })
+                .finally(() => setTimeout(reveal, 250))
             watch_buttons(container)
             draw_crumbs(container)
             // Pivotick puts its own root in full screen, and a redraw (changing mode) replaces it,
@@ -1049,6 +1064,7 @@ export default {
             show_help,
             show_chronology,
             toggle_chronology,
+            graph_loading,
             drill_mode,
             drill_path,
             drill_to,
@@ -1113,7 +1129,13 @@ export default {
         </div>
 
         <!-- Graph -->
-        <div id="timeline-graph-container" class="tlg-container"></div>
+        <div id="timeline-graph-container" class="tlg-container">
+            <div id="timeline-graph-canvas" class="tlg-canvas"></div>
+            <div v-if="graph_loading" class="tlg-loading" role="status" aria-live="polite">
+                <flow_loader :size="150" label="Building the graph"></flow_loader>
+                <span>Building the graph…</span>
+            </div>
+        </div>
     </div>
     `
 }
