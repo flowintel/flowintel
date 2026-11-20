@@ -363,3 +363,12 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
     background: #1f3763; color: #fff; font-size: .78rem; font-weight: 600; }
 .tlg-goto:hover { background: #2c4a80; border-color: #2c4a80; }
 .tlg-goto-arrow { margin-left: 2px; font-size: .85em; }
+
+/* sidebar with nothing selected: the Flowintel logo, faint, black and white */
+.tlg-container .pvt-sidebar { position: relative; }
+.tlg-container:not(.tlg-has-selection) .pvt-sidebar::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: url('/static/image/flowintel.png') center / 70% no-repeat;
+    filter: grayscale(1); opacity: .07;
+}
+[data-bs-theme="dark"] .tlg-container:not(.tlg-has-selection) .pvt-sidebar::after { filter: grayscale(1) invert(1); }

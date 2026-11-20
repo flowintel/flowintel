@@ -822,7 +822,13 @@ export default {
         }
 
         // selecting something opens the details panel on the side
+        // nothing selected: the sidebar shows the Flowintel logo in the background (css)
+        function mark_selection(on) {
+            const c = document.getElementById('timeline-graph-container')
+            if (c) c.classList.toggle('tlg-has-selection', !!on)
+        }
         function show_sidebar() {
+            mark_selection(true)
             try { graph && graph.UIManager && graph.UIManager.sidebar && graph.UIManager.sidebar.showSidebar() } catch (e) {}
         }
 
@@ -1054,7 +1060,8 @@ export default {
                         show_sidebar()
                     },
                     onEdgeSelect: () => show_sidebar(),
-                    onNodeBlur: () => { selected_node.value = null },
+                    onNodeBlur: () => { selected_node.value = null; mark_selection(false) },
+                    onEdgeBlur: () => mark_selection(false),
                 }
             }
 
