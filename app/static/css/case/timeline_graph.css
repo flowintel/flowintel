@@ -338,3 +338,5 @@ a.tlg-prop:hover { color: var(--fi-accent, #1f3763); text-decoration: underline;
 .tlg-crumb.is-current { color: var(--bs-body-color); cursor: default; }
 .tlg-crumb.is-current i { color: #1f3763; }
 .tlg-crumb-sep { color: var(--bs-secondary-color); font-size: .7em; }
+.tlg-crumbs--overlay { position: absolute; z-index: 5; top: 56px; left: 50%; translate: -50% 0; margin: 0;
+    box-shadow: 0 6px 18px rgba(7, 13, 71, .10); }

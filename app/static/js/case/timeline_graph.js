@@ -567,7 +567,9 @@ export default {
                     n.fx = center; n.fy = 0
                     continue
                 }
-                // an opened day: free inside its slot, pulled to its centre and to the line
+                // an opened day: free inside its slot, pulled to its centre and to the line —
+                // until the user moves something: from then on, nothing is pulled anywhere
+                if (moved_by_hand.size) { for (const n of sl.nodes) { n.fx = null; n.fy = null } continue }
                 const y1 = Math.min(...sl.nodes.map(n => n.y)), y2 = Math.max(...sl.nodes.map(n => n.y))
                 const dx = (center - (sl.x1 + sl.x2) / 2) * PULL, dy = (0 - (y1 + y2) / 2) * PULL
                 for (const n of sl.nodes) {
@@ -738,6 +740,31 @@ export default {
             moved_by_hand.clear()
             render_graph()
         }
+        // the path drawn inside Pivotick's root, so it stays there in full screen
+        function draw_crumbs(container) {
+            const root = container.querySelector('.pivotick') || container
+            root.querySelectorAll('.tlg-crumbs').forEach(n => n.remove())
+            if (!drill_mode.value) return
+            const nav = el('nav', 'tlg-crumbs tlg-crumbs--overlay')
+            nav.setAttribute('aria-label', 'Where you are in the timeline')
+            const crumb = (icon, text, depth, current) => {
+                const b = el('button', 'tlg-crumb' + (current ? ' is-current' : ''))
+                b.type = 'button'
+                b.disabled = current
+                b.appendChild(el('i', icon))
+                b.appendChild(document.createTextNode(text))
+                b.addEventListener('click', () => drill_to(depth))
+                nav.appendChild(b)
+            }
+            const path = drill_path.value
+            crumb('fa-solid fa-timeline', 'Timeline', 0, !path.length)
+            path.forEach((c, i) => {
+                nav.appendChild(el('i', 'fa-solid fa-chevron-right tlg-crumb-sep'))
+                crumb(c.day ? 'fa-solid fa-calendar-day' : 'fa-solid fa-shapes', crumb_label(c), i + 1, i === path.length - 1)
+            })
+            root.appendChild(nav)
+        }
+
         function crumb_label(c) {
             if (c.day) return window.dayjs ? dayjs(c.day).format('ddd D MMM YYYY') : c.day
             return (EVENT_KINDS[c.kind] || EVENT_KINDS.event).label + 's'
@@ -859,7 +886,9 @@ export default {
                     d3ManyBodyStrength: -120,
                     d3CollideRadiusMultiplier: 1.15,
                     d3LinkDistance: 160,
-                    d3GravityStrength: 0.05,
+                    // no pull toward the centre of the canvas: a card left alone stays where it is
+                    d3GravityStrength: 0,
+                    d3GravityStrengthConnected: 0,
                 },
                 UI: {
                     mode: 'full',
@@ -908,6 +937,19 @@ export default {
                         deletion: { enabled: editable },
                     },
                     table: { open: false },
+                    // our own switches in Pivotick's top bar: still there in full screen
+                    topBar: { enabled: true, actions: [
+                        // the label names the mode the click goes to
+                        { id: 'tlg-breadcrumb', placement: 'start',
+                          iconClass: drill_mode.value ? 'fa-solid fa-layer-group' : 'fa-solid fa-folder-tree',
+                          text: () => drill_mode.value ? 'Grouped view' : 'Breadcrumb mode',
+                          title: () => drill_mode.value ? 'Back to the grouped view: days you open in place' : 'One level at a time: days, then the kinds of a day, then its events',
+                          onclick: () => { setTimeout(toggle_drill, 0) } },
+                        { id: 'tlg-chrono', placement: 'start', iconClass: 'fa-solid fa-clock-rotate-left',
+                          text: () => show_chronology.value ? 'Time between: on' : 'Time between events',
+                          title: 'Link each event to the next one with the time between them',
+                          onclick: () => { setTimeout(toggle_chronology, 0) } },
+                    ] },
                     // no tooltip on hover: selecting a card opens its details in the sidebar
                     tooltip: { enabled: false },
                     minimap: true,
@@ -964,6 +1006,7 @@ export default {
             container.__tlgGraph = graph          // handy from the console
             setTimeout(focus_today, 1200)
             watch_buttons(container)
+            draw_crumbs(container)
         }
 
         function toggle_chronology() {
@@ -1010,16 +1053,7 @@ export default {
             <span class="tlg-toolbar-hint">
                 <i class="fa-solid fa-hand-pointer"></i><b>Create</b> (left rail): click the canvas to add an event · click a card for its details · double-click a group to open it
             </span>
-            <button class="btn btn-sm ms-auto" :class="drill_mode ? 'btn-primary' : 'btn-outline-primary'" @click="toggle_drill()" :aria-pressed="drill_mode"
-                    title="Breadcrumb mode: one level at a time (days, then the kinds of a day, then its events)">
-                <i class="fa-solid fa-folder-tree me-1"></i>Breadcrumb mode
-            </button>
-            <button class="btn btn-sm" :class="show_chronology ? 'btn-secondary' : 'btn-outline-secondary'"
-                    @click="toggle_chronology()" :aria-pressed="show_chronology"
-                    title="Link each event to the next one with the time between them">
-                <i class="fa-solid fa-clock-rotate-left me-1"></i>Time between events
-            </button>
-            <button class="btn btn-sm" :class="show_help ? 'btn-secondary' : 'btn-outline-secondary'"
+            <button class="btn btn-sm ms-auto" :class="show_help ? 'btn-secondary' : 'btn-outline-secondary'"
                     @click="show_help = !show_help" title="How to read this graph" aria-label="How to read this graph">
                 <i class="fa-solid fa-question"></i>
             </button>
@@ -1067,18 +1101,6 @@ export default {
             <i class="fa-solid fa-gauge-high"></i>
             <span>This case has <b>[[ graph_total.toLocaleString() ]]</b> events: the graph shows the <b>[[ graph_max.toLocaleString() ]]</b> most recent ones to stay fast. The Timeline tab lists them all.</span>
         </div>
-
-        <nav v-if="drill_mode" class="tlg-crumbs" aria-label="Where you are in the timeline">
-            <button type="button" class="tlg-crumb" :class="{ 'is-current': !drill_path.length }" @click="drill_to(0)" :disabled="!drill_path.length">
-                <i class="fa-solid fa-timeline"></i>Timeline
-            </button>
-            <template v-for="(c, i) in drill_path" :key="i">
-                <i class="fa-solid fa-chevron-right tlg-crumb-sep"></i>
-                <button type="button" class="tlg-crumb" :class="{ 'is-current': i === drill_path.length - 1 }" @click="drill_to(i + 1)" :disabled="i === drill_path.length - 1">
-                    <i :class="c.day ? 'fa-solid fa-calendar-day' : 'fa-solid fa-shapes'"></i>[[ crumb_label(c) ]]
-                </button>
-            </template>
-        </nav>
 
         <!-- Graph -->
         <div id="timeline-graph-container" class="tlg-container"></div>
