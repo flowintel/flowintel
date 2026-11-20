@@ -76,6 +76,11 @@
                          alt="Rulezet" style="max-width: 24px; vertical-align: middle;">
                     <span v-else class="rz-logo case-rulezet-mark" role="img" aria-label="Rulezet"><img class="rz-logo-light" src="/static/image/connectors/rulezet.png" alt=""><img class="rz-logo-dark" src="/static/image/connectors/rulezet-dark.png" alt=""></span>
                 </span>
+                {% if case.ticket_id %}
+                <span class="ticket-badge" title="Ticket ID">
+                    <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
+                </span>
+                {% endif %}
             </div>
         </div>
         <div class="case-header-actions" v-if="cases_info">
@@ -83,22 +88,10 @@
                 :cases_info="cases_info"
                 :status_info="status_info">
             </action_buttons>
+            {% include 'case/_connectors_button.html' %}
         </div>
     </div>
     
-    <div class="mb-3" style="display: flex; justify-content: space-between;">
-        <div class="case-ticket-row">
-            {% if case.ticket_id %}
-            <span class="ticket-badge" title="Ticket ID">
-                <i class="fa-solid fa-ticket"></i> {{ case.ticket_id|vue_escape }}
-            </span>
-            {% endif %}
-        </div>
-        <template v-if="cases_info">
-            {% include 'case/_connectors_button.html' %}
-        </template>
-    </div>
-
     <!-- Case Meta Information -->
     <div class="case-meta-grid" v-if="cases_info">
         <div class="case-meta-item case-meta-marking" v-if="case_markings.length" title="TLP / PAP of the case">

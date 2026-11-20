@@ -405,6 +405,7 @@ legend.analyzer-select-case {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .case-title-row {
@@ -453,9 +454,6 @@ legend.analyzer-select-case {
   font-size: 0.8rem;
 }
 
-.case-ticket-row {
-  margin-top: 0.5rem;
-}
 
 .ticket-badge {
   display: inline-flex;
