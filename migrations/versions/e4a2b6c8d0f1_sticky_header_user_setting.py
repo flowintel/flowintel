@@ -23,7 +23,7 @@ def upgrade():
     columns = [col['name'] for col in sa.inspect(conn).get_columns('user_settings')]
     if 'sticky_header' not in columns:
         with op.batch_alter_table('user_settings', schema=None) as batch_op:
-            batch_op.add_column(sa.Column('sticky_header', sa.String(length=16), server_default='fixed', nullable=False))
+            batch_op.add_column(sa.Column('sticky_header', sa.String(length=16), server_default='scroll', nullable=False))
     else:
         print("Column 'sticky_header' already exists in 'user_settings'")
 

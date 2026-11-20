@@ -49,7 +49,7 @@
         case_view: () => root.getAttribute('data-case-view')
             || document.querySelector('[data-setting="case_view"].active')?.getAttribute('data-value') || 'cards',
         tag_view: () => root.getAttribute('data-tag-view') || 'compact',
-        sticky_header: () => root.getAttribute('data-sticky-header') || 'fixed',
+        sticky_header: () => root.getAttribute('data-sticky-header') || 'scroll',
     }
 
     function markSelected() {

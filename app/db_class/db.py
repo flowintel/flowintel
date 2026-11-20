@@ -716,7 +716,7 @@ class UserSettings(db.Model):
     # how the tags of a case are shown in the case view: "compact" chips or MISP-like "context"
     tag_view = db.Column(db.String(16), nullable=False, default="compact", server_default="compact")
     # top bar: "scroll" goes away with the page, "fixed" stays at the top while scrolling
-    sticky_header = db.Column(db.String(16), nullable=False, default="fixed", server_default="fixed")
+    sticky_header = db.Column(db.String(16), nullable=False, default="scroll", server_default="scroll")
 
     def to_json(self):
         return {

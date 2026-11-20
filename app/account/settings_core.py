@@ -3,7 +3,7 @@ from ..db_class.db import UserSettings
 from ..extensions import db
 from ..utils.themes import THEMES
 
-DEFAULTS = {"theme": "auto", "font": "rubik", "case_view": "cards", "tag_view": "compact", "sticky_header": "fixed"}
+DEFAULTS = {"theme": "auto", "font": "rubik", "case_view": "cards", "tag_view": "compact", "sticky_header": "scroll"}
 
 
 def get_settings(user):

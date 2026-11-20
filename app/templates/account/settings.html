@@ -10,6 +10,9 @@
 {% block content %}
     {% call(section) page_header('Settings', 'fa-solid fa-gear', 'Your personal preferences for Flowintel. They only apply to your account.') %}
         {% if section == 'actions' %}
+            <button type="button" id="settings-reset" class="ctx-ghost-btn" title="Put every setting back to its default value">
+                <i class="fa-solid fa-rotate-left fa-sm"></i>Reset to defaults
+            </button>
             {{ header_link('My profile', '/account/', icon='fa-solid fa-user', title='Your account details') }}
         {% endif %}
     {% endcall %}
@@ -56,7 +59,7 @@
             <h3 class="settings-subsection-title"><i class="fa-solid fa-thumbtack fa-sm me-2"></i>Top bar</h3>
             <p class="settings-section-text">Whether the top bar (search, notifications, account) stays visible when you scroll down a page.</p>
             <div class="settings-theme-grid" role="radiogroup" aria-label="Top bar when scrolling">
-                {% for value, label, icon, hint in [('fixed', 'Stays at the top', 'fa-thumbtack', 'Always visible: search and notifications at hand (default)'), ('scroll', 'Scrolls away', 'fa-arrows-up-down', 'Leaves the page when you scroll down: more room for the content')] %}
+                {% for value, label, icon, hint in [('scroll', 'Scrolls away', 'fa-arrows-up-down', 'Leaves the page when you scroll down: more room for the content (default)'), ('fixed', 'Stays at the top', 'fa-thumbtack', 'Always visible: search, notifications and profile at hand')] %}
                 <button type="button" class="settings-theme-option settings-view-option{% if settings.sticky_header == value %} active{% endif %}" data-setting="sticky_header" data-value="{{ value }}" role="radio" aria-checked="{{ 'true' if settings.sticky_header == value else 'false' }}" title="{{ hint }}">
                     <span class="settings-view-preview settings-header-preview settings-header-preview--{{ value }}" aria-hidden="true">
                         <span class="shp-bar"></span>
@@ -118,7 +121,17 @@
 {% block script %}
 <script type="module">
     const { createApp } = Vue
-    import {message_list} from '/static/js/toaster.js'
+    import {message_list, display_toast} from '/static/js/toaster.js'
+    import { confirmDelete } from '/static/js/confirm.js'
+
+    // "Reset to defaults": every setting back to its default, then reload to apply them
+    document.getElementById('settings-reset')?.addEventListener('click', async () => {
+        const ok = await confirmDelete({ title: 'Reset the settings?', message: 'Every setting goes back to its default value (theme, font, displays, top bar).', confirmText: 'Reset' })
+        if (!ok) return
+        const res = await fetch('/account/settings/reset', { method: 'POST', headers: { 'X-CSRFToken': document.getElementById('csrf_token')?.value || '' } })
+        if (res.ok) window.location.reload()
+        else display_toast(res)
+    })
 
     createApp({
         delimiters: ['[[', ']]'],
