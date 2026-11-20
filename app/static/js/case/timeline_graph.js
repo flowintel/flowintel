@@ -1008,6 +1008,15 @@ export default {
             setTimeout(focus_today, 1200)
             watch_buttons(container)
             draw_crumbs(container)
+            // Pivotick puts its own root in full screen, and a redraw (changing mode) replaces it,
+            // which leaves full screen. Our container is never replaced: full screen goes on it.
+            if (graph.UIManager) {
+                graph.UIManager.toggleFullscreen = async (forced) => {
+                    const on = forced !== undefined ? forced : !document.fullscreenElement
+                    if (on && !document.fullscreenElement) await container.requestFullscreen()
+                    else if (!on && document.fullscreenElement) await document.exitFullscreen()
+                }
+            }
         }
 
         function toggle_chronology() {
