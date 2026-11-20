@@ -322,6 +322,17 @@ def delete(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<int:cid>/completion_stats", methods=['GET'])
+@login_required
+def completion_stats(cid):
+    """Details of the case completion: tasks per status, deadlines, assignees, subtasks, weekly activity."""
+    from .case_completion_core import completion_stats as stats
+    case = CommonModel.get_case(cid)
+    if not case or not CommonModel.can_view_case(case, current_user):
+        return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+    return stats(case.id), 200
+
+
 @case_blueprint.route("/<cid>/get_case_info", methods=['GET'])
 @login_required
 def get_case_info(cid):

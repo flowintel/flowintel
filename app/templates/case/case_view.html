@@ -8,6 +8,7 @@
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/pagination.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/connectors.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/completion_details.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/codemirror.js') }}"></script>
 <script src="{{ url_for('static',filename='js/note_variable_completions.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/handlebars.min.js') }}"></script>
@@ -623,6 +624,11 @@
                                 <a href="javascript:void(0)" @click="change_status_sort(true)" class="text-decoration-none">[[open_closed.open]] open</a> / 
                                 <a href="javascript:void(0)" @click="change_status_sort(false)" class="text-decoration-none">[[open_closed.closed]] closed</a>
                             </small>
+                            <button type="button" class="cpl-toggle" :aria-expanded="completion_open" aria-controls="completion-details"
+                                    :title="completion_open ? 'Hide the completion details' : 'Show the completion details (statuses, deadlines, assignees, activity)'"
+                                    @click="completion_open = !completion_open">
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
                         </div>
                         <hr class="fading-line-2 mt-2 mb-2">
                         <div class="progress mt-1" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
@@ -632,6 +638,8 @@
                             <div v-else class="progress-bar" style="width: 0%"></div>
                             <span v-if="open_closed.closed <= 0" class="position-absolute" style="margin-left: 5px; margin-top:-1px">0%</span>
                         </div>
+                        <completion_details v-if="completion_open" id="completion-details" :case-id="cases_info.case.id"
+                                            :version="open_closed.open + '-' + open_closed.closed"></completion_details>
                     </div>
 
                     <manage_orgs :cases_info="cases_info" @case_orgs_changed="get_all_users_case"></manage_orgs>
@@ -1149,6 +1157,7 @@
         import misp_object from '/static/js/case/misp_object.js'
         import mispattributes from '/static/js/case/MispAttributes.js'
         import caseconnectors from '/static/js/case/CaseConnectors.js'
+        import completion_details from '/static/js/case/completion_details.js'
         import casemispconnectors from '/static/js/case/CaseMispConnectors.js'
         import casefiles from '/static/js/case/CaseFiles.js'
         import case_history from '/static/js/case/case_history.js'
@@ -1181,6 +1190,7 @@
                 misp_object,
                 mispattributes,
                 caseconnectors,
+                completion_details,
                 casemispconnectors,
                 casefiles,
                 case_history,
@@ -1236,6 +1246,7 @@
                 const all_connectors_list = ref([])
                 // Icon of each connector type (uploaded on the connector), for the module tabs
                 const connector_icons = ref({})
+                const completion_open = ref(false)   // "Completion" details, folded by default
                 // Built-in single-colour icons for module types that ship with Flowintel: drawn
                 // in the tab's text colour like the other tab icons (CSS mask, core.css)
                 const MONO_MODULE_ICONS = { rulezet: '/static/image/connectors/rulezet-mono.svg' }
@@ -2639,6 +2650,7 @@ async function autosave_case_note(){
                     fetch_misp_automation_status,
                     openConnectors,
                     connector_icons,
+                    completion_open,
                     fetch_case_files,
                     on_connector_note_change,
                     get_all_users_case,
