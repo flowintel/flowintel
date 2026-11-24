@@ -8,7 +8,6 @@
         "@codemirror/lang-markdown": "^6.0.1",
         "@fortawesome/fontawesome-free": "^6.3.0",
         "@jsonlee_12138/markdown-it-mermaid": "^0.0.6",
-        "@knight-lab/timelinejs": "^3.9.8",
         "@popperjs/core": "^2.11.8",
         "bootstrap": "^5.3.0",
         "chart.js": "^4.5.1",
@@ -170,8 +169,6 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
     "@jsonlee_12138/markdown-it-mermaid": ["@jsonlee_12138/markdown-it-mermaid@0.0.6", "", { "dependencies": { "radash": "^12.1.0" }, "peerDependencies": { "markdown-it": "^14.1.0", "mermaid": "^11.6.0" } }, "sha512-izKZ60XztLTC2IL7dIimU21WwkAHNA7YAa+2e+WdtJpYpPMF47r6RyjAN/xoDJstMudZJ2Pp9M8fvirdFLqW7w=="],
-
-    "@knight-lab/timelinejs": ["@knight-lab/timelinejs@3.9.10", "", { "dependencies": { "dompurify": "^3.1.7", "wicg-inert": "^3.1.2" } }, "sha512-hVGd0UwJysVf1v7Gr1hId04kq2hgEN90zmGFavvD3gBRg+pvE8eZQ0H3YL0cqtQaXzVAMsytDgWL5M2+QiGfiw=="],
 
     "@kurkle/color": ["@kurkle/color@0.3.4", "", {}, "sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w=="],
 
@@ -654,8 +651,6 @@
     "vue": ["vue@3.5.32", "", { "dependencies": { "@vue/compiler-dom": "3.5.32", "@vue/compiler-sfc": "3.5.32", "@vue/runtime-dom": "3.5.32", "@vue/server-renderer": "3.5.32", "@vue/shared": "3.5.32" }, "peerDependencies": { "typescript": "*" }, "optionalPeers": ["typescript"] }, "sha512-vM4z4Q9tTafVfMAK7IVzmxg34rSzTFMyIe0UUEijUCkn9+23lj0WRfA83dg7eQZIUlgOSGrkViIaCfqSAUXsMw=="],
 
     "w3c-keyname": ["w3c-keyname@2.2.8", "", {}, "sha512-dpojBhNsCNN7T82Tm7k26A6G9ML3NkhDsnw9n/eoxSRlVBB4CEtIQ/KTCLI2Fwf3ataSXRhYFkQi3SlnFwPvPQ=="],
-
-    "wicg-inert": ["wicg-inert@3.1.3", "", {}, "sha512-5L0PKK7iP+0Q/jv2ccgmkz/pfXbumZtlEyWS/xnX+L+Og3f7WjL4+iEs18k4IuldOX3PgGpza3qGndL9xUBjCQ=="],
 
     "wordwrap": ["wordwrap@1.0.0", "", {}, "sha512-gvVzJFlPycKc5dZN4yPkP8w7Dc37BtP1yczEneOb4uq34pXZcvrtRTmWV8W+Ume+XCxKgbjM+nevkyFPMybd4Q=="],
 

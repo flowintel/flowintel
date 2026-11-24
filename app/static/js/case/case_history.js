@@ -1,53 +1,11 @@
 import {display_toast} from '/static/js/toaster.js'
-const { ref, nextTick, onMounted } = Vue
+const { ref, nextTick, onMounted, onUnmounted } = Vue
 import { url_set, url_get } from './url_state.js'
 import history_log from './history_log.js'
 
-function textToHtml(value) {
-    const span = document.createElement('span')
-    span.textContent = String(value ?? '')
-    return span.innerHTML
-}
-
-function buildMispTimelineText(obj) {
-    const container = document.createElement('div')
-
-    const uuid = document.createElement('div')
-    uuid.style.marginBottom = '20px'
-    uuid.textContent = 'Object uuid: ' + String(obj.object_uuid ?? '')
-    container.appendChild(uuid)
-
-    const heading = document.createElement('div')
-    const title = document.createElement('h6')
-    title.textContent = 'Attributes'
-    heading.appendChild(title)
-    container.appendChild(heading)
-
-    const table = document.createElement('table')
-    table.className = 'table ms-2'
-
-    const headerRow = document.createElement('tr')
-    for (const label of ['value', 'type', 'comment', 'first seen', 'last seen', 'IDS']) {
-        const th = document.createElement('th')
-        th.textContent = label
-        headerRow.appendChild(th)
-    }
-    table.appendChild(headerRow)
-
-    for (const attr of obj.attributes) {
-        const row = document.createElement('tr')
-        for (const field of ['value', 'type', 'comment', 'first_seen', 'last_seen', 'ids_flag']) {
-            const cell = document.createElement('td')
-            cell.className = 'p-1'
-            cell.textContent = String(attr[field] ?? '')
-            row.appendChild(cell)
-        }
-        table.appendChild(row)
-    }
-
-    container.appendChild(table)
-    return container.innerHTML
-}
+import { Flowtime } from '../vendor/vitrine/flowtime.js'
+import { fromMispObjects } from './misp_timeline.js'
+import { savedFlowtimeTextScale, rememberFlowtimeTextScale } from './flowtime_preferences.js'
 
 export default {
     delimiters: ['[[', ']]'],
@@ -63,6 +21,13 @@ export default {
         // Line to scroll to and outline, set by the Calendar panel before opening this tab
         const focus_entry = ref(null)
         const case_misp_objects = ref()
+        const misp_timeline_embed = ref(null)
+        const misp_timeline_rejected_count = ref(0)
+        const misp_timeline_error = ref('')
+        const misp_request = new AbortController()
+        let misp_timeline = null
+        let misp_timeline_view = 'timeline'
+        let unmounted = false
 
 
         // Both logs are lines "[YYYY-MM-DD HH:MM](user): text", read into entries for history_log.js
@@ -101,84 +66,58 @@ export default {
         }
 
         async function fetch_case_misp_object(){
-            const res = await fetch("/case/"+props.case_id+"/get_case_misp_object")
-            if(await res.status==404 ){
-                display_toast(res)
-            }else{
-                let loc = await res.json()
-                case_misp_objects.value = loc["misp-object"]
+            try {
+                const res = await fetch('/case/' + props.case_id + '/get_case_misp_object', { signal: misp_request.signal })
+                if (unmounted) return
+                if (!res.ok) {
+                    misp_timeline_error.value = 'Unable to load the MISP timeline.'
+                    display_toast(res)
+                    return
+                }
+                const data = await res.json()
+                if (unmounted) return
+                case_misp_objects.value = data['misp-object']
+                await nextTick()
+                if (!unmounted && main_tab.value === 'history-misp') prepare_misp_timeline()
+            } catch (error) {
+                if (unmounted || misp_request.signal.aborted) return
+                misp_timeline_error.value = 'Unable to load the MISP timeline.'
+                console.error('MISP Flowtime load error:', error)
             }
         }
-        
+
         if (props.can_view_history) {
             fetch_case_misp_object()
         }
 
+        function destroy_misp_timeline() {
+            if (!misp_timeline) return
+            misp_timeline_view = misp_timeline.view
+            misp_timeline.destroy()
+            misp_timeline = null
+        }
+
         function prepare_misp_timeline(){
-            // Check if there are MISP objects
-            if (!case_misp_objects.value || case_misp_objects.value.length === 0) {
-                return; // Don't create timeline if no objects exist
-            }
-
-            function toStartDateObject(date) {
-                return {
-                  year: String(date.getFullYear()),
-                  month: String(date.getMonth() + 1).padStart(2, "0"),
-                  day: String(date.getDate()).padStart(2, "0"),
-                  hour: String(date.getHours()).padStart(2, "0"),
-                  minute: String(date.getMinutes()).padStart(2, "0")
-                };
-            }
-
-            let loc_list=[]
-
-            for (const obj of case_misp_objects.value) {
-                let firstSeenDates = [];
-              
-                for (const attr of obj.attributes) {
-                    if (attr.first_seen) {
-                        const date = new Date(attr.first_seen);
-                        if (!isNaN(date)) {
-                            firstSeenDates.push(date);
-                        }
-                    }
-                }
-              
-                let resultDate;
-                if (firstSeenDates.length > 0) {
-                    resultDate = new Date(Math.min(...firstSeenDates));
-                } else if (obj.object_creation_date) {
-                    resultDate = new Date(obj.object_creation_date);
-                } else {
-                    resultDate = null;
-                }
-                let startDate
-
-                if(resultDate){
-                    startDate = toStartDateObject(resultDate)
-                }else{
-                    startDate = toStartDateObject(new Date(obj.creation_date))
-                }
-
-                loc_list.push({
-                    // Linkification would rewrite HTML built from text nodes.
-                    "autolink": false,
-                    "start_date": startDate,
-                    "text": {"headline": textToHtml(obj.object_name), "text": buildMispTimelineText(obj)}
+            if (unmounted || !misp_timeline_embed.value || !case_misp_objects.value) return
+            const { events, rejected } = fromMispObjects(case_misp_objects.value)
+            misp_timeline_rejected_count.value = rejected.length
+            if (misp_timeline) {
+                misp_timeline.setEvents(events)
+            } else {
+                misp_timeline_embed.value.addEventListener('flowtime:textscalechange', rememberFlowtimeTextScale, { signal: misp_request.signal })
+                misp_timeline = new Flowtime(misp_timeline_embed.value, {
+                    events,
+                    view: misp_timeline_view,
+                    textScale: savedFlowtimeTextScale(),
+                    label: 'MISP object history timeline',
+                    groups: [{ id: 'objects', label: 'MISP objects', color: '#249790', icon: '◇' }],
+                    timeZone: 'UTC'
                 })
-            }
-
-
-            // Only create timeline if there are events
-            if (loc_list.length > 0) {
-                const timelineJson = {
-                    "events":loc_list
-                };
-                new TL.Timeline('timeline-embed', timelineJson);
             }
         }
 
         async function active_tab(tab_name){
+            if (tab_name !== 'history-misp') destroy_misp_timeline()
             url_set('history', tab_name, 'history-case')
             if(tab_name == 'history-case'){
                 main_tab.value = 'history-case'
@@ -224,12 +163,21 @@ export default {
             }
         })
 
+        onUnmounted(() => {
+            unmounted = true
+            misp_request.abort()
+            destroy_misp_timeline()
+        })
+
 		return {
             focus_entry,
             history,
             audit_history,
             main_tab,
             case_misp_objects,
+            misp_timeline_embed,
+            misp_timeline_rejected_count,
+            misp_timeline_error,
             can_view_history: props.can_view_history,
 
             active_tab
@@ -296,8 +244,15 @@ export default {
                 <strong>Access Restricted:</strong> You need Admin, Case Admin, or Audit Viewer permission to view MISP timeline.
             </div>
         </template>
+        <p v-else-if="misp_timeline_error" class="alert alert-danger" role="alert">[[ misp_timeline_error ]]</p>
         <template v-else-if="case_misp_objects && case_misp_objects.length > 0">
-            <div id="timeline-embed" style="width: 100%; height: 60vh;"></div>
+            <p v-if="misp_timeline_rejected_count" class="alert alert-warning" role="status">
+                [[ misp_timeline_rejected_count ]] MISP object(s) have no valid date and cannot be placed in the viewer.
+            </p>
+            <div ref="misp_timeline_embed" class="case-flowtime"></div>
+        </template>
+        <template v-else-if="!case_misp_objects">
+            <i>Loading…</i>
         </template>
         <template v-else>
             <i>No MISP objects</i>

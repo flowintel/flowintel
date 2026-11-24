@@ -43,6 +43,15 @@ export default defineConfig({
   plugins: [
     viteStaticCopy({
       targets: [
+        // Built by Vitrine; Flowintel does not keep a separate viewer implementation.
+        {
+          src: path.resolve(import.meta.dirname, 'vendor/vitrine/flowtime.js'),
+          dest: 'js/vendor/vitrine',
+        },
+        {
+          src: path.resolve(import.meta.dirname, 'vendor/vitrine/flowtime.css'),
+          dest: 'css/vendor/vitrine',
+        },
         // JavaScript
         {
           src: path.resolve(import.meta.dirname, 'node_modules/chart.js/dist/chart.umd.min.js'),
@@ -72,15 +81,6 @@ export default defineConfig({
         },
         {
           src: path.resolve(import.meta.dirname, 'node_modules/markdown-it/dist/markdown-it.min.js'),
-          dest: 'js/vendor',
-        },
-        {
-          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js'),
-          dest: 'js/vendor',
-          rename: 'timelinejs.js',
-        },
-        {
-          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/js/timeline.js.map'),
           dest: 'js/vendor',
         },
         {
@@ -168,20 +168,6 @@ export default defineConfig({
         {
           src: path.resolve(import.meta.dirname, 'node_modules/select2/dist/css/select2.min.css'),
           dest: 'css/vendor/',
-        },
-        {
-          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css'),
-          dest: 'css/vendor/',
-          rename: 'timelinejs.css',
-        },
-        {
-          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/timeline.css.map'),
-          dest: 'css/vendor/',
-          rename: 'timelinejs.css.map'
-        },
-        {
-          src: path.resolve(import.meta.dirname, 'node_modules/@knight-lab/timelinejs/dist/css/icons/tl-icons.*'),
-          dest: 'css/css/icons',
         },
         {
           src: path.resolve(import.meta.dirname, 'node_modules/select2-bootstrap-5-theme/dist/select2-bootstrap-5-theme.min.css'),

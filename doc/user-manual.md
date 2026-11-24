@@ -413,6 +413,19 @@ Forking is open to any user with at least the **Editor** role, even when their o
 - **Private** cases can only be forked by users who already have access to them, that is, members of the assigned organisations and administrators.
 - **Privileged** cases can only be forked by an Admin, Case Admin or Queue Admin.
 
+## Investigation timeline and chronological feed
+
+Open a case's **Timeline** tab to explore its events with Flowtime. Use **Timeline** for a zoomable investigation workspace with separate lanes for analyst notes, MISP objects, standalone attributes and files. Use **Combined timeline** to mix every enabled event type on a single track, keeping source colors and labels on each card. Overlapping events stack into rows so each remains selectable. Use **Chronological feed** for a dated list of the same events. Switching views keeps your selection, search and source filters. The view choice is remembered for that case in the current browser session.
+
+No event is selected when you open the viewer, and the inspector starts hidden. Click an event to open the inspector and read its notes and source identifiers. Use the **×** button at the top right of the inspector, or press Escape while focus is in the viewer, to close it and clear the selection. The timeline or feed expands to use the available width; selecting an event opens the inspector again. Search narrows all views; the source buttons enable or hide each type of event. In the timeline, drag an empty lane to pan, use **+** and **−** to zoom, and **Fit events** to show all matching events. Left and right arrow keys navigate when focus is inside the viewer. Times are displayed in UTC, matching the stored event date values.
+
+Use **Add Event** or **Import Data** in the viewer toolbar to create or import events. To edit or delete an event, select it in any view and use **Edit event** or **Delete event** in the inspector. Edit opens a dialog for its date, summary and additional note; Delete asks for confirmation. These actions follow your case permissions. The **Events** table remains available for bulk review and undated records. The viewer refreshes after these actions and keeps the current view, search, source filters and date range. Events without a valid date remain in the table for correction and are counted in a warning above the viewer.
+
+To show a specific period, use the **Event activity** histogram above the viewer, similar to History and Audit logs. Click a bar to select its period; click it again to clear it. Drag across several bars, or Shift-click another bar, to select a range. **Show all dates** clears only the date restriction. The selection applies to all three views alongside search and source filters. The histogram keeps the full time span visible so you can select another period; its counts reflect search and enabled sources. Bars use minutes or hours for short investigations, and days or larger periods for longer ones. Arrow keys move between bars; Shift+Arrow extends the selection, and Escape clears it while focus is in the histogram. Bars count event starts; events with a duration also appear when they overlap the selected period.
+
+Use **Graph** beside **Timeline**, **Combined timeline** and **Chronological feed** to explore event relationships. It keeps its own graph controls, data loading and editing tools; timeline filters and the inspector are hidden while Graph is open and restored when you switch back. Graph event changes refresh the shared event list. The selected view is remembered for the case, and links to the old Graph subtab still work. **History → MISP** also uses Flowtime, placing each object at its earliest attribute first-seen date, or its creation date when no attribute date is available.
+
+
 ## Case history, info and audit trail
 
 ![user-manual-diagrams/case-history.png](user-manual-diagrams/case-history.png)
@@ -2826,3 +2839,14 @@ Still logged in as Carol Officer, navigate to the **Calendar** page. The calenda
 Navigate to **Templates > Repositories**. If you set up the central template repository during the demo environment setup, the Flowintel community templates are already available. Browse the repository entries, view the raw JSON of a template, use **Diff** to compare a repository template with a local copy, and **Import** a template into your instance.
 
 This demonstrates how organisations can distribute standardised case and task templates across multiple Flowintel deployments, keeping procedures consistent and up to date.
+
+
+### Updating the Vitrine timeline viewer
+
+The Flowtime implementation lives in Vitrine. Flowintel uses its prebuilt standalone
+JavaScript and CSS, with no separate viewer source or external CDN requests.
+Maintainers refresh it with `python3 scripts/update_vitrine.py ../vitrine --build`,
+then rebuild static assets from `app/assets` with `bun run build:static`.
+Flowintel's event adapters, forms, permissions, graph and saves remain local.
+Its case timeline supplies its own Analyst notes, MISP objects, MISP attributes and
+Files & evidence categories through `groups`; these are not Vitrine defaults.

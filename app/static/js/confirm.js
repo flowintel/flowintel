@@ -70,8 +70,16 @@ export function confirmDelete(opts = {}) {
 
     return new Promise((resolve) => {
         let settled = false
+        let shown = false
+        const onShown = () => { shown = true }
         const onConfirm = () => {
             if (settled) return
+            // Bootstrap ignores hide() during its opening transition. Wait for
+            // shown before resolving a fast confirmation and hiding the dialog.
+            if (_bs && !shown) {
+                _modal.addEventListener('shown.bs.modal', onConfirm, { once: true })
+                return
+            }
             settled = true
             cleanup()
             if (_bs) _bs.hide()
@@ -86,7 +94,10 @@ export function confirmDelete(opts = {}) {
         function cleanup() {
             _confirmBtn.removeEventListener('click', onConfirm)
             _modal.removeEventListener('hidden.bs.modal', onHidden)
+            _modal.removeEventListener('shown.bs.modal', onShown)
+            _modal.removeEventListener('shown.bs.modal', onConfirm)
         }
+        _modal.addEventListener('shown.bs.modal', onShown, { once: true })
         _confirmBtn.addEventListener('click', onConfirm)
         _modal.addEventListener('hidden.bs.modal', onHidden)
         if (_bs) {

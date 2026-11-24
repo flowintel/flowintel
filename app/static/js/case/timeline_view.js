@@ -2,17 +2,23 @@ import {display_toast, create_message} from '../toaster.js'
 import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
-import { mispObjectIconClass, mispAttributeIconClass } from '/static/js/utils.js'
-const { ref, onMounted, onUnmounted, nextTick, computed } = Vue
+import { Flowtime } from '../vendor/vitrine/flowtime.js'
+import { fromFlowintel } from './flowtime_adapter.js'
+import { createFlowtimeGraphView } from './flowtime_graph_view.js'
+import { savedFlowtimeTextScale, rememberFlowtimeTextScale } from './flowtime_preferences.js'
+const { ref, onMounted, onUnmounted, nextTick, computed, watch } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
     props: {
         case_id: Number,
-        cases_info: Object
+        cases_info: Object,
+        initial_view: { type: String, default: '' }
     },
-    setup(props) {
+    emits: ['view-change'],
+    setup(props, { emit }) {
         const timeline_events = ref([])
+        const timeline_current_view = ref('timeline')
         const show_add_form = ref(false)
         const new_date_text = ref('')
         const new_description = ref('')
@@ -21,8 +27,24 @@ export default {
         const edit_date_text = ref('')
         const edit_description = ref('')
         const edit_additional_note = ref('')
+        const inspector_edit_dialog = ref(null)
+        const inspector_edit_open = ref(false)
+        const edit_saving = ref(false)
+        const edit_error = ref('')
+        const can_manage_events = computed(() => {
+            const permission = props.cases_info?.permission
+            return Boolean(permission && !permission.read_only && (permission.admin || props.cases_info.present_in_case))
+        })
         const sort_asc = ref(true)
-        const timeline_root = ref(null)
+        const timeline_embed = ref(null)
+        const timeline_rejected_count = ref(0)
+        const timeline_load_error = ref('')
+        const timeline_view_key = 'flowintel:case:' + props.case_id + ':timeline-view'
+        let timeline = null
+        let timeline_filter = null
+        let timeline_request = null
+        let unmounted = false
+        const timeline_listeners = new AbortController()
 
         // Import modal state
         const show_import_modal = ref(false)
@@ -52,136 +74,118 @@ export default {
             sort_asc.value = !sort_asc.value
         }
 
+        const timeline_views = ['timeline', 'combined', 'feed', 'graph']
+        function saved_timeline_view() {
+            if (timeline_views.includes(props.initial_view)) return props.initial_view
+            try {
+                const view = sessionStorage.getItem(timeline_view_key)
+                return timeline_views.includes(view) ? view : 'timeline'
+            } catch {
+                return 'timeline'
+            }
+        }
+
+        function remember_timeline_view(event) {
+            timeline_current_view.value = event.detail.view
+            emit('view-change', event.detail.view)
+            try {
+                sessionStorage.setItem(timeline_view_key, event.detail.view)
+            } catch {
+                // The switch still works when browser storage is unavailable.
+            }
+        }
+
+        function remember_timeline_filter(event) {
+            timeline_filter = {
+                query: event.detail.query,
+                groups: [...event.detail.groups],
+                dateRange: { ...event.detail.dateRange }
+            }
+        }
+
         async function fetch_timeline_events() {
-            const res = await fetch('/case/' + props.case_id + '/get_timeline_events')
-            if (res.status === 200) {
-                let loc = await res.json()
-                timeline_events.value = loc.events
+            if (unmounted) return
+            timeline_request?.abort()
+            const request = new AbortController()
+            timeline_request = request
+            try {
+                const res = await fetch('/case/' + props.case_id + '/get_timeline_events', { signal: request.signal })
+                if (unmounted || request.signal.aborted) return
+                if (!res.ok) {
+                    timeline_load_error.value = 'Unable to load timeline events. Please try again.'
+                    display_toast(res)
+                    return
+                }
+                const data = await res.json()
+                if (unmounted || request.signal.aborted) return
+                timeline_events.value = data.events
                 await nextTick()
+                if (unmounted || request.signal.aborted) return
                 render_timeline()
-            } else {
-                display_toast(res)
+                timeline_load_error.value = ''
+            } catch (error) {
+                if (unmounted || request.signal.aborted) return
+                timeline_load_error.value = 'Unable to load timeline events. Please try again.'
+                console.error('Flowtime render or load error:', error)
+            } finally {
+                if (timeline_request === request) timeline_request = null
             }
-        }
-
-        function parseDateForTimeline(date_text, date_parsed) {
-            let d = null
-            if (date_parsed) {
-                d = new Date(date_parsed.replace(' ', 'T'))
-            }
-            if (!d || isNaN(d.getTime())) {
-                d = new Date(date_text)
-            }
-            if (!d || isNaN(d.getTime())) {
-                return null
-            }
-            return {
-                year: String(d.getFullYear()),
-                month: String(d.getMonth() + 1).padStart(2, '0'),
-                day: String(d.getDate()).padStart(2, '0'),
-                hour: String(d.getHours()).padStart(2, '0'),
-                minute: String(d.getMinutes()).padStart(2, '0')
-            }
-        }
-
-        function escapeHtml(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;')
-        }
-
-        function textToSafeHtml(value) {
-            const escaped = escapeHtml(value)
-            const withBreaks = escaped.replace(/\r\n|\r|\n/g, '<br>')
-            if (typeof DOMPurify !== 'undefined' && DOMPurify && DOMPurify.sanitize) {
-                return DOMPurify.sanitize(withBreaks, { ALLOWED_TAGS: ['br'], ALLOWED_ATTR: [] })
-            }
-            return withBreaks
-        }
-
-        function sanitizeTimelineHtml(value) {
-            if (typeof DOMPurify !== 'undefined' && DOMPurify && DOMPurify.sanitize) {
-                return DOMPurify.sanitize(value, { ALLOWED_TAGS: ['div', 'span', 'i', 'br'], ALLOWED_ATTR: ['style', 'class'] })
-            }
-            return value
         }
 
         function render_timeline() {
-            if (!timeline_events.value || timeline_events.value.length === 0) {
-                const container = document.getElementById('case-timeline-embed')
-                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No timeline events yet. Add events or import data to build your timeline.</p>'
-                return
-            }
-
-            const events = []
-            for (const ev of timeline_events.value) {
-                const startDate = parseDateForTimeline(ev.date_text, ev.date_parsed)
-                if (!startDate) continue
-
-                const eventText = textToSafeHtml(ev.description)
-                const noteText = textToSafeHtml(ev.additional_note || '')
-
-                let headline
-                if (ev.misp_object_id) {
-                    const isStandaloneAttr = Number(ev.misp_object_id) < 0
-                    if (isStandaloneAttr) {
-                        headline = '<span style="color:#fd7e14;"><i class="' + mispAttributeIconClass('attribute', 'me-1') + '"></i></span> ' + eventText
-                    } else {
-                        headline = '<span style="color:#17a2b8;"><i class="' + mispObjectIconClass('object', 'me-1') + '"></i></span> ' + eventText
-                    }
-                } else if (ev.file_id) {
-                    headline = '<span style="color:#198754;"><i class="fa-solid fa-file me-1"></i></span> ' + eventText
-                } else {
-                    headline = eventText
-                }
-
-                events.push({
-                    // Linkification would rewrite already-sanitized HTML.
-                    autolink: false,
-                    start_date: startDate,
-                    text: {
-                        headline: sanitizeTimelineHtml(headline),
-                        text: noteText ? sanitizeTimelineHtml('<div style="max-width:500px">' + noteText + '</div>') : ''
-                    }
+            const container = timeline_embed.value
+            if (!container) return
+            const { events, rejected } = fromFlowintel(timeline_events.value)
+            timeline_rejected_count.value = rejected.length
+            if (timeline) {
+                timeline.setEvents(events)
+                if (timeline_filter) timeline.setFilter(timeline_filter)
+            } else {
+                timeline = new Flowtime(container, {
+                    events,
+                    groups: [
+                        { id: 'analysis', label: 'Analyst notes', color: '#6575d7', icon: '✎' },
+                        { id: 'objects', label: 'MISP objects', color: '#249790', icon: '◇' },
+                        { id: 'attributes', label: 'MISP attributes', color: '#d49635', icon: '⌁' },
+                        { id: 'files', label: 'Files & evidence', color: '#bb7395', icon: '▤' }
+                    ],
+                    view: saved_timeline_view(),
+                    textScale: savedFlowtimeTextScale(),
+                    label: 'Case investigation timeline',
+                    timeZone: 'UTC',
+                    customViews: [createFlowtimeGraphView({
+                        caseId: props.case_id,
+                        getCasesInfo: () => props.cases_info,
+                        onEventsChanged: fetch_timeline_events
+                    })],
+                    actions: [
+                        {
+                            id: 'add-event', label: 'Add Event', icon: '+', variant: 'primary',
+                            visible: () => can_manage_events.value,
+                            onClick: () => {
+                                if (can_manage_events.value) show_add_form.value = !show_add_form.value
+                            }
+                        },
+                        {
+                            id: 'import-data', label: 'Import Data', icon: '↥',
+                            visible: () => can_manage_events.value,
+                            onClick: () => {
+                                if (can_manage_events.value) return open_import_modal()
+                            }
+                        }
+                    ],
+                    onEdit: can_manage_events.value ? event => open_inspector_edit(event.source) : undefined,
+                    onDelete: can_manage_events.value ? event => {
+                        if (can_manage_events.value) return delete_event(event.source.id)
+                    } : undefined
                 })
             }
-
-            if (events.length === 0) {
-                const container = document.getElementById('case-timeline-embed')
-                if (container) container.innerHTML = '<p class="text-muted text-center mt-4">No events with valid dates to display on the timeline.</p>'
-                return
-            }
-
-            const timelineJson = { events: events }
-            const container = document.getElementById('case-timeline-embed')
-            if (container) {
-                container.innerHTML = ''
-                try {
-                    new TL.Timeline('case-timeline-embed', timelineJson, {
-                        width: '100%',
-                        height: 500
-                    })
-                } catch (e) {
-                    console.error('Timeline render error:', e)
-                }
-            }
+            timeline_current_view.value = timeline.view
         }
 
-        function is_editable_target(target) {
-            if (!target || !target.tagName) return false
-            const tagName = target.tagName.toLowerCase()
-            return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable
-        }
-
-        function protect_timeline_form_arrow_keys(event) {
-            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-            if (!timeline_root.value || !timeline_root.value.contains(event.target)) return
-            if (!is_editable_target(event.target)) return
-            event.stopImmediatePropagation()
-        }
+        watch(() => props.initial_view, view => {
+            if (timeline && timeline_views.includes(view) && timeline.view !== view) timeline.setView(view)
+        })
 
         // Optional picker next to the free-text date field (see
         // timeline_date_picker.js); the date is applied on "Validate".
@@ -244,7 +248,16 @@ export default {
             await display_toast(res)
         }
 
+        async function open_inspector_edit(ev) {
+            if (!can_manage_events.value || !ev) return
+            inspector_edit_open.value = true
+            start_edit(ev)
+            await nextTick()
+            if (!unmounted) inspector_edit_dialog.value?.showModal()
+        }
+
         function start_edit(ev) {
+            edit_error.value = ''
             editing_event_id.value = ev.id
             edit_date_text.value = ev.date_text
             edit_description.value = ev.description
@@ -252,6 +265,9 @@ export default {
         }
 
         function cancel_edit() {
+            inspector_edit_open.value = false
+            if (inspector_edit_dialog.value?.open) inspector_edit_dialog.value.close()
+            edit_error.value = ''
             editing_event_id.value = null
             edit_date_text.value = ''
             edit_description.value = ''
@@ -259,30 +275,46 @@ export default {
         }
 
         async function save_edit(ev_id) {
+            if (edit_saving.value) return
+            edit_error.value = ''
             if (!edit_date_text.value.trim() || !edit_description.value.trim()) {
-                create_message('Date and event are required', 'warning-subtle')
+                edit_error.value = 'Date and event are required'
+                create_message(edit_error.value, 'warning-subtle')
                 return
             }
             if (!is_valid_date_text(edit_date_text.value)) {
-                create_message('Invalid date format. Use e.g. 2024-03-15 14:30, 15/03/2024, 01/12/26 14h30 or Mar 15, 2024.', 'danger-subtle')
+                edit_error.value = 'Invalid date format. Use e.g. 2026-11-19 14:30.'
+                create_message(edit_error.value, 'danger-subtle')
                 return
             }
-            const res = await fetch('/case/' + props.case_id + '/edit_timeline_event/' + ev_id, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                body: JSON.stringify({
-                    date_text: edit_date_text.value,
-                    description: edit_description.value,
-                    additional_note: edit_additional_note.value
+            edit_saving.value = true
+            try {
+                const res = await fetch('/case/' + props.case_id + '/edit_timeline_event/' + ev_id, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
+                    body: JSON.stringify({
+                        date_text: edit_date_text.value,
+                        description: edit_description.value,
+                        additional_note: edit_additional_note.value
+                    })
                 })
-            })
-            if (res.status === 200) {
-                editing_event_id.value = null
-                edit_additional_note.value = ''
-                touchCaseLastModif(props.cases_info)
-                await fetch_timeline_events()
+                if (unmounted) return
+                if (res.status === 200) {
+                    cancel_edit()
+                    touchCaseLastModif(props.cases_info)
+                    await fetch_timeline_events()
+                } else {
+                    edit_error.value = 'Unable to save this event. Check the date and your permissions, then try again.'
+                }
+                await display_toast(res)
+            } catch (error) {
+                if (!unmounted) {
+                    edit_error.value = 'Unable to save this event. Please try again.'
+                    create_message(edit_error.value, 'danger-subtle')
+                }
+            } finally {
+                edit_saving.value = false
             }
-            await display_toast(res)
         }
 
         async function delete_event(ev_id) {
@@ -434,17 +466,27 @@ export default {
         }
 
         onMounted(() => {
-            window.addEventListener('keydown', protect_timeline_form_arrow_keys, true)
-            fetch_timeline_events()
+            const listener_options = { signal: timeline_listeners.signal }
+            timeline_embed.value.addEventListener('flowtime:viewchange', remember_timeline_view, listener_options)
+            timeline_embed.value.addEventListener('flowtime:filterchange', remember_timeline_filter, listener_options)
+            timeline_embed.value.addEventListener('flowtime:textscalechange', rememberFlowtimeTextScale, listener_options)
+            return fetch_timeline_events()
         })
 
         onUnmounted(() => {
-            window.removeEventListener('keydown', protect_timeline_form_arrow_keys, true)
+            unmounted = true
+            timeline_request?.abort()
+            timeline_listeners.abort()
+            timeline?.destroy()
+            timeline = null
         })
 
         return {
             timeline_events,
-            timeline_root,
+            timeline_current_view,
+            timeline_embed,
+            timeline_rejected_count,
+            timeline_load_error,
             show_add_form,
             new_date_text,
             open_date_picker,
@@ -454,6 +496,11 @@ export default {
             edit_date_text,
             edit_description,
             edit_additional_note,
+            inspector_edit_dialog,
+            inspector_edit_open,
+            edit_saving,
+            edit_error,
+            can_manage_events,
             sorted_events,
             sort_asc,
             toggle_sort,
@@ -482,18 +529,7 @@ export default {
         }
     },
     template: `
-    <div ref="timeline_root">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                <button class="btn btn-primary btn-sm me-2" @click="show_add_form = !show_add_form">
-                    <i class="fa-solid fa-plus me-1"></i>Add Event
-                </button>
-                <button class="btn btn-outline-secondary btn-sm" @click="open_import_modal()" title="Import selected MISP objects, standalone attributes and files as timeline events">
-                    <i class="fa-solid fa-file-import me-1"></i>Import Data
-                </button>
-            </div>
-        </div>
-
+    <div>
         <!-- Add Event Form -->
         <div v-if="show_add_form" class="card mb-3">
             <div class="card-body">
@@ -619,11 +655,42 @@ export default {
             </div>
         </div>
 
-        <!-- Timeline Graphical View -->
-        <div id="case-timeline-embed" style="width:100%; min-height:500px;"></div>
+        <!-- Flowtime owns the contents of this host; Vue owns the surrounding forms. -->
+        <div v-if="timeline_load_error" class="alert alert-danger d-flex align-items-center justify-content-between" role="alert">
+            <span>[[ timeline_load_error ]]</span>
+            <button type="button" class="btn btn-outline-danger btn-sm ms-2" @click="fetch_timeline_events()">Retry</button>
+        </div>
+        <p v-if="timeline_rejected_count" class="alert alert-warning" role="status">
+            [[ timeline_rejected_count ]] event(s) have no valid date and cannot be placed in the viewer. You can correct them in the Events table below.
+        </p>
+        <div ref="timeline_embed" class="case-flowtime"></div>
+
+        <!-- Inspector editing uses the same validated save path as the Events table. -->
+        <dialog ref="inspector_edit_dialog" class="case-timeline-edit-dialog" aria-labelledby="timeline-inspector-edit-title"
+                @close="cancel_edit()" @cancel="edit_saving && $event.preventDefault()">
+            <form @submit.prevent="save_edit(editing_event_id)">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 id="timeline-inspector-edit-title" class="m-0">Edit timeline event</h5>
+                    <button type="button" class="btn-close" aria-label="Close event editor" :disabled="edit_saving" @click="cancel_edit()"></button>
+                </div>
+                <fieldset :disabled="edit_saving">
+                    <label for="timeline-inspector-date" class="form-label">Date / Time (UTC)</label>
+                    <input id="timeline-inspector-date" type="text" class="form-control form-control-sm mb-3" v-model="edit_date_text" placeholder="YYYY-MM-DD HH:MM" required>
+                    <label for="timeline-inspector-description" class="form-label">Event</label>
+                    <input id="timeline-inspector-description" type="text" class="form-control form-control-sm mb-3" v-model="edit_description" required autofocus>
+                    <label for="timeline-inspector-note" class="form-label">Additional Note</label>
+                    <textarea id="timeline-inspector-note" class="form-control form-control-sm mb-3" v-model="edit_additional_note" rows="4"></textarea>
+                    <p v-if="edit_error" class="alert alert-danger" role="alert">[[ edit_error ]]</p>
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @click="cancel_edit()">Cancel</button>
+                        <button type="submit" class="btn btn-primary btn-sm">[[ edit_saving ? 'Saving…' : 'Save changes' ]]</button>
+                    </div>
+                </fieldset>
+            </form>
+        </dialog>
 
         <!-- Event List Table -->
-        <div v-if="timeline_events.length > 0" class="mt-4">
+        <div v-if="timeline_current_view !== 'graph' && timeline_events.length > 0" class="mt-4">
             <h6><i class="fa-solid fa-list me-1"></i>Events</h6>
             <table class="table table-sm table-hover">
                 <thead>
@@ -640,7 +707,7 @@ export default {
                 </thead>
                 <tbody>
                     <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : (ev.file_id ? 'table-success' : ''))">
-                        <template v-if="editing_event_id === ev.id">
+                        <template v-if="editing_event_id === ev.id && !inspector_edit_open">
                             <td>
                                 <div class="input-group input-group-sm">
                                     <input type="text" class="form-control form-control-sm" v-model="edit_date_text">

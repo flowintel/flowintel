@@ -1,0 +1,30 @@
+/* Let Flowtime follow Flowintel's Bootstrap theme, including changes made while open. */
+.case-flowtime {
+    min-width: 0;
+}
+
+.case-flowtime .ft {
+    --ft-bg: var(--bs-body-bg);
+    --ft-soft: var(--bs-tertiary-bg);
+    --ft-ink: var(--bs-body-color);
+    --ft-muted: var(--bs-secondary-color);
+    --ft-border: var(--bs-border-color);
+    --ft-accent: var(--bs-primary);
+    font-family: inherit;
+    color-scheme: inherit;
+}
+
+.case-timeline-edit-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    padding: 24px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 20px 80px #0004;
+}
+.case-timeline-edit-dialog::backdrop {
+    background: #0007;
+}

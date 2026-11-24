@@ -22,7 +22,7 @@
     background: var(--bs-body-bg);
     color: var(--bs-body-color);
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.35;
     cursor: pointer;
     transition: box-shadow 0.15s ease, transform 0.15s ease;
@@ -55,7 +55,7 @@
     justify-content: center;
     background: color-mix(in srgb, var(--tlg-accent) 16%, transparent);
     color: var(--tlg-accent);
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .tlg-card-when {
@@ -65,7 +65,7 @@
 }
 
 .tlg-card-kind {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -80,7 +80,7 @@
 
 .tlg-card-title {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 15px;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -120,15 +120,15 @@
     border-radius: 999px;
     background: var(--bs-secondary-bg);
     color: var(--bs-secondary-color);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
 
 /* "?" help card above the graph */
-.tlg-help { font-size: 13px; }
+.tlg-help { font-size: 15px; }
 .tlg-help-title {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;

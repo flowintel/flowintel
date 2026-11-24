@@ -2,7 +2,7 @@ import {display_toast, create_message} from '../toaster.js'
 import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
-const { ref, onMounted, nextTick } = Vue
+const { ref, onMounted, onBeforeUnmount, nextTick } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
@@ -10,7 +10,10 @@ export default {
         case_id: Number,
         cases_info: Object
     },
-    setup(props) {
+    emits: ['events-changed'],
+    setup(props, { emit }) {
+        const graph_container = ref(null)
+        const graph_load_error = ref('')
         const graph_events = ref([])
         const graph_links = ref([])
         const show_add_event = ref(false)
@@ -29,17 +32,35 @@ export default {
         // They are not relations, so they are off unless asked for.
         const show_chronology = ref(false)
         let graph = null
+        let graph_request = null
+        let unmounted = false
 
         async function fetch_graph_data() {
-            const res = await fetch('/case/' + props.case_id + '/get_timeline_graph')
-            if (res.status === 200) {
+            if (unmounted) return
+            graph_request?.abort()
+            const request = new AbortController()
+            graph_request = request
+            try {
+                const res = await fetch('/case/' + props.case_id + '/get_timeline_graph', { signal: request.signal })
+                if (unmounted || request.signal.aborted) return
+                if (res.status !== 200) {
+                    graph_load_error.value = 'Unable to load graph data. Please try again.'
+                    display_toast(res)
+                    return
+                }
                 const data = await res.json()
+                if (unmounted || request.signal.aborted) return
                 graph_events.value = data.events
                 graph_links.value = data.links
                 await nextTick()
+                if (unmounted || request.signal.aborted) return
                 render_graph()
-            } else {
-                display_toast(res)
+                graph_load_error.value = ''
+            } catch (error) {
+                if (!unmounted && !request.signal.aborted)
+                    graph_load_error.value = 'Unable to load graph data. Please try again.'
+            } finally {
+                if (graph_request === request) graph_request = null
             }
         }
 
@@ -119,8 +140,8 @@ export default {
         }
 
         function render_graph() {
-            const container = document.getElementById('timeline-graph-container')
-            if (!container) return
+            const container = graph_container.value
+            if (unmounted || !container) return
 
             // Destroy previous graph instance
             if (graph) {
@@ -274,6 +295,7 @@ export default {
                 new_additional_note.value = ''
                 show_add_event.value = false
                 touchCaseLastModif(props.cases_info)
+                emit('events-changed')
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -361,6 +383,7 @@ export default {
             if (res.status === 200) {
                 selected_node.value = null
                 touchCaseLastModif(props.cases_info)
+                emit('events-changed')
                 await fetch_graph_data()
             }
             await display_toast(res)
@@ -378,11 +401,17 @@ export default {
             return ev.date_text + ' — ' + (ev.description.length > 50 ? ev.description.substring(0, 50) + '…' : ev.description)
         }
 
-        onMounted(() => {
-            fetch_graph_data()
+        onMounted(() => fetch_graph_data())
+        onBeforeUnmount(() => {
+            unmounted = true
+            graph_request?.abort()
+            graph?.destroy()
+            graph = null
         })
 
         return {
+            graph_container,
+            graph_load_error,
             graph_events,
             graph_links,
             show_add_event,
@@ -556,7 +585,11 @@ export default {
         </div>
 
         <!-- Graph Container -->
-        <div id="timeline-graph-container" class="tlg-container"></div>
+        <div v-if="graph_load_error" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <span>[[ graph_load_error ]]</span>
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="fetch_graph_data()">Retry</button>
+        </div>
+        <div ref="graph_container" class="tlg-container"></div>
 
         <div class="mt-2">
             <small class="text-muted">

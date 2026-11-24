@@ -1,0 +1,12 @@
+{
+  "package": "vitrine",
+  "version": "0.14.0",
+  "entry": "vitrine/flowtime",
+  "source": "https://github.com/DavidCruciani/vitrine",
+  "source_sha256": "832745bcf1c63c1fd112b058f60ed0c635acb7cf33d19e990527e550a5e28ff0",
+  "files": {
+    "flowtime.js": "21760f332b6569d1c02d8576221ddb7553069d4af3a36a180e6f0afaed7ae2d9",
+    "flowtime.css": "6c83326cc94ec62ff7108d6d12b774541eab0cb9ffb747b88a400a08cd3419e5",
+    "flowtime.d.ts": "37857f3a8894c41e88c0190699d36b157a58f77b69ff15ab72d4b4433254288d"
+  }
+}

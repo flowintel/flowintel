@@ -16,12 +16,12 @@
 
 <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/timeline.css') }}">
 
-<script src="{{ url_for('static',filename='js/vendor/timelinejs.js') }}"></script>
 <script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr.min.js') }}"></script>
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/calendar/flatpickr.min.css') }}">
 <script src="{{ url_for('static',filename='js/vendor/calendar/flatpickr-monthSelect.js') }}"></script>
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/vendor/calendar/flatpickr-monthSelect.css') }}">
-<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/timelinejs.css') }}">
+<link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='css/vendor/vitrine/flowtime.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/timeline_view.css') }}">
 
 <script src="{{ url_for('static',filename='js/vendor/pivotick.umd.js') }}"></script>
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/case/rulezet.css') }}">
@@ -865,25 +865,8 @@
         </template>
 
         <template v-else-if="main_tab == 'timeline'">
-            <ul class="nav nav-tabs" style="margin-bottom: 10px;">
-                <li class="nav-item">
-                    <button class="nav-link active" id="subtab-timeline-view" aria-current="page" @click="active_subtab_timeline('timeline-view')">
-                        <i class="fa-solid fa-timeline fa-sm me-1"></i><span class="section-title">Timeline</span>
-                    </button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="subtab-timeline-graph" @click="active_subtab_timeline('timeline-graph')">
-                        <i class="fa-solid fa-diagram-project fa-sm me-1"></i><span class="section-title">Graph</span>
-                    </button>
-                </li>
-            </ul>
-
-            <template v-if="subtab_timeline == 'timeline-view'">
-                <timeline_view :case_id="{{case.id}}" :cases_info="cases_info"></timeline_view>
-            </template>
-            <template v-else-if="subtab_timeline == 'timeline-graph'">
-                <timeline_graph :case_id="{{case.id}}" :cases_info="cases_info"></timeline_graph>
-            </template>
+            <timeline_view :case_id="{{case.id}}" :cases_info="cases_info"
+                           :initial_view="timeline_view_mode" @view-change="active_subtab_timeline"></timeline_view>
         </template>
 
         <template v-for="connType in active_module_tabs" :key="'content-' + connType">
@@ -1129,7 +1112,6 @@
         import case_calendar from '/static/js/case/case_calendar.js'
         import { url_set, url_get, url_list, url_list_toggle, url_clear_prefix } from '/static/js/case/url_state.js'
         import timeline_view from '/static/js/case/timeline_view.js'
-        import timeline_graph from '/static/js/case/timeline_graph.js'
         import note_from_template from '/static/js/case/note_from_template.js'
         import computer_assistate_template from '/static/js/case/computer_assistate_template.js'
         import smart_render from '/static/js/components/smart-render.js'
@@ -1158,7 +1140,6 @@
                 case_history,
                 case_calendar,
                 timeline_view,
-                timeline_graph,
                 note_from_template,
                 computer_assistate_template,
                 smart_render,
@@ -1187,7 +1168,7 @@
 
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
-                const subtab_timeline = ref('timeline-view')
+                const timeline_view_mode = ref('')
                 const subtab_misp = ref('objects')
                 const tasks_tab = ref('main')
 
@@ -2012,7 +1993,7 @@
                 // Sub-tabs of each main tab: leaving a tab resets them, in the page and in the URL
                 const SUBTABS = {
                     notes: () => { subtab_note.value = 'case'; url_set('note', null) },
-                    timeline: () => { subtab_timeline.value = 'timeline-view'; url_set('timeline', null) },
+                    timeline: () => { timeline_view_mode.value = ''; url_set('timeline', null) },
                     misp: () => { subtab_misp.value = 'objects'; url_set('misp', null) },
                     history: () => url_set('history', null),
                 }
@@ -2169,20 +2150,11 @@
                 }
 
                 async function active_subtab_timeline(tab_name) {
-                    url_set('timeline', tab_name, 'timeline-view')
-                    if(tab_name == 'timeline-view'){
-                        subtab_timeline.value = tab_name
-                        if ( !document.getElementById("subtab-timeline-view").classList.contains("active") ){
-                            document.getElementById("subtab-timeline-view").classList.add("active")
-                            document.getElementById("subtab-timeline-graph").classList.remove("active")
-                        }
-                    }else if(tab_name == 'timeline-graph'){
-                        subtab_timeline.value = tab_name
-                        if ( !document.getElementById("subtab-timeline-graph").classList.contains("active") ){
-                            document.getElementById("subtab-timeline-graph").classList.add("active")
-                            document.getElementById("subtab-timeline-view").classList.remove("active")
-                        }
-                    }
+                    // Keep old Graph/Timeline URLs working after moving the switch into Flowtime.
+                    const view = { 'timeline-view': 'timeline', 'timeline-graph': 'graph' }[tab_name] || tab_name
+                    if (!['timeline', 'combined', 'feed', 'graph'].includes(view)) return
+                    timeline_view_mode.value = view
+                    url_set('timeline', view, 'timeline')
                     await nextTick()
                 }
 
@@ -2568,7 +2540,7 @@ async function autosave_case_note(){
                     asc_desc,
                     main_tab,
                     subtab_note,
-                    subtab_timeline,
+                    timeline_view_mode,
                     subtab_misp,
                     tasks_tab,
                     is_exporting,

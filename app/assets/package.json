@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "description": "assets for the flask based front-end to flowintel",
   "scripts": {
-    "build:static": "vite build --config vite.config.mjs"
+    "build:static": "vite build --config vite.config.mjs",
+    "update:vitrine": "python3 ../../scripts/update_vitrine.py"
   },
   "repository": {
     "type": "git",
@@ -25,7 +26,6 @@
     "@codemirror/lang-markdown": "^6.0.1",
     "@fortawesome/fontawesome-free": "^6.3.0",
     "@jsonlee_12138/markdown-it-mermaid": "^0.0.6",
-    "@knight-lab/timelinejs": "^3.9.8",
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.0",
     "chart.js": "^4.5.1",
