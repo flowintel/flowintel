@@ -13,7 +13,7 @@ import Pagination from './pagination.js'
  *                         field sent in the sort event (defaults to key)
  *   rows         Array    rows to display
  *   rowKey       String   unique key of a row (default: "id")
- *   loading      Boolean  show a spinner instead of the rows
+ *   loading      Boolean  show skeleton rows (.lo-sk, needs loading_overlay.css) instead of the rows
  *   emptyText    String   text shown when there are no rows
  *   currentPage  Number   current page (pagination is hidden when nbPages <= 1)
  *   nbPages      Number   total number of pages
@@ -72,9 +72,12 @@ export default {
                     </tr>
                 </thead>
                 <tbody v-if="loading">
-                    <tr><td :colspan="columns.length + 1" class="ctx-table-state">
-                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading...
-                    </td></tr>
+                    <tr v-for="r in 6" :key="'sk' + r" aria-hidden="true">
+                        <td v-for="(col, ci) in columns" :key="col.key" :class="col.class">
+                            <span class="lo-sk" :style="{ width: (ci === 0 ? 75 - r * 5 : 40 + ((r + ci) % 3) * 15) + '%' }"></span>
+                        </td>
+                        <td></td>
+                    </tr>
                 </tbody>
                 <tbody v-else-if="!rows || !rows.length">
                     <tr><td :colspan="columns.length + 1" class="ctx-table-state">

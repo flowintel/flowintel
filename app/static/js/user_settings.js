@@ -28,11 +28,28 @@
         font(value) {
             root.setAttribute('data-font', value)
         },
+        // nothing to draw: read by the case index on its next load (default table / cards)
+        case_view(value) {
+            root.setAttribute('data-case-view', value)
+        },
+        // default look of the tags in the case view (read by case/tags_edition.js)
+        tag_view(value) {
+            root.setAttribute('data-tag-view', value)
+        },
+        // top bar fixed or not while scrolling (css: [data-sticky-header] in core.css)
+        sticky_header(value) {
+            root.setAttribute('data-sticky-header', value)
+        },
     }
 
     const current = {
         theme: () => root.getAttribute('data-theme-pref') || 'auto',
         font: () => root.getAttribute('data-font') || 'rubik',
+        // set by a click; before that, the option the server marked active (settings page)
+        case_view: () => root.getAttribute('data-case-view')
+            || document.querySelector('[data-setting="case_view"].active')?.getAttribute('data-value') || 'cards',
+        tag_view: () => root.getAttribute('data-tag-view') || 'compact',
+        sticky_header: () => root.getAttribute('data-sticky-header') || 'scroll',
     }
 
     function markSelected() {
@@ -53,10 +70,18 @@
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token ? token.value : '' },
                 body: JSON.stringify({ [name]: value })
             })
-            if (!res.ok) console.warn('Setting not saved', name, value, res.status)
+            if (res.ok) toast(`${LABELS[name] || 'Setting'} saved`, 'success-subtle')
+            else { console.warn('Setting not saved', name, value, res.status); toast('Setting not saved', 'danger-subtle') }
         } catch (e) {
             console.warn('Could not save the setting', name, e)
+            toast('Could not save the setting', 'danger-subtle')
         }
+    }
+
+    // toasts come from the ES module toaster.js (this file is a classic script)
+    const LABELS = { theme: 'Theme', font: 'Font', case_view: 'Case list display', tag_view: 'Tag display', sticky_header: 'Top bar' }
+    function toast(message, cls) {
+        import('/static/js/toaster.js').then(m => m.create_message(message, cls)).catch(() => {})
     }
 
     // Before first paint

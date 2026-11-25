@@ -55,7 +55,7 @@ button.rz-chip { cursor: pointer; transition: background 0.15s ease, box-shadow 
 button.rz-chip:hover { background: color-mix(in srgb, var(--fmt) 18%, var(--bs-body-bg)); }
 button.rz-chip.active { background: var(--fmt); color: #fff; box-shadow: 0 2px 8px color-mix(in srgb, var(--fmt) 40%, transparent); }
 .rz-chip--all { padding-left: 0.7rem; }
-.rz-chip--all.active { --fmt: #0d6efd; }
+.rz-chip--all.active { --fmt: var(--bs-primary); }
 .rz-chip--sm { font-size: 0.68rem; }
 .rz-chip--sm .rz-chip-logo { width: 17px; height: 17px; }
 .rz-chip--sm .rz-chip-logo img { width: 12px; height: 12px; }
@@ -207,8 +207,8 @@ a.rz-rule-title:hover { color: var(--bs-primary); }
 }
 .rz-act:hover { background: var(--bs-tertiary-bg); color: var(--bs-body-color); border-color: var(--bs-secondary-color); }
 .rz-act.is-open { background: var(--bs-secondary-bg); color: var(--bs-body-color); }
-.rz-act--primary { color: #0d6efd; }
-.rz-act--primary:hover { background: rgba(13, 110, 253, 0.1); border-color: rgba(13, 110, 253, 0.5); color: #0d6efd; }
+.rz-act--primary { color: var(--bs-primary); }
+.rz-act--primary:hover { background: rgba(var(--bs-primary-rgb), 0.1); border-color: rgba(var(--bs-primary-rgb), 0.5); color: var(--bs-primary); }
 .rz-act:disabled { opacity: 0.35; cursor: not-allowed; }
 .rz-act .spinner-border { width: 0.8rem; height: 0.8rem; border-width: 0.15em; }
 
@@ -249,7 +249,7 @@ a.rz-rule-title:hover { color: var(--bs-primary); }
 .rz-menu-item--danger:hover { background: rgba(220, 53, 69, 0.08); color: #dc3545; }
 .rz-menu-divider { height: 1px; margin: 0.25rem 0; background: var(--bs-border-color); }
 
-.rz-pill--edit { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+.rz-pill--edit { background: rgba(var(--bs-primary-rgb), 0.1); color: var(--bs-primary); }
 
 /* resync window */
 .rz-modal .modal-header { gap: 0.7rem; }
@@ -261,7 +261,7 @@ a.rz-rule-title:hover { color: var(--bs-primary); }
 .rz-sync-state { display: flex; gap: 0.7rem; align-items: flex-start; margin-bottom: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 10px; font-size: 0.88rem; }
 .rz-sync-state > i { margin-top: 0.15rem; }
 .rz-sync-state--ok { background: rgba(25, 135, 84, 0.1); color: #146c43; }
-.rz-sync-state--new { background: rgba(13, 110, 253, 0.08); color: #0a58ca; }
+.rz-sync-state--new { background: rgba(var(--bs-primary-rgb), 0.08); color: var(--bs-primary-text-emphasis); }
 .rz-sync-state--warn { background: rgba(232, 161, 12, 0.12); color: #8a5a00; }
 .rz-sync-state--conflict { background: rgba(220, 53, 69, 0.1); color: #b02a37; border: 1px solid rgba(220, 53, 69, 0.3); }
 [data-bs-theme="dark"] .rz-sync-state--ok { color: #75d6a3; }

@@ -1,0 +1,54 @@
+/* completion_details.css — unfolded details of the "Completion" section (case/completion_details.js) */
+.cpl-toggle { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0;
+    border: 1px solid var(--bs-border-color); border-radius: 50%; background: var(--bs-body-bg); color: var(--bs-secondary-color); font-size: .7rem; }
+.cpl-toggle:hover, .cpl-toggle:focus-visible { border-color: var(--fi-accent, #1f3763); color: var(--fi-accent, #1f3763); }
+.cpl-toggle i { transition: transform .2s ease; }
+.cpl-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
+
+.cpd { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; font-size: .82rem; }
+.cpd-loading { display: flex; flex-direction: column; gap: 8px; }
+.cpd-empty { color: var(--bs-secondary-color); font-style: italic; }
+.cpd-title { margin: 0 0 6px; color: var(--bs-secondary-color); font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+
+.cpd-status { display: flex; align-items: center; gap: 16px; }
+.cpd-ring { flex: none; width: 96px; height: 96px; transform: rotate(-90deg); }
+.cpd-ring-bg { fill: none; stroke: var(--bs-tertiary-bg); stroke-width: 12; }
+.cpd-ring-arc { fill: none; stroke-width: 12; transition: stroke-dasharray .3s; }
+.cpd-ring text { transform: rotate(90deg); transform-origin: 50px 50px; text-anchor: middle; fill: var(--bs-body-color); }
+.cpd-ring-num { font-size: 20px; font-weight: 700; }
+.cpd-ring-label { font-size: 9px; fill: var(--bs-secondary-color) !important; }
+.cpd-legend { display: flex; flex-direction: column; gap: 3px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.cpd-legend li { display: flex; align-items: center; gap: 6px; }
+.cpd-legend b { margin-left: auto; padding-left: 12px; font-variant-numeric: tabular-nums; }
+.cpd-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+
+.cpd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cpd-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; background: var(--bs-tertiary-bg); color: var(--bs-secondary-color); }
+.cpd-chip b { color: var(--bs-body-color); }
+.cpd-chip.is-bad { background: rgba(220, 53, 69, .12); color: #dc3545; }
+.cpd-chip.is-bad b { color: #dc3545; }
+.cpd-chip.is-warn { background: rgba(232, 137, 12, .12); color: #c47208; }
+.cpd-chip.is-warn b { color: #c47208; }
+.cpd-mini { display: inline-block; width: 40px; height: 5px; border-radius: 3px; background: var(--bs-border-color); overflow: hidden; }
+.cpd-mini span { display: block; height: 100%; background: #198754; }
+
+.cpd-user { display: grid; grid-template-columns: minmax(0, 150px) 1fr auto; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cpd-user-name { min-width: 0; overflow: hidden; }
+.cpd-user-bar { display: flex; height: 8px; border-radius: 4px; background: var(--bs-tertiary-bg); overflow: hidden; }
+.cpd-user-num { color: var(--bs-secondary-color); font-variant-numeric: tabular-nums; }
+.cpd-more { color: var(--bs-secondary-color); }
+.cpd .is-closed { background: #198754; }
+.cpd .is-open { background: var(--fi-accent, #1f3763); opacity: .55; }
+.cpd .is-created { background: var(--fi-accent, #1f3763); opacity: .55; }
+.cpd .is-finished { background: #198754; }
+
+.cpd-weeks { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; }
+.cpd-week { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cpd-week small { color: var(--bs-secondary-color); font-size: .66rem; }
+.cpd-week-bars { display: flex; align-items: flex-end; justify-content: center; gap: 2px; width: 100%; height: 56px; border-bottom: 1px solid var(--bs-border-color); }
+.cpd-week-bars span { width: 40%; max-width: 10px; min-height: 0; border-radius: 2px 2px 0 0; transition: height .3s; }
+
+.cpd-key { display: flex; gap: 12px; margin-top: 6px; color: var(--bs-secondary-color); font-size: .72rem; }
+.cpd-key span { display: inline-flex; align-items: center; gap: 4px; }
+.cpd-key i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .cpl-toggle i, .cpd-ring-arc, .cpd-week-bars span { transition: none; } }

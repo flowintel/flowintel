@@ -58,7 +58,8 @@ def _case_id_from_args():
 def index():
     """List all cases"""
     flowintel_log("audit", 200, "List all cases", User=current_user.email)
-    return render_template("case/case_index.html")
+    from ..account.settings_core import get_case_view
+    return render_template("case/case_index.html", default_view=get_case_view(current_user))
 
 @case_blueprint.route("/create_case", methods=['GET', 'POST'])
 @login_required
@@ -321,6 +322,17 @@ def delete(cid):
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
 
 
+@case_blueprint.route("/<int:cid>/completion_stats", methods=['GET'])
+@login_required
+def completion_stats(cid):
+    """Details of the case completion: tasks per status, deadlines, assignees, subtasks, weekly activity."""
+    from .case_completion_core import completion_stats as stats
+    case = CommonModel.get_case(cid)
+    if not case or not CommonModel.can_view_case(case, current_user):
+        return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+    return stats(case.id), 200
+
+
 @case_blueprint.route("/<cid>/get_case_info", methods=['GET'])
 @login_required
 def get_case_info(cid):
@@ -462,7 +474,9 @@ def get_open_close(cid):
 def sort_cases():
     """Sort Cases"""
     page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 25, type=int)
     filter_by = request.args.get('filter')
+    order = 'asc' if request.args.get('order') == 'asc' else 'desc'
     status = request.args.get('status')
     tags = request.args.get('tags')
     taxonomies = request.args.get('taxonomies')
@@ -494,8 +508,10 @@ def sort_cases():
 
     # optional title search filter
     title_q = request.args.get('q', None, type=str)
+    # optional time left before the deadline: overdue | 24h | 7d | 30d | none
+    due = request.args.get('due', None, type=str)
 
-    cases_list, nb_pages = CaseModel.sort_cases(page=page, 
+    cases_list, nb_pages, total = CaseModel.sort_cases(page=page, 
                                       completed=status,
                                       taxonomies=taxonomies, 
                                       galaxies=galaxies, 
@@ -506,9 +522,15 @@ def sort_cases():
                                       or_and_galaxies=or_and_galaxies,
                                       filter=filter_by, 
                                       user=current_user,
-                                      title_filter=title_q)
-    
-    return CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
+                                      title_filter=title_q,
+                                      order=order,
+                                      per_page=per_page,
+                                      with_total=True,
+                                      due=due)
+
+    loc = CaseModel.regroup_case_info(cases_list, current_user, nb_pages)
+    loc["total"] = total   # cases this user can see with the current filters
+    return loc
 
 
 @case_blueprint.route("/<cid>/get_all_users", methods=['GET'])
@@ -1089,6 +1111,17 @@ def get_custom_tags_case(cid):
             return {"message": "Permission denied", 'toast_class': "danger-subtle"}, 403
         return {"custom_tags": CommonModel.get_case_custom_tags_json(cid)}, 200
     return {"message": "Case Not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.route("/<int:cid>/link_candidates", methods=['GET'])
+@login_required
+def link_candidates(cid):
+    """Cases that can be linked to this one: search by #id, title, ticket or UUID; suggestions when empty."""
+    from .case_link_core import link_candidates as candidates
+    case = CommonModel.get_case(cid)
+    if not case or not CommonModel.can_view_case(case, current_user):
+        return {"message": "Case not found", "toast_class": "warning-subtle"}, 404
+    return candidates(case.id, current_user, request.args.get("q", "")), 200
 
 
 @case_blueprint.route("/<cid>/add_new_link", methods=['GET', 'POST'])

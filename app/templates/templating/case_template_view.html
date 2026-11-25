@@ -4,6 +4,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-editor.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
@@ -258,13 +259,37 @@
                 </template>
             </div>
         </template>
-        <template v-else>
-            <div class="spinner-border mt-3" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </template>
+        <loading_overlay v-else :loading="true" :empty="true" label="Loading tasks…">
+            <template #skeleton>
+                <div v-for="i in 3" :key="i" class="border rounded-4 p-3 mb-3">
+                    <div class="d-flex justify-content-between">
+                        <span class="lo-sk" :style="{ width: (50 - i * 5) + '%' }"></span>
+                        <span class="lo-sk lo-sk-sm" style="width:90px"></span>
+                    </div>
+                    <span class="lo-sk lo-sk-sm mt-2" style="width:75%"></span>
+                    <span class="lo-sk lo-sk-sm" style="width:55%"></span>
+                    <div class="d-flex gap-2 mt-3">
+                        <span class="lo-sk lo-sk-pill" style="width:70px"></span>
+                        <span class="lo-sk lo-sk-pill" style="width:90px"></span>
+                    </div>
+                </div>
+            </template>
+        </loading_overlay>
     </div>
 </template>
+<loading_overlay v-else :loading="true" :empty="true" label="Loading case template…">
+    <template #skeleton>
+        <div class="case-header-card">
+            <span class="lo-sk" style="width:40%; height:22px"></span>
+            <div class="d-flex gap-3 mt-3"><span v-for="i in 5" :key="i" class="lo-sk lo-sk-sm" style="width:120px"></span></div>
+            <span class="lo-sk lo-sk-sm mt-3" style="width:80%"></span>
+        </div>
+        <div class="case-core-style mt-4">
+            <div class="d-flex gap-2 mb-3"><span v-for="w in ['100px','80px','110px','70px']" class="lo-sk lo-sk-pill" :style="{ width: w, height: '28px' }"></span></div>
+            <span class="lo-sk" style="width:60%"></span><span class="lo-sk" style="width:45%"></span>
+        </div>
+    </template>
+</loading_overlay>
 {% endblock %}
 
 
@@ -274,6 +299,7 @@
         import task_template from '/static/js/templating/task_template.js'
         import tags_edition from '/static/js/case/tags_edition.js'
         import {display_toast, message_list} from '/static/js/toaster.js'
+        import loading_overlay from '/static/js/components/loading_overlay.js'
         import templateconnectors from '/static/js/templating/TemplateConnectors.js'
         import {getTextColor, mapIcon} from '/static/js/utils.js'
         import smart_editor from '/static/js/components/smart-editor.js'
@@ -281,7 +307,7 @@
 
         createApp({
             delimiters: ['[[', ']]'],
-            components: {
+            components: { loading_overlay,
                 task_template,
                 tags_edition,
                 templateconnectors,

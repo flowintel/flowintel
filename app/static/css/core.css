@@ -405,6 +405,7 @@ legend.analyzer-select-case {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .case-title-row {
@@ -453,9 +454,6 @@ legend.analyzer-select-case {
   font-size: 0.8rem;
 }
 
-.case-ticket-row {
-  margin-top: 0.5rem;
-}
 
 .ticket-badge {
   display: inline-flex;
@@ -698,17 +696,25 @@ legend.analyzer-select-case {
 
 #case-main-nav .nav-tabs>li>button.active,
 #collapseTasks>.nav-tabs>li>button.active {
-  border-bottom: 2px solid #007bff;
-  color: #007bff;
+  border-bottom: 2px solid #2d4f8a;   /* Flowintel blue, a touch lighter for the active tab */
+  color: #2d4f8a;
+  font-weight: 700;
 }
+
+/* the tab title (.section-title) follows the tab colour: active / hovered = Flowintel blue */
+#case-main-nav .nav-tabs>li>button .section-title,
+#collapseTasks>.nav-tabs>li>button .section-title { color: inherit; }
+#case-main-nav .nav-tabs>li>button.active .section-title,
+#collapseTasks>.nav-tabs>li>button.active .section-title { font-weight: 800; }
 
 #case-main-nav .nav-tabs>li>button:hover,
 #collapseTasks>.nav-tabs>li>button:hover {
-  color: #4c8ac0;
+  color: var(--bs-primary);
+  border-bottom-color: rgba(var(--bs-primary-rgb), .35);
 }
 
 .tab-add-btn { border-style: dashed !important; border-color: #adb5bd !important; color: #6c757d !important; }
-.tab-add-btn:hover { border-color: #0d6efd !important; color: #0d6efd !important; background: none !important; }
+.tab-add-btn:hover { border-color: var(--bs-primary) !important; color: var(--bs-primary) !important; background: none !important; }
 
 .manage-tabs-section-title {
   margin: 0 0 0.5rem 0;
@@ -717,9 +723,9 @@ legend.analyzer-select-case {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #0b4f8a;
-  background: linear-gradient(90deg, #e9f3ff 0%, #f8fbff 100%);
-  border: 1px solid #cfe3fb;
+  color: var(--bs-primary-text-emphasis);
+  background: linear-gradient(90deg, var(--bs-primary-bg-subtle) 0%, transparent 100%);
+  border: 1px solid var(--bs-primary-border-subtle);
   border-radius: 0.35rem;
 }
 
@@ -918,7 +924,7 @@ a.case-content:hover {
 
 .show-more-btn {
   cursor: pointer;
-  color: #0d6efd;
+  color: var(--bs-primary);
   background: transparent;
   border: none;
   padding: 0;
@@ -1024,7 +1030,7 @@ a.case-content:hover {
 /* Alerts page styles (moved from app/templates/alerts.html) */
 .alert-item { padding: 0.75rem 1rem; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 1rem; }
 .alert-item:hover { background: #f8f9fa; }
-.alert-item.unread { border-left: 3px solid #0d6efd; background: #f0f7ff; }
+.alert-item.unread { border-left: 3px solid var(--bs-primary); background: #f0f7ff; }
 .alert-status-sent { color: #198754; }
 .alert-status-error { color: #dc3545; }
 .alert-status-pending { color: #ffc107; }
@@ -1257,6 +1263,8 @@ a.case-content:hover {
   width: 30px;
   height: 22px;
   vertical-align: middle;
+}
+
 /* A task reached from another panel (Calendar) flashes once */
 .task-flash {
   border-radius: 10px;
@@ -1267,3 +1275,11 @@ a.case-content:hover {
   0%, 30% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--bs-primary) 45%, transparent); }
   100% { box-shadow: 0 0 0 4px transparent; }
 }
+
+/* Connectors button of the case header: dark grey, white icon */
+#btn-connectors-toggle:hover, #btn-connectors-toggle:focus-visible { background-color: #343a40 !important; border-color: #343a40 !important; color: #fff !important; }
+
+/* Top bar that stays at the top while scrolling (user setting "sticky_header") */
+[data-sticky-header="fixed"] #main-navbar { position: sticky; top: 0; z-index: 1030; background-color: var(--fi-navbar, var(--bs-body-bg));
+  box-shadow: 0 1px 0 var(--fi-navbar-border, var(--bs-border-color)); }
+[data-sticky-header="fixed"] body.gs-open #main-navbar { position: sticky; z-index: 1060; }

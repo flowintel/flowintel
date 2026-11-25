@@ -1,0 +1,74 @@
+/* flow_loader.js — the official Flowintel logo animated as a loader.
+   One 2.2 s cycle: dashes stream in (0–35%), the strands ripple left → right, two light bands
+   sweep the braid (10–75%), the nodes pop and glow in cascade (60–95%).
+   The logo keeps its own colours and gradients. */
+
+.fl-loader { --fl-cycle: 2.2s; display: inline-block; overflow: visible; flex: none; }
+
+/* data dashes: stream in from the left, row by row, then drift on */
+.fl-loader .fl-dash { transform-box: fill-box;
+    animation: fl-dash var(--fl-cycle) cubic-bezier(.3, .7, .4, 1) infinite; }
+.fl-loader .fl-dash:nth-of-type(12) { animation-delay: .08s; }
+.fl-loader .fl-dash:nth-of-type(13) { animation-delay: .2s; }
+.fl-loader .fl-dash:nth-of-type(14) { animation-delay: 0s; }
+.fl-loader .fl-dash:nth-of-type(15) { animation-delay: .2s; }
+.fl-loader .fl-dash:nth-of-type(16) { animation-delay: .08s; }
+
+/* strands: a brightness ripple runs through them, dark ones first, then the light braid */
+.fl-loader .fl-dark, .fl-loader .fl-light { animation: fl-ripple var(--fl-cycle) ease-in-out infinite; }
+.fl-loader .fl-dark:nth-of-type(8)   { animation-delay: .1s; }
+.fl-loader .fl-dark:nth-of-type(9)   { animation-delay: .14s; }
+.fl-loader .fl-dark:nth-of-type(10)  { animation-delay: .18s; }
+.fl-loader .fl-dark:nth-of-type(11)  { animation-delay: .22s; }
+.fl-loader .fl-light:nth-of-type(3)  { animation-delay: .3s; }
+.fl-loader .fl-light:nth-of-type(4)  { animation-delay: .36s; }
+.fl-loader .fl-light:nth-of-type(1)  { animation-delay: .44s; }
+.fl-loader .fl-light:nth-of-type(2)  { animation-delay: .52s; }
+.fl-loader .fl-light:nth-of-type(5)  { animation-delay: .6s; }
+.fl-loader .fl-light:nth-of-type(6)  { animation-delay: .72s; }
+.fl-loader .fl-light:nth-of-type(7)  { animation-delay: .78s; }
+
+/* two light bands sweeping the braid (they move the mask rects across the logo) */
+.fl-loader .fl-shine-group { opacity: .85; }
+.fl-loader .fl-band { animation: fl-sweep var(--fl-cycle) cubic-bezier(.45, 0, .55, 1) infinite; }
+.fl-loader .fl-band--2 { animation-delay: .35s; opacity: .6; }
+
+/* nodes: pop and glow one after the other when the light reaches them */
+.fl-loader .fl-node { transform-box: fill-box; transform-origin: center;
+    animation: fl-node var(--fl-cycle) cubic-bezier(.3, 1.6, .5, 1) infinite; }
+.fl-loader .fl-node:nth-of-type(2) { animation-delay: 0s; }
+.fl-loader .fl-node:nth-of-type(6) { animation-delay: .05s; }
+.fl-loader .fl-node:nth-of-type(4) { animation-delay: .12s; }
+.fl-loader .fl-node:nth-of-type(1) { animation-delay: .17s; }
+.fl-loader .fl-node:nth-of-type(5) { animation-delay: .22s; }
+.fl-loader .fl-node:nth-of-type(3) { animation-delay: .3s; }
+
+@keyframes fl-dash {
+    0%       { transform: translateX(-22px); opacity: 0; }
+    25%      { transform: translateX(0); opacity: 1; }
+    70%      { transform: translateX(3px); opacity: 1; }
+    100%     { transform: translateX(10px); opacity: 0; }
+}
+@keyframes fl-ripple {
+    0%, 100% { filter: brightness(1); }
+    35%      { filter: brightness(1.35) saturate(1.15); }
+    55%      { filter: brightness(1); }
+}
+@keyframes fl-sweep {
+    0%, 8%    { transform: translateX(0); }
+    75%, 100% { transform: translateX(440px); }
+}
+@keyframes fl-node {
+    0%, 58%  { transform: scale(.7); opacity: .45; filter: none; }
+    70%      { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 4px #7fd0f7); }
+    84%      { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 2px #7fd0f7); }
+    100%     { transform: scale(.7); opacity: .45; filter: none; }
+}
+
+/* reduced motion: the still logo, only the nodes blink slowly */
+@media (prefers-reduced-motion: reduce) {
+    .fl-loader .fl-dash, .fl-loader .fl-dark, .fl-loader .fl-light { animation: none; }
+    .fl-loader .fl-shine-group { display: none; }
+    .fl-loader .fl-node { animation: fl-blink 2.4s ease-in-out infinite; }
+    @keyframes fl-blink { 50% { opacity: .45; } }
+}

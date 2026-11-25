@@ -14,6 +14,8 @@
  *   simple        Boolean  — null (default) auto-picks simple mode for markdown
  *                            content, full header otherwise; pass true/false to
  *                            force one or the other regardless of language
+ *   bare          Boolean  — text only (list previews): no copy button, no padding, inherits
+ *                            the parent's font size, colour and line height
  *
  * Features:
  *   - Syntax highlighting via highlight.js (lazy-loaded from /static/js/hljs.min.js)
@@ -267,14 +269,18 @@ export default {
         // Default (null/undefined) auto-picks simple mode for markdown content and
         // full mode otherwise; pass explicit true/false to override that per use site.
         simple: { type: Boolean, default: null },
+        // Text only, for previews (e.g. a description in a list): no copy button, no padding
+        // or margins, font size / colour / line height taken from the parent.
+        bare: { type: Boolean, default: false },
     },
 
     template: `
-    <div class="cv-root" :class="{ 'cv-root--simple': is_simple }">
+    <div class="cv-root" :class="{ 'cv-root--simple': is_simple, 'cv-root--bare': bare }">
 
         <!-- ── Simple mode: no header, just a floating copy toolbar,
              shown on hover ─────────────────────────────────────────────── -->
-        <div class="cv-md-float-toolbar" v-if="is_simple">
+        <template v-if="bare"></template>
+        <div class="cv-md-float-toolbar" v-else-if="is_simple">
             <button class="cv-btn cv-btn--icon" @click.stop.prevent="copy_code" title="Copy source">
                 <i :class="copied ? 'fas fa-check' : 'fas fa-copy'"></i>
             </button>

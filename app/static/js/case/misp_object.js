@@ -1847,7 +1847,7 @@ export default {
             </div>
         </div>
 
-        <Pagination class="mt-2" :current-page="current_page" :nb-pages="total_pages"
+        <Pagination scroll="list" class="mt-2" :current-page="current_page" :nb-pages="total_pages"
                     aria-label="Objects pagination" @page="current_page = $event" />
     </template>
 

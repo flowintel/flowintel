@@ -167,9 +167,30 @@ export default {
             emit_change()
         }
 
+        // Include one more value (from a click on a tag in a list); no-op when already there.
+        // Goes through on_apply so the value is resolved and the change emitted like a pick.
+        function add(kind, value) {
+            const list = kind === 'cluster' ? clusters.value : tags.value
+            if (list.some(s => s.value === value)) return false
+            const all_of = kind === 'cluster' ? clusters_all_of.value : tags_all_of.value
+            const parts = list.map(s => (s.exclude ? '!' : '') + s.value).concat(value)
+            on_apply({ detail: { [kind === 'cluster' ? 'galaxy' : 'tag']: parts.join(all_of ? '&' : '|') } })
+            return true
+        }
+
         const has_active_filters = computed(() =>
             tags.value.length > 0 || clusters.value.length > 0)
-        expose({ has_active_filters: () => has_active_filters.value })
+        // Raw picks, as kept in a URL: { tag: 'a|!b', galaxy: 'x&y' } ('&' = "All of")
+        function serialized() {
+            const ser = (list, all_of) => list.map(s => (s.exclude ? '!' : '') + s.value).join(all_of ? '&' : '|')
+            return { tag: ser(tags.value, tags_all_of.value), galaxy: ser(clusters.value, clusters_all_of.value) }
+        }
+        // Back from serialized(): each non-empty kind is applied (and emitted) like a pick
+        async function restore({ tag = '', galaxy = '' } = {}) {
+            if (tag) await on_apply({ detail: { tag } })
+            if (galaxy) await on_apply({ detail: { galaxy } })
+        }
+        expose({ has_active_filters: () => has_active_filters.value, clear_all, add, serialized, restore })
 
         // ---- setup ----
 

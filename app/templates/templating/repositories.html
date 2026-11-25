@@ -2,6 +2,7 @@
 {% from 'macros/page_header.html' import page_header, header_stat, header_button, header_search, header_link %}
 
 {% block head %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
 
@@ -105,11 +106,17 @@
 </div>
 
 <div class="case-core-style">
-    <div v-if="loading" class="text-center py-4">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading…</span>
-        </div>
-    </div>
+    <loading_overlay v-if="loading" :loading="true" :empty="true" label="Loading repositories…">
+        <template #skeleton>
+            <div v-for="i in 3" :key="i" class="border rounded-4 p-3 mb-3 d-flex justify-content-between align-items-center">
+                <div style="flex:1">
+                    <span class="lo-sk" :style="{ width: (40 - i * 5) + '%' }"></span>
+                    <span class="lo-sk lo-sk-sm" style="width:55%"></span>
+                </div>
+                <div class="d-flex gap-2"><span v-for="j in 3" :key="j" class="lo-sk lo-sk-pill" style="width:34px; height:30px"></span></div>
+            </div>
+        </template>
+    </loading_overlay>
 
     <div v-else-if="filtered.length === 0" class="text-muted text-center py-4">
         <i class="fa-solid fa-circle-info me-1"></i>No repositories configured yet.
@@ -660,11 +667,12 @@
 <script type="module">
     const { createApp, ref, computed, onMounted, reactive } = Vue
     import { message_list } from '/static/js/toaster.js'
+    import loading_overlay from '/static/js/components/loading_overlay.js'
     import smart_render from '/static/js/components/smart-render.js'
 
     createApp({
         delimiters: ['[[', ']]'],
-        components: {
+        components: { loading_overlay,
             smart_render
         },
         setup() {

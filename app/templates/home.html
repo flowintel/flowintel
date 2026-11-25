@@ -7,6 +7,9 @@
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/smart-render.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/theme-bridge.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/case_list.css') }}">
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/components/loading_overlay.css') }}">
 <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/home.css') }}">
 
 {{ super() }}
@@ -15,7 +18,7 @@
 {% block content %}
     <!-- Welcome header -->
     {% set welcome = 'Welcome back, ' ~ current_user.first_name ~ ' ' ~ current_user.last_name %}
-    {% call(section) page_header(welcome, 'fa-solid fa-house', 'Here is what is waiting for you today.', variant='hero') %}
+    {% call(section) page_header(welcome, '', 'Here is what is waiting for you today.', variant='hero') %}
         {% if section == 'aside' %}
             <span class="ctx-version" v-if="version" title="Flowintel version"><i class="fa-solid fa-code-branch"></i>v[[ version ]]</span>
         {% elif section == 'stats' %}
@@ -36,123 +39,19 @@
     <div class="fl-layout">
     <div class="fl-main">
     <!-- Last Modifications Section -->
-    <div class="case-core-style">
-        <div class="ctx-section-head">
-            <h5 class="ctx-section-title"><i class="fa-solid fa-clock-rotate-left fa-sm me-2"></i>Last modifications</h5>
-            <a href="/case/" class="ctx-section-link">View all cases <i class="fa-solid fa-arrow-right fa-xs ms-1"></i></a>
+    <section class="fl-panel">
+        <header class="fl-panel-head">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i>Last modifications</h2>
+            <a href="/case/">All cases <i class="fa-solid fa-arrow-right fa-xs"></i></a>
+        </header>
+
+        <case_list :cases="case_list || []" :loading="case_list === null" :status-info="status_info" view="cards"
+                   @complete="complete_case"></case_list>
+        <div v-if="case_list && !case_list.length" class="fl-panel-empty"><i class="fa-regular fa-folder-open"></i>No case yet.</div>
+        <div v-if="case_list && case_list.length" class="text-center mt-3">
+            <a href="/case/" class="btn btn-outline-primary btn-sm">View more <i class="fa-solid fa-arrow-right fa-xs ms-1"></i></a>
         </div>
-
-        <div style="margin-left: 0;">
-            <template v-if="case_list">
-                <div class="case-grid">
-                    <template v-for="case_loc in case_list">
-                        <div class="case-card">
-                            <a :href="`/case/${case_loc.id}`" class="case-content">
-                                <div class="case-title-index">
-                                    <i class="fa-solid fa-angle-right fa-sm me-2" style="color: rgb(108, 117, 125);"></i>
-                                    <span class="id">[[ case_loc.id ]]</span>
-                                    <span> - </span>
-                                    <span>[[ case_loc.title ]]</span>
-                                    <span class="icons">
-                                        <i v-if="case_loc.is_private" class="fa-solid fa-lock" title="Private"></i>
-                                        <i v-else class="fa-solid fa-globe" title="Public"></i>
-                                        <i v-if="case_loc.privileged_case" class="fa-solid fa-user-shield ms-1" title="Privileged case" style="color:#dc3545"></i>
-                                    </span>
-                                    <div class="case-status-inline">
-                                        <span :class="'badge rounded-pill text-bg-'+(status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.bootstrap_style || 'secondary') : 'secondary')">[[ status_info ? (status_info.status.find(s => s.id === case_loc.status_id)?.name || 'Unknown') : 'Unknown' ]]</span>
-                                        <img v-if="case_loc.has_misp_event && case_loc.misp_icon" :src="'/static/icons/' + case_loc.misp_icon" style="max-height:18px;" title="Linked to MISP event"/>
-                                    </div>
-                                </div>
-
-                                <div class="case-meta-row">
-                                    <div class="case-meta-item" title="Last modified">
-                                        <i class="fa-solid fa-clock-rotate-left fa-fw"></i>
-                                        <span>[[ dayjs.utc(case_loc.last_modif).fromNow() ]]</span>
-                                    </div>
-                                    <div class="case-meta-item" title="Tasks open/closed">
-                                        <i class="fa-solid fa-list-check fa-fw"></i>
-                                        <span>[[case_loc.open_tasks]] open / [[case_loc.closed_tasks]] closed</span>
-                                    </div>
-                                    <div class="case-meta-item" title="Ticket id" v-if="case_loc.ticket_id">
-                                        <i class="fa-solid fa-ticket fa-fw"></i>
-                                        <span>[[ case_loc.ticket_id ]]</span>
-                                    </div>
-                                    <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-                                        <div class="case-meta-item"><i class="fa-solid fa-building fa-fw"></i><span>[[case_loc.owner_org_name]]</span></div>
-                                        <div v-if="case_loc.orgs_in_case && case_loc.orgs_in_case.length > 1" class="case-meta-item" title="Orgs in case">
-                                            <i class="fa-solid fa-users fa-fw"></i>
-                                            <div class="orgs-list">
-                                                <span v-for="org in case_loc.orgs_in_case.filter(o => o.name !== case_loc.owner_org_name)" class="badge bg-light text-dark">[[ org.name ]]</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="case_loc.deadline" class="case-meta-item case-meta-deadline" :title="'Deadline: ' + case_loc.deadline">
-                                            <i class="fa-solid fa-hourglass-half fa-fw"></i>
-                                            <span class="meta-label">Deadline</span>
-                                            <span class="meta-value" :style="deadlineSoon(case_loc.deadline) ? 'color:#dc3545' : ''">[[ dayjs.utc(case_loc.deadline).endOf().fromNow() ]]</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="case-stats-row">
-                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Files">
-                                        <i class="fa-solid fa-file-lines me-1"></i> [[ filesCount(case_loc) ]]
-                                    </span>
-                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="MISP-Objects">
-                                        <i class="misp-icon misp-icon-object misp-simple me-1"></i> [[ objectsCount(case_loc) ]]
-                                    </span>
-                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Standalone MISP-Attributes">
-                                        <i class="misp-icon misp-icon-attribute misp-simple me-1"></i> [[ standaloneAttrsCount(case_loc) ]]
-                                    </span>
-                                    <span class="badge rounded-pill" style="background:#eef6ff;color:#070D47; font-weight:500;" title="Links">
-                                        <i class="fa-solid fa-link me-1"></i> [[ case_loc.link_to ? case_loc.link_to.length : 0 ]]
-                                    </span>
-                                </div>
-
-                                <div>
-                                    <template v-if="case_loc.description">
-                                        <div style="margin-top:6px;">
-                                            <button type="button" class="btn btn-sm btn-link case-description-toggle" @click.stop.prevent="expandedCases[case_loc.id] = !expandedCases[case_loc.id]">
-                                                <template v-if="expandedCases[case_loc.id]">
-                                                    <i class="fa-solid fa-chevron-down"></i> Description
-                                                </template>
-                                                <template v-else>
-                                                    <i class="fa-solid fa-chevron-right"></i> Description
-                                                </template>
-                                            </button>
-                                        </div>
-                                        <smart_render v-if="expandedCases[case_loc.id]" :code="case_loc.description" language="markdown" :simple="true"></smart_render>
-                                    </template>
-                                    <template v-else>
-                                        <i style="color:#888">No description</i>
-                                    </template>
-                                </div>
-
-                                <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
-                                    <div class="case-tag-group">
-                                            <div v-tag-fit>
-                                                <template v-for="item in allTags(case_loc)">
-                                                    <tag_badge v-if="item.type === 'custom'" kind="custom" :label="item.data.name" :color="item.data.color" :icon-class="item.data.icon"></tag_badge>
-                                                    <tag_badge v-else-if="item.type === 'tag'" kind="taxonomy" :label="item.data.name" :color="item.data.color" :title="item.data.description || item.data.name"></tag_badge>
-                                                    <tag_badge v-else kind="cluster" :label="item.data.tag" :icon-name="item.data.icon" :title="item.data.description || item.data.tag" :meta="item.data.meta || ''"></tag_badge>
-                                                </template>
-                                            </div>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
-                        <hr class="fading-line-2">
-                    </template>
-                </div>
-            </template>
-            <template v-else>
-                <div class="text-center py-3">
-                    <div class="spinner-border spinner-border-sm" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
-            </template>
-        </div>
-    </div>
+    </section>
     </div>
 
     <!-- Side column: the user's tasks and upcoming deadlines -->
@@ -162,7 +61,11 @@
                 <h2><i class="fa-solid fa-list-check"></i>My tasks</h2>
                 <a href="/my_assignment/">All <i class="fa-solid fa-arrow-right fa-xs"></i></a>
             </header>
-            <div v-if="!overview" class="fl-panel-empty"><span class="spinner-border spinner-border-sm"></span></div>
+            <loading_overlay v-if="!overview" :loading="true" :empty="true" :size="64" label="Loading tasks…">
+                <template #skeleton>
+                    <div v-for="i in 3" :key="i" class="py-2"><span class="lo-sk" style="width:70%"></span><span class="lo-sk lo-sk-sm" style="width:40%"></span></div>
+                </template>
+            </loading_overlay>
             <div v-else-if="!overview.my_tasks.length" class="fl-panel-empty">
                 <i class="fa-regular fa-circle-check"></i>Nothing assigned to you. Enjoy the calm.
             </div>
@@ -185,7 +88,11 @@
                 <h2><i class="fa-solid fa-hourglass-half"></i>Upcoming deadlines</h2>
                 <a href="/calendar/">Calendar <i class="fa-solid fa-arrow-right fa-xs"></i></a>
             </header>
-            <div v-if="!overview" class="fl-panel-empty"><span class="spinner-border spinner-border-sm"></span></div>
+            <loading_overlay v-if="!overview" :loading="true" :empty="true" :size="64" label="Loading deadlines…">
+                <template #skeleton>
+                    <div v-for="i in 3" :key="i" class="py-2"><span class="lo-sk" style="width:70%"></span><span class="lo-sk lo-sk-sm" style="width:40%"></span></div>
+                </template>
+            </loading_overlay>
             <div v-else-if="!overview.deadlines.length" class="fl-panel-empty">
                 <i class="fa-regular fa-calendar-check"></i>No deadline in the next two weeks.
             </div>
@@ -213,22 +120,17 @@
 {% block script %}
 <script type="module">
     const { createApp, ref} = Vue
-    import {message_list} from '/static/js/toaster.js'
-    import {truncateText, getTextColor, mapIcon} from '/static/js/utils.js'
-    import tag_badge from '/static/js/components/tag-badge.js'
-    import tag_fit from '/static/js/components/tag-fit.js'
-    import smart_render from '/static/js/components/smart-render.js'
+    import {message_list, display_toast} from '/static/js/toaster.js'
+    import case_list from '/static/js/components/case_list.js'
+    import loading_overlay from '/static/js/components/loading_overlay.js'
     createApp({
         delimiters: ['[[', ']]'],
-        directives: { 'tag-fit': tag_fit },
-        components: { smart_render, tag_badge },
+        components: { case_list, loading_overlay },
         setup() {
             const case_list = ref(null)
             const status_info = ref(null)
             const version = ref(null)
             const home_stats = ref(null)
-            const expandedCases = ref({})
-            const expandedTags = ref({})
             const overview = ref(null)
 
             // Deadline helpers of the side panels: "in 3 days", "2 days late"...
@@ -261,77 +163,12 @@
             }
             fetchOverview()
 
-            function allTags(case_loc){ return mergeTags(case_loc) }
-
-            function mergeTags(case_loc){
-                const arr = []
-                if(!case_loc) return arr
-                if(case_loc.custom_tags){ for(const t of case_loc.custom_tags) arr.push({type:'custom', data: t}) }
-                if(case_loc.tags){ for(const t of case_loc.tags) arr.push({type:'tag', data: t}) }
-                if(case_loc.clusters){ for(const c of case_loc.clusters) arr.push({type:'cluster', data: c}) }
-                return arr
-            }
-
-            function visibleTags(case_loc){
-                const items = mergeTags(case_loc)
-                const customs = items.filter(i => i.type === 'custom')
-                const tags = items.filter(i => i.type === 'tag')
-                const clusters = items.filter(i => i.type === 'cluster')
-                if(!expandedTags.value[case_loc.id]){
-                    const vis = []
-                    vis.push(...customs.slice(0,2))
-                    vis.push(...tags.slice(0,2))
-                    vis.push(...clusters.slice(0,2))
-                    return vis
-                }
-                return items
-            }
-
-            function hiddenTagCount(case_loc){
-                const items = mergeTags(case_loc)
-                const customs = items.filter(i => i.type === 'custom')
-                const tags = items.filter(i => i.type === 'tag')
-                const clusters = items.filter(i => i.type === 'cluster')
-                const visibleWhenCollapsed = Math.min(2, customs.length) + Math.min(2, tags.length) + Math.min(2, clusters.length)
-                return Math.max(0, items.length - visibleWhenCollapsed)
-            }
-
-            function toggleTags(id){
-                expandedTags.value[id] = !expandedTags.value[id]
-            }
-
-            function filesCount(case_loc){
-                if(!case_loc) return 0
-                if(case_loc.files) return case_loc.files.length
-                if(case_loc.nb_files) return case_loc.nb_files
-                if(case_loc.files_count) return case_loc.files_count
-                return 0
-            }
-
-            function objectsCount(case_loc){
-                if(!case_loc) return 0
-                if(case_loc.nb_objects) return case_loc.nb_objects
-                if(case_loc.objects) return Array.isArray(case_loc.objects) ? case_loc.objects.length : 0
-                if(case_loc.nb_objects_count) return case_loc.nb_objects_count
-                return 0
-            }
-
-            function standaloneAttrsCount(case_loc){
-                if(!case_loc) return 0
-                if(case_loc.nb_standalone_attrs) return case_loc.nb_standalone_attrs
-                if(case_loc.standalone_attributes) return Array.isArray(case_loc.standalone_attributes) ? case_loc.standalone_attributes.length : 0
-                if(case_loc.nb_standalone_attributes) return case_loc.nb_standalone_attributes
-                return 0
-            }
-
-            function deadlineSoon(deadline){
-                if(!deadline) return false
-                try{
-                    const diff = dayjs.utc(deadline).diff(dayjs.utc(), 'day', true)
-                    return diff >= 0 && diff <= 7
-                }catch(e){
-                    return false
-                }
+            async function complete_case(case_loc, is_revived) {
+                const action = is_revived ? 'revive' : 'complete'
+                if (!confirm(`Are you sure you want to ${action} this case?`)) return
+                const res = await fetch(`/case/${case_loc.id}/complete_case?revived=${is_revived}`)
+                if (res.status === 200) case_loc.completed = !is_revived
+                display_toast(res)
             }
 
             async function fetchCase() {
@@ -377,24 +214,12 @@
             return {
                 message_list,
                 dayjs,
-                getTextColor,
-                mapIcon,
-                truncateText,
 
                 case_list,
                 status_info,
                 version,
                 home_stats,
-                expandedCases,
-                expandedTags,
-                visibleTags,
-                allTags,
-                hiddenTagCount,
-                toggleTags,
-                filesCount,
-                objectsCount,
-                standaloneAttrsCount,
-                deadlineSoon,
+                complete_case,
                 overview, due_label, due_class, day_of, month_of
             }
         }

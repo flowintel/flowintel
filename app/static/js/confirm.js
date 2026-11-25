@@ -53,6 +53,8 @@ function _ensureModal() {
  * @param {string} [opts.message] Question shown in the body.
  * @param {string} [opts.detail]  Optional secondary line (smaller, muted).
  * @param {string} [opts.confirmText] Confirm button label. Defaults to "Confirm".
+ * @param {string} [opts.variant] Bootstrap colour of the confirm button. Defaults to "danger".
+ * @param {string} [opts.icon]    Font Awesome classes of its icon ("" for none). Defaults to a trash can.
  * @returns {Promise<boolean>}
  */
 export function confirmDelete(opts = {}) {
@@ -66,7 +68,10 @@ export function confirmDelete(opts = {}) {
         _detailEl.textContent = ''
         _detailEl.style.display = 'none'
     }
-    _confirmBtn.innerHTML = '<i class="fa-solid fa-trash"></i> ' + (opts.confirmText || 'Confirm')
+    // opts.variant / opts.icon: a non destructive question (e.g. a reset) gets a calm button
+    _confirmBtn.className = 'btn btn-sm btn-' + (opts.variant || 'danger')
+    const icon = opts.icon === undefined ? 'fa-solid fa-trash' : opts.icon
+    _confirmBtn.innerHTML = (icon ? '<i class="' + icon + '"></i> ' : '') + (opts.confirmText || 'Confirm')
 
     return new Promise((resolve) => {
         let settled = false

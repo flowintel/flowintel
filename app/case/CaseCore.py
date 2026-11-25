@@ -555,6 +555,7 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         "creation_date": Case.creation_date,
         "deadline": Case.deadline,
         "finish_date": Case.finish_date,
+        "status_id": Case.status_id,
     }
 
     def build_case_query(self, completed, tags=None, taxonomies=None, galaxies=None, clusters=None, custom_tags=None, filter=None):
@@ -573,8 +574,37 @@ class CaseCore(CommonAbstract, FilteringAbstract):
         
         return query.filter(and_(*conditions)).all()
     
-    def paginate_cases(self, case_list: list, page: int):
-        page_size = 25
+    PAGE_SIZES = (10, 25, 50, 100)
+
+    # time left before the deadline: key -> (min, max) delta from now, None = open-ended
+    DUE_WINDOWS = {
+        "overdue": (None, datetime.timedelta(0)),
+        "24h":     (datetime.timedelta(0), datetime.timedelta(hours=24)),
+        "7d":      (datetime.timedelta(0), datetime.timedelta(days=7)),
+        "30d":     (datetime.timedelta(0), datetime.timedelta(days=30)),
+    }
+
+    def filter_by_due(self, cases: list, due: str = None) -> list:
+        """Keep the cases whose deadline falls in the `due` window ("overdue", "24h", "7d",
+        "30d"), or that have none ("none"). Unknown or empty `due`: no filtering."""
+        if due == "none":
+            return [c for c in cases if not c.deadline]
+        if due not in self.DUE_WINDOWS:
+            return cases
+        now = datetime.datetime.now()
+        low, high = self.DUE_WINDOWS[due]
+        kept = []
+        for c in cases:
+            if not c.deadline:
+                continue
+            left = c.deadline - now
+            if (low is None or left >= low) and left < high:
+                kept.append(c)
+        return kept
+
+    def paginate_cases(self, case_list: list, page: int, page_size: int = 25):
+        if page_size not in self.PAGE_SIZES:
+            page_size = 25
         start = (page - 1) * page_size
         end = start + page_size
         paginated_cases = case_list[start:end]
@@ -582,7 +612,9 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
         return paginated_cases, nb_pages
 
-    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None, title_filter: str = None):
+    def sort_cases(self, page, completed, taxonomies=[], galaxies=[], tags=[], clusters=[], custom_tags=[], or_and_taxo="true", or_and_galaxies="true", filter=None, user: User = None, title_filter: str = None, order: str = "desc", per_page: int = 25, with_total: bool = False, due: str = None):
+        """Cases the user can see (public + private ones their org is in, all for an admin), filtered,
+        sorted and paginated. with_total=True also returns the number of matching cases."""
         if tags or taxonomies or galaxies or clusters or custom_tags:
             cases = self.build_case_query(completed, tags, taxonomies, galaxies, clusters, custom_tags, filter)
             cases = self._sort(cases, taxonomies, galaxies, tags, clusters, or_and_taxo, or_and_galaxies)
@@ -613,12 +645,23 @@ class CaseCore(CommonAbstract, FilteringAbstract):
                     loc.append(case)
             list_case_user_in = loc
 
+        # Optional time left before the deadline
+        list_case_user_in = self.filter_by_due(list_case_user_in, due)
+
         # Apply optional title filter (case-insensitive substring)
         if title_filter:
             tf = title_filter.lower()
             list_case_user_in = [c for c in list_case_user_in if c.title and tf in c.title.lower()]
 
-        list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page)
+        # Every query above sorts descending; ascending is the same list reversed, applied
+        # before pagination so the order holds across pages.
+        if order == "asc":
+            list_case_user_in.reverse()
+
+        total = len(list_case_user_in)
+        list_case_user_in, nb_pages = self.paginate_cases(list_case_user_in, page, per_page)
+        if with_total:
+            return list_case_user_in, nb_pages, total
         return list_case_user_in, nb_pages
 
 
