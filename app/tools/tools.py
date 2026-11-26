@@ -696,6 +696,7 @@ def system_settings():
 
         # Chatbot (ENABLE_CHATBOT lives in conf/config.py; OLLAMA_* live in conf/config_module.py)
         'enable_chatbot': current_app.config.get('ENABLE_CHATBOT', False),
+        'chatbot_tool_timeout': current_app.config['CHATBOT_TOOL_TIMEOUT'],
         'ollama_url': getattr(ConfigModule, 'OLLAMA_URL', ''),
         'ollama_model': getattr(ConfigModule, 'OLLAMA_MODEL', ''),
         'ollama_key_set': bool(getattr(ConfigModule, 'OLLAMA_KEY', '')),
@@ -816,6 +817,7 @@ def system_settings_save():
         'LIMIT_USER_VIEW_TO_ORG': 'bool',
         'ENFORCE_PRIVILEGED_CASE': 'bool',
         'ENABLE_CHATBOT': 'bool',
+        'CHATBOT_TOOL_TIMEOUT': 'int',
         'ENABLE_MERMAID': 'bool',
         'ENABLE_MERMAID_EXPORT': 'bool',
         'MISP_EXPORT_FILES': 'bool',
@@ -842,6 +844,9 @@ def system_settings_save():
 
     value_type = key_types[key]
 
+    if key == 'CHATBOT_TOOL_TIMEOUT' and (type(value) is not int or value < 1):
+        return jsonify({"error": "Chatbot tool timeout must be a positive whole number of seconds"}), 400
+
     # Format value for Python source code
     if value_type == 'bool':
         py_value = 'True' if value else 'False'
@@ -866,6 +871,13 @@ def system_settings_save():
     content = config_path.read_text()
     pattern = re.compile(r'^(\s+' + re.escape(key) + r'\s*=\s*)(.*?)(\s*#.*)?$', re.MULTILINE)
     new_content, count = pattern.subn(lambda m: m.group(1) + py_value + (m.group(3) or ''), content, count=1)
+
+    if count == 0 and key == 'CHATBOT_TOOL_TIMEOUT':
+        # Older configs have the chatbot toggle but lack the timeout setting.
+        chatbot_toggle = re.compile(r'^([ \t]+)ENABLE_CHATBOT[ \t]*=.*$', re.MULTILINE)
+        new_content, count = chatbot_toggle.subn(
+            lambda match: f'{match[0]}\n{match[1]}{key} = {py_value}', content, count=1
+        )
 
     if count == 0:
         return jsonify({"error": f"Could not find {key} in config.py"}), 400

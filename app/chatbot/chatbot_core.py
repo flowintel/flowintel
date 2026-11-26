@@ -93,13 +93,14 @@ def _mcp_environment():
 
 async def _call_mcp_tool(env, name, arguments):
     """Own the identity, transport and cleanup for exactly one tool invocation."""
+    tool_timeout = current_app.config["CHATBOT_TOOL_TIMEOUT"]
     server_params = StdioServerParameters(command="flowintel-mcp", args=[], env=env)
     async with asyncio.timeout(15) as startup_timeout:
         async with stdio_client(server_params) as (read, write):
             async with ClientSession(read, write) as client:
                 await client.initialize()
                 startup_timeout.reschedule(None)
-                return await asyncio.wait_for(client.call_tool(name, arguments), timeout=30)
+                return await asyncio.wait_for(client.call_tool(name, arguments), timeout=tool_timeout)
 
 
 # --- Sync wrappers around MCP tools (mirrors flowintel_dspy.py pattern) ---
