@@ -2,7 +2,6 @@ import asyncio
 import logging
 import os
 import re
-import threading
 from urllib.parse import urlsplit
 
 from mcp import ClientSession, StdioServerParameters
@@ -12,6 +11,7 @@ import litellm
 
 from flask import current_app, session
 from flask_login import current_user
+from redis.exceptions import RedisError
 
 import conf.config_module as ConfigModule
 
@@ -55,15 +55,15 @@ class FlowintelQA(dspy.Signature):
     answer: str = dspy.OutputField(desc="A helpful and concise answer")
 
 
-# module-level lock/flag for thread-safe dspy configuration
-_dspy_config_lock = threading.Lock()
-_dspy_configured = False
+GENERATION_TIMEOUT_SECONDS = 150
 
 
-# Cancellation helpers for in-flight chatbot generations.
-_chat_cancel_lock = threading.Lock()
-# Map user_id -> cancellation callable
-_chat_cancel_funcs = {}
+class GenerationTimedOut(TimeoutError):
+    pass
+
+
+class GenerationStopped(Exception):
+    pass
 
 
 def _mcp_environment():
@@ -158,7 +158,7 @@ def _chatbot_api_request(method, path):
     return method, route + ("?" + parts.query if parts.query else ""), None
 
 
-def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
+async def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
     """Read Flowintel cases, tasks and templates through reviewed API operations.
     Args: method (GET, or POST for searches), path (/case/... or /api/case/...),
     body (optional JSON). Other operations require administrator opt-in;
@@ -167,16 +167,16 @@ def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
     if refusal:
         return refusal
     logger.debug("LLM requested tool -> %s %s", method, path)
-    return str(asyncio.run(_call_mcp_tool(
+    return str(await _call_mcp_tool(
         _mcp_environment(), "call_flowintel_api", {"method": method, "path": path, "body": body}
-    )))
+    ))
 
 
-def get_docs_wrapper() -> str:
+async def get_docs_wrapper() -> str:
     """ALWAYS call this tool FIRST if you don't know the exact API paths or required payload.
     Returns the Swagger/OpenAPI documentation showing all valid endpoints."""
     logger.debug("LLM requested tool -> get_api_documentation")
-    return str(asyncio.run(_call_mcp_tool(_mcp_environment(), "get_api_documentation", {})))
+    return str(await _call_mcp_tool(_mcp_environment(), "get_api_documentation", {}))
 
 
 # --- Register tools and build ReAct agent ---
@@ -190,179 +190,87 @@ def _get_ollama_base() -> str:
     return getattr(ConfigModule, 'OLLAMA_URL', None) or "http://localhost:11434"
 
 
-def configure_lm(model: str = None):
-    """Configure (or reconfigure) the DSPy language model.
-
-    Uses ConfigModule.OLLAMA_URL as the Ollama base URL.
-    If *model* is provided the LM is always reconfigured with that model.
-    Otherwise a one-time default configuration is applied.
-    """
-    global _dspy_configured
-
-    with _dspy_config_lock:
-        # Build kwargs for the requested (or default) model
-        if model:
-            # Use 'ollama_chat/' prefix for Ollama models with the DSPy LiteLLM backend
-            full_model = model if "/" in model else f"ollama_chat/{model}"
-        else:
-            if _dspy_configured:
-                return
-            model_name = getattr(ConfigModule, 'OLLAMA_MODEL', None) or 'qwen3:0.6b'
-            full_model = model_name if '/' in model_name else f'ollama_chat/{model_name}'
-
-        api_key = getattr(ConfigModule, 'OLLAMA_KEY', None) or ""
-        api_base = _get_ollama_base()
-
-        kwargs = {"model": full_model}
-        if api_key:
-            kwargs["api_key"] = api_key
-        if api_base:
-            kwargs["api_base"] = api_base
-
-        lm = dspy.LM(**kwargs)
-        try:
-            dspy.configure(lm=lm)
-            _dspy_configured = True
-        except Exception as e:
-            msg = str(e).lower()
-            if "dspy.settings can only be changed" in msg or "can only be changed by the thread" in msg:
-                _dspy_configured = True
-                return full_model
-            raise
-        return full_model
+def _create_lm(model):
+    """Create a language model owned by a single chatbot request."""
+    model_name = model or getattr(ConfigModule, "OLLAMA_MODEL", None) or "qwen3:0.6b"
+    full_model = model_name if "/" in model_name else f"ollama_chat/{model_name}"
+    kwargs = {"model": full_model, "api_base": _get_ollama_base()}
+    api_key = getattr(ConfigModule, "OLLAMA_KEY", None)
+    if api_key:
+        kwargs["api_key"] = api_key
+    return dspy.LM(**kwargs)
 
 
-def _attempt_abort_lm_once():
-    """Best-effort: try several common methods to abort/close the configured
-    LM/client so an in-flight generation is interrupted. This is intentionally
-    defensive since the concrete LM backend may expose different APIs.
-    """
+def _cancellation_key(user_id, request_id):
+    return f"chatbot:stop:{user_id}:{request_id}"
+
+
+def cancel_current_generation(user_id, request_id):
+    """Signal the worker handling this user's request through shared Valkey."""
+    current_app.config["SESSION_REDIS"].set(
+        _cancellation_key(user_id, request_id), "1", ex=GENERATION_TIMEOUT_SECONDS + 30
+    )
+
+
+async def _wait_for_stop(redis_client, key):
     try:
-        lm_obj = None
-        try:
-            lm_obj = dspy.settings.lm
-        except Exception:
-            lm_obj = None
-
-        if not lm_obj:
-            return False
-
-        # Try direct methods on the LM object
-        for name in ("abort", "stop", "terminate", "close", "aclose", "cancel", "interrupt", "shutdown"):
-            try:
-                if hasattr(lm_obj, name):
-                    getattr(lm_obj, name)()
-                    logger.info("MCP debug: called %s() on LM object to abort generation", name)
-                    return True
-            except Exception:
-                logger.exception("MCP debug: error calling %s() on LM object", name)
-
-        # Try common nested attributes that may hold an HTTP client or transport
-        for attr in ("client", "_client", "session", "_session", "transport", "httpx_client"):
-            try:
-                sub = getattr(lm_obj, attr, None)
-                if not sub:
-                    continue
-                for name in ("abort", "stop", "terminate", "close", "aclose", "cancel", "interrupt", "shutdown"):
-                    try:
-                        if hasattr(sub, name):
-                            getattr(sub, name)()
-                            logger.info("MCP debug: called %s() on LM.%s to abort generation", name, attr)
-                            return True
-                    except Exception:
-                        logger.exception("MCP debug: error calling %s() on LM.%s", name, attr)
-            except Exception:
-                logger.exception("MCP debug: error while inspecting LM.%s", attr)
-
-        # As a last-ditch attempt, try litellm internal client if available
-        try:
-            import litellm
-            client = getattr(litellm, "_client", None)
-            if client:
-                for name in ("abort", "stop", "terminate", "close", "aclose", "cancel", "interrupt", "shutdown"):
-                    try:
-                        if hasattr(client, name):
-                            getattr(client, name)()
-                            logger.info("MCP debug: called %s() on litellm._client to abort generation", name)
-                            return True
-                    except Exception:
-                        logger.exception("MCP debug: error calling %s() on litellm._client", name)
-        except Exception:
-            pass
-
-    except Exception:
-        logger.exception("MCP debug: unexpected error in _attempt_abort_lm_once")
-    return False
+        while not await asyncio.to_thread(redis_client.exists, key):
+            await asyncio.sleep(0.5)
+    except RedisError:
+        logger.warning("Could not check for a chatbot stop request", exc_info=True)
+        return False
+    return True
 
 
-def register_chat_cancel(user_id, cancel_callable):
-    """Register a cancellation callable for the given user_id."""
-    with _chat_cancel_lock:
-        if user_id is None:
-            return
-        _chat_cancel_funcs[str(user_id)] = cancel_callable
+async def _generate_with_stop(question, redis_client, key):
+    try:
+        # The Stop request can reach its worker before /ask starts generation.
+        if await asyncio.to_thread(redis_client.exists, key):
+            raise GenerationStopped
+    except RedisError:
+        logger.warning("Could not check for a chatbot stop request", exc_info=True)
+        return await chatbot_module.acall(question=question)
+
+    generation = asyncio.create_task(chatbot_module.acall(question=question))
+    stop = asyncio.create_task(_wait_for_stop(redis_client, key))
+    try:
+        done, _ = await asyncio.wait((generation, stop), return_when=asyncio.FIRST_COMPLETED)
+        if stop in done and stop.result():
+            raise GenerationStopped
+        return await generation
+    finally:
+        generation.cancel()
+        stop.cancel()
+        await asyncio.gather(generation, stop, return_exceptions=True)
 
 
-def clear_chat_cancel(user_id):
-    with _chat_cancel_lock:
-        try:
-            _chat_cancel_funcs.pop(str(user_id), None)
-        except Exception:
-            pass
+async def _generate(question, model, user_id, request_id):
+    lm = _create_lm(model)
+    deadline = asyncio.timeout(GENERATION_TIMEOUT_SECONDS)
+    try:
+        with dspy.context(lm=lm):
+            async with deadline:
+                redis_client = current_app.config.get("SESSION_REDIS")
+                if redis_client is None or request_id is None:
+                    result = await chatbot_module.acall(question=question)
+                else:
+                    result = await _generate_with_stop(question, redis_client, _cancellation_key(user_id, request_id))
+    except TimeoutError as exc:
+        if deadline.expired():
+            raise GenerationTimedOut from exc
+        raise
+    finally:
+        await lm.aclose()
+
+    return result.answer, lm.model.rsplit("/", 1)[-1]
 
 
-def cancel_current_generation(user_id=None) -> bool:
-    """Attempt to cancel an in-flight generation for the given user.
-    Returns True if a cancellation action was performed (best-effort).
-    """
-    with _chat_cancel_lock:
-        key = str(user_id) if user_id is not None else None
-        if key and key in _chat_cancel_funcs:
-            try:
-                func = _chat_cancel_funcs.get(key)
-                if func:
-                    func()
-                # Also attempt a generic LM abort
-                _attempt_abort_lm_once()
-                # remove mapping
-                _chat_cancel_funcs.pop(key, None)
-                return True
-            except Exception:
-                logger.exception("MCP debug: exception while invoking cancel callable for user %s", key)
-                return False
-    # No specific mapping found, try a global LM abort
-    return _attempt_abort_lm_once()
-
-
-def get_chatbot_response(message: str, history: list = None, model: str = None, user_id: str = None) -> str:
-    """Send a message to the DSPy chatbot and return the response.
-
-    Args:
-        message: The current user message.
-        history: Optional list of previous messages as dicts with 'role' and 'content'.
-        model:   Optional Ollama model name to use for this request.
-    """
-    configure_lm(model=model)
-    # Resolve the display model name (strip ollama_chat/ prefix if present)
-    lm_settings = dspy.settings.lm
-    raw_model = getattr(lm_settings, 'model', '') if lm_settings else ''
-    display_model = raw_model.split('/')[-1] if '/' in raw_model else raw_model
-    # Register a per-user cancellation callable so external callers can stop
-    # an in-flight generation. This is best-effort and may not always succeed
-    # depending on the underlying LM backend.
-    register_chat_cancel(user_id, lambda: _attempt_abort_lm_once())
-
+def get_chatbot_response(message, history=None, model=None, user_id=None, request_id=None):
+    """Answer a question within the deadline for the entire ReAct run."""
     if history:
         history_text = "\n".join(
-            f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
-            for m in history
+            f"{'User' if entry['role'] == 'user' else 'Assistant'}: {entry['content']}"
+            for entry in history
         )
-        full_question = f"Previous conversation:\n{history_text}\n\nUser: {message}"
-    else:
-        full_question = message
-    try:
-        result = chatbot_module(question=full_question)
-        return result.answer, display_model
-    finally:
-        # Clean up cancel registration
-        clear_chat_cancel(user_id)
+        message = f"Previous conversation:\n{history_text}\n\nUser: {message}"
+    return asyncio.run(_generate(message, model, user_id, request_id))

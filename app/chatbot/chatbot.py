@@ -1,5 +1,7 @@
 import datetime
+import re
 import requests as http_requests
+from redis.exceptions import RedisError
 
 from flask import Blueprint, abort, current_app, render_template, request, jsonify
 from flask_login import login_required, current_user
@@ -9,7 +11,7 @@ from app.db_class.db import ChatConversation, ChatMessage
 
 from ..utils.logger import flowintel_log
 
-from .chatbot_core import get_chatbot_response, cancel_current_generation
+from .chatbot_core import GenerationStopped, GenerationTimedOut, cancel_current_generation, get_chatbot_response
 
 import conf.config_module as ConfigModule
 
@@ -20,6 +22,8 @@ chatbot_blueprint = Blueprint(
     template_folder='templates',
     static_folder='static'
 )
+
+_REQUEST_ID = re.compile(r"[0-9a-f]{32}")
 
 
 @chatbot_blueprint.before_request
@@ -121,8 +125,12 @@ def rename_conversation(conv_id):
 @login_required
 def ask():
     data = request.get_json()
-    if not data or not data.get("message"):
+    if not isinstance(data, dict) or not data.get("message"):
         return jsonify({"error": "Message is required"}), 400
+
+    request_id = data.get("request_id")
+    if request_id is not None and (not isinstance(request_id, str) or not _REQUEST_ID.fullmatch(request_id)):
+        return jsonify({"error": "Invalid generation request ID"}), 400
 
     message = data["message"].strip()
     if not message:
@@ -176,8 +184,15 @@ def ask():
     db.session.remove()
 
     try:
-        response, model_name = get_chatbot_response(message, history=history, model=model, user_id=user_id_saved)
+        response, model_name = get_chatbot_response(
+            message, history=history, model=model, user_id=user_id_saved, request_id=request_id
+        )
         flowintel_log("audit", 200, "Chatbot query", User=user_email_saved)
+    except GenerationTimedOut:
+        current_app.logger.warning("Chatbot generation timed out for conversation %s", conv_id_saved)
+        return jsonify({"error": "Chatbot generation timed out. Please try again."}), 504
+    except GenerationStopped:
+        return jsonify({"error": "Generation stopped"}), 409
     except Exception as e:
         return jsonify({"error": f"Chatbot error: {str(e)}"}), 500
 
@@ -207,11 +222,15 @@ def ask():
 @chatbot_blueprint.route("/stop", methods=['POST'])
 @login_required
 def stop_generation():
-    """Attempt to stop the current in-flight generation for this user."""
+    """Request cancellation of a specific generation for the authenticated user."""
+    data = request.get_json(silent=True)
+    request_id = data.get("request_id") if isinstance(data, dict) else None
+    if not isinstance(request_id, str) or not _REQUEST_ID.fullmatch(request_id):
+        return jsonify({"error": "Invalid generation request ID"}), 400
+
     try:
-        ok = cancel_current_generation(current_user.id)
-        if ok:
-            return jsonify({"stopped": True}), 200
-        return jsonify({"stopped": False, "message": "No active generation or stop not supported"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        cancel_current_generation(current_user.id, request_id)
+    except RedisError:
+        current_app.logger.warning("Could not send a chatbot stop request", exc_info=True)
+        return jsonify({"error": "Could not stop generation. Please try again."}), 503
+    return jsonify({"stop_requested": True}), 202

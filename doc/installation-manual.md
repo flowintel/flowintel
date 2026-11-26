@@ -1774,6 +1774,8 @@ ExecStart=/opt/flowintel/flowintel/env/bin/gunicorn -w 9 "app:create_app()" -b 1
 
 Avoid setting the worker count too high on systems with limited memory, as each worker runs a separate copy of the application. The bind address (`127.0.0.1:7006`) should match the `FLOWINTEL_APP_HOST` and `FLOWINTEL_APP_PORT` values in `conf/config.py`.
 
+Gunicorn loads `gunicorn.conf.py` from the checkout and allows 180 seconds for a silent worker. The chatbot has a 150-second generation deadline, and the supplied NGINX configuration waits 190 seconds for the upstream response. If you maintain custom Gunicorn or reverse proxy settings, keep both timeouts above the chatbot deadline so the application can return its timeout response.
+
 If you need to adjust resource limits (for example capping memory usage), you can add directives such as `MemoryMax=512M` or `CPUQuota=200%` in the `[Service]` section.
 
 Enable and start the services:
