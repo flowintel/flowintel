@@ -11,8 +11,9 @@ export default {
         case_id: Number,
         cases_info: Object
     },
-    emits: ['navigate'],
+    emits: ['navigate', 'events-changed'],
     setup(props, { emit }) {
+        const graph_load_error = ref('')
         const graph_events = ref([])
         const graph_links = ref([])
         const graph_total = ref(0)      // events in the case (the graph draws at most graph_max)
@@ -30,19 +31,37 @@ export default {
         const drill_mode = ref(saved_drill)
         const drill_path = ref([])        // [{ day }, { kind }]
         let graph = null
+        let graph_request = null
+        let unmounted = false
 
         async function fetch_graph_data() {
-            const res = await fetch('/case/' + props.case_id + '/get_timeline_graph')
-            if (res.status === 200) {
+            if (unmounted) return
+            graph_request?.abort()
+            const request = new AbortController()
+            graph_request = request
+            try {
+                const res = await fetch('/case/' + props.case_id + '/get_timeline_graph', { signal: request.signal })
+                if (unmounted || request.signal.aborted) return
+                if (res.status !== 200) {
+                    graph_load_error.value = 'Unable to load graph data. Please try again.'
+                    display_toast(res)
+                    return
+                }
                 const data = await res.json()
+                if (unmounted || request.signal.aborted) return
                 graph_events.value = data.events
                 graph_links.value = data.links
                 graph_total.value = data.total || data.events.length
                 graph_max.value = data.max || 0
                 await nextTick()
+                if (unmounted || request.signal.aborted) return
                 render_graph()
-            } else {
-                display_toast(res)
+                graph_load_error.value = ''
+            } catch (error) {
+                if (!unmounted && !request.signal.aborted)
+                    graph_load_error.value = 'Unable to load graph data. Please try again.'
+            } finally {
+                if (graph_request === request) graph_request = null
             }
         }
 
@@ -259,6 +278,7 @@ export default {
             if (res.status !== 200) return false
             await fetch_graph_data()          // date may move the card: redraw in time order
             touchCaseLastModif(props.cases_info)
+            emit('events-changed')
             return true
         }
 
@@ -292,6 +312,7 @@ export default {
                 if (d.link_type === 'analyst') await fetch('/case/' + props.case_id + '/delete_timeline_event_link/' + d.link_id)
             }
             touchCaseLastModif(props.cases_info)
+            emit('events-changed')
             await fetch_graph_data()
             return false                       // the graph is redrawn from the case data
         }
@@ -329,6 +350,7 @@ export default {
             const res = await post('/case/' + props.case_id + '/create_timeline_event', values)
             if (res.status === 200) {
                 touchCaseLastModif(props.cases_info)
+                emit('events-changed')
                 await fetch_graph_data()        // drawn at its place in time
             }
             return false
@@ -842,7 +864,7 @@ export default {
         function render_graph() {
             const container = document.getElementById('timeline-graph-container')
             const canvas = document.getElementById('timeline-graph-canvas')
-            if (!container || !canvas) return
+            if (unmounted || !container || !canvas) return
             graph_loading.value = true
 
             if (graph) {
@@ -1115,16 +1137,24 @@ export default {
         document.addEventListener('fullscreenchange', on_fullscreen)
 
         onBeforeUnmount(() => {
+            unmounted = true
+            graph_request?.abort()
             document.removeEventListener('fullscreenchange', on_fullscreen)
             if (icon_observer) icon_observer.disconnect()
             if (graph) graph.destroy()
+            graph = null
         })
 
-        onMounted(() => {
-            fetch_graph_data()
+        onMounted(() => fetch_graph_data())
+        onBeforeUnmount(() => {
+            unmounted = true
+            graph_request?.abort()
+            graph?.destroy()
+            graph = null
         })
 
         return {
+            graph_load_error,
             graph_events,
             graph_links,
             graph_total,
@@ -1139,7 +1169,10 @@ export default {
             drill_to,
             toggle_drill,
             crumb_label,
-            fetch_graph_data
+            fetch_graph_data,
+            // used by the Pivotick editors (returned for the tests)
+            persist_node_create,
+            persist_delete
         }
     },
     template: `
@@ -1195,6 +1228,10 @@ export default {
         <div v-if="graph_max && graph_total > graph_max" class="tlg-cap">
             <i class="fa-solid fa-gauge-high"></i>
             <span>This case has <b>[[ graph_total.toLocaleString() ]]</b> events: the graph shows the <b>[[ graph_max.toLocaleString() ]]</b> most recent ones to stay fast. The Timeline tab lists them all.</span>
+        </div>
+        <div v-if="graph_load_error" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <span>[[ graph_load_error ]]</span>
+            <button type="button" class="btn btn-outline-danger btn-sm" @click="fetch_graph_data()">Retry</button>
         </div>
 
         <!-- Graph -->

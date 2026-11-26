@@ -15,7 +15,7 @@ export default {
         cases_info: Object,
         initial_view: { type: String, default: '' }
     },
-    emits: ['view-change'],
+    emits: ['view-change', 'navigate'],
     setup(props, { emit }) {
         const timeline_events = ref([])
         const timeline_current_view = ref('timeline')
@@ -156,7 +156,8 @@ export default {
                     customViews: [createFlowtimeGraphView({
                         caseId: props.case_id,
                         getCasesInfo: () => props.cases_info,
-                        onEventsChanged: fetch_timeline_events
+                        onEventsChanged: fetch_timeline_events,
+                        onNavigate: target => emit('navigate', target)
                     })],
                     actions: [
                         {

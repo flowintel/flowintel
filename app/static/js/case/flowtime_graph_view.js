@@ -1,7 +1,7 @@
 import timeline_graph from './timeline_graph.js'
 
 // Flowtime supplies the view slot and lifecycle. Vue, Pivotick and graph data stay here.
-export function createFlowtimeGraphView({ caseId, getCasesInfo, onEventsChanged }) {
+export function createFlowtimeGraphView({ caseId, getCasesInfo, onEventsChanged, onNavigate }) {
     return {
         id: 'graph',
         label: 'Graph',
@@ -13,7 +13,8 @@ export function createFlowtimeGraphView({ caseId, getCasesInfo, onEventsChanged 
                 render: () => Vue.h(timeline_graph, {
                     case_id: caseId,
                     cases_info: getCasesInfo(),
-                    onEventsChanged
+                    onEventsChanged,
+                    onNavigate
                 })
             })
             app.mount(container)
