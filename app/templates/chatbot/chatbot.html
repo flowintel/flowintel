@@ -124,7 +124,7 @@ createApp({
         const editingTitleId = ref(null);
         const editingTitleValue = ref('');
         const csrfToken = document.getElementById('csrf_token')?.value || '';
-        const abortController = ref(null);
+        let activeRequestId = null;
         const chatMessages = ref(null);
         const chatInput = ref(null);
 
@@ -239,18 +239,15 @@ createApp({
 
         async function sendMessage() {
             const message = (newMessage.value || '').trim();
-            if (!message) return;
+            if (!message || sending.value) return;
+            const requestId = Array.from(window.crypto.getRandomValues(new Uint8Array(16)),
+                byte => byte.toString(16).padStart(2, '0')).join('');
+            activeRequestId = requestId;
             pushMessage(message, 'user', { created_at: new Date().toLocaleString() });
             newMessage.value = '';
             adjustTextarea();
             sending.value = true;
             isLoading.value = true;
-
-            if (window.AbortController) {
-                abortController.value = new AbortController();
-            } else {
-                abortController.value = null;
-            }
 
             try {
                 if (!currentConvId.value) {
@@ -266,7 +263,7 @@ createApp({
                     }
                 }
 
-                const body = { message };
+                const body = { message, request_id: requestId };
                 if (currentConvId.value) body.conversation_id = currentConvId.value;
                 if (selectedModel.value) body.model = selectedModel.value;
 
@@ -275,12 +272,8 @@ createApp({
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                     body: JSON.stringify(body)
                 };
-                if (abortController.value && abortController.value.signal) fetchOpts.signal = abortController.value.signal;
-
                 const resp = await fetch('/chatbot/ask', fetchOpts);
                 const data = await resp.json();
-                isLoading.value = false;
-                abortController.value = null;
 
                 if (resp.ok) {
                     pushMessage(data.response, 'assistant', { model_name: data.model_name, created_at: new Date().toLocaleString() });
@@ -290,29 +283,30 @@ createApp({
                     pushMessage(data.error || 'An error occurred', 'assistant');
                 }
             } catch (err) {
-                isLoading.value = false;
-                if (err && err.name === 'AbortError') {
-                    pushMessage('Generation stopped', 'assistant');
-                } else {
-                    pushMessage('Failed to reach the server. Please try again.', 'assistant');
-                }
+                pushMessage('Failed to reach the server. Please try again.', 'assistant');
             } finally {
                 sending.value = false;
                 isLoading.value = false;
-                abortController.value = null;
+                activeRequestId = null;
                 nextTick(() => chatInput.value?.focus());
             }
         }
 
         async function stopGeneration() {
+            const requestId = activeRequestId;
+            if (!requestId) return;
             try {
-                await fetch('/chatbot/stop', { method: 'POST', headers: { 'X-CSRFToken': csrfToken } }).catch(()=>{});
-            } finally {
-                if (abortController.value && abortController.value.abort) {
-                    try { abortController.value.abort(); } catch(e){}
-                }
-                isLoading.value = false;
-                abortController.value = null;
+                const response = await fetch('/chatbot/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ request_id: requestId })
+                });
+                if (response.ok) return;
+            } catch (err) {
+                // The active request can still finish if the stop request fails.
+            }
+            if (activeRequestId === requestId) {
+                message_list.value.push({message: 'Could not stop generation. Please try again.', type: 'warning'});
             }
         }
 
