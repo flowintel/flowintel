@@ -1886,11 +1886,15 @@ class Case_Misp_Object_Reference(db.Model):
 
 
 class Misp_Attribute(db.Model):
+    __table_args__ = (
+        db.Index("ix_misp__attribute_value", "value", mysql_length=191, mariadb_length=191),
+    )
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     case_misp_object_id = db.Column(db.Integer, db.ForeignKey('case__misp__object.id', ondelete="CASCADE"))
     case_id = db.Column(db.Integer, index=True)  # set for standalone attributes (case_misp_object_id is NULL)
     uuid = db.Column(db.String(36), index=True, default=lambda: str(uuid.uuid4()))
-    value = db.Column(db.String(255), index=True)
+    value = db.Column(db.Text())
     type = db.Column(db.String(64), index=True)
     object_relation = db.Column(db.String(64), index=True)
     first_seen = db.Column(db.DateTime, index=True)

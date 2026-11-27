@@ -410,10 +410,15 @@ def upgrade():
                existing_type=sa.VARCHAR(),
                type_=sa.String(length=64),
                existing_nullable=True)
+        batch_op.drop_index(batch_op.f('ix_misp__attribute_value'))
         batch_op.alter_column('value',
                existing_type=sa.VARCHAR(),
-               type_=sa.String(length=255),
+               type_=sa.Text(),
                existing_nullable=True)
+        batch_op.create_index(
+            batch_op.f('ix_misp__attribute_value'), ['value'],
+            mysql_length=191, mariadb_length=191,
+        )
 
     with op.batch_alter_table('note__template__model', schema=None) as batch_op:
         batch_op.alter_column('title',
@@ -554,7 +559,7 @@ def downgrade():
         )
         batch_op.alter_column(
             "value",
-            existing_type=sa.String(length=255),
+            existing_type=sa.Text(),
             type_=sa.VARCHAR(),
             existing_nullable=True,
         )
