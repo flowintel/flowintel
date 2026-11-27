@@ -48,15 +48,15 @@ export default {
     },
     template: `
         <nav v-if="nbPages > 1" ref="root" class="fi-pager" aria-label="Page navigation">
-            <button type="button" class="fi-pager-btn fi-pager-step" :disabled="currentPage <= 1" @click="go(currentPage - 1)" aria-label="Previous page" title="Previous page">
+            <button type="button" class="fi-pager-btn fi-pager-step" :data-page="currentPage - 1" :disabled="currentPage <= 1" @click="go(currentPage - 1)" aria-label="Previous page" title="Previous page">
                 <i class="fa-solid fa-chevron-left"></i>
             </button>
             <template v-for="(page, index) in visible_pages" :key="index">
                 <span v-if="page === '...'" class="fi-pager-gap" aria-hidden="true" title="Pages skipped">…</span>
-                <button v-else type="button" class="fi-pager-btn" :class="{ 'is-active': page === currentPage }"
+                <button v-else type="button" class="fi-pager-btn" :data-page="page" :class="{ 'is-active': page === currentPage }"
                         :aria-current="page === currentPage ? 'page' : null" :title="page === currentPage ? 'Current page' : 'Go to page ' + page" @click="go(page)">[[ page ]]</button>
             </template>
-            <button type="button" class="fi-pager-btn fi-pager-step" :disabled="currentPage >= nbPages" @click="go(currentPage + 1)" aria-label="Next page" title="Next page">
+            <button type="button" class="fi-pager-btn fi-pager-step" :data-page="currentPage + 1" :disabled="currentPage >= nbPages" @click="go(currentPage + 1)" aria-label="Next page" title="Next page">
                 <i class="fa-solid fa-chevron-right"></i>
             </button>
         </nav>

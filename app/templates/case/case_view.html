@@ -1065,16 +1065,16 @@
             <hr class="fading-line-2 mb-4">
 
             <template v-if="tasks_tab == 'main'">
-                <div id="list-container">
-                    <template v-for="task, key in cases_info.tasks" :key="task.id">
-                        <div :id="`task-${task.id}`" class="list-group" style="margin-bottom: 40px;">
+                <div id="list-container" ref="task_list">
+                    <template v-for="task, key in visible_tasks" :key="task.id">
+                        <div :id="`task-${task.id}`" :data-task-id="task.id" class="list-group" style="margin-bottom: 40px;">
                             <case_tasks :cases_info="cases_info" 
                                         :users_in_case="users_in_case" 
                                         :status_info="status_info" 
                                         :task="task" 
-                                        :key_loop="key"
+                                        :key_loop="task_offset + key"
                                         :open_closed="open_closed"
-                                        :can_drag_reorder="can_drag_reorder"
+                                        :can_drag_reorder="can_drag_reorder || dragging_task?.task.id === task.id"
                                         :task_modules="task_modules">
                             </case_tasks>
                         </div>
@@ -1093,7 +1093,9 @@
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="total_pages > 1" class="mt-3 d-flex justify-content-center">
+                <div v-if="total_pages > 1" ref="task_pager" class="mt-3 d-flex justify-content-center align-items-center gap-2"
+                     :class="{ 'sticky-bottom bg-body py-2': dragging_task }">
+                    <span v-if="dragging_task" class="small">Hold over a page, then drop the task into position</span>
                     <app-pagination scroll="#task-collapse" :current-page="current_page" :nb-pages="total_pages"
                                     aria-label="Task pagination" @page="go_to_page"></app-pagination>
                     <span class="ms-3 text-muted align-self-center" style="font-size: 0.82rem;">
@@ -1216,6 +1218,10 @@
                 const current_page = ref(1)
                 const total_tasks = ref(0)
                 const per_page = 10
+                const loaded_task_page = ref(1)
+                const task_offset = computed(() => (loaded_task_page.value - 1) * per_page)
+                const reorderable_page = ref(null)
+                let task_request = 0
 
                 const main_tab = ref('main')
                 const subtab_note = ref('case')
@@ -1813,7 +1819,11 @@
                     fetch_sorted_tasks()
                 }
 
-                async function fetch_sorted_tasks() {
+                async function fetch_sorted_tasks(page = current_page.value, signal) {
+                    const request = ++task_request
+                    const previous_page = current_page.value
+                    const ordered = in_task_order.value
+                    if (!signal) reorderable_page.value = null
                     let loc_status = `status=${!is_open_cases.value}`
                     let loc_filter = `&filter=${current_filter.value}`
                     let loc_or_and_taxo = `&or_and_taxo=${tag_filter_state.value.or_and_taxo}`
@@ -1832,11 +1842,27 @@
 
                     let url = `/case/${cases_info.value.case.id}/sort_tasks?${loc_status}${loc_filter}${loc_or_and_taxo}${loc_or_and_galaxies}${tags}${taxo}${galax}${clusters}${custom_tg}`
                     if (search_query.value) url += '&q=' + encodeURIComponent(search_query.value)
-                    url += `&page=${current_page.value}&per_page=${per_page}`
+                    url += `&page=${page}&per_page=${per_page}`
                     
-                    const res = await fetch(url)
-                    let loc = await res.json()
+                    let loc
+                    try {
+                        const res = await fetch(url, { signal })
+                        if (!res.ok) {
+                            if (request === task_request && !signal?.aborted) display_toast(res)
+                            return
+                        }
+                        loc = await res.json()
+                    } catch {
+                        if (request === task_request && !signal?.aborted) {
+                            create_message("Could not load the task page.", "danger-subtle", false)
+                        }
+                        return
+                    }
 
+                    if (request !== task_request || previous_page !== current_page.value || signal?.aborted) return
+                    current_page.value = page
+                    loaded_task_page.value = page
+                    reorderable_page.value = ordered ? page : null
                     total_tasks.value = loc.total
 
                     if(asc_desc.value)
@@ -2402,62 +2428,6 @@ async function autosave_case_note(){
                         parentEl.style.minHeight = '0'; // reset
                     });
 
-
-
-                    const options = {
-                        animation: 150,
-                        handle: '.task-drag-handle',
-                        ghostClass: 'dragging-ghost',  // class applied to the clone while dragging
-                        onMove: function() {
-                            return can_drag_reorder.value
-                        },
-                        onEnd: async function(evt) {
-                            if (!can_drag_reorder.value) {
-                                create_message("Tasks can only be reordered in open case-order view without filters", "warning-subtle", false)
-                                await fetch_sorted_tasks()
-                                return
-                            }
-                            let task
-                            for(let i in cases_info.value.tasks){
-                                if (cases_info.value.tasks[i].id == evt.item.id.split("-")[1]){
-                                    task = cases_info.value.tasks[i]
-                                    break
-                                }
-                            }
-                            if(!task){
-                                await fetch_sorted_tasks()
-                                return
-                            }
-                            if(!task.completed){
-                                if(evt.newIndex != evt.oldIndex){
-                                    const dataToSend = {"new-index": ((current_page.value - 1) * per_page) + evt.newIndex}
-
-                                    // Send via fetch to backend
-                                    const res = await fetch('/case/'+cases_info.value.case.id+'/change_order/'+evt.item.id.split("-")[1], {
-                                        method: 'POST',
-                                        headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
-                                        body: JSON.stringify(dataToSend)
-                                    })
-                                    if(await res.status == 200){
-                                        cases_info.value.case.last_modif = Date.now()
-                                    }
-                                    await fetch_sorted_tasks()
-                                    display_toast(res)
-                                }
-                            }else{
-                                create_message("Finished tasks cannot be moved", "warning-subtle",false)
-                                await fetch_sorted_tasks()
-                            }
-                        }
-                    };
-
-                    const listContainer = document.getElementById('list-container');
-                    if (listContainer) {
-                        new Sortable(listContainer, options);
-                    }
-
-                    // (users refreshed via Vue event emitted by child component)
-
                     // "See in the calendar" of a task: the Calendar panel opens the task when it
                     // mounts (or right away if it is already open)
                     window.addEventListener('calendar-focus-task', async (e) => {
@@ -2483,17 +2453,161 @@ async function autosave_case_note(){
                 const has_active_filters = computed(() => {
                     return (
                         (search_query.value || '').length > 0 ||
+                        tag_filter_state.value.taxonomies.length > 0 ||
+                        tag_filter_state.value.galaxies.length > 0 ||
                         tag_filter_state.value.tags.length > 0 ||
                         tag_filter_state.value.clusters.length > 0 ||
                         tag_filter_state.value.custom_tags.length > 0
                     )
                 })
 
-                const can_drag_reorder = computed(() => {
+                const task_list = ref(null)
+                const task_pager = ref(null)
+                const dragging_task = ref(null)
+                const saving_order = ref(false)
+
+                const in_task_order = computed(() => {
                     return is_open_cases.value &&
                         current_filter.value === 'case_order_id' &&
                         !asc_desc.value &&
                         !has_active_filters.value
+                })
+
+                const can_drag_reorder = computed(() => in_task_order.value &&
+                    reorderable_page.value === current_page.value && !saving_order.value)
+
+                function page_button(target) {
+                    if (task_pager.value?.contains(target)) return target.closest('button[data-page]:enabled')
+                }
+
+                const visible_tasks = computed(() => {
+                    const tasks = cases_info.value?.tasks || []
+                    const drag = dragging_task.value
+                    const page = loaded_task_page.value
+                    if (!drag || page === drag.source_page) return tasks
+
+                    // Keep the dragged node mounted. Moving it here shifts one boundary
+                    // task onto the neighboring page, leaving a slot on this page.
+                    const neighbors = page > drag.source_page ? tasks.slice(1) : tasks.slice(0, -1)
+                    return [drag.task, ...neighbors]
+                })
+
+                async function move_task(task_id, page, index) {
+                    const request = task_request
+                    saving_order.value = true
+                    try {
+                        const res = await fetch(`/case/${cases_info.value.case.id}/change_order/${task_id}`, {
+                            method: 'POST',
+                            headers: { "X-CSRFToken": $("#csrf_token").val(), "Content-Type": "application/json" },
+                            body: JSON.stringify({ "new-index": index })
+                        })
+                        if (res.ok) {
+                            cases_info.value.case.last_modif = Date.now()
+                            if (request === task_request && page !== current_page.value) {
+                                current_page.value = page
+                                task_list.value?.scrollIntoView({ block: 'start' })
+                            }
+                        }
+                        display_toast(res)
+                        await fetch_sorted_tasks()
+                    } catch {
+                        create_message("Could not update the task list. Refresh to check the order.", "danger-subtle", false)
+                    } finally {
+                        saving_order.value = false
+                    }
+                }
+
+                watch(task_list, (list, previous, onCleanup) => {
+                    if (!list) return
+                    let hover_button = null
+                    let hover_page = null
+                    let hover_timer
+                    let hover_load
+
+                    function clear_hover() {
+                        clearTimeout(hover_timer)
+                        hover_load?.abort()
+                        hover_load = null
+                        hover_button = null
+                        hover_page = null
+                    }
+
+                    function track_hover(event) {
+                        if (!dragging_task.value) return
+                        const point = event.touches?.[0] || event
+                        const target = event.type === 'dragover' ? event.target
+                            : document.elementFromPoint(point.clientX, point.clientY)
+                        const button = page_button(target)
+                        if (button && event.type === 'dragover') event.preventDefault()
+                        if (button === hover_button) return
+                        clear_hover()
+                        if (!button) return
+                        hover_button = button
+                        hover_page = Number(button.dataset.page)
+                        const page = hover_page
+                        if (page === current_page.value) return
+                        hover_timer = setTimeout(async () => {
+                            hover_load = new AbortController()
+                            const { signal } = hover_load
+                            await fetch_sorted_tasks(page, signal)
+                            await nextTick()
+                            if (!signal.aborted && reorderable_page.value === page) {
+                                list.scrollIntoView({ block: 'start', behavior: 'instant' })
+                            }
+                        }, 450)
+                    }
+
+                    const hover_events = ['dragover', 'pointermove', 'touchmove']
+                    function finish_drag() {
+                        clear_hover()
+                        for (const type of hover_events) document.removeEventListener(type, track_hover, true)
+                        dragging_task.value = null
+                    }
+
+                    const sortable = new Sortable(list, {
+                        animation: 150,
+                        handle: '.task-drag-handle',
+                        ghostClass: 'dragging-ghost',
+                        fallbackOnBody: true,
+                        onStart(event) {
+                            const task = cases_info.value.tasks[event.oldIndex]
+                            dragging_task.value = { task, source_page: current_page.value }
+                            for (const type of hover_events) document.addEventListener(type, track_hover, true)
+                        },
+                        onMove: () => can_drag_reorder.value,
+                        async onEnd(event) {
+                            const drag = dragging_task.value
+                            const release = event.originalEvent
+                            const point = release?.changedTouches?.[0] || release
+                            const target = release?.type === 'drop' ? release.target
+                                : point && document.elementFromPoint(point.clientX, point.clientY)
+                            const button = page_button(target)
+                            // A held arrow still refers to the page it just opened.
+                            let page = current_page.value
+                            if (button) page = button === hover_button ? hover_page : Number(button.dataset.page)
+                            finish_drag()
+
+                            // Sortable moves the row outside Vue. Restore its place on its
+                            // source page before Vue removes the preview or renders a save.
+                            if (drag.source_page === loaded_task_page.value && event.newIndex !== event.oldIndex) {
+                                const next = cases_info.value.tasks[event.oldIndex + 1]
+                                const anchor = next ? list.querySelector(`[data-task-id="${next.id}"]`) : list.lastElementChild.nextSibling
+                                list.insertBefore(event.item, anchor)
+                            }
+                            if (!can_drag_reorder.value || !release || ['dragend', 'touchcancel', 'pointercancel'].includes(release.type)) return
+
+                            if (button && page !== drag.source_page) {
+                                await move_task(drag.task.id, page, (page - 1) * per_page)
+                            } else if (list.contains(target) &&
+                                (page !== drag.source_page || event.newIndex !== event.oldIndex)) {
+                                await move_task(drag.task.id, page, task_offset.value + event.newIndex)
+                            }
+                        }
+                    })
+                    onCleanup(() => {
+                        finish_drag()
+                        sortable.destroy()
+                    })
                 })
 
                 function go_to_page(page) {
@@ -2625,6 +2739,7 @@ async function autosave_case_note(){
                     get_completion_color,
                     is_open_cases,
 
+                    task_list, task_pager, dragging_task, visible_tasks, task_offset,
                     current_page,
                     total_tasks,
                     total_pages,

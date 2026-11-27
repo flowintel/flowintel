@@ -743,6 +743,7 @@ legend.analyzer-select-case {
   margin-right: 4px;
   color: #adb5bd;
   cursor: grab;
+  touch-action: none;
   user-select: none;
   border-radius: 8px;
   transition: color 0.15s ease, background-color 0.15s ease;
