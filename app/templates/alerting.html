@@ -13,11 +13,11 @@
 <div class="container-fluid alert-console">
     {% call(section) page_header('Alert triage', 'fa-solid fa-triangle-exclamation', 'Alerts received from webhooks and mailboxes, to review or turn into cases.') %}
         {% if section == 'stats' %}
-            {{ header_stat('fa-solid fa-eye', '[[ filteredAlerts.length ]] / [[ alerts.length ]]', 'visible', title='Visible / loaded alerts') }}
-            {{ header_stat('fa-solid fa-circle-exclamation', '[[ newCount ]]', 'new', alert='newCount', attrs='v-if="newCount"') }}
-            {{ header_stat('fa-solid fa-fire', '[[ criticalCount ]]', 'critical', alert='criticalCount', attrs='v-if="criticalCount"') }}
+            {{ header_stat('fa-solid fa-eye', '[[ total ]]', 'matching', attrs='v-if="!loading && !loadError"') }}
+            {{ header_stat('fa-solid fa-circle-exclamation', '[[ counts.new ]]', 'new', alert='counts.new', attrs='v-if="counts.new"') }}
+            {{ header_stat('fa-solid fa-fire', '[[ counts.critical ]]', 'critical', alert='counts.critical', attrs='v-if="counts.critical"') }}
         {% elif section == 'actions' %}
-            {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh alerts', attrs='@click="refreshAlerts" :disabled="refreshing" :class="{\'is-busy\': refreshing}"') }}
+            {{ header_link('Refresh', icon='fa-solid fa-rotate', title='Refresh alerts', attrs='@click="refreshAlerts" :disabled="loading || sending" :class="{\'is-busy\': loading}"') }}
         {% elif section == 'toolbar' %}
             {{ header_search('Search title, source, ref, asset, observable', model='filters.query') }}
             {{ header_segmented([
@@ -36,7 +36,6 @@
                     {'value': 'low', 'label': 'Low'},
                     {'value': 'info', 'label': 'Info'},
                 ], model='filters.severity', title='Severity') }}
-            {{ header_select([{'value': 'all', 'label': 'External alerts'}], model='filters.type', title='Alert type') }}
         {% endif %}
     {% endcall %}
 
@@ -45,40 +44,76 @@
             <div class="review-panel">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                     <strong>Queue</strong>
-                    <button class="btn btn-sm btn-outline-secondary" @click="markAllRead" :disabled="unreadCount === 0" title="Mark visible alerts as read">
+                    <button class="btn btn-sm btn-outline-secondary" @click="markAllRead" :disabled="!unreadCount || sending" aria-label="Mark all accessible alerts as read" title="Mark all accessible alerts as read">
                         <i class="fa-solid fa-check-double"></i>
                     </button>
                 </div>
-                <div class="alert-list">
-                    <div v-if="filteredAlerts.length === 0" class="text-center text-muted py-5 px-3">
+                {% if not current_user.read_only() %}
+                <div v-if="alerts.length && !loading && !loadError" class="d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-bottom">
+                    <div class="form-check mb-0 me-auto">
+                        <input class="form-check-input" type="checkbox" id="select-alert-page" :checked="allChecked"
+                               :indeterminate.prop="selectedCount > 0 && !allChecked" :disabled="sending || allMatching" @change="togglePageSelection">
+                        <label class="form-check-label small" for="select-alert-page">Select page</label>
+                    </div>
+                    <button v-if="!allMatching && total > alerts.length" type="button" class="btn btn-sm btn-outline-secondary"
+                            :disabled="sending" @click="selectAllMatching">Select all [[ total ]] matching alerts</button>
+                    <template v-if="selectedCount">
+                        <span class="text-muted small" role="status">[[ allMatching ? `All ${selectedCount} matching alerts selected` : `${selectedCount} selected` ]]</span>
+                        <button v-if="allMatching" type="button" class="btn btn-sm btn-outline-secondary"
+                                :disabled="sending" @click="clearBulkSelection">Clear selection</button>
+                        <select class="form-select form-select-sm w-auto" v-model="bulkStatus" :disabled="sending" aria-label="Bulk review status">
+                            <option value="" disabled>Update status</option>
+                            <option value="reviewing">Reviewing</option>
+                            <option value="false_positive">False positive</option>
+                            <option value="dismissed">Dismissed</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-primary" :disabled="!bulkStatus || sending" @click="applyBulkReview">
+                            [[ allMatching ? 'Apply to all matches' : 'Apply' ]]
+                        </button>
+                    </template>
+                </div>
+                {% endif %}
+                <div v-if="loading" class="text-center text-muted py-5 px-3" role="status">Loading alerts…</div>
+                <div v-else-if="loadError" class="text-center text-danger py-5 px-3" role="alert">Could not load alerts.</div>
+                <div v-else class="alert-list">
+                    <div v-if="alerts.length === 0" class="text-center text-muted py-5 px-3">
                         <i class="fa-solid fa-bell-slash fa-2x mb-3"></i>
                         <div>No matching alerts</div>
                     </div>
-                    <button v-for="a in filteredAlerts" :key="a.id" type="button"
-                            class="list-group-item list-group-item-action alert-row text-start"
-                            :class="['severity-' + severity(a), {active: selected && selected.id === a.id, unread: !a.is_read}]"
-                            @click="selectAlert(a)">
-                        <div class="d-flex justify-content-between gap-2">
-                            <div class="alert-title">[[ displayTitle(a) ]]</div>
-                            <span class="badge flex-shrink-0" :class="severityBadgeClass(a)">[[ severity(a) ]]</span>
+                    <div v-for="a in alerts" :key="a.id" class="d-flex alert-row"
+                         :class="['severity-' + severity(a), {active: selectedId === a.id, unread: !a.is_read}]">
+                        {% if not current_user.read_only() %}
+                        <div class="ps-3 pt-2">
+                            <input class="form-check-input" type="checkbox" :checked="allMatching || checkedIds.includes(a.id)"
+                                   :aria-label="`Select alert: ${displayTitle(a)}`" :disabled="sending || allMatching"
+                                   @change="toggleAlertSelection(a.id, $event.target.checked)">
                         </div>
-                        <div class="alert-meta mt-1">
-                            <i class="fa-solid fa-plug me-1"></i>[[ a.source || a.connector_instance_name || 'Flowintel' ]]
-                            <span v-if="a.source_ref"> / [[ a.source_ref ]]</span>
-                        </div>
-                        <div class="d-flex flex-wrap gap-1 mt-2">
-                            <span class="alert-chip"><i class="fa-solid fa-clipboard-check"></i>[[ reviewLabel(a) ]]</span>
-                            <span class="alert-chip" v-if="a.category"><i class="fa-solid fa-shapes"></i>[[ a.category ]]</span>
-                            <span class="alert-chip" v-if="a.occurrence_count > 1"><i class="fa-solid fa-repeat"></i>[[ a.occurrence_count ]]</span>
-                            <span class="alert-chip" v-if="a.observables && a.observables.length"><i class="fa-solid fa-magnifying-glass-location"></i>[[ a.observables.length ]] attrs</span>
-                            <span class="alert-chip" v-if="a.assets && a.assets.length"><i class="fa-solid fa-cube"></i>[[ a.assets.length ]] objects</span>
-                        </div>
-                        <div class="alert-meta mt-2" v-if="lastAction(a)">
-                            <i class="fa-solid fa-user-check me-1"></i>[[ lastActionSummary(a) ]]
-                        </div>
-                        <div class="alert-meta mt-2">[[ relativeDate(a.event_time || a.creation_date) ]]</div>
-                    </button>
+                        {% endif %}
+                        <button type="button" class="alert-row-button flex-grow-1 text-start p-2 px-3" @click="selectAlert(a.id)" :disabled="sending">
+                            <div class="d-flex justify-content-between gap-2">
+                                <div class="alert-title">[[ displayTitle(a) ]]</div>
+                                <span class="badge flex-shrink-0" :class="severityBadgeClass(a)">[[ severity(a) ]]</span>
+                            </div>
+                            <div class="alert-meta mt-1">
+                                <i class="fa-solid fa-plug me-1"></i>[[ a.source || a.connector_instance_name || 'Flowintel' ]]
+                                <span v-if="a.source_ref"> / [[ a.source_ref ]]</span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                <span class="alert-chip"><i class="fa-solid fa-clipboard-check"></i>[[ reviewLabel(a) ]]</span>
+                                <span class="alert-chip" v-if="a.category"><i class="fa-solid fa-shapes"></i>[[ a.category ]]</span>
+                                <span class="alert-chip" v-if="a.occurrence_count > 1"><i class="fa-solid fa-repeat"></i>[[ a.occurrence_count ]]</span>
+                                <span class="alert-chip" v-if="a.observable_count"><i class="fa-solid fa-magnifying-glass-location"></i>[[ a.observable_count ]] attrs</span>
+                                <span class="alert-chip" v-if="a.asset_count"><i class="fa-solid fa-cube"></i>[[ a.asset_count ]] objects</span>
+                            </div>
+                            <div class="alert-meta mt-2" v-if="a.last_action">
+                                <i class="fa-solid fa-user-check me-1"></i>[[ actionLabel(a.last_action) ]] by [[ actionUser(a.last_action) ]]
+                            </div>
+                            <div class="alert-meta mt-2">[[ relativeDate(a.event_time || a.creation_date) ]]</div>
+                        </button>
+                    </div>
                 </div>
+                <app-pagination v-if="!loading && !loadError" class="px-3 py-2" scroll="none"
+                                :current-page="page" :nb-pages="pages" @page="changePage"></app-pagination>
             </div>
         </div>
 
@@ -104,18 +139,20 @@
                         <a v-if="selected.case_id" :href="`/case/${selected.case_id}`" class="btn btn-sm btn-primary">
                             <i class="fa-solid fa-folder-open me-1"></i>Open case
                         </a>
-                        <button v-else class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#create-case-modal" @click="prepareCaseForm">
+                        {% if not current_user.read_only() %}
+                        <button v-if="!selected.case_id" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#create-case-modal" @click="prepareCaseForm" :disabled="sending">
                             <i class="fa-solid fa-folder-plus me-1"></i>Create case
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('reviewing')" :disabled="selected.review_status === 'reviewing'">
+                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('reviewing')" :disabled="sending || selected.review_status === 'reviewing'">
                             <i class="fa-solid fa-eye me-1"></i>Review
                         </button>
-                        <button class="btn btn-sm btn-outline-success" @click="setReviewStatus('false_positive')" :disabled="selected.review_status === 'false_positive'">
+                        <button class="btn btn-sm btn-outline-success" @click="setReviewStatus('false_positive')" :disabled="sending || selected.review_status === 'false_positive'">
                             <i class="fa-solid fa-check me-1"></i>False positive
                         </button>
-                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('dismissed')" :disabled="selected.review_status === 'dismissed'">
+                        <button class="btn btn-sm btn-outline-secondary" @click="setReviewStatus('dismissed')" :disabled="sending || selected.review_status === 'dismissed'">
                             <i class="fa-solid fa-box-archive me-1"></i>Dismiss
                         </button>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -229,6 +266,8 @@
                     <pre class="raw-json mt-2">[[ rawSelected ]]</pre>
                 </details>
             </div>
+            <div class="review-panel p-5 text-center text-muted" v-else-if="detailLoading" role="status">Loading alert…</div>
+            <div class="review-panel p-5 text-center text-danger" v-else-if="detailError" role="alert">[[ detailError ]]</div>
             <div class="review-panel p-5 text-center text-muted" v-else>
                 <i class="fa-solid fa-bell-slash fa-2x mb-3"></i>
                 <div>Select an alert</div>
@@ -319,12 +358,11 @@
 
 {% block script %}
 <script type="module">
-const initialAlerts = {{ alerts|tojson|safe }};
 const schemaExample = {{ alert_schema_example|tojson|safe }};
 const initialCaseTemplates = {{ case_templates|tojson|safe }};
 
 const { createApp, ref, computed, watch, onMounted } = Vue;
-import {message_list, display_toast, create_message} from '/static/js/toaster.js';
+import {message_list, display_toast} from '/static/js/toaster.js';
 import smart_render from '/static/js/components/smart-render.js';
 import Pagination from '/static/js/components/pagination.js';
 const PER_PAGE = 25;
@@ -334,39 +372,55 @@ createApp({
     components: { smart_render, 'app-pagination': Pagination },
     setup() {
         const urlParams = new URLSearchParams(window.location.search);
-        const requestedAlertId = parseInt(urlParams.get('alert_id'), 10);
-        const alerts = ref(initialAlerts || []);
-        const selectedId = ref(Number.isNaN(requestedAlertId) ? null : requestedAlertId);
-        const filters = ref({status: 'active', severity: 'all', type: 'all', query: ''});
+        const requestedAlertId = Number(urlParams.get('alert_id'));
+        const alerts = ref([]);
+        const page = ref(1);
+        const pages = ref(0);
+        const total = ref(0);
+        const counts = ref({new: 0, critical: 0});
+        const unreadCount = ref(0);
+        const loading = ref(true);
+        const loadError = ref(false);
+        const filters = ref({status: 'active', severity: 'all', query: ''});
+        const queueFilters = computed(() => {
+            const {status, severity, query} = filters.value;
+            const params = {review_status: status};
+            if (query) params.q = query;
+            if (severity !== 'all') params.severity = severity;
+            return params;
+        });
+        const selectedId = ref(null);
+        const selected = ref(null);
+        const detailLoading = ref(false);
+        const detailError = ref('');
+        const checkedIds = ref([]);
+        const allMatching = ref(false);
+        const bulkStatus = ref('');
+        const selectedCount = computed(() => allMatching.value ? total.value : checkedIds.value.length);
+        const allChecked = computed(() => allMatching.value || (alerts.value.length > 0 && checkedIds.value.length === alerts.value.length));
         const sending = ref(false);
+        let queueRequest;
+        let detailRequest;
+        let searchTimer;
+        let unreadVersion = 0;
         const csrfToken = document.getElementById('csrf_token')?.value || '';
         const caseTemplates = ref(initialCaseTemplates || []);
         const templateSearch = ref('');
         const caseForm = ref({template_id: '', title: '', ticket_id: '', description: '', is_private: false, privileged_case: false});
 
         const schemaJson = computed(() => JSON.stringify(schemaExample, null, 2));
-        const selected = computed(() => alerts.value.find(a => a.id === selectedId.value) || null);
         // Client-side pagination of the selected alert's MISP attributes (back to page 1 on another alert)
         const observables_pg = ref(1);
         const observables_nb_pages = computed(() => Math.ceil((selected.value?.observables || []).length / PER_PAGE));
         const observables_page = computed(() => (selected.value?.observables || []).slice((observables_pg.value - 1) * PER_PAGE, observables_pg.value * PER_PAGE));
         watch(selectedId, () => { observables_pg.value = 1; });
-        const unreadCount = computed(() => alerts.value.filter(a => !a.is_read).length);
-        const newCount = computed(() => alerts.value.filter(a => statusOf(a) === 'new').length);
-        const criticalCount = computed(() => alerts.value.filter(a => severity(a) === 'critical' && ['new', 'reviewing'].includes(statusOf(a))).length);
-
-        const filteredAlerts = computed(() => {
-            const query = filters.value.query.toLowerCase();
-            return alerts.value.filter(a => {
-                const status = statusOf(a);
-                if (filters.value.status === 'active' && !['new', 'reviewing'].includes(status)) return false;
-                if (filters.value.status === 'closed' && !['false_positive', 'dismissed'].includes(status)) return false;
-                if (!['active', 'closed', 'all'].includes(filters.value.status) && status !== filters.value.status) return false;
-                if (filters.value.severity !== 'all' && severity(a) !== filters.value.severity) return false;
-                if (filters.value.type !== 'all' && (a.alert_type || 'case_notification') !== filters.value.type) return false;
-                if (!query) return true;
-                return searchableText(a).includes(query);
-            });
+        watch([() => filters.value.query, () => filters.value.status, () => filters.value.severity], ([query], [previousQuery]) => {
+            queueRequest?.abort();
+            clearTimeout(searchTimer);
+            loading.value = true;
+            page.value = 1;
+            clearBulkSelection();
+            searchTimer = setTimeout(() => loadAlerts(1), query === previousQuery ? 0 : 250);
         });
 
         const filteredCaseTemplates = computed(() => {
@@ -403,15 +457,6 @@ createApp({
             if (!selected.value) return '';
             return JSON.stringify(selected.value.raw_payload || selected.value, null, 2);
         });
-
-        function searchableText(a) {
-            return [
-                displayTitle(a), a.description, a.message, a.source, a.source_ref, a.category,
-                a.owner_user_name, a.owner_org_name, a.reviewed_by_name,
-                JSON.stringify(a.action_history || []), JSON.stringify(a.observables || []),
-                JSON.stringify(a.assets || []), JSON.stringify(a.tags || [])
-            ].join(' ').toLowerCase();
-        }
 
         function statusOf(a) {
             return a.review_status || (a.case_id ? 'case_created' : 'new');
@@ -477,17 +522,6 @@ createApp({
             return 'System';
         }
 
-        function lastAction(a) {
-            const entries = activityList(a);
-            return entries.length ? entries[0] : null;
-        }
-
-        function lastActionSummary(a) {
-            const entry = lastAction(a);
-            if (!entry) return '';
-            return `${actionLabel(entry)} by ${actionUser(entry)}`;
-        }
-
         function severity(a) {
             return (a.severity || 'info').toLowerCase();
         }
@@ -541,102 +575,192 @@ createApp({
             }
         }
 
-        function refreshSidebarBadge(count) {
+        function updateUnreadCount(count) {
+            unreadCount.value = count;
             const badge = document.getElementById('alerting-badge');
             if (!badge) return;
             badge.textContent = count > 99 ? '99+' : count;
             badge.style.display = count > 0 ? 'inline-block' : 'none';
         }
 
-        function replaceAlert(nextAlert) {
-            const idx = alerts.value.findIndex(a => a.id === nextAlert.id);
-            if (idx >= 0) alerts.value[idx] = Object.assign({}, alerts.value[idx], nextAlert);
+        async function refreshUnreadCount() {
+            const version = ++unreadVersion;
+            const resp = await fetch('/alerting/api/unread');
+            if (!resp.ok) return;
+            const data = await resp.json();
+            if (version === unreadVersion) updateUnreadCount(data.count);
         }
 
-        // Returns true when the alerts were reloaded
-        async function loadAlerts(keepSelection = false) {
+        async function loadAlerts(nextPage = page.value) {
+            clearTimeout(searchTimer);
+            queueRequest?.abort();
+            const controller = new AbortController();
+            queueRequest = controller;
+            const version = unreadVersion;
+            loading.value = true;
+            loadError.value = false;
+            const params = new URLSearchParams({page: nextPage, ...queueFilters.value});
             try {
-                const resp = await fetch('/alerting/api?limit=200');
-                if (resp.ok) {
-                    const loaded = await resp.json();
-                    alerts.value = loaded;
-                    if (selectedId.value && !alerts.value.some(a => a.id === selectedId.value)) {
-                        selectedId.value = null;
-                    }
-                    refreshSidebarBadge(unreadCount.value);
-                    return true;
-                }
-            } catch (e) { }
-            return false;
+                const resp = await fetch(`/alerting/api/queue?${params}`, {signal: controller.signal});
+                if (!resp.ok) throw new Error('Could not load alerts');
+                const result = await resp.json();
+                if (controller.signal.aborted) return;
+                const pageIds = new Set(result.items.map(a => a.id));
+                checkedIds.value = checkedIds.value.filter(id => pageIds.has(id));
+                alerts.value = result.items;
+                page.value = result.page;
+                pages.value = result.pages;
+                total.value = result.total;
+                if (!result.total) clearBulkSelection();
+                counts.value = result.counts;
+                if (version === unreadVersion) updateUnreadCount(result.counts.unread);
+            } catch (error) {
+                if (!controller.signal.aborted) loadError.value = true;
+            } finally {
+                if (!controller.signal.aborted) loading.value = false;
+            }
         }
 
-        // "Refresh" button: spinning icon while loading, then a toast with the result
-        const refreshing = ref(false);
         async function refreshAlerts() {
-            if (refreshing.value) return;
-            refreshing.value = true;
-            // keep the animation visible even when the answer is instant
-            const [ok] = await Promise.all([loadAlerts(true), new Promise(r => setTimeout(r, 600))]);
-            refreshing.value = false;
-            if (ok) {
-                const n = alerts.value.length;
-                await create_message(`Alerts refreshed · ${n} ${n === 1 ? 'alert' : 'alerts'} loaded`, 'success-subtle');
-            } else {
-                await create_message('Could not refresh the alerts', 'danger-subtle');
-            }
+            const refreshDetail = selectedId.value ? selectAlert(selectedId.value, false) : null;
+            await Promise.all([loadAlerts(), refreshDetail]);
+        }
+
+        function changePage(nextPage) {
+            if (sending.value) return;
+            if (!allMatching.value) clearBulkSelection();
+            loadAlerts(nextPage);
+        }
+
+        function togglePageSelection(event) {
+            checkedIds.value = event.target.checked ? alerts.value.map(a => a.id) : [];
+        }
+
+        function toggleAlertSelection(id, checked) {
+            checkedIds.value = checked ? [...checkedIds.value, id] : checkedIds.value.filter(selectedId => selectedId !== id);
+        }
+
+        function selectAllMatching() {
+            checkedIds.value = [];
+            allMatching.value = true;
+        }
+
+        function clearBulkSelection() {
+            allMatching.value = false;
+            checkedIds.value = [];
+            bulkStatus.value = '';
         }
 
         async function markRead(a) {
             if (!a || a.is_read) return;
             try {
-                await fetch(`/alerting/api/${a.id}/read`, {
+                const resp = await fetch(`/alerting/api/${a.id}/read`, {
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrfToken },
                     keepalive: true
                 });
+                if (!resp.ok) return;
                 a.is_read = true;
-                refreshSidebarBadge(unreadCount.value);
-            } catch (e) { }
+                const row = alerts.value.find(alert => alert.id === a.id);
+                if (row) row.is_read = true;
+                await refreshUnreadCount();
+            } catch (error) { }
         }
 
-        function selectAlert(a) {
-            selectedId.value = a.id;
-            markRead(a);
+        async function selectAlert(id, markAsRead = true) {
+            detailRequest?.abort();
+            const controller = new AbortController();
+            detailRequest = controller;
+            selectedId.value = id;
+            selected.value = null;
+            detailLoading.value = true;
+            detailError.value = '';
+            try {
+                const resp = await fetch(`/alerting/api/${id}`, {signal: controller.signal});
+                if (!resp.ok) throw new Error(resp.status === 404 ? 'Alert unavailable' : 'Could not load alert');
+                const alert = await resp.json();
+                if (controller.signal.aborted) return;
+                selected.value = alert;
+                observables_pg.value = Math.min(observables_pg.value, Math.max(1, observables_nb_pages.value));
+                if (markAsRead) markRead(selected.value);
+            } catch (error) {
+                if (!controller.signal.aborted) detailError.value = error.message;
+            } finally {
+                if (!controller.signal.aborted) detailLoading.value = false;
+            }
         }
 
         function clearSelection() {
+            detailRequest?.abort();
             selectedId.value = null;
+            selected.value = null;
+            detailLoading.value = false;
+            detailError.value = '';
         }
 
         async function markAllRead() {
-            if (unreadCount.value === 0) return;
+            if (!unreadCount.value || sending.value) return;
+            sending.value = true;
             try {
                 const resp = await fetch('/alerting/api/read_all', {
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrfToken }
                 });
-                if (resp.ok) {
-                    alerts.value.forEach(a => { a.is_read = true; });
-                    refreshSidebarBadge(0);
-                }
-            } catch (e) { }
+                if (!resp.ok) throw new Error('Could not mark alerts as read');
+                if (selected.value) selected.value.is_read = true;
+                await loadAlerts();
+            } catch (error) {
+                await display_toast({message: error.message, toast_class: 'danger-subtle'});
+            } finally {
+                sending.value = false;
+            }
+        }
+
+        async function applyBulkReview() {
+            if (sending.value || loading.value || !selectedCount.value || !bulkStatus.value) return;
+            const selection = allMatching.value ? {filters: queueFilters.value} : {alert_ids: [...checkedIds.value]};
+            sending.value = true;
+            try {
+                const resp = await fetch('/alerting/api/bulk_review', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                    body: JSON.stringify({...selection, review_status: bulkStatus.value})
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.message || 'Could not update selected alerts');
+                clearBulkSelection();
+                const refreshDetail = selectedId.value && (selection.filters || selection.alert_ids.includes(selectedId.value))
+                    ? selectAlert(selectedId.value, false) : null;
+                await Promise.all([loadAlerts(), refreshDetail]);
+                const message = `${data.count} ${data.count === 1 ? 'alert' : 'alerts'} updated`;
+                await display_toast({message, toast_class: 'success-subtle'});
+            } catch (error) {
+                await display_toast({message: error.message, toast_class: 'danger-subtle'});
+            } finally {
+                sending.value = false;
+            }
         }
 
         async function setReviewStatus(reviewStatus) {
-            if (!selected.value) return;
+            if (!selected.value || sending.value) return;
+            const id = selected.value.id;
             sending.value = true;
             try {
-                const resp = await fetch(`/alerting/api/${selected.value.id}/review`, {
+                const resp = await fetch(`/alerting/api/${id}/review`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
                     body: JSON.stringify({review_status: reviewStatus})
                 });
                 const data = await resp.json();
                 if (resp.ok && data.alert) {
-                    replaceAlert(data.alert);
-                    if (['case_created', 'false_positive', 'dismissed'].includes(reviewStatus)) {
-                        clearSelection();
+                    if (selectedId.value === id) {
+                        if (reviewStatus === 'reviewing') {
+                            selected.value = {...selected.value, ...data.alert};
+                        } else {
+                            clearSelection();
+                        }
                     }
+                    await loadAlerts();
                     await display_toast({message: data.message, toast_class: 'success-subtle'});
                 } else {
                     await display_toast({message: data.message || 'Could not update alert', toast_class: 'danger-subtle'});
@@ -662,7 +786,7 @@ createApp({
         }
 
         async function createCaseFromSelected() {
-            if (!selected.value) return;
+            if (!selected.value || sending.value) return;
             sending.value = true;
             try {
                 const resp = await fetch(`/alerting/api/${selected.value.id}/case`, {
@@ -672,10 +796,10 @@ createApp({
                 });
                 const data = await resp.json();
                 if (resp.ok && data.alert) {
-                    replaceAlert(data.alert);
                     clearSelection();
                     const modal = bootstrap.Modal.getInstance(document.getElementById('create-case-modal'));
                     if (modal) modal.hide();
+                    await loadAlerts();
                     await display_toast({message: data.message, toast_class: 'success-subtle'});
                 } else {
                     await display_toast({message: data.message || 'Could not create case', toast_class: 'danger-subtle'});
@@ -689,18 +813,19 @@ createApp({
 
         onMounted(() => {
             document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-            refreshSidebarBadge(unreadCount.value);
-            if (selected.value) markRead(selected.value);
+            loadAlerts();
+            if (Number.isInteger(requestedAlertId) && requestedAlertId > 0) selectAlert(requestedAlertId);
         });
 
         return {
             observables_pg, observables_nb_pages, observables_page,
-            message_list, alerts, selected, filters, sending, caseForm, caseTemplates, templateSearch,
-            schemaJson, refreshing, refreshAlerts, filteredAlerts, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected, unreadCount, newCount, criticalCount,
+            message_list, alerts, page, pages, total, counts, loading, loadError, filters, unreadCount,
+            selected, selectedId, detailLoading, detailError, checkedIds, allMatching, selectedCount, bulkStatus, allChecked, sending,
+            caseForm, caseTemplates, templateSearch, schemaJson, filteredCaseTemplates, selectedMeta, activityEntries, rawSelected,
             severity, severityBadgeClass, reviewLabel, reviewBadgeClass, displayTitle, objectSummary,
-            ownerDisplay, activityList, actionLabel, actionUser, lastAction, lastActionSummary, externalReferenceUrl,
-            formatDate, relativeDate, loadAlerts, selectAlert, clearSelection, markRead, markAllRead,
-            setReviewStatus, prepareCaseForm, createCaseFromSelected
+            actionLabel, actionUser, externalReferenceUrl, formatDate, relativeDate, refreshAlerts, changePage,
+            selectAlert, clearSelection, markAllRead, togglePageSelection, toggleAlertSelection, selectAllMatching, clearBulkSelection, applyBulkReview,
+            setReviewStatus, prepareCaseForm, createCaseFromSelected,
         };
     }
 }).mount('#main-container');

@@ -4,14 +4,14 @@ import secrets
 from urllib.parse import urlparse
 import uuid
 
-from sqlalchemy import func
+from sqlalchemy import Text, and_, case, cast, func, insert, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import load_only
 
 from app import db
 from app.case import validation_api as CaseValidation
 from app.case.CaseCore import CaseModel
 from app.case import common_core as CommonCase
-from app.case.common_core import check_user_in_private_cases
 from app.connectors import connectors_core as ConnectorModel
 from app.db_class.db import (
     Case,
@@ -43,6 +43,10 @@ SAFE_EXTERNAL_URL_SCHEMES = {"http", "https"}
 
 ALERT_TYPES = {"external", "case_notification"}
 ALERT_REVIEW_STATUSES = {"new", "reviewing", "case_created", "false_positive", "dismissed"}
+ALERT_REVIEW_GROUPS = {"active": ("new", "reviewing"), "closed": ("false_positive", "dismissed")}
+BULK_REVIEW_STATUSES = {"reviewing", "false_positive", "dismissed"}
+MAX_BULK_ALERTS = 100
+BULK_REVIEW_BATCH_SIZE = 500
 TERMINAL_REVIEW_STATUSES = {"case_created", "false_positive", "dismissed"}
 ALERT_SEVERITIES = {"info", "low", "medium", "high", "critical"}
 ALERT_TLPS = {"clear", "green", "amber", "amber+strict", "red"}
@@ -655,23 +659,24 @@ def can_user_view_alert(alert, user):
     return True
 
 
-def visible_alert_pairs(alerts, user):
-    case_ids = {alert.case_id for alert in alerts if alert.case_id}
-    cases_by_id = {
-        c.id: c for c in Case.query.filter(Case.id.in_(case_ids)).all()
-    } if case_ids else {}
-    visible_cases = {
-        c.id for c in check_user_in_private_cases(list(cases_by_id.values()), user)
-    }
-
-    visible = []
-    for alert in alerts:
-        case = cases_by_id.get(alert.case_id)
-        if case and case.id not in visible_cases:
-            continue
-        if can_user_view_alert(alert, user):
-            visible.append((alert, case))
-    return visible
+def visible_alert_query(user):
+    query = ExternalAlert.query
+    if user.is_admin():
+        return query
+    hidden_case = select(Case.id).where(
+        Case.id == ExternalAlert.case_id,
+        ~CommonCase.visible_case_filter(user),
+    ).correlate(ExternalAlert).exists()
+    return query.filter(
+        or_(
+            ExternalAlert.owner_user_id == user.id,
+            and_(
+                ExternalAlert.owner_user_id.is_(None),
+                or_(ExternalAlert.owner_org_id.is_(None), ExternalAlert.owner_org_id == user.org_id),
+            ),
+        ),
+        ~hidden_case,
+    )
 
 
 def user_display_name(user):
@@ -740,52 +745,236 @@ def alert_to_json(alert, case=None):
     return item
 
 
+def alert_action_values(action, user, comment=None, details=None):
+    return {
+        "action": action,
+        "user_id": user.id if user else None,
+        "comment": clean_string(comment, 2000),
+        "details": bounded_json(details or {}),
+        "created_at": utcnow(),
+    }
+
+
 def record_alert_action(alert, action, user, comment=None, details=None):
-    db.session.add(ExternalAlertAction(
-        alert_id=alert.id,
-        action=action,
-        user_id=user.id if user else None,
-        comment=clean_string(comment, 2000),
-        details=bounded_json(details or {}),
-        created_at=utcnow(),
-    ))
-
-
-def alerts_to_json(alerts, user):
-    result = []
-    for alert, case in visible_alert_pairs(alerts, user):
-        result.append(alert_to_json(alert, case))
-    return result
+    db.session.add(ExternalAlertAction(alert_id=alert.id, **alert_action_values(action, user, comment, details)))
 
 
 def query_visible_alerts(user, limit=200, review_status=None, alert_type=None):
     if alert_type and alert_type != "external":
         return []
 
-    query = ExternalAlert.query
+    query = visible_alert_query(user)
     if review_status:
         query = query.filter_by(review_status=review_status)
-    return visible_alerts_from_query(user, query, limit=limit)
+    rows = query.outerjoin(Case, Case.id == ExternalAlert.case_id).add_entity(Case).order_by(
+        ExternalAlert.creation_date.desc(), ExternalAlert.id.desc(),
+    ).limit(limit).all()
+    return [alert_to_json(alert, linked_case) for alert, linked_case in rows]
 
 
-def visible_alerts_from_query(user, query, limit=200):
-    alerts = query.order_by(ExternalAlert.creation_date.desc()).limit(limit).all()
-    return alerts_to_json(alerts, user)
+def alert_search_filter(term):
+    fields = (
+        ExternalAlert.title, ExternalAlert.message, ExternalAlert.description, ExternalAlert.source,
+        ExternalAlert.source_ref, ExternalAlert.category, ExternalAlert.uuid, ExternalAlert.review_comment,
+        cast(ExternalAlert.observables, Text), cast(ExternalAlert.assets, Text), cast(ExternalAlert.tags, Text),
+    )
+    user_name = func.coalesce(User.first_name, "") + " " + func.coalesce(User.last_name, "")
+    user_match = or_(*(field.icontains(term, autoescape=True) for field in (user_name, User.nickname, User.email)))
+    actor_match = select(User.id).where(
+        User.id == ExternalAlertAction.user_id, user_match,
+    ).correlate(ExternalAlertAction).exists()
+    action_match = select(ExternalAlertAction.id).where(
+        ExternalAlertAction.alert_id == ExternalAlert.id,
+        or_(ExternalAlertAction.comment.icontains(term, autoescape=True), actor_match),
+    ).correlate(ExternalAlert).exists()
+    return or_(
+        *(field.icontains(term, autoescape=True) for field in fields),
+        select(Case.id).where(
+            Case.id == ExternalAlert.case_id, Case.title.icontains(term, autoescape=True),
+        ).correlate(ExternalAlert).exists(),
+        select(Connector_Instance.id).where(
+            Connector_Instance.id == ExternalAlert.connector_instance_id,
+            Connector_Instance.name.icontains(term, autoescape=True),
+        ).correlate(ExternalAlert).exists(),
+        select(Org.id).where(Org.id == ExternalAlert.owner_org_id, Org.name.icontains(term, autoescape=True)).exists(),
+        select(User.id).where(
+            User.id.in_([ExternalAlert.owner_user_id, ExternalAlert.reviewed_by_id]), user_match,
+        ).exists(),
+        action_match,
+    )
+
+
+def alert_evidence_count(column):
+    dialect = db.session.get_bind().dialect.name
+    if dialect in {"mysql", "mariadb"}:
+        return case((func.json_type(column) == "ARRAY", func.json_length(column)), else_=0)
+    json_type = func.json_typeof if dialect == "postgresql" else func.json_type
+    return case((json_type(column) == "array", func.json_array_length(column)), else_=0)
+
+
+def effective_alert_review_status():
+    return func.coalesce(func.nullif(ExternalAlert.review_status, ""), case(
+        (ExternalAlert.case_id.is_not(None), "case_created"), else_="new",
+    ))
+
+
+def effective_alert_severity():
+    return func.lower(func.coalesce(func.nullif(ExternalAlert.severity, ""), "info"))
+
+
+def filter_alert_query(query, review_status, severity, term):
+    if review_status != "all":
+        statuses = ALERT_REVIEW_GROUPS.get(review_status, (review_status,))
+        query = query.filter(effective_alert_review_status().in_(statuses))
+    if severity:
+        query = query.filter(effective_alert_severity() == severity)
+    if term:
+        query = query.filter(alert_search_filter(term))
+    return query
+
+
+def paginated_alerts(user, page, per_page, review_status, severity, term):
+    visible = visible_alert_query(user)
+    query = filter_alert_query(visible, review_status, severity, term)
+    total = query.with_entities(func.count(ExternalAlert.id)).scalar()
+    pages = (total + per_page - 1) // per_page
+    page = min(page, max(1, pages))
+    status = effective_alert_review_status()
+    counts = visible.with_entities(
+        func.count(case((ExternalAlert.is_read.is_(False), 1))).label("unread"),
+        func.count(case((status == "new", 1))).label("new"),
+        func.count(case((and_(effective_alert_severity() == "critical", status.in_(ALERT_REVIEW_GROUPS["active"])), 1))).label("critical"),
+    ).one()._asdict()
+
+    order = (ExternalAlert.creation_date.desc(), ExternalAlert.id.desc())
+    page_ids = query.with_entities(ExternalAlert.id).order_by(*order).offset((page - 1) * per_page).limit(per_page).subquery()
+    latest_action_id = select(ExternalAlertAction.id).where(ExternalAlertAction.alert_id == ExternalAlert.id).order_by(
+        ExternalAlertAction.created_at.desc(), ExternalAlertAction.id.desc(),
+    ).limit(1).correlate(ExternalAlert).scalar_subquery()
+    rows = ExternalAlert.query.join(page_ids, page_ids.c.id == ExternalAlert.id).add_columns(
+        Case.title, Connector_Instance.name, ExternalAlertAction,
+        alert_evidence_count(ExternalAlert.observables), alert_evidence_count(ExternalAlert.assets),
+    ).outerjoin(
+        Case, Case.id == ExternalAlert.case_id,
+    ).outerjoin(
+        Connector_Instance, Connector_Instance.id == ExternalAlert.connector_instance_id,
+    ).outerjoin(
+        ExternalAlertAction, ExternalAlertAction.id == latest_action_id,
+    ).options(
+        load_only(
+            ExternalAlert.title, ExternalAlert.message, ExternalAlert.source, ExternalAlert.source_ref,
+            ExternalAlert.category, ExternalAlert.severity, ExternalAlert.review_status, ExternalAlert.case_id,
+            ExternalAlert.creation_date, ExternalAlert.event_time, ExternalAlert.is_read, ExternalAlert.occurrence_count,
+            ExternalAlert.reviewed_by_id,
+        ),
+        load_only(ExternalAlertAction.action, ExternalAlertAction.user_id),
+    ).order_by(*order).all()
+
+    actor_ids = {action.user_id if action else alert.reviewed_by_id for alert, _, _, action, _, _ in rows} - {None}
+    actors = {actor.id: actor for actor in User.query.filter(User.id.in_(actor_ids)).all()} if actor_ids else {}
+    items = []
+    for alert, case_title, connector_name, action, observable_count, asset_count in rows:
+        review = alert.review_status or ("case_created" if alert.case_id else "new")
+        actor_id = action.user_id if action else alert.reviewed_by_id
+        last_action = None
+        if action or actor_id:
+            last_action = {
+                "action_label": action_label(action.action if action else review),
+                "user_id": actor_id,
+                "user_name": user_display_name(actors.get(actor_id)),
+            }
+        items.append({
+            "id": alert.id,
+            "title": alert.title or alert.message,
+            "case_title": case_title,
+            "source": alert.source,
+            "source_ref": alert.source_ref,
+            "connector_instance_name": connector_name,
+            "category": alert.category,
+            "severity": alert.severity or "info",
+            "review_status": review,
+            "creation_date": alert.creation_date.isoformat() if alert.creation_date else None,
+            "event_time": alert.event_time.isoformat() if alert.event_time else None,
+            "is_read": alert.is_read,
+            "occurrence_count": alert.occurrence_count or 1,
+            "observable_count": observable_count,
+            "asset_count": asset_count,
+            "last_action": last_action,
+        })
+    return {"items": items, "page": page, "pages": pages, "total": total, "counts": counts}
+
+
+def review_update_values(user, review_status, comment):
+    values = {
+        "review_status": review_status,
+        "review_comment": clean_string(comment, 2000),
+        "reviewed_by_id": user.id,
+        "reviewed_at": utcnow(),
+        "is_read": True,
+    }
+    if review_status in {"false_positive", "dismissed"}:
+        values["status"] = review_status
+    return values
+
+
+def matching_alert_id_batches(query):
+    # Bound the scan so continuous ingestion cannot extend a bulk update indefinitely.
+    last_id = db.session.query(func.max(ExternalAlert.id)).scalar()
+    if last_id is None:
+        return
+    query = query.with_entities(ExternalAlert.id).filter(ExternalAlert.id <= last_id).order_by(ExternalAlert.id)
+    cursor = 0
+    while cursor < last_id:
+        rows = query.filter(ExternalAlert.id > cursor).limit(BULK_REVIEW_BATCH_SIZE).with_for_update().all()
+        if not rows:
+            break
+        ids = [row.id for row in rows]
+        yield ids
+        cursor = ids[-1]
+
+
+def bulk_update_review_status(user, review_status, *, alert_ids=None, filters=None):
+    query = visible_alert_query(user)
+    if alert_ids is not None:
+        query = query.filter(ExternalAlert.id.in_(alert_ids))
+        rows = query.with_entities(ExternalAlert.id, ExternalAlert.review_status).order_by(
+            ExternalAlert.id,
+        ).with_for_update().all()
+        if len(rows) != len(alert_ids):
+            return {"message": "One or more selected alerts are unavailable"}, 403
+        batches = ([row.id for row in rows if row.review_status != review_status],)
+        query = query.filter(ExternalAlert.review_status.is_distinct_from(review_status))
+    else:
+        query = filter_alert_query(query, **filters).filter(ExternalAlert.review_status.is_distinct_from(review_status))
+        batches = matching_alert_id_batches(query)
+
+    count = 0
+    values = review_update_values(user, review_status, None)
+    action_values = alert_action_values(review_status, user)
+    for ids in batches:
+        if not ids:
+            continue
+        updated = query.filter(ExternalAlert.id.in_(ids)).update(values, synchronize_session=False)
+        if updated != len(ids):
+            db.session.rollback()
+            return {"message": "The selected alerts changed. Refresh and try again."}, 409
+        db.session.execute(insert(ExternalAlertAction), [{"alert_id": aid, **action_values} for aid in ids])
+        count += updated
+
+    db.session.commit()
+    if count:
+        flowintel_log("audit", 200, "Alert review statuses updated", User=user.email, Count=count, ReviewStatus=review_status)
+    return {"count": count}, 200
 
 
 def update_review_status(alert, user, review_status, comment=None):
-    if review_status not in ALERT_REVIEW_STATUSES:
+    if not isinstance(review_status, str) or review_status not in ALERT_REVIEW_STATUSES:
         return {"message": "Invalid review status"}, 400
     if not can_user_view_alert(alert, user):
         return {"message": "Permission denied"}, 403
 
-    alert.review_status = review_status
-    alert.review_comment = clean_string(comment, 2000)
-    alert.reviewed_by_id = user.id
-    alert.reviewed_at = utcnow()
-    alert.is_read = True
-    if review_status in {"false_positive", "dismissed"}:
-        alert.status = review_status
+    for key, value in review_update_values(user, review_status, comment).items():
+        setattr(alert, key, value)
     record_alert_action(alert, review_status, user, comment=comment)
     db.session.commit()
     flowintel_log("audit", 200, "Alert review status updated", User=user.email, AlertId=alert.id, ReviewStatus=review_status)

@@ -83,6 +83,10 @@ def test_revoked_case_access_blocks_direct_alert_actions(client, app, review_ale
     login(client, app, data["owner"])
     # Lists already hide the alert; direct requests must enforce the same boundary.
     assert client.get("/alerting/api").json == []
+    queue = client.get("/alerting/api/queue?q=PRIVATE+ACTOR+COMMENT").json
+    assert queue["items"] == [] and queue["total"] == 0
+    assert queue["counts"] == {"unread": 0, "new": 0, "critical": 0}
+    assert client.get(f"/alerting/api/{data['alert']}").status_code == 404
     assert client.get("/alerting/api/unread").json == {"count": 0}
     for status in sorted(AlertingCore.ALERT_REVIEW_STATUSES):
         response = client.post(f"/alerting/api/{data['alert']}/review",
@@ -225,9 +229,165 @@ def test_alert_route_errors_and_readonly_permissions_preserved(client, app, revi
     login(client, app, reader_id)
     assert [item["id"] for item in client.get("/alerting/api").json] == [data["alert"]]
     assert client.post(f"/alerting/api/{data['alert']}/review", json={"review_status": "reviewing"}).status_code == 403
+    assert client.post("/alerting/api/bulk_review", json={
+        "alert_ids": [data["alert"]], "review_status": "dismissed",
+    }).status_code == 403
+    assert client.post("/alerting/api/bulk_review", json={
+        "filters": {"review_status": "all"}, "review_status": "dismissed",
+    }).status_code == 403
     assert client.post(f"/alerting/api/{data['alert']}/case", json={"title": "Read-only case"}).status_code == 403
     with app.app_context():
         assert snapshot(db.session.get(ExternalAlert, data["alert"])) == before
+
+
+def test_alert_queue_filters_and_paginates_past_previous_limit(client, app, review_alert):
+    data = review_alert
+    with app.app_context():
+        old_alert = db.session.get(ExternalAlert, data["alert"])
+        old_alert.severity = "critical"
+        old_alert.observables = [{"value": "Alert-Sensor%_Alpha"}]
+        # Identical timestamps need a stable order across page boundaries.
+        timestamp = AlertingCore.utcnow()
+        newer = [ExternalAlert(title=f"New alert {i}", creation_date=timestamp) for i in range(200)]
+        hidden = ExternalAlert(title="Alert-Sensor%_Alpha", severity="critical", owner_user_id=data["other"])
+        wildcard = ExternalAlert(title="Alert-SensorXYZAlpha", severity="critical")
+        db.session.add_all([*newer, hidden, wildcard])
+        db.session.commit()
+        expected = [wildcard.id, *(a.id for a in reversed(newer)), old_alert.id]
+
+    login(client, app, data["owner"])
+    first = client.get("/alerting/api/queue").json
+    second = client.get("/alerting/api/queue?page=2").json
+    last = client.get("/alerting/api/queue?page=500").json
+    assert first["total"] == 202 and first["pages"] == 9
+    assert first["counts"] == {"unread": 202, "new": 201, "critical": 2}
+    assert [a["id"] for a in first["items"] + second["items"]] == expected[:50]
+    assert last["page"] == 9
+    assert [a["id"] for a in last["items"]] == expected[200:]
+    for term in ("alert-sensor%_alpha", "private actor comment", "private alert investigation"):
+        response = client.get("/alerting/api/queue", query_string={
+            "q": term, "review_status": "reviewing", "severity": "critical",
+        })
+        assert response.status_code == 200
+        row, = response.json["items"]
+        assert row["id"] == data["alert"]
+        assert row["observable_count"] == 1 and row["last_action"]["user_id"] == data["admin"]
+        assert {"raw_payload", "observables", "action_history"}.isdisjoint(row)
+    assert client.get("/alerting/api/queue", query_string={"q": "alert-sensor%_alpha"}).json["total"] == 1
+    detail = client.get(f"/alerting/api/{data['alert']}").json
+    assert detail["raw_payload"] == {"private": "PRIVATE PAYLOAD"}
+    assert detail["action_history"][0]["comment"] == "PRIVATE ACTOR COMMENT"
+    page = client.get(f"/alerting/?alert_id={data['alert']}")
+    assert page.status_code == 200 and b"PRIVATE PAYLOAD" not in page.data
+    assert client.post("/alerting/api/read_all").json == {"status": "ok", "count": 202}
+    assert client.get("/alerting/api/unread").json == {"count": 0}
+
+
+def test_bulk_alert_review_is_atomic_and_records_one_action_per_change(client, app, review_alert):
+    data = review_alert
+    with app.app_context():
+        first = db.session.get(ExternalAlert, data["alert"])
+        second = ExternalAlert(title="Shared alert", owner_org_id=data["org"])
+        hidden = ExternalAlert(title="Private case alert", case_id=data["case"], owner_user_id=data["other"])
+        db.session.add_all([second, hidden])
+        db.session.commit()
+        visible_ids, hidden_id = [first.id, second.id], hidden.id
+
+    login(client, app, data["owner"])
+    path = "/alerting/api/bulk_review"
+    for invalid in ([], [True], [2**31], [1] * 101):
+        assert client.post(path, json={"alert_ids": invalid, "review_status": "dismissed"}).status_code == 400
+    assert client.post(path, json={"alert_ids": visible_ids, "review_status": "case_created"}).status_code == 400
+    assert client.post(path, json={"alert_ids": [*visible_ids, hidden_id], "review_status": "dismissed"}).status_code == 403
+    with app.app_context():
+        assert [db.session.get(ExternalAlert, aid).review_status for aid in visible_ids] == ["reviewing", "new"]
+        assert ExternalAlertAction.query.filter_by(action="dismissed").count() == 0
+
+    request = {"alert_ids": [*visible_ids, visible_ids[0]], "review_status": "dismissed"}
+    assert client.post(path, json=request).json == {"count": 2}
+    assert client.post(path, json=request).json == {"count": 0}
+    assert client.get("/alerting/api/queue").json["total"] == 0
+    assert client.get("/alerting/api/queue?review_status=closed").json["total"] == 2
+    with app.app_context():
+        assert db.session.get(ExternalAlert, hidden_id).review_status == "new"
+        for aid in visible_ids:
+            alert = db.session.get(ExternalAlert, aid)
+            assert alert.review_status == alert.status == "dismissed"
+            assert alert.is_read and alert.reviewed_by_id == data["owner"]
+            action = ExternalAlertAction.query.filter_by(alert_id=aid, action="dismissed").one()
+            assert action.user_id == data["owner"]
+
+
+def test_bulk_review_updates_matching_alerts_across_pages(client, app, review_alert):
+    data = review_alert
+    with app.app_context():
+        private_case = Case(title="Other organisation's investigation", is_private=True)
+        db.session.add(private_case)
+        db.session.flush()
+        common = {"severity": "high", "observables": [{"value": "Sensor%_Alpha"}]}
+        matches = [ExternalAlert(**common) for _ in range(501)]
+        already_reviewing = ExternalAlert(**common, review_status="reviewing")
+        excluded = [
+            ExternalAlert(**common, review_status="dismissed"),
+            ExternalAlert(**common, owner_org_id=data["other_org"]),
+            ExternalAlert(**common, owner_user_id=data["owner"], case_id=private_case.id),
+            ExternalAlert(severity="low", observables=common["observables"]),
+            ExternalAlert(severity="high", title="SensorXYZAlpha"),
+        ]
+        db.session.add_all([*matches, already_reviewing, *excluded])
+        db.session.commit()
+        expected_ids = {alert.id for alert in matches}
+        untouched = {alert.id: snapshot(alert) for alert in [already_reviewing, *excluded]}
+
+    login(client, app, data["owner"])
+    path = "/alerting/api/bulk_review"
+    filters = {"review_status": "active", "severity": "high", "q": "sensor%_alpha"}
+    queue = client.get("/alerting/api/queue", query_string=filters).json
+    assert queue["total"] == 502 and len(queue["items"]) == 25
+    for invalid in ({}, [], {**filters, "q": []}, {**filters, "severity": "unknown"}, {**filters, "status": "all"}):
+        assert client.post(path, json={"filters": invalid, "review_status": "reviewing"}).status_code == 400
+    assert client.post(path, json={"filters": filters, "alert_ids": [data["alert"]], "review_status": "reviewing"}).status_code == 400
+
+    request = {"filters": filters, "review_status": "reviewing"}
+    response = client.post(path, json=request)
+    assert response.status_code == 200 and response.json == {"count": 501}
+    assert client.post(path, json=request).json == {"count": 0}
+    with app.app_context():
+        actions = ExternalAlertAction.query.filter_by(action="reviewing", user_id=data["owner"]).all()
+        assert len(actions) == len(expected_ids) and {action.alert_id for action in actions} == expected_ids
+        updated = ExternalAlert.query.filter_by(review_status="reviewing", reviewed_by_id=data["owner"], is_read=True).all()
+        assert {alert.id for alert in updated} == expected_ids
+        for aid, before in untouched.items():
+            assert snapshot(db.session.get(ExternalAlert, aid)) == before
+
+
+def test_filtered_bulk_review_rolls_back_if_access_changes_during_update(client, app, review_alert, monkeypatch):
+    data = review_alert
+    with app.app_context():
+        later_alert = ExternalAlert(title="Another matching alert")
+        db.session.add(later_alert)
+        db.session.commit()
+        later_id = later_alert.id
+        before = {aid: snapshot(db.session.get(ExternalAlert, aid)) for aid in (data["alert"], later_id)}
+
+    monkeypatch.setattr(AlertingCore, "BULK_REVIEW_BATCH_SIZE", 1)
+    original_batches = AlertingCore.matching_alert_id_batches
+
+    def change_access_before_update(query):
+        for ids in original_batches(query):
+            if later_id in ids:
+                db.session.get(ExternalAlert, later_id).owner_user_id = data["other"]
+            yield ids
+
+    monkeypatch.setattr(AlertingCore, "matching_alert_id_batches", change_access_before_update)
+    login(client, app, data["owner"])
+    response = client.post("/alerting/api/bulk_review", json={
+        "filters": {"review_status": "active"}, "review_status": "dismissed",
+    })
+    assert response.status_code == 409
+    with app.app_context():
+        for aid, state in before.items():
+            assert snapshot(db.session.get(ExternalAlert, aid)) == state
 
 
 def test_review_response_rechecks_new_private_case_link(client, app, monkeypatch, review_alert):

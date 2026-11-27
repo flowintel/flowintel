@@ -31,20 +31,26 @@
 .alert-row {
     border: 0;
     border-left: 4px solid #8896a8;
-    border-bottom: 1px solid #eef1f4;
+    border-bottom: 1px solid var(--bs-border-color);
     border-radius: 0;
-    cursor: pointer;
     min-height: 104px;
     transition: background-color .12s ease, border-left-color .12s ease;
 }
 
-.alert-row:hover,
-.alert-row.active {
-    background: #f6f9fc;
+.alert-row-button {
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
 }
 
 .alert-row.unread {
-    background: #fffaf0;
+    background: var(--bs-warning-bg-subtle);
+}
+
+.alert-row:hover,
+.alert-row.active {
+    background: var(--bs-tertiary-bg);
 }
 
 .alert-row.severity-critical {
