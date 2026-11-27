@@ -2,6 +2,8 @@
 
 Information that is useful if you want to contribute to the project.
 
+Read the [contribution guidelines](../CONTRIBUTING.md), including the required `Co-Authored-By` trailer for AI-assisted commits.
+
 
 # Database
 

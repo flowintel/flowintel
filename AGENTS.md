@@ -74,7 +74,7 @@ pytest tests/case/test_case_admin.py
 
 ## AI-Assisted Contributions
 
-AI and LLM tools may be credited as co-authors. When an AI tool contributes code or documentation to a commit, add a `Co-Authored-By` trailer at the end of the commit message, separated from the body by a blank line. Name the model actually used and its provider's attribution email, for example:
+All contributors must follow the [AI-assisted contribution policy](CONTRIBUTING.md#ai-assisted-contributions). When an AI tool contributes code, tests, documentation, or other content to a commit, add a `Co-Authored-By` trailer at the end of the commit message, separated from the body by a blank line. Name the model actually used and its provider's attribution email, for example:
 
 ```text
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

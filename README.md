@@ -194,6 +194,10 @@ For the later case, there are 8 variations of them:
 
 Note: These files are predefined and more easily used in combination with the ```Makefile``` helper.
 
+## Contributing
+
+Read the [contribution guidelines](CONTRIBUTING.md) before submitting changes. AI-assisted commits must include a `Co-Authored-By` trailer identifying the model used.
+
 ## Roadmap
 
 Overview of features currently under development.
