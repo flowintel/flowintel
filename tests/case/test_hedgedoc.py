@@ -14,9 +14,9 @@ EDITOR = {"X-API-KEY": "editor_api_key"}
 
 
 @pytest.fixture
-def editor_case(app, client):
-    app.config["HEDGEDOC_BASE_URL"] = BASE_URL
-    app.session_interface = SecureCookieSessionInterface()
+def editor_case(app, client, monkeypatch):
+    monkeypatch.setitem(app.config, "HEDGEDOC_BASE_URL", BASE_URL)
+    monkeypatch.setattr(app, "session_interface", SecureCookieSessionInterface())
     response = client.post("/api/case/create", headers=EDITOR, json={"title": "Notes"})
     assert response.status_code == 201
     with app.app_context():
@@ -93,11 +93,17 @@ def test_existing_note_matches_effective_port(app, client, editor_case, http_get
 
 def test_download_refuses_redirect(app, client, editor_case, monkeypatch):
     store_existing_url(app, editor_case, NOTE_URL)
-    redirect = requests.Response()
-    redirect.status_code = 302
-    redirect.headers["Location"] = "https://other.example.test/"
-    redirect._content = b""
-    send = Mock(side_effect=[redirect])
+
+    def redirect_response(request, **kwargs):
+        redirect = requests.Response()
+        redirect.request = request
+        redirect.url = request.url
+        redirect.status_code = 302
+        redirect.headers["Location"] = "https://other.example.test/"
+        redirect._content = b""
+        return redirect
+
+    send = Mock(side_effect=redirect_response)
     monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", send)
     response = client.get(f"/case/{editor_case}/get_hedgedoc_notes")
     assert response.status_code == 404

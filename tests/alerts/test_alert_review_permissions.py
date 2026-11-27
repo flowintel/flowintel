@@ -361,6 +361,8 @@ def test_bulk_review_updates_matching_alerts_across_pages(client, app, review_al
             assert snapshot(db.session.get(ExternalAlert, aid)) == before
 
 
+# The handler rolls back its transaction. The setup rows must already be committed.
+@pytest.mark.legacy_db
 def test_filtered_bulk_review_rolls_back_if_access_changes_during_update(client, app, review_alert, monkeypatch):
     data = review_alert
     with app.app_context():

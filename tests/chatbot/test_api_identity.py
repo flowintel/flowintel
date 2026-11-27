@@ -237,6 +237,7 @@ def test_tool_calls_use_the_current_timeout(app, identities, transport, monkeypa
         return await original_wait(awaitable, timeout)
 
     monkeypatch.setattr(Chatbot.asyncio, "wait_for", record_timeout)
+    monkeypatch.setitem(app.config, "CHATBOT_TOOL_TIMEOUT", 30)
     invoke(app, identities, "admin")
     monkeypatch.setitem(app.config, "CHATBOT_TOOL_TIMEOUT", 75)
     invoke(app, identities, "admin", docs=True)
@@ -245,6 +246,7 @@ def test_tool_calls_use_the_current_timeout(app, identities, transport, monkeypa
 
 
 def test_system_settings_save_tool_timeout_to_existing_config(app, client, identities, tmp_path, monkeypatch):
+    monkeypatch.setitem(app.config, "CHATBOT_TOOL_TIMEOUT", 30)
     config = tmp_path / "conf" / "config.py"
     config.parent.mkdir()
     original = "class Config():\n    ENABLE_CHATBOT = False\n"
@@ -255,7 +257,7 @@ def test_system_settings_save_tool_timeout_to_existing_config(app, client, ident
 
     settings = client.get("/tools/system_settings")
     assert settings.status_code == 200
-    assert b"chatbot_tool_timeout: 30" in settings.data
+    assert b"chatbot_tool_timeout: 30," in settings.data
 
     endpoint = "/tools/system_settings/save"
     for invalid in (0, -1, 2.5, True, "", None):
@@ -528,13 +530,8 @@ server.run(transport="stdio")
         children.append(child)
         return child
 
-    original_wait = asyncio.wait_for
-
-    async def short_tool_wait(awaitable, timeout):
-        return await original_wait(awaitable, timeout=0.02 if timeout == 30 else timeout)
-
     monkeypatch.setattr(Stdio, "_create_platform_compatible_process", create_child)
-    monkeypatch.setattr(Chatbot.asyncio, "wait_for", short_tool_wait)
+    monkeypatch.setitem(app.config, "CHATBOT_TOOL_TIMEOUT", 1)
     with pytest.raises(Exception) as caught:
         invoke(app, identities, "editor")
 
