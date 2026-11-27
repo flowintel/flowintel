@@ -39,7 +39,7 @@ function harness({ fetch = async () => response([record()]), sessionStorage = st
       ref: value => ({ value }), computed: callback => ({ get value() { return callback(); } }),
       watch: (get, callback) => watchers.push(callback), nextTick: async () => {}, onMounted: callback => mounted.push(callback), onUnmounted: callback => unmounted.push(callback),
     },
-    Flowtime, fromFlowintel, AbortController, sessionStorage, localStorage,
+    TimelineImportDialog: {}, Flowtime, fromFlowintel, AbortController, sessionStorage, localStorage,
     createFlowtimeGraphView: host => ({id:'graph',label:'Graph',filters:false,inspector:false,mount(){},host}),
     fetch: (url, options) => { requests.push({ url, options }); return fetch(url, options); },
     display_toast: res => notifications.push(res), create_message: () => {},
@@ -56,7 +56,7 @@ function harness({ fetch = async () => response([record()]), sessionStorage = st
   return { api, host, instances, requests, notifications, emitted, setInitialView(view){props.initial_view=view;watchers.forEach(callback=>callback(view));}, mount: () => mounted[0](), unmount: () => unmounted[0](), sessionStorage, localStorage };
 }
 
-test('mount maps API records, preserves source records, and reports undated events without losing table rows', async () => {
+test('mount maps API records, preserves source records, and reports undated events', async () => {
   const events = [record(1), record(2, { misp_object_id: 7 }), record(3, { misp_object_id: -8 }), record(4, { file_id: 9 }), record(5, { date_parsed: null, date_text: 'unknown' })];
   const h = harness({ fetch: async () => response(events) }); await h.mount();
   assert.equal(h.requests[0].url, '/case/42/get_timeline_events');
@@ -65,16 +65,11 @@ test('mount maps API records, preserves source records, and reports undated even
   assert.deepEqual(groups.map(group => group.id), h.instances[0].events.map(event => event.group));
   assert.deepEqual(groups.map(group => group.label), ['Analyst notes', 'MISP objects', 'MISP attributes', 'Files & evidence']);
   assert.equal(h.instances[0].events[0].source, events[0]);
-  assert.equal(h.api.timeline_rejected_count.value, 1); assert.equal(h.api.timeline_events.value.length, 5);
+  assert.equal(h.api.timeline_rejected_count.value, 1);
   assert.equal(h.instances[0].options.timeZone, 'UTC');
 });
 test('Flowtime toolbar actions open Flowintel forms and import modal without writing data', async () => {
-  const h = harness({ fetch: async url => {
-    if (url.endsWith('/get_case_misp_object')) return {status:200,json:async()=>({'misp-object':[{object_id:7,is_imported:false}]})};
-    if (url.endsWith('/get_case_misp_attributes')) return {status:200,json:async()=>({attributes:[{id:8,is_imported:false}]})};
-    if (url.endsWith('/get_timeline_import_files')) return {status:200,json:async()=>({files:[{id:9,is_imported:false}]})};
-    return response([record()]);
-  }});
+  const h = harness();
   await h.mount();
   const actions = h.instances[0].options.actions;
   assert.deepEqual(Array.from(actions, action => action.id), ['add-event','import-data']);
@@ -85,11 +80,7 @@ test('Flowtime toolbar actions open Flowintel forms and import modal without wri
   assert.equal(h.api.new_description.value,'Keep this draft');
   await actions[1].onClick();
   assert.equal(h.api.show_import_modal.value,true);
-  assert.equal(h.api.misp_objects.value[0].object_id,7);
-  assert.equal(h.api.misp_attributes.value[0].id,8);
-  assert.equal(h.api.files.value[0].id,9);
-  assert.equal(h.requests.filter(request => request.options?.method === 'POST').length,0);
-  h.api.close_import_modal(); assert.equal(h.api.show_import_modal.value,false);
+  assert.equal(h.requests.length, 1);
   await h.api.fetch_timeline_events(); assert.equal(h.instances.length,1);
   await actions[0].onClick(); assert.equal(h.api.show_add_form.value,true);
 });
@@ -171,24 +162,20 @@ test('a stale response cannot replace a newer refresh', async () => {
 test('existing create, edit, delete and import actions refresh the same viewer', async () => {
   const h = harness(); await h.mount();
   h.api.new_date_text.value = '2026-11-19 14:30'; h.api.new_description.value = 'New finding'; await h.api.add_event();
-  h.api.start_edit(record()); h.api.edit_description.value = 'Edited finding'; await h.api.save_edit(1);
+  await h.instances[0].options.onEdit(h.instances[0].events[0]); h.api.edit_description.value = 'Edited finding'; await h.api.save_edit(1);
   await h.api.delete_event(1);
-  h.api.misp_objects.value = [{ object_id: 7, is_imported: false }]; h.api.selected_ids.value = [7];
-  h.api.misp_attributes.value = [{ id: 8, is_imported: false }]; h.api.selected_attribute_ids.value = [8];
-  h.api.files.value = [{ id: 9, is_imported: false }]; h.api.selected_file_ids.value = [9]; await h.api.perform_import();
+  await h.api.on_timeline_import();
   assert.equal(h.instances.length, 1); assert.equal(h.instances[0].updates.length, 4);
   const writes = h.requests.filter(request => request.options?.method === 'POST');
-  assert.equal(writes.length, 4);
+  assert.equal(writes.length, 2);
   assert.equal(writes[0].options.headers['X-CSRFToken'], 'test-csrf');
-  assert.deepEqual(JSON.parse(writes[2].options.body), { object_ids: [7], attribute_ids: [8] });
-  assert.deepEqual(JSON.parse(writes[3].options.body), { file_ids: [9] });
   assert.ok(h.requests.some(request => request.url.endsWith('/delete_timeline_event/1')));
 });
 
 test('inspector edit opens a populated dialog and saves through the existing CSRF-protected endpoint', async () => {
   const h=harness();await h.mount();
   await h.instances[0].options.onEdit(h.instances[0].events[0]);
-  assert.equal(h.api.inspector_edit_open.value,true);assert.equal(h.api.inspector_edit_dialog.value.open,true);
+  assert.equal(h.api.inspector_edit_dialog.value.open,true);
   assert.equal(h.api.edit_description.value,'Investigation event');assert.equal(h.api.edit_additional_note.value,'Evidence note');
   h.api.edit_description.value='Updated from inspector';await h.api.save_edit(h.api.editing_event_id.value);
   assert.equal(h.api.inspector_edit_dialog.value.open,false);assert.equal(h.api.editing_event_id.value,null);
@@ -228,8 +215,8 @@ test('Graph is registered as a host-owned custom view and graph event writes ref
 });
 test('Graph preference restores per case, URL view requests take precedence, and later requests switch the mounted viewer', async () => {
   const shared=storage();let h=harness({sessionStorage:shared});await h.mount();h.instances[0].setView('graph');
-  assert.equal(h.api.timeline_current_view.value,'graph');assert.equal(h.emitted.at(-1).value,'graph');h.unmount();
-  h=harness({sessionStorage:shared});await h.mount();assert.equal(h.instances[0].view,'graph');assert.equal(h.api.timeline_current_view.value,'graph');
+  assert.equal(h.emitted.at(-1).value,'graph');h.unmount();
+  h=harness({sessionStorage:shared});await h.mount();assert.equal(h.instances[0].view,'graph');
   const explicit=harness({sessionStorage:shared,initialView:'combined'});await explicit.mount();assert.equal(explicit.instances[0].view,'combined');
   explicit.setInitialView('graph');assert.equal(explicit.instances[0].view,'graph');
   explicit.setInitialView('unknown');assert.equal(explicit.instances[0].view,'graph');

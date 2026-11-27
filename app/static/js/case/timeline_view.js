@@ -2,6 +2,7 @@ import {display_toast, create_message} from '../toaster.js'
 import { open_timeline_date_picker } from './timeline_date_picker.js'
 import { confirmDelete } from '/static/js/confirm.js'
 import { touchCaseLastModif } from '/static/js/case/helpers.js'
+import TimelineImportDialog from './timeline_import_dialog.js'
 import { Flowtime } from '../vendor/vitrine/flowtime.js'
 import { fromFlowintel } from './flowtime_adapter.js'
 import { createFlowtimeGraphView } from './flowtime_graph_view.js'
@@ -10,6 +11,7 @@ const { ref, onMounted, onUnmounted, nextTick, computed, watch } = Vue
 
 export default {
     delimiters: ['[[', ']]'],
+    components: { TimelineImportDialog },
     props: {
         case_id: Number,
         cases_info: Object,
@@ -17,8 +19,6 @@ export default {
     },
     emits: ['view-change', 'navigate'],
     setup(props, { emit }) {
-        const timeline_events = ref([])
-        const timeline_current_view = ref('timeline')
         const show_add_form = ref(false)
         const new_date_text = ref('')
         const new_description = ref('')
@@ -28,14 +28,12 @@ export default {
         const edit_description = ref('')
         const edit_additional_note = ref('')
         const inspector_edit_dialog = ref(null)
-        const inspector_edit_open = ref(false)
         const edit_saving = ref(false)
         const edit_error = ref('')
         const can_manage_events = computed(() => {
             const permission = props.cases_info?.permission
             return Boolean(permission && !permission.read_only && (permission.admin || props.cases_info.present_in_case))
         })
-        const sort_asc = ref(true)
         const timeline_embed = ref(null)
         const timeline_rejected_count = ref(0)
         const timeline_load_error = ref('')
@@ -46,33 +44,7 @@ export default {
         let unmounted = false
         const timeline_listeners = new AbortController()
 
-        // Import modal state
         const show_import_modal = ref(false)
-        const misp_objects = ref([])
-        const misp_attributes = ref([])
-        const files = ref([])
-        const selected_ids = ref([])
-        const selected_attribute_ids = ref([])
-        const selected_file_ids = ref([])
-        const select_all = ref(false)
-        const select_all_attributes = ref(false)
-        const select_all_files = ref(false)
-
-        const sorted_events = computed(() => {
-            const list = [...timeline_events.value]
-            list.sort((a, b) => {
-                const da = a.date_parsed ? new Date(a.date_parsed.replace(' ', 'T')) : new Date(a.date_text)
-                const db = b.date_parsed ? new Date(b.date_parsed.replace(' ', 'T')) : new Date(b.date_text)
-                const ta = isNaN(da) ? 0 : da.getTime()
-                const tb = isNaN(db) ? 0 : db.getTime()
-                return sort_asc.value ? ta - tb : tb - ta
-            })
-            return list
-        })
-
-        function toggle_sort() {
-            sort_asc.value = !sort_asc.value
-        }
 
         const timeline_views = ['timeline', 'combined', 'feed', 'graph']
         function saved_timeline_view() {
@@ -86,7 +58,6 @@ export default {
         }
 
         function remember_timeline_view(event) {
-            timeline_current_view.value = event.detail.view
             emit('view-change', event.detail.view)
             try {
                 sessionStorage.setItem(timeline_view_key, event.detail.view)
@@ -118,10 +89,7 @@ export default {
                 }
                 const data = await res.json()
                 if (unmounted || request.signal.aborted) return
-                timeline_events.value = data.events
-                await nextTick()
-                if (unmounted || request.signal.aborted) return
-                render_timeline()
+                render_timeline(data.events)
                 timeline_load_error.value = ''
             } catch (error) {
                 if (unmounted || request.signal.aborted) return
@@ -132,10 +100,10 @@ export default {
             }
         }
 
-        function render_timeline() {
+        function render_timeline(records) {
             const container = timeline_embed.value
             if (!container) return
-            const { events, rejected } = fromFlowintel(timeline_events.value)
+            const { events, rejected } = fromFlowintel(records)
             timeline_rejected_count.value = rejected.length
             if (timeline) {
                 timeline.setEvents(events)
@@ -171,7 +139,7 @@ export default {
                             id: 'import-data', label: 'Import Data', icon: '↥',
                             visible: () => can_manage_events.value,
                             onClick: () => {
-                                if (can_manage_events.value) return open_import_modal()
+                                if (can_manage_events.value) show_import_modal.value = true
                             }
                         }
                     ],
@@ -181,7 +149,6 @@ export default {
                     } : undefined
                 })
             }
-            timeline_current_view.value = timeline.view
         }
 
         watch(() => props.initial_view, view => {
@@ -190,11 +157,9 @@ export default {
 
         // Optional picker next to the free-text date field (see
         // timeline_date_picker.js); the date is applied on "Validate".
-        function open_date_picker(event, target) {
-            const current = target === 'edit' ? edit_date_text.value : new_date_text.value
-            open_timeline_date_picker(event.currentTarget, current, value => {
-                if (target === 'edit') edit_date_text.value = value
-                else new_date_text.value = value
+        function open_date_picker(event) {
+            open_timeline_date_picker(event.currentTarget, new_date_text.value, value => {
+                new_date_text.value = value
             })
         }
 
@@ -251,22 +216,16 @@ export default {
 
         async function open_inspector_edit(ev) {
             if (!can_manage_events.value || !ev) return
-            inspector_edit_open.value = true
-            start_edit(ev)
-            await nextTick()
-            if (!unmounted) inspector_edit_dialog.value?.showModal()
-        }
-
-        function start_edit(ev) {
             edit_error.value = ''
             editing_event_id.value = ev.id
             edit_date_text.value = ev.date_text
             edit_description.value = ev.description
             edit_additional_note.value = ev.additional_note || ''
+            await nextTick()
+            if (!unmounted) inspector_edit_dialog.value?.showModal()
         }
 
         function cancel_edit() {
-            inspector_edit_open.value = false
             if (inspector_edit_dialog.value?.open) inspector_edit_dialog.value.close()
             edit_error.value = ''
             editing_event_id.value = null
@@ -332,138 +291,9 @@ export default {
             await display_toast(res)
         }
 
-        // --- Import modal helpers ---
-        async function open_import_modal() {
-            const [objRes, attrRes, fileRes] = await Promise.all([
-                fetch('/case/' + props.case_id + '/get_case_misp_object'),
-                fetch('/case/' + props.case_id + '/get_case_misp_attributes'),
-                fetch('/case/' + props.case_id + '/get_timeline_import_files')
-            ])
-
-            let canOpen = false
-
-            if (objRes.status === 200) {
-                const locObjects = await objRes.json()
-                misp_objects.value = locObjects['misp-object'] || []
-                canOpen = true
-            } else {
-                await display_toast(objRes)
-                misp_objects.value = []
-            }
-
-            if (attrRes.status === 200) {
-                const locAttrs = await attrRes.json()
-                misp_attributes.value = locAttrs.attributes || []
-                canOpen = true
-            } else {
-                await display_toast(attrRes)
-                misp_attributes.value = []
-            }
-
-            if (fileRes.status === 200) {
-                const locFiles = await fileRes.json()
-                files.value = locFiles.files || []
-                canOpen = true
-            } else {
-                await display_toast(fileRes)
-                files.value = []
-            }
-
-            if (canOpen) {
-                selected_ids.value = []
-                selected_attribute_ids.value = []
-                selected_file_ids.value = []
-                select_all.value = false
-                select_all_attributes.value = false
-                select_all_files.value = false
-                show_import_modal.value = true
-            }
-        }
-
-        function toggle_select_all() {
-            // `select_all` is already updated by v-model when this handler runs,
-            // so act based on its current value.
-            if (select_all.value) {
-                // select only those that are not already imported
-                selected_ids.value = misp_objects.value.filter(o => !o.is_imported).map(o => o.object_id)
-            } else {
-                selected_ids.value = []
-            }
-        }
-
-        function toggle_select_all_attributes() {
-            if (select_all_attributes.value) {
-                selected_attribute_ids.value = misp_attributes.value.filter(a => !a.is_imported).map(a => a.id)
-            } else {
-                selected_attribute_ids.value = []
-            }
-        }
-
-        function toggle_select_all_files() {
-            if (select_all_files.value) {
-                selected_file_ids.value = files.value.filter(f => !f.is_imported).map(f => f.id)
-            } else {
-                selected_file_ids.value = []
-            }
-        }
-
-        async function perform_import() {
-            const importableObjectIds = (selected_ids.value || []).filter(id => {
-                const obj = misp_objects.value.find(o => Number(o.object_id) === Number(id))
-                return obj && !obj.is_imported
-            })
-            const importableAttributeIds = (selected_attribute_ids.value || []).filter(id => {
-                const attr = misp_attributes.value.find(a => Number(a.id) === Number(id))
-                return attr && !attr.is_imported
-            })
-            const importableFileIds = (selected_file_ids.value || []).filter(id => {
-                const file = files.value.find(f => Number(f.id) === Number(id))
-                return file && !file.is_imported
-            })
-
-            if (importableObjectIds.length === 0 && importableAttributeIds.length === 0 && importableFileIds.length === 0) {
-                create_message('Select at least one object, standalone attribute or file to import', 'warning-subtle')
-                return
-            }
-
-            const responses = []
-            if (importableObjectIds.length > 0 || importableAttributeIds.length > 0) {
-                responses.push(await fetch('/case/' + props.case_id + '/import_misp_to_timeline', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                    body: JSON.stringify({
-                        object_ids: importableObjectIds,
-                        attribute_ids: importableAttributeIds
-                    })
-                }))
-            }
-            if (importableFileIds.length > 0) {
-                responses.push(await fetch('/case/' + props.case_id + '/import_files_to_timeline', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.getElementById("csrf_token").value},
-                    body: JSON.stringify({ file_ids: importableFileIds })
-                }))
-            }
-
-            const allOk = responses.length > 0 && responses.every(res => res.status === 200)
-            if (allOk) {
-                show_import_modal.value = false
-                touchCaseLastModif(props.cases_info)
-                await fetch_timeline_events()
-            }
-            for (const res of responses) {
-                await display_toast(res)
-            }
-        }
-
-        function close_import_modal() {
-            show_import_modal.value = false
-            selected_ids.value = []
-            selected_attribute_ids.value = []
-            selected_file_ids.value = []
-            select_all.value = false
-            select_all_attributes.value = false
-            select_all_files.value = false
+        function on_timeline_import() {
+            touchCaseLastModif(props.cases_info)
+            return fetch_timeline_events()
         }
 
         onMounted(() => {
@@ -483,8 +313,6 @@ export default {
         })
 
         return {
-            timeline_events,
-            timeline_current_view,
             timeline_embed,
             timeline_rejected_count,
             timeline_load_error,
@@ -498,34 +326,15 @@ export default {
             edit_description,
             edit_additional_note,
             inspector_edit_dialog,
-            inspector_edit_open,
             edit_saving,
             edit_error,
             can_manage_events,
-            sorted_events,
-            sort_asc,
-            toggle_sort,
             add_event,
-            start_edit,
             cancel_edit,
             save_edit,
             delete_event,
-            open_import_modal,
-            perform_import,
             show_import_modal,
-            misp_objects,
-            misp_attributes,
-            files,
-            selected_ids,
-            selected_attribute_ids,
-            selected_file_ids,
-            select_all,
-            select_all_attributes,
-            select_all_files,
-            toggle_select_all,
-            toggle_select_all_attributes,
-            toggle_select_all_files,
-            close_import_modal,
+            on_timeline_import,
             fetch_timeline_events
         }
     },
@@ -541,7 +350,7 @@ export default {
                         <div class="input-group input-group-sm">
                             <input type="text" class="form-control form-control-sm" v-model="new_date_text"
                                    placeholder="e.g. 2024-03-15 14:30, 01/12/26 14h30..." required>
-                            <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event, 'new')" title="Pick a date (optional)" aria-label="Pick a date">
+                            <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event)" title="Pick a date (optional)" aria-label="Pick a date">
                                 <i class="fa-regular fa-calendar"></i>
                             </button>
                         </div>
@@ -567,94 +376,8 @@ export default {
             </div>
         </div>
 
-        <!-- Import Selection Modal -->
-        <div v-if="show_import_modal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Import Data To Timeline</h5>
-                        <button type="button" class="btn-close" @click="close_import_modal()"></button>
-                    </div>
-                    <div class="modal-body">
-                        <h6 class="mb-2">MISP Objects</h6>
-                        <div class="mb-2">
-                            <input type="checkbox" id="select_all" v-model="select_all" @change="toggle_select_all()">
-                            <label for="select_all" class="ms-1">Select all objects</label>
-                        </div>
-                        <div v-if="misp_objects.length === 0" class="text-muted">No MISP objects found for this case.</div>
-                        <div v-else class="list-group" style="max-height:400px; overflow:auto;">
-                            <label v-for="o in misp_objects" :key="o.object_id" class="list-group-item d-flex justify-content-between align-items-start">
-                                <div class="d-flex align-items-start">
-                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="o.object_id" v-model="selected_ids" :disabled="o.is_imported">
-                                    <div>
-                                        <strong>[[ o.object_name ]]</strong>
-                                        <div class="text-muted small">Created: [[ o.object_creation_date ]]</div>
-                                        <div class="small" v-if="o.attributes && o.attributes.length">[[ o.attributes.map(a => a.object_relation + ': ' + a.value).slice(0,3).join(', ') ]]</div>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <span v-if="o.is_imported" class="badge bg-success me-2">Imported</span>
-                                    <span v-else class="badge bg-secondary rounded-pill">[[ o.attributes.length ]] attrs</span>
-                                </div>
-                            </label>
-                        </div>
-
-                        <hr>
-                        <h6 class="mb-2">Standalone MISP Attributes</h6>
-                        <div class="mb-2">
-                            <input type="checkbox" id="select_all_attributes" v-model="select_all_attributes" @change="toggle_select_all_attributes()">
-                            <label for="select_all_attributes" class="ms-1">Select all standalone attributes</label>
-                        </div>
-                        <div v-if="misp_attributes.length === 0" class="text-muted">No standalone MISP attributes found for this case.</div>
-                        <div v-else class="list-group" style="max-height:320px; overflow:auto;">
-                            <label v-for="a in misp_attributes" :key="a.id" class="list-group-item d-flex justify-content-between align-items-start">
-                                <div class="d-flex align-items-start">
-                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="a.id" v-model="selected_attribute_ids" :disabled="a.is_imported">
-                                    <div>
-                                        <strong>[[ a.type ]]</strong>
-                                        <span class="ms-1">[[ a.value ]]</span>
-                                        <div class="text-muted small" v-if="a.object_relation">Relation: [[ a.object_relation ]]</div>
-                                        <div class="text-muted small" v-if="a.first_seen">First seen: [[ a.first_seen ]]</div>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <span v-if="a.is_imported" class="badge bg-success me-2">Imported</span>
-                                    <span v-else class="badge text-bg-warning rounded-pill">Standalone attr</span>
-                                </div>
-                            </label>
-                        </div>
-
-                        <hr>
-                        <h6 class="mb-2">Files</h6>
-                        <div class="mb-2">
-                            <input type="checkbox" id="select_all_files" v-model="select_all_files" @change="toggle_select_all_files()">
-                            <label for="select_all_files" class="ms-1">Select all files</label>
-                        </div>
-                        <div v-if="files.length === 0" class="text-muted">No files found for this case.</div>
-                        <div v-else class="list-group" style="max-height:320px; overflow:auto;">
-                            <label v-for="f in files" :key="f.id" class="list-group-item d-flex justify-content-between align-items-start">
-                                <div class="d-flex align-items-start">
-                                    <input type="checkbox" class="form-check-input me-2 mt-1" :value="f.id" v-model="selected_file_ids" :disabled="f.is_imported">
-                                    <div>
-                                        <strong><i class="fa-solid fa-file me-1 text-success"></i>[[ f.name ]]</strong>
-                                        <div class="text-muted small">[[ f.location === 'task' ? 'Task' : 'Case' ]]: [[ f.location_label ]]</div>
-                                        <div class="small">Uploaded: [[ f.upload_date ]] - [[ f.file_type ]] - <template v-if="f.file_size !== 'Unknown'">[[ (f.file_size / 1024).toFixed(2) ]] KB</template><template v-else>Unknown size</template></div>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <span v-if="f.is_imported" class="badge bg-success me-2">Imported</span>
-                                    <span v-else class="badge text-bg-success rounded-pill">File</span>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" @click="close_import_modal()">Cancel</button>
-                        <button class="btn btn-primary" @click="perform_import()">Import selected ([[ selected_ids.length + selected_attribute_ids.length + selected_file_ids.length ]])</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <TimelineImportDialog v-if="show_import_modal" :case_id="case_id"
+                              @close="show_import_modal = false" @imported="on_timeline_import" />
 
         <!-- Flowtime owns the contents of this host; Vue owns the surrounding forms. -->
         <div v-if="timeline_load_error" class="alert alert-danger d-flex align-items-center justify-content-between" role="alert">
@@ -662,11 +385,10 @@ export default {
             <button type="button" class="btn btn-outline-danger btn-sm ms-2" @click="fetch_timeline_events()">Retry</button>
         </div>
         <p v-if="timeline_rejected_count" class="alert alert-warning" role="status">
-            [[ timeline_rejected_count ]] event(s) have no valid date and cannot be placed in the viewer. You can correct them in the Events table below.
+            [[ timeline_rejected_count ]] [[ timeline_rejected_count === 1 ? 'event has' : 'events have' ]] no valid date for the timeline.
         </p>
         <div ref="timeline_embed" class="case-flowtime"></div>
 
-        <!-- Inspector editing uses the same validated save path as the Events table. -->
         <dialog ref="inspector_edit_dialog" class="case-timeline-edit-dialog" aria-labelledby="timeline-inspector-edit-title"
                 @close="cancel_edit()" @cancel="edit_saving && $event.preventDefault()">
             <form @submit.prevent="save_edit(editing_event_id)">
@@ -689,88 +411,6 @@ export default {
                 </fieldset>
             </form>
         </dialog>
-
-        <!-- Event List Table -->
-        <div v-if="timeline_current_view !== 'graph' && timeline_events.length > 0" class="mt-4">
-            <h6><i class="fa-solid fa-list me-1"></i>Events</h6>
-            <table class="table table-sm table-hover">
-                <thead>
-                    <tr>
-                        <th style="width:200px; cursor:pointer; user-select:none;" @click="toggle_sort()">
-                            Date/Time
-                            <i class="fa-solid fa-sm ms-1" :class="sort_asc ? 'fa-arrow-up-short-wide' : 'fa-arrow-down-wide-short'"></i>
-                        </th>
-                        <th>Event</th>
-                        <th>Additional Note</th>
-                        <th style="width:90px">Source</th>
-                        <th style="width:120px">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="ev in sorted_events" :key="ev.id" :class="ev.misp_object_id && Number(ev.misp_object_id) > 0 ? 'table-info' : (ev.misp_object_id && Number(ev.misp_object_id) < 0 ? 'table-warning' : (ev.file_id ? 'table-success' : ''))">
-                        <template v-if="editing_event_id === ev.id && !inspector_edit_open">
-                            <td>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" class="form-control form-control-sm" v-model="edit_date_text">
-                                    <button type="button" class="btn btn-outline-secondary" @click="open_date_picker($event, 'edit')" title="Pick a date (optional)" aria-label="Pick a date">
-                                        <i class="fa-regular fa-calendar"></i>
-                                    </button>
-                                </div>
-                            </td>
-                            <td>
-                                <input type="text" class="form-control form-control-sm" v-model="edit_description">
-                            </td>
-                            <td>
-                                <textarea class="form-control form-control-sm" v-model="edit_additional_note" rows="2"></textarea>
-                            </td>
-                            <td>
-                                <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
-                                    <i class="misp-icon misp-icon-object misp-simple me-1"></i>Object
-                                </span>
-                                <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
-                                    <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
-                                </span>
-                                <span v-else-if="ev.file_id" class="badge text-bg-success" title="Linked to imported file">
-                                    <i class="fa-solid fa-file me-1"></i>File
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn-success btn-sm me-1" @click="save_edit(ev.id)" title="Save">
-                                    <i class="fa-solid fa-check"></i>
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" @click="cancel_edit()" title="Cancel">
-                                    <i class="fa-solid fa-xmark"></i>
-                                </button>
-                            </td>
-                        </template>
-                        <template v-else>
-                            <td><code>[[ ev.date_text ]]</code></td>
-                            <td>[[ ev.description ]]</td>
-                            <td style="white-space: pre-wrap;">[[ ev.additional_note || '' ]]</td>
-                            <td>
-                                <span v-if="ev.misp_object_id && Number(ev.misp_object_id) > 0" class="badge text-bg-info" title="Linked to MISP object">
-                                    <i class="misp-icon misp-icon-object misp-simple me-1"></i>Object
-                                </span>
-                                <span v-else-if="ev.misp_object_id && Number(ev.misp_object_id) < 0" class="badge text-bg-warning" title="Linked to standalone MISP attribute">
-                                    <i class="misp-icon misp-icon-attribute misp-simple me-1"></i>Standalone Attr
-                                </span>
-                                <span v-else-if="ev.file_id" class="badge text-bg-success" title="Linked to imported file">
-                                    <i class="fa-solid fa-file me-1"></i>File
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn-outline-primary btn-sm me-1" @click="start_edit(ev)" title="Edit">
-                                    <i class="fa-solid fa-pen fa-sm"></i>
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm" @click="delete_event(ev.id)" title="Delete">
-                                    <i class="fa-solid fa-trash fa-sm"></i>
-                                </button>
-                            </td>
-                        </template>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
     `
 }

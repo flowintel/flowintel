@@ -14,7 +14,8 @@
     color-scheme: inherit;
 }
 
-.case-timeline-edit-dialog {
+.case-timeline-edit-dialog,
+.timeline-import-dialog {
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100vh - 48px);
     overflow: auto;
@@ -25,6 +26,33 @@
     color: var(--bs-body-color);
     box-shadow: 0 20px 80px #0004;
 }
-.case-timeline-edit-dialog::backdrop {
+.case-timeline-edit-dialog::backdrop,
+.timeline-import-dialog::backdrop {
     background: #0007;
+}
+
+.timeline-import-dialog {
+    width: min(1080px, calc(100vw - 24px));
+    padding: 0;
+}
+
+.timeline-import-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+    height: min(52rem, calc(100dvh - 52px));
+}
+
+.timeline-import-results {
+    flex: 1 0 5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.timeline-import-select-page {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-tertiary-bg);
 }

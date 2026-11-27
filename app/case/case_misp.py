@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 
 from .case import case_blueprint, check_user_private_case
 from .CaseCore import CaseModel
+from .timeline_import import import_candidates
 from . import common_core as CommonModel
 from ..connectors import connectors_core as ConnectorModel
 from ..db_class.db import Misp_Object_Instance_Uuid, Task, Task_Misp_Object, Task_Misp_Attribute, Case_Timeline_Event, User, Case_Misp_Sync_Conflict, Case_Misp_Sync_Schedule, db, DATETIME_FORMAT_FULL
@@ -587,6 +588,20 @@ def import_misp_to_timeline(cid):
             }, 200
         return {"message": "Action not allowed", "toast_class": "warning-subtle"}, 403
     return {"message": "Case not found", 'toast_class': "danger-subtle"}, 404
+
+
+@case_blueprint.get("/<int:cid>/timeline_import_candidates")
+@login_required
+def timeline_import_candidates(cid):
+    case = CommonModel.get_case(cid)
+    if not case or not check_user_private_case(case):
+        return {"message": "Case not found"}, 404
+    source = request.args.get("source", "objects")
+    page = request.args.get("page", type=int) if "page" in request.args else 1
+    if source not in ("objects", "attributes", "files") or page is None or not 1 <= page <= 2**31:
+        return {"message": "Invalid source or page"}, 400
+    return import_candidates(case, source, request.args.get("q", "").strip(), page,
+                             ids_only=request.args.get("ids_only") == "1")
 
 
 @case_blueprint.route("/<int:cid>/get_timeline_import_files", methods=['GET'])
