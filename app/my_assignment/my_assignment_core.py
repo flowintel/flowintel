@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import asc, desc, func, or_
+from sqlalchemy import asc, desc, func, and_, or_
 
 from app.db_class.db import (Case, Case_Org, Cluster, Custom_Tags, Status, Subtask, Tags, Task, Task_Custom_Tags,
                             Task_Galaxy_Tags, Task_Tags, Task_User, User)
@@ -50,11 +50,13 @@ PAGE_SIZES = (10, 25, 50, 100)
 
 def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, overdue_only=False, viewer=None,
                        order="desc", per_page=20, title_filter=None, due=None, group_by_case=False,
-                       tag_names=None, cluster_tags=None):
+                       tag_names=None, cluster_tags=None, tags_any=False, clusters_any=False):
     """Tasks assigned to `user` that `viewer` may see, sorted and paginated.
 
     filter: a SORT_COLUMNS key (anything else keeps the database order); order: asc|desc,
-    applied before pagination; title_filter: case-insensitive title search; due: a deadline
+    applied before pagination; title_filter: case-insensitive search on the task title, the
+    title of its case or the case id ("12" / "#12"); tags_any / clusters_any: a task needs one
+    of the tags / clusters instead of all of them ("!name" excludes); due: a deadline
     window ("overdue", "24h", "7d", "30d", "none"); group_by_case: tasks of a case come
     together (most recently modified case first), the chosen sort applies inside each case."""
     viewer = viewer if viewer is not None else user
@@ -67,17 +69,30 @@ def my_assignment_sort(user, completed, page, filter=None, inactive_only=False, 
     if overdue_only:
         query = query.filter(Task.deadline.isnot(None), Task.deadline < datetime.utcnow())
     if title_filter:
-        query = query.filter(Task.title.ilike(f"%{title_filter}%"))
-    # tasks carrying a tag: taxonomy tag or custom tag name, galaxy cluster tag (all of them)
-    for name in (tag_names or []):
-        query = query.filter(or_(
+        pattern = f"%{title_filter}%"
+        matches = [Task.title.ilike(pattern),
+                   Case.query.filter(Case.id == Task.case_id, Case.title.ilike(pattern)).exists()]
+        case_id = title_filter.lstrip('#')
+        if case_id.isdigit():
+            matches.append(Task.case_id == int(case_id))
+        query = query.filter(or_(*matches))
+    # tasks carrying a tag (taxonomy or custom tag name) / a galaxy cluster (tag or name);
+    # a value starting with "!" excludes the tasks that carry it
+    def has_tag(name):
+        return or_(
             Task.id.in_(db.session.query(Task_Tags.task_id).join(Tags, Tags.id == Task_Tags.tag_id).filter(Tags.name == name)),
             Task.id.in_(db.session.query(Task_Custom_Tags.task_id).join(Custom_Tags, Custom_Tags.id == Task_Custom_Tags.custom_tag_id)
-                        .filter(Custom_Tags.name == name)),
-        ))
-    for tag in (cluster_tags or []):
-        query = query.filter(Task.id.in_(
-            db.session.query(Task_Galaxy_Tags.task_id).join(Cluster, Cluster.id == Task_Galaxy_Tags.cluster_id).filter(Cluster.tag == tag)))
+                        .filter(Custom_Tags.name == name)))
+    def has_cluster(value):
+        return Task.id.in_(db.session.query(Task_Galaxy_Tags.task_id).join(Cluster, Cluster.id == Task_Galaxy_Tags.cluster_id)
+                           .filter(or_(Cluster.tag == value, Cluster.name == value)))
+    for values, match, any_of in ((tag_names or [], has_tag, tags_any), (cluster_tags or [], has_cluster, clusters_any)):
+        included = [match(v) for v in values if not v.startswith('!')]
+        for v in values:
+            if v.startswith('!') and len(v) > 1:
+                query = query.filter(~match(v[1:]))
+        if included:
+            query = query.filter(or_(*included) if any_of else and_(*included))
     now = datetime.utcnow()
     windows = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
     if due == "overdue":
