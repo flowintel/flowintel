@@ -159,7 +159,7 @@ def _chatbot_api_request(method, path):
     return method, route + ("?" + parts.query if parts.query else ""), None
 
 
-async def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
+async def call_api_wrapper(method: str, path: str, body: dict | None = None) -> str:
     """Read Flowintel cases, tasks and templates through reviewed API operations.
     Args: method (GET, or POST for searches), path (/case/... or /api/case/...),
     body (optional JSON). Other operations require administrator opt-in;
@@ -168,9 +168,10 @@ async def call_api_wrapper(method: str, path: str, body: dict = None) -> str:
     if refusal:
         return refusal
     logger.debug("LLM requested tool -> %s %s", method, path)
-    return str(await _call_mcp_tool(
-        _mcp_environment(), "call_flowintel_api", {"method": method, "path": path, "body": body}
-    ))
+    arguments = {"method": method, "path": path}
+    if body is not None:
+        arguments["body"] = body
+    return str(await _call_mcp_tool(_mcp_environment(), "call_flowintel_api", arguments))
 
 
 async def get_docs_wrapper() -> str:
@@ -261,7 +262,10 @@ async def _generate(question, model, user_id, request_id):
             raise GenerationTimedOut from exc
         raise
     finally:
-        await lm.aclose()
+        # DSPy 3.2 does not expose the per-LM cleanup hook available in 3.4.
+        aclose = getattr(lm, "aclose", None)
+        if aclose is not None:
+            await aclose()
 
     return result.answer, lm.model.rsplit("/", 1)[-1]
 

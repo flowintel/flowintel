@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 import threading
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from flask import session
@@ -140,7 +141,9 @@ def test_authorized_single_tool_uses_browser_identity(app, identities, transport
                               headers={"X-API-KEY": json.loads(result)["api_key"]})
         assert response.status_code == 200
         assert response.json["title"] == "PRIVATE ADMIN INVESTIGATION"
-    assert transport["calls"][0][0] == "admin_api_key"
+    assert transport["calls"] == [
+        ("admin_api_key", "call_flowintel_api", {"method": "GET", "path": f"/case/{identities['case']}"})
+    ]
 
 
 @pytest.mark.parametrize("credential", [None, "ambient-admin-key"])
@@ -287,7 +290,9 @@ def test_explicit_writes_keep_actor_and_admin_endpoints_remain_blocked(app, iden
         assert json.loads(result)["api_key"] == "editor_api_key"
         assert asyncio.run(Chatbot.call_api_wrapper("POST", "/api/admin/add_user", {})).startswith("Refused:")
     assert len(transport["calls"]) == 1
-    assert transport["calls"][0][2]["path"] == "/case/create"
+    assert transport["calls"][0][2] == {
+        "method": "POST", "path": "/case/create", "body": {"api_key": "admin_api_key", "title": "Case"}
+    }
 
 
 def test_ask_route_keeps_browser_identity_after_session_removal(app, identities, transport, monkeypatch):
@@ -319,6 +324,23 @@ def test_ask_route_keeps_browser_identity_after_session_removal(app, identities,
     assert all(call[0] == "editor_api_key" for call in transport["calls"])
     with app.app_context():
         assert ChatConversation.query.count() == 1 and ChatMessage.query.count() == 2
+
+
+@pytest.mark.parametrize("has_aclose", [False, True])
+def test_generation_preserves_provider_error_across_dspy_versions(app, monkeypatch, has_aclose):
+    lm = SimpleNamespace(model="ollama_chat/test")
+    if has_aclose:
+        lm.aclose = AsyncMock()
+    monkeypatch.setattr(Chatbot, "_create_lm", lambda model: lm)
+    error = ConnectionError("Ollama unavailable")
+    monkeypatch.setattr(Chatbot.chatbot_module, "acall", AsyncMock(side_effect=error))
+
+    with app.app_context(), pytest.raises(ConnectionError) as caught:
+        Chatbot.get_chatbot_response("Summarize case 96")
+
+    assert caught.value is error
+    if has_aclose:
+        lm.aclose.assert_awaited_once_with()
 
 
 def test_ask_times_out_and_cancels_the_generation(app, identities, monkeypatch):
@@ -444,7 +466,7 @@ def test_real_react_dispatch_keeps_concurrent_api_identities(app, identities, tr
         if "tool_name_0" not in trajectory:
             name, args = "get_docs_wrapper", {}
         elif "tool_name_1" not in trajectory:
-            name, args = "call_api_wrapper", {"method": "GET", "path": f"/case/{identities['case']}"}
+            name, args = "call_api_wrapper", {"method": "GET", "path": f"/case/{identities['case']}", "body": None}
         else:
             name, args = "finish", {}
         return SimpleNamespace(next_thought="Deterministic test plan", next_tool_name=name, next_tool_args=args)
