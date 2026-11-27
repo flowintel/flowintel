@@ -268,6 +268,8 @@ class Config():
     # The chatbot also requires a reachable Ollama instance and the OLLAMA_*
     # values in conf/config_module.py before it can answer questions.
     ENABLE_CHATBOT = env_bool('ENABLE_CHATBOT', default=False)
+    # Maximum wait in seconds for each chatbot MCP tool call after initialization.
+    CHATBOT_TOOL_TIMEOUT = 30
 
     # =============================================================================
     # MERMAID

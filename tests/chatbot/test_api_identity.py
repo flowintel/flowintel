@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import json
 import os
+from pathlib import Path
 import sys
 import threading
 from types import SimpleNamespace
@@ -16,6 +17,7 @@ from flask_login import current_user
 from app import db
 from app.chatbot import chatbot_core as Chatbot
 from app.db_class.db import Case, User
+from app.tools import tools as SystemSettings
 
 
 @pytest.fixture
@@ -221,6 +223,48 @@ def test_timeout_closes_only_its_owned_transport(app, identities, transport, mon
     transport["hang"] = None
     invoke(app, identities, "editor", docs=True)
     assert transport["calls"][-1][0] == "editor_api_key"
+
+
+def test_tool_calls_use_the_current_timeout(app, identities, transport, monkeypatch):
+    timeouts = []
+    original_wait = asyncio.wait_for
+
+    async def record_timeout(awaitable, timeout):
+        timeouts.append(timeout)
+        return await original_wait(awaitable, timeout)
+
+    monkeypatch.setattr(Chatbot.asyncio, "wait_for", record_timeout)
+    invoke(app, identities, "admin")
+    monkeypatch.setitem(app.config, "CHATBOT_TOOL_TIMEOUT", 75)
+    invoke(app, identities, "admin", docs=True)
+
+    assert timeouts == [30, 75]
+
+
+def test_system_settings_save_tool_timeout_to_existing_config(app, client, identities, tmp_path, monkeypatch):
+    config = tmp_path / "conf" / "config.py"
+    config.parent.mkdir()
+    original = "class Config():\n    ENABLE_CHATBOT = False\n"
+    config.write_text(original)
+    monkeypatch.setattr(SystemSettings, "Path", lambda path: tmp_path / "app" / "tools" / Path(path).name)
+    with client.session_transaction() as session_data:
+        session_data["_user_id"] = identities["tokens"]["admin"]
+
+    settings = client.get("/tools/system_settings")
+    assert settings.status_code == 200
+    assert b"chatbot_tool_timeout: 30" in settings.data
+
+    endpoint = "/tools/system_settings/save"
+    for invalid in (0, -1, 2.5, True, "", None):
+        response = client.post(endpoint, json={"key": "chatbot_tool_timeout", "value": invalid})
+        assert response.status_code == 400
+    assert config.read_text() == original
+
+    for timeout in (75, 90):
+        response = client.post(endpoint, json={"key": "chatbot_tool_timeout", "value": timeout})
+        assert response.status_code == 200
+        assert app.config["CHATBOT_TOOL_TIMEOUT"] == timeout
+        assert config.read_text() == f"{original}    CHATBOT_TOOL_TIMEOUT = {timeout}\n"
 
 
 @pytest.mark.parametrize("method,path", [
