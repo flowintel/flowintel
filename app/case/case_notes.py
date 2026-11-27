@@ -2,6 +2,7 @@ import datetime
 import os
 from flask import render_template, request, current_app, abort
 from flask_login import login_required, current_user
+from werkzeug.exceptions import BadRequest
 import requests
 import conf.config_module as ConfigModule
 
@@ -209,7 +210,11 @@ def change_hedgedoc_url(cid):
     if CommonModel.get_case(cid):
         if CommonModel.get_present_in_case(cid, current_user) or current_user.is_admin():
             if "hedgedoc_url" in request.json:
-                if CaseModel.change_hedgedoc_url(request.json, cid, current_user):
+                try:
+                    updated = CaseModel.change_hedgedoc_url(request.json, cid, current_user)
+                except BadRequest as error:
+                    return {"message": error.description, "toast_class": "warning-subtle"}, 400
+                if updated:
                     flowintel_log("audit", 200, "HedgeDoc URL changed", User=current_user.email, CaseId=cid)
                     return {"message": "HedgeDoc URL updated", "toast_class": "success-subtle"}, 200
                 return {"message": "Error updating HedgeDoc URL", "toast_class": "danger-subtle"}, 400

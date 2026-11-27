@@ -582,9 +582,11 @@ If you want to start over with a different template, click **Remove** to unlink 
 
 Flowintel can integrate with [HedgeDoc](https://hedgedoc.org/), an open-source, web-based editor designed for real-time collaborative Markdown editing. When connected, you and your team-mates can edit the same note simultaneously and see each other's changes appear in real time.
 
-HedgeDoc is not part of Flowintel; it must be hosted separately. To connect a HedgeDoc document to a case, open the **HedgeDoc** tab on the case detail page, paste the document URL into the URL field and click **Change URL**. Flowintel fetches the content and renders it within the case.
+An administrator must set `HEDGEDOC_BASE_URL` in the Flowintel environment to the trusted HedgeDoc installation URL (for example, `https://notes.example.org` or `https://notes.example.org/pad`) and restart Flowintel. For Docker Compose, set the variable in the Flowintel service's `environment` and recreate the container. Leaving it empty disables downloads, including for existing cases. After an upgrade, previously saved direct note links matching the rules below work without editing the cases.
 
-Use the HedgeDoc URL without the `?view` or `?edit` parameters, otherwise Flowintel cannot retrieve the content correctly.
+To connect a HedgeDoc document to a case, open the **HedgeDoc** tab on the case detail page, paste the direct note URL under that installation and click **Change URL**. Flowintel fetches the note and renders it within the case. The download must be served directly because Flowintel does not follow redirects.
+
+Use a direct note link such as `https://notes.example.org/incident-42`. Flowintel also accepts the HedgeDoc editor suffixes `?edit` and `?both`. Note IDs can contain ASCII letters, digits, hyphens, underscores, dots and tildes.
 
 ### Converting files to notes
 
@@ -2452,7 +2454,7 @@ A role cannot be deleted while it is still assigned to one or more users. Naviga
 
 **The HedgeDoc content does not load on the case page.**
 
-Check that the HedgeDoc URL is correct and accessible from the Flowintel server.
+Check that the note URL is under the administrator's configured `HEDGEDOC_BASE_URL` and that the Flowintel server can download the note directly.
 
 **I cannot assign a user to a task.**
 

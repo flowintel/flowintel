@@ -6,13 +6,16 @@ from typing import List
 import uuid
 import datetime
 import json
+import re
 from functools import lru_cache
 import sys
+from urllib.parse import urlsplit
 
 from flask_login import current_user
 from flask import send_file, current_app
 import pymisp
 import requests
+from werkzeug.exceptions import BadRequest
 
 from sqlalchemy import desc, and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
@@ -43,6 +46,15 @@ FILE_FOLDER = os.path.join(UPLOAD_FOLDER, "files")
 TIMELINE_ADDITIONAL_NOTE_UNSET = object()
 
 
+def _hedgedoc_origin(url):
+    if url.scheme not in ("http", "https") or not url.hostname or url.username is not None:
+        raise BadRequest("Invalid HedgeDoc URL.")
+    port = url.port
+    if port is None:
+        port = 443 if url.scheme == "https" else 80
+    return url.scheme, url.hostname, port
+
+
 @lru_cache(maxsize=1)
 def _build_misp_attribute_types():
     """Construct and cache the canonical list of attribute types from templates."""
@@ -67,17 +79,34 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     @staticmethod
     def normalize_hedgedoc_url(hedgedoc_url):
-        if not hedgedoc_url:
-            return hedgedoc_url
+        """Build the note URL from the configured HedgeDoc installation and a note ID."""
+        if hedgedoc_url is None:
+            return None
+        if not isinstance(hedgedoc_url, str):
+            raise BadRequest("Expected a HedgeDoc note URL.")
+        if not hedgedoc_url.strip():
+            return ""
 
-        normalized_url = hedgedoc_url.strip()
-        if normalized_url.endswith("#"):
-            normalized_url = normalized_url[:-1]
-        if normalized_url.endswith("?both"):
-            normalized_url = normalized_url[:-5]
-        if normalized_url.endswith("?edit"):
-            normalized_url = normalized_url[:-5]
-        return normalized_url
+        base_url = current_app.config.get("HEDGEDOC_BASE_URL")
+        if not base_url:
+            raise BadRequest("HedgeDoc is not configured.")
+        try:
+            base = urlsplit(base_url)
+            note = urlsplit(hedgedoc_url.strip())
+            same_origin = _hedgedoc_origin(base) == _hedgedoc_origin(note)
+        except ValueError:
+            raise BadRequest("Invalid HedgeDoc URL.") from None
+
+        directory, _, note_id = note.path.rpartition("/")
+        base_path = base.path.rstrip("/")
+        if (
+            not same_origin or directory != base_path
+            or base.query or base.fragment or note.query not in ("", "both", "edit") or note.fragment
+        ):
+            raise BadRequest("Use a note URL from the configured HedgeDoc installation.")
+        if note_id in (".", "..") or not re.fullmatch(r"[A-Za-z0-9._~-]+", note_id):
+            raise BadRequest("Invalid HedgeDoc note ID.")
+        return base._replace(path=f"{base_path}/{note_id}").geturl()
 
     def get_class(self) -> Case:
         return Case
@@ -1646,15 +1675,20 @@ class CaseCore(CommonAbstract, FilteringAbstract):
 
     def get_hedgedoc_notes(self, cid):
         case = CommonModel.get_case(cid)
-        if case.hedgedoc_url:
-            try:
-                md = requests.get(f"{case.hedgedoc_url}/download")
-                if md.status_code == 200:
-                    return {"notes": md.text}, 200
-                return {"message": "Notes not found", 'toast_class': "danger-subtle"}, 404
-            except requests.exceptions.RequestException:
-                return {"message": "Error with the url", 'toast_class': "warning-subtle"}, 400
-        return {"notes": ""}, 200
+        try:
+            # Recheck stored URLs after upgrades and configuration changes.
+            note_url = self.normalize_hedgedoc_url(case.hedgedoc_url)
+        except BadRequest as error:
+            return {"message": error.description, "toast_class": "warning-subtle"}, 400
+        if not note_url:
+            return {"notes": ""}, 200
+        try:
+            md = requests.get(f"{note_url}/download", timeout=(3, 10), allow_redirects=False)
+        except requests.exceptions.RequestException:
+            return {"message": "Error with the url", 'toast_class': "warning-subtle"}, 400
+        if md.status_code == 200:
+            return {"notes": md.text}, 200
+        return {"message": "Notes not found", 'toast_class': "danger-subtle"}, 404
 
 
     ##########

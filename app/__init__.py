@@ -110,6 +110,7 @@ def create_app():
 
     config_class = Config[config_name]
     app.config.from_object(config_class)
+    app.config.setdefault("HEDGEDOC_BASE_URL", os.getenv("HEDGEDOC_BASE_URL", ""))
     app.config.setdefault("CHATBOT_TOOL_TIMEOUT", 30)
     app.config['LOG_FILE'] = validate_log_file_name(app.config.get('LOG_FILE', 'record.log'))
     config_class.init_app(app)
